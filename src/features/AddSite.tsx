@@ -14,6 +14,7 @@ export type SiteForm = {
     longitude: string
     photos: File[]
     amenities: Set<string>
+    tags: string[]
 }
 
 const Bolt = (props: React.SVGProps<SVGSVGElement>) => (
@@ -45,7 +46,9 @@ export function AddSite({ onSuccess, onCancel, isOnboarding = false, isFirstSite
         longitude: '',
         photos: [],
         amenities: new Set(['Security', 'Lighting']),
+        tags: [],
     })
+    const [tagInput, setTagInput] = useState('')
     const [error, setError] = useState('')
     const [ack, setAck] = useState('')
 

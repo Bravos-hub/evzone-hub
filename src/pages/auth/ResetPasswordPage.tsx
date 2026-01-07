@@ -3,7 +3,6 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useResetPassword } from '@/core/api/hooks/useAuth'
 import { getErrorMessage } from '@/core/api/errors'
 import { PATHS } from '@/app/router/paths'
-import { EVChargingAnimation } from '@/ui/components/EVChargingAnimation'
 
 type ResetMethod = 'token' | 'otp'
 
@@ -156,23 +155,7 @@ export function ResetPasswordPage() {
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-info/5 rounded-full blur-3xl"></div>
       </div>
 
-      <div className="w-full max-w-5xl relative z-10">
-        <div className="grid md:grid-cols-2 gap-8 items-center">
-          {/* Left side - Animation */}
-          <div className="order-2 md:order-1">
-            <div className="text-center mb-4">
-              <h2 className="text-xl md:text-2xl font-bold text-text mb-2">Create New Password</h2>
-              <p className="text-muted text-xs md:text-sm">
-                Choose a strong password to secure your account
-              </p>
-            </div>
-            <div className="scale-75 md:scale-100 origin-center">
-              <EVChargingAnimation />
-            </div>
-          </div>
-
-          {/* Right side - Form */}
-          <div className="w-full max-w-md mx-auto order-1 md:order-2">
+      <div className="w-full max-w-md relative z-10 mx-auto">
             <div className="bg-panel border border-border-light rounded-2xl p-8 shadow-lg backdrop-blur-sm">
               {success ? (
                 <div className="text-center space-y-6">
@@ -311,8 +294,6 @@ export function ResetPasswordPage() {
                 </form>
               )}
             </div>
-          </div>
-        </div>
       </div>
     </div>
   )

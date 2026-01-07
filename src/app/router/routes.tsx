@@ -145,6 +145,7 @@ export function AppRoutes() {
           CORE FEATURES - Available to multiple roles (RBAC inside component)
           ═══════════════════════════════════════════════════════════════════════ */}
             <Route path={PATHS.STATIONS.ROOT} element={<RequireAuth><Stations /></RequireAuth>} />
+            <Route path="/stations/:id" element={<RequireAuth><StationDetail /></RequireAuth>} />
             <Route path={PATHS.STATIONS.CHARGE_POINTS} element={<RequireAuth><Stations /></RequireAuth>} />
             <Route path={PATHS.STATIONS.SWAP_STATIONS} element={<RequireAuth><Stations /></RequireAuth>} />
             <Route path={PATHS.STATIONS.SMART_CHARGING} element={<RequireAuth><Stations /></RequireAuth>} />
@@ -157,6 +158,7 @@ export function AppRoutes() {
             <Route path="/bookings" element={<Navigate to={PATHS.STATIONS.BOOKINGS} replace />} />
 
             <Route path={PATHS.SESSIONS} element={<RequireAuth><Sessions /></RequireAuth>} />
+            <Route path="/sessions/:id" element={<RequireAuth><SessionDetailPage /></RequireAuth>} />
             <Route path={PATHS.INCIDENTS} element={<RequireAuth><Incidents /></RequireAuth>} />
             <Route path={PATHS.DISPATCHES} element={<RequireAuth><Dispatches /></RequireAuth>} />
             <Route path={PATHS.BILLING} element={<RequireAuth><Billing /></RequireAuth>} />

@@ -44,14 +44,18 @@ export function Sites() {
 
   const handleAddSite = async (newSite: any) => {
     try {
-      await createStationMutation.mutateAsync({
+      const station = await createStationMutation.mutateAsync({
         code: newSite.code || `ST-${Date.now()}`,
         name: newSite.name,
         address: newSite.address,
-        latitude: newSite.latitude || 0,
-        longitude: newSite.longitude || 0,
+        latitude: parseFloat(newSite.latitude) || 0,
+        longitude: parseFloat(newSite.longitude) || 0,
         type: newSite.type || 'CHARGING',
+        tags: newSite.tags || [],
       })
+      // Log audit event
+      const { auditLogger } = await import('@/core/utils/auditLogger')
+      auditLogger.stationCreated(station.id, station.name)
       setIsAdding(false)
     } catch (err) {
       setErrorMessage(getErrorMessage(err))

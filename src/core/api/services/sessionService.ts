@@ -47,7 +47,7 @@ export const sessionService = {
   /**
    * Get session history with pagination
    */
-  async getHistory(query?: { page?: number; limit?: number; status?: string }): Promise<{
+  async getHistory(query?: { page?: number; limit?: number; status?: string; stationId?: string }): Promise<{
     sessions: ChargingSession[]
     pagination: {
       page: number
@@ -60,9 +60,17 @@ export const sessionService = {
     if (query?.page) params.append('page', query.page.toString())
     if (query?.limit) params.append('limit', query.limit.toString())
     if (query?.status) params.append('status', query.status)
+    if (query?.stationId) params.append('stationId', query.stationId)
     
     const queryString = params.toString()
     return apiClient.get(`/sessions/history/all${queryString ? `?${queryString}` : ''}`)
+  },
+
+  /**
+   * Stop an active session
+   */
+  async stopSession(id: string, reason?: string): Promise<ChargingSession> {
+    return apiClient.post<ChargingSession>(`/sessions/${id}/stop`, { reason })
   },
 }
 

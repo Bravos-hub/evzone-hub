@@ -3,7 +3,7 @@
  * React Query hooks for charging session management
  */
 
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { sessionService } from '../services/sessionService'
 import { queryKeys } from '@/data/queryKeys'
 
@@ -47,10 +47,23 @@ export function useUserSessions(userId: string, activeOnly?: boolean) {
   })
 }
 
-export function useSessionHistory(filters?: { page?: number; limit?: number; status?: string }) {
+export function useSessionHistory(filters?: { page?: number; limit?: number; status?: string; stationId?: string }) {
   return useQuery({
     queryKey: queryKeys.sessions.history(filters),
     queryFn: () => sessionService.getHistory(filters),
   })
 }
 
+export function useStopSession() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason?: string }) =>
+      sessionService.stopSession(id, reason),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.sessions.detail(variables.id) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.sessions.active })
+      queryClient.invalidateQueries({ queryKey: queryKeys.sessions.history() })
+    },
+  })
+}

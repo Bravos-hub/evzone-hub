@@ -4,6 +4,7 @@
 
 // Core Features (Multiple roles)
 export { Stations } from './Stations'
+export { StationDetail } from './StationDetail'
 export { Sessions } from './Sessions'
 export { Incidents } from './Incidents'
 export { Dispatches } from './Dispatches'

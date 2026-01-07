@@ -1,7 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { useAuthStore } from '@/core/auth/authStore'
 import { getPermissionsForFeature } from '@/constants/permissions'
+import { useIncidents, useCreateIncident, useAssignIncident, useResolveIncident } from '@/core/api/hooks/useIncidents'
+import { useStations } from '@/core/api/hooks/useStations'
+import { getErrorMessage } from '@/core/api/errors'
+import { auditLogger } from '@/core/utils/auditLogger'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -126,18 +130,41 @@ export function Incidents() {
   const { user } = useAuthStore()
   const perms = getPermissionsForFeature(user?.role, 'incidents')
 
-  const [rows, setRows] = useState<Incident[]>([])
   const [q, setQ] = useState('')
   const [region, setRegion] = useState<Region>('ALL')
   const [severity, setSeverity] = useState<Severity | 'All'>('All')
   const [status, setStatus] = useState<IncidentStatus | 'All'>('All')
   const [impact, setImpact] = useState<Impact | 'All'>('All')
   const [openId, setOpenId] = useState<string | null>(null)
+  const [showCreateModal, setShowCreateModal] = useState(false)
 
-  useEffect(() => {
-    // In real app, filter by user's access level
-    setRows(mockIncidents)
-  }, [])
+  const { data: incidentsData, isLoading, error } = useIncidents({
+    status: status !== 'All' ? status : undefined,
+    severity: severity !== 'All' ? severity : undefined,
+  })
+  const createIncidentMutation = useCreateIncident()
+  const assignIncidentMutation = useAssignIncident()
+  const resolveIncidentMutation = useResolveIncident()
+
+  // Map API incidents to display format
+  const rows = useMemo(() => {
+    if (!incidentsData) return []
+    return incidentsData.map(i => ({
+      id: i.id,
+      title: i.title,
+      status: i.status as IncidentStatus,
+      severity: i.severity as Severity,
+      impact: 'Charging' as Impact, // Map from incident data
+      region: 'AFRICA' as Region, // Default
+      org: '—',
+      commander: i.assignedTo || 'Unassigned',
+      createdAt: i.created.toISOString().slice(0, 16).replace('T', ' '),
+      updatedAt: i.resolved?.toISOString().slice(0, 16).replace('T', ' ') || i.created.toISOString().slice(0, 16).replace('T', ' '),
+      summary: i.description,
+      affectedStationsCount: 0,
+      eta: i.slaDeadline ? 'Calculating...' : 'Unknown',
+    }))
+  }, [incidentsData])
 
   const filtered = useMemo(
     () =>
@@ -239,8 +266,9 @@ export function Incidents() {
       )}
 
       {/* Incidents Table */}
-      <div className="table-wrap">
-        <table className="table">
+      {!isLoading && (
+        <div className="table-wrap">
+          <table className="table">
           <thead>
             <tr>
               <th className="w-24">Incident</th>
@@ -291,6 +319,29 @@ export function Incidents() {
           </tbody>
         </table>
       </div>
+      )}
+
+      {/* Create Incident Modal */}
+      {showCreateModal && (
+        <CreateIncidentModal
+          onClose={() => setShowCreateModal(false)}
+          onSubmit={async (data) => {
+            try {
+              await createIncidentMutation.mutateAsync({
+                stationId: data.stationId,
+                assetId: data.assetId,
+                severity: data.severity,
+                title: data.title,
+                description: data.description,
+              })
+              auditLogger.incidentCreated('new', data.title)
+              setShowCreateModal(false)
+            } catch (err) {
+              alert(`Failed to create incident: ${getErrorMessage(err)}`)
+            }
+          }}
+        />
+      )}
 
       {/* Incident Detail Drawer */}
       {openRow && (
@@ -298,9 +349,112 @@ export function Incidents() {
           incident={openRow}
           onClose={() => setOpenId(null)}
           perms={perms}
+          onAssign={async (incidentId, assigneeId) => {
+            try {
+              await assignIncidentMutation.mutateAsync({
+                id: incidentId,
+                data: { assignedTo: assigneeId },
+              })
+              auditLogger.incidentResolved(incidentId)
+            } catch (err) {
+              alert(`Failed to assign incident: ${getErrorMessage(err)}`)
+            }
+          }}
+          onResolve={async (incidentId) => {
+            try {
+              await resolveIncidentMutation.mutateAsync({
+                id: incidentId,
+                data: {},
+              })
+              auditLogger.incidentResolved(incidentId)
+            } catch (err) {
+              alert(`Failed to resolve incident: ${getErrorMessage(err)}`)
+            }
+          }}
         />
       )}
     </DashboardLayout>
+  )
+}
+
+// Create Incident Modal Component
+function CreateIncidentModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (data: any) => Promise<void> }) {
+  const [form, setForm] = useState({
+    stationId: '',
+    assetId: '',
+    severity: 'Medium' as Severity,
+    title: '',
+    description: '',
+  })
+  const { data: stationsData } = useStations()
+  const stations = stationsData || []
+
+  return (
+    <div className="fixed inset-0 z-50 flex">
+      <div className="flex-1 bg-black/30" onClick={onClose} />
+      <div className="w-full max-w-xl bg-panel border-l border-border-light shadow-xl p-5 space-y-4 overflow-y-auto">
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold text-text">Create New Incident</h3>
+          <button className="btn secondary" onClick={onClose}>Close</button>
+        </div>
+        <form onSubmit={async (e) => {
+          e.preventDefault()
+          await onSubmit(form)
+        }} className="space-y-4">
+          <label className="grid gap-1">
+            <span className="text-sm font-medium">Station *</span>
+            <select
+              value={form.stationId}
+              onChange={e => setForm(f => ({ ...f, stationId: e.target.value }))}
+              className="select"
+              required
+            >
+              <option value="">Select station...</option>
+              {stations.map(s => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+          </label>
+          <label className="grid gap-1">
+            <span className="text-sm font-medium">Severity *</span>
+            <select
+              value={form.severity}
+              onChange={e => setForm(f => ({ ...f, severity: e.target.value as Severity }))}
+              className="select"
+              required
+            >
+              <option value="Critical">Critical</option>
+              <option value="High">High</option>
+              <option value="Medium">Medium</option>
+              <option value="Low">Low</option>
+            </select>
+          </label>
+          <label className="grid gap-1">
+            <span className="text-sm font-medium">Title *</span>
+            <input
+              value={form.title}
+              onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+              className="input"
+              required
+            />
+          </label>
+          <label className="grid gap-1">
+            <span className="text-sm font-medium">Description *</span>
+            <textarea
+              value={form.description}
+              onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+              className="input"
+              rows={4}
+              required
+            />
+          </label>
+          <div className="flex gap-2">
+            <button type="button" className="btn secondary flex-1" onClick={onClose}>Cancel</button>
+            <button type="submit" className="btn flex-1">Create Incident</button>
+          </div>
+        </form>
+      </div>
+    </div>
   )
 }
 
@@ -369,7 +523,12 @@ function IncidentDrawer({
         {/* Actions */}
         <div className="flex gap-2">
           {perms.assign && (
-            <button className="btn secondary" onClick={() => alert('Assign commander (demo)')}>
+            <button className="btn secondary" onClick={() => {
+              const assigneeId = window.prompt('Enter user ID to assign:')
+              if (assigneeId && onAssign) {
+                onAssign(incident.id, assigneeId)
+              }
+            }}>
               Assign
             </button>
           )}
@@ -379,7 +538,15 @@ function IncidentDrawer({
             </button>
           )}
           {perms.resolve && incident.status !== 'Resolved' && (
-            <button className="btn" style={{ background: '#03cd8c', color: 'white' }} onClick={() => alert('Resolve (demo)')}>
+            <button 
+              className="btn" 
+              style={{ background: '#03cd8c', color: 'white' }} 
+              onClick={() => {
+                if (onResolve) {
+                  onResolve(incident.id)
+                }
+              }}
+            >
               Resolve
             </button>
           )}

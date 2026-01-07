@@ -115,6 +115,7 @@ export interface Station {
   swapLockers?: SwapLocker[]
   amenities?: string[]
   openingHours?: string
+  tags?: string[] // Station grouping/tags
   created: Date
   lastMaintenance?: Date
 }

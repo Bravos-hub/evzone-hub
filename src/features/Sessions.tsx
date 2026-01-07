@@ -1,10 +1,13 @@
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { useAuthStore } from '@/core/auth/authStore'
 import { getPermissionsForFeature } from '@/constants/permissions'
-import { useSessionHistory, useActiveSessions } from '@/core/api/hooks/useSessions'
+import { useSessionHistory, useActiveSessions, useStopSession } from '@/core/api/hooks/useSessions'
+import { useStations } from '@/core/api/hooks/useStations'
 import { getErrorMessage } from '@/core/api/errors'
 import type { SessionStatus, PaymentMethod } from '@/core/types/domain'
+import { auditLogger } from '@/core/utils/auditLogger'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -48,12 +51,18 @@ export function Sessions() {
   const [to, setTo] = useState('2025-10-29')
   const [q, setQ] = useState('')
   const [sel, setSel] = useState<Record<string, boolean>>({})
+  const [stationFilter, setStationFilter] = useState<string>('All')
+
+  // Fetch stations for filter
+  const { data: stationsData } = useStations()
+  const stations = stationsData || []
 
   // Fetch session history
   const { data: historyData, isLoading, error } = useSessionHistory({
     page: 1,
     limit: 100,
     status: status !== 'All' ? status.toUpperCase() : undefined,
+    stationId: stationFilter !== 'All' ? stationFilter : undefined,
   })
 
   // Map API sessions to the format expected by the component
@@ -159,13 +168,19 @@ export function Sessions() {
 
       {/* Filters */}
       <div className="card">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3">
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search Session ID or Charger"
             className="input col-span-2 xl:col-span-1"
           />
+          <select value={stationFilter} onChange={(e) => setStationFilter(e.target.value)} className="select">
+            <option value="All">All Stations</option>
+            {stations.map(s => (
+              <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
+          </select>
           <select value={site} onChange={(e) => setSite(e.target.value)} className="select">
             <option>All Sites</option>
             <option>Central Hub</option>
@@ -177,6 +192,7 @@ export function Sessions() {
             <option value="Failed">Failed</option>
             <option value="Cancelled">Cancelled</option>
             <option value="Pending">Pending</option>
+            <option value="Active">Active</option>
           </select>
           <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod | 'All')} className="select">
             <option value="All">All Payment</option>
@@ -238,9 +254,9 @@ export function Sessions() {
                   </td>
                 )}
                 <td className="font-semibold truncate max-w-[80px]">
-                  <a href={`/sessions/${r.id}`} className="text-accent hover:underline">
+                  <Link to={`/sessions/${r.id}`} className="text-accent hover:underline">
                     {r.id}
-                  </a>
+                  </Link>
                 </td>
                 <td className="truncate max-w-[112px]" title={r.site}>{r.site}</td>
                 <td className="truncate max-w-[112px]" title={`${r.chargePointId}/${r.connectorId}`}>
@@ -274,18 +290,16 @@ export function Sessions() {
                 </td>
                 <td className="text-right">
                   <div className="inline-flex items-center gap-2">
-                    <a href={`/sessions/${r.id}`} className="px-2 py-1 text-xs rounded border border-border hover:bg-muted transition-colors">
+                    <Link to={`/sessions/${r.id}`} className="px-2 py-1 text-xs rounded border border-border hover:bg-muted transition-colors">
                       View
-                    </a>
+                    </Link>
                     {perms.refund && r.status === 'Completed' && (
                       <button className="px-2 py-1 text-xs rounded border border-border hover:bg-muted transition-colors" onClick={() => alert(`Refund ${r.id} (demo)`)}>
                         Refund
                       </button>
                     )}
-                    {perms.stopSession && r.status === 'Pending' && (
-                      <button className="px-2 py-1 text-xs rounded border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 transition-colors" onClick={() => alert(`Stop ${r.id} (demo)`)}>
-                        Stop
-                      </button>
+                    {perms.stopSession && (r.status === 'Pending' || r.status === 'Active') && (
+                      <StopSessionButton sessionId={r.id} />
                     )}
                   </div>
                 </td>
@@ -298,3 +312,31 @@ export function Sessions() {
   )
 }
 
+// Stop Session Button Component
+function StopSessionButton({ sessionId }: { sessionId: string }) {
+  const stopSessionMutation = useStopSession()
+  const [stopping, setStopping] = useState(false)
+
+  const handleStop = async () => {
+    if (!window.confirm(`Are you sure you want to stop session ${sessionId}?`)) return
+    setStopping(true)
+    try {
+      await stopSessionMutation.mutateAsync({ id: sessionId, reason: 'Manually stopped by admin' })
+      auditLogger.sessionStopped(sessionId, 'Manually stopped by admin')
+    } catch (err) {
+      alert(`Failed to stop session: ${getErrorMessage(err)}`)
+    } finally {
+      setStopping(false)
+    }
+  }
+
+  return (
+    <button
+      className="px-2 py-1 text-xs rounded border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 transition-colors disabled:opacity-50"
+      onClick={handleStop}
+      disabled={stopping || stopSessionMutation.isPending}
+    >
+      {stopping || stopSessionMutation.isPending ? 'Stopping...' : 'Stop'}
+    </button>
+  )
+}

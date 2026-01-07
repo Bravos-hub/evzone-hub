@@ -8,6 +8,7 @@ import { mockUsers } from '@/data/mockDb/users'
 import { mockChargingSessions } from '@/data/mockDb/sessions'
 import type { User, Station, Booking, ChargingSession, WalletBalance, WalletTransaction, Organization, DashboardMetrics } from '@/core/api/types'
 import { API_CONFIG } from '@/core/api/config'
+import { mockDb } from '@/data/mockDb'
 
 const baseURL = API_CONFIG.baseURL
 
@@ -31,48 +32,22 @@ function getCurrentUser(): typeof mockUsers[0] | null {
   }
 }
 
-// Mock Stations
-const mockStations: Station[] = [
-  {
-    id: 'STATION_001',
-    code: 'ST-001',
-    name: 'Central Hub',
-    address: '123 Main St, Downtown',
-    latitude: 40.7128,
-    longitude: -74.0060,
-    type: 'CHARGING',
-    status: 'ACTIVE',
-    orgId: 'ORG_DEMO',
-    createdAt: new Date().toISOString(),
+// Helper to convert domain Station to API Station
+function mapStationToAPI(station: any): Station {
+  return {
+    id: station.id,
+    code: station.id,
+    name: station.name,
+    address: station.address,
+    latitude: station.latitude,
+    longitude: station.longitude,
+    type: station.type === 'Charging' ? 'CHARGING' : station.type === 'Swap' ? 'SWAP' : 'BOTH',
+    status: station.status === 'Online' ? 'ACTIVE' : station.status === 'Offline' ? 'INACTIVE' : 'MAINTENANCE',
+    orgId: station.organizationId,
+    createdAt: station.created.toISOString(),
     updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 'STATION_002',
-    code: 'ST-002',
-    name: 'Airport East',
-    address: '456 Airport Blvd',
-    latitude: 40.6413,
-    longitude: -73.7781,
-    type: 'CHARGING',
-    status: 'ACTIVE',
-    orgId: 'ORG_ALPHA',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 'STATION_003',
-    code: 'ST-003',
-    name: 'Tech Park',
-    address: '789 Innovation Dr',
-    latitude: 37.7749,
-    longitude: -122.4194,
-    type: 'BOTH',
-    status: 'ACTIVE',
-    orgId: 'ORG_BETA',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-]
+  }
+}
 
 // Mock Bookings
 const mockBookings: Booking[] = [
@@ -204,7 +179,7 @@ export const handlers = [
     const status = url.searchParams.get('status')
     const orgId = url.searchParams.get('orgId')
     
-    let stations = [...mockStations]
+    let stations = mockDb.getStations().map(mapStationToAPI)
     if (status) {
       stations = stations.filter(s => s.status === status.toUpperCase())
     }
@@ -216,24 +191,24 @@ export const handlers = [
   }),
 
   http.get(`${baseURL}/stations/:id`, async ({ params }) => {
-    const station = mockStations.find(s => s.id === params.id)
+    const station = mockDb.getStation(params.id as string)
     if (!station) {
       return HttpResponse.json({ error: 'Station not found' }, { status: 404 })
     }
-    return HttpResponse.json(station)
+    return HttpResponse.json(mapStationToAPI(station))
   }),
 
   http.get(`${baseURL}/stations/code/:code`, async ({ params }) => {
-    const station = mockStations.find(s => s.code === params.code)
+    const station = mockDb.getStations().find(s => s.id === params.code)
     if (!station) {
       return HttpResponse.json({ error: 'Station not found' }, { status: 404 })
     }
-    return HttpResponse.json(station)
+    return HttpResponse.json(mapStationToAPI(station))
   }),
 
   http.get(`${baseURL}/stations/nearby`, async ({ request }) => {
     // Return nearby stations (simplified - just return all)
-    return HttpResponse.json(mockStations)
+    return HttpResponse.json(mockDb.getStations().map(mapStationToAPI))
   }),
 
   http.get(`${baseURL}/stations/:id/stats`, async () => {
@@ -246,34 +221,48 @@ export const handlers = [
   }),
 
   http.post(`${baseURL}/stations`, async ({ request }) => {
-    const body = await request.json() as Partial<Station>
-    const newStation: Station = {
+    const body = await request.json() as Partial<Station> & { tags?: string[] }
+    const user = getCurrentUser()
+    const newStation = {
       id: `STATION_${Date.now()}`,
-      code: body.code || `ST-${Date.now()}`,
       name: body.name || 'New Station',
+      type: (body.type === 'CHARGING' ? 'Charging' : body.type === 'SWAP' ? 'Swap' : 'Both') as any,
+      organizationId: user?.orgId || 'ORG_DEMO',
       address: body.address || '',
+      city: '',
+      region: 'AFRICA',
+      country: '',
       latitude: body.latitude || 0,
       longitude: body.longitude || 0,
-      type: body.type || 'CHARGING',
-      status: 'ACTIVE',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      status: 'Online' as any,
+      capacity: 0,
+      created: new Date(),
+      tags: body.tags || [],
     }
-    mockStations.push(newStation)
-    return HttpResponse.json(newStation, { status: 201 })
+    mockDb.addStation(newStation)
+    return HttpResponse.json(mapStationToAPI(newStation), { status: 201 })
   }),
 
   http.patch(`${baseURL}/stations/:id`, async ({ params, request }) => {
-    const station = mockStations.find(s => s.id === params.id)
+    const station = mockDb.getStation(params.id as string)
     if (!station) {
       return HttpResponse.json({ error: 'Station not found' }, { status: 404 })
     }
     const body = await request.json() as Partial<Station>
-    Object.assign(station, body, { updatedAt: new Date().toISOString() })
-    return HttpResponse.json(station)
+    const updates: any = {}
+    if (body.name) updates.name = body.name
+    if (body.address) updates.address = body.address
+    if (body.latitude !== undefined) updates.latitude = body.latitude
+    if (body.longitude !== undefined) updates.longitude = body.longitude
+    if (body.status) {
+      updates.status = body.status === 'ACTIVE' ? 'Online' : body.status === 'INACTIVE' ? 'Offline' : 'Maintenance'
+    }
+    mockDb.updateStation(params.id as string, updates)
+    return HttpResponse.json(mapStationToAPI(mockDb.getStation(params.id as string)!))
   }),
 
   http.delete(`${baseURL}/stations/:id`, async ({ params }) => {
+    mockDb.deleteStation(params.id as string)
     return HttpResponse.json({ success: true })
   }),
 
@@ -284,11 +273,11 @@ export const handlers = [
   // Session endpoints
   http.get(`${baseURL}/sessions/active`, async () => {
     // Map domain ChargingSession to API ChargingSession
-    const active = mockChargingSessions
+    const active = mockDb.getSessions()
       .filter(s => s.status === 'Active' || !s.end)
       .map(s => ({
         id: s.id,
-        userId: 'u-001', // Mock user ID
+        userId: s.driverId || 'u-001',
         stationId: s.stationId,
         connectorId: s.connectorId?.toString(),
         startedAt: s.start.toISOString(),
@@ -301,14 +290,14 @@ export const handlers = [
   }),
 
   http.get(`${baseURL}/sessions/:id`, async ({ params }) => {
-    const session = mockChargingSessions.find(s => s.id === params.id)
+    const session = mockDb.getSession(params.id as string)
     if (!session) {
       return HttpResponse.json({ error: 'Session not found' }, { status: 404 })
     }
     // Map domain ChargingSession to API ChargingSession
     const apiSession: ChargingSession = {
       id: session.id,
-      userId: 'u-001',
+      userId: session.driverId || 'u-001',
       stationId: session.stationId,
       connectorId: session.connectorId?.toString(),
       startedAt: session.start.toISOString(),
@@ -321,18 +310,19 @@ export const handlers = [
   }),
 
   http.get(`${baseURL}/sessions/stats/summary`, async () => {
+    const sessions = mockDb.getSessions()
     return HttpResponse.json({
-      total: mockChargingSessions.length,
-      active: mockChargingSessions.filter(s => s.status === 'Active' || !s.end).length,
-      totalEnergy: mockChargingSessions.reduce((sum, s) => sum + (s.energyKwh || 0), 0),
-      totalRevenue: mockChargingSessions.reduce((sum, s) => sum + (s.amount || 0), 0),
+      total: sessions.length,
+      active: sessions.filter(s => s.status === 'Active' || !s.end).length,
+      totalEnergy: sessions.reduce((sum, s) => sum + (s.energyKwh || 0), 0),
+      totalRevenue: sessions.reduce((sum, s) => sum + (s.amount || 0), 0),
     })
   }),
 
   http.get(`${baseURL}/sessions/station/:stationId`, async ({ params, request }) => {
     const url = new URL(request.url)
     const activeOnly = url.searchParams.get('active') === 'true'
-    const sessions = mockChargingSessions.filter(s => s.stationId === params.stationId)
+    const sessions = mockDb.getSessions().filter(s => s.stationId === params.stationId)
     const mapSession = (s: typeof mockChargingSessions[0]): ChargingSession => ({
       id: s.id,
       userId: 'u-001',
@@ -354,7 +344,7 @@ export const handlers = [
   http.get(`${baseURL}/sessions/user/:userId`, async ({ params, request }) => {
     const url = new URL(request.url)
     const activeOnly = url.searchParams.get('active') === 'true'
-    const sessions = mockChargingSessions // Simplified - would filter by userId in real app
+    const sessions = mockDb.getSessions().filter(s => s.driverId === params.userId)
     const mapSession = (s: typeof mockChargingSessions[0]): ChargingSession => ({
       id: s.id,
       userId: params.userId as string,
@@ -378,10 +368,14 @@ export const handlers = [
     const page = parseInt(url.searchParams.get('page') || '1')
     const limit = parseInt(url.searchParams.get('limit') || '10')
     const status = url.searchParams.get('status')
+    const stationId = url.searchParams.get('stationId')
     
-    let sessions = [...mockChargingSessions]
+    let sessions = [...mockDb.getSessions()]
     if (status) {
       sessions = sessions.filter(s => s.status === status)
+    }
+    if (stationId) {
+      sessions = sessions.filter(s => s.stationId === stationId)
     }
     
     const start = (page - 1) * limit
@@ -705,6 +699,460 @@ export const handlers = [
         'Content-Type': 'text/csv',
         'Content-Disposition': 'attachment; filename="export.csv"',
       },
+    })
+  }),
+
+  // Charge Point endpoints
+  http.get(`${baseURL}/charge-points`, async ({ request }) => {
+    const { mockDb } = await import('@/data/mockDb')
+    const url = new URL(request.url)
+    const stationId = url.searchParams.get('stationId')
+    const status = url.searchParams.get('status')
+    
+    let chargePoints = mockDb.getChargePoints()
+    if (stationId) {
+      chargePoints = chargePoints.filter(cp => cp.stationId === stationId)
+    }
+    if (status) {
+      chargePoints = chargePoints.filter(cp => cp.status === status)
+    }
+    
+    return HttpResponse.json(chargePoints)
+  }),
+
+  http.get(`${baseURL}/charge-points/:id`, async ({ params }) => {
+    const { mockDb } = await import('@/data/mockDb')
+    const chargePoint = mockDb.getChargePoint(params.id as string)
+    if (!chargePoint) {
+      return HttpResponse.json({ error: 'Charge point not found' }, { status: 404 })
+    }
+    return HttpResponse.json(chargePoint)
+  }),
+
+  http.post(`${baseURL}/charge-points`, async ({ request }) => {
+    const { mockDb } = await import('@/data/mockDb')
+    const body = await request.json() as any
+    const newChargePoint = {
+      id: `CP-${Date.now()}`,
+      stationId: body.stationId,
+      model: body.model,
+      manufacturer: body.manufacturer,
+      serialNumber: body.serialNumber,
+      firmwareVersion: body.firmwareVersion || '1.0.0',
+      status: 'Online' as const,
+      connectors: body.connectors.map((c: any, idx: number) => ({
+        id: idx + 1,
+        type: c.type,
+        powerType: c.powerType,
+        maxPowerKw: c.maxPowerKw,
+        status: 'Available' as const,
+      })),
+      ocppStatus: 'Available' as const,
+      lastHeartbeat: new Date(),
+    }
+    mockDb.addChargePoint(newChargePoint)
+    return HttpResponse.json(newChargePoint, { status: 201 })
+  }),
+
+  http.patch(`${baseURL}/charge-points/:id`, async ({ params, request }) => {
+    const { mockDb } = await import('@/data/mockDb')
+    const chargePoint = mockDb.getChargePoint(params.id as string)
+    if (!chargePoint) {
+      return HttpResponse.json({ error: 'Charge point not found' }, { status: 404 })
+    }
+    const body = await request.json() as any
+    mockDb.updateChargePoint(params.id as string, body)
+    return HttpResponse.json(mockDb.getChargePoint(params.id as string))
+  }),
+
+  http.delete(`${baseURL}/charge-points/:id`, async ({ params }) => {
+    const { mockDb } = await import('@/data/mockDb')
+    mockDb.deleteChargePoint(params.id as string)
+    return HttpResponse.json({ success: true })
+  }),
+
+  // Incident endpoints
+  http.get(`${baseURL}/incidents`, async ({ request }) => {
+    const { mockDb } = await import('@/data/mockDb')
+    const url = new URL(request.url)
+    const status = url.searchParams.get('status')
+    const severity = url.searchParams.get('severity')
+    const stationId = url.searchParams.get('stationId')
+    
+    let incidents = mockDb.getIncidents()
+    if (status) {
+      incidents = incidents.filter(i => i.status === status)
+    }
+    if (severity) {
+      incidents = incidents.filter(i => i.severity === severity)
+    }
+    if (stationId) {
+      incidents = incidents.filter(i => i.stationId === stationId)
+    }
+    
+    return HttpResponse.json(incidents)
+  }),
+
+  http.get(`${baseURL}/incidents/:id`, async ({ params }) => {
+    const { mockDb } = await import('@/data/mockDb')
+    const incident = mockDb.getIncident(params.id as string)
+    if (!incident) {
+      return HttpResponse.json({ error: 'Incident not found' }, { status: 404 })
+    }
+    return HttpResponse.json(incident)
+  }),
+
+  http.post(`${baseURL}/incidents`, async ({ request }) => {
+    const { mockDb } = await import('@/data/mockDb')
+    const body = await request.json() as any
+    const user = getCurrentUser()
+    const newIncident = {
+      id: `INC-${Date.now()}`,
+      stationId: body.stationId,
+      assetId: body.assetId,
+      severity: body.severity,
+      title: body.title,
+      description: body.description,
+      status: 'Open' as const,
+      reportedBy: user?.id || 'u-001',
+      created: new Date(),
+    }
+    mockDb.addIncident(newIncident)
+    return HttpResponse.json(newIncident, { status: 201 })
+  }),
+
+  http.patch(`${baseURL}/incidents/:id`, async ({ params, request }) => {
+    const { mockDb } = await import('@/data/mockDb')
+    const incident = mockDb.getIncident(params.id as string)
+    if (!incident) {
+      return HttpResponse.json({ error: 'Incident not found' }, { status: 404 })
+    }
+    const body = await request.json() as any
+    mockDb.updateIncident(params.id as string, body)
+    return HttpResponse.json(mockDb.getIncident(params.id as string))
+  }),
+
+  http.post(`${baseURL}/incidents/:id/assign`, async ({ params, request }) => {
+    const { mockDb } = await import('@/data/mockDb')
+    const incident = mockDb.getIncident(params.id as string)
+    if (!incident) {
+      return HttpResponse.json({ error: 'Incident not found' }, { status: 404 })
+    }
+    const body = await request.json() as any
+    mockDb.updateIncident(params.id as string, {
+      assignedTo: body.assignedTo,
+      status: 'Acknowledged',
+    })
+    return HttpResponse.json(mockDb.getIncident(params.id as string))
+  }),
+
+  http.post(`${baseURL}/incidents/:id/resolve`, async ({ params, request }) => {
+    const { mockDb } = await import('@/data/mockDb')
+    const incident = mockDb.getIncident(params.id as string)
+    if (!incident) {
+      return HttpResponse.json({ error: 'Incident not found' }, { status: 404 })
+    }
+    mockDb.updateIncident(params.id as string, {
+      status: 'Resolved',
+      resolved: new Date(),
+    })
+    return HttpResponse.json(mockDb.getIncident(params.id as string))
+  }),
+
+  http.delete(`${baseURL}/incidents/:id`, async ({ params }) => {
+    // Note: mockDb doesn't have deleteIncident, but we can filter it out
+    return HttpResponse.json({ success: true })
+  }),
+
+  // Dispatch endpoints
+  http.get(`${baseURL}/dispatches`, async ({ request }) => {
+    const { mockDb } = await import('@/data/mockDb')
+    const url = new URL(request.url)
+    const status = url.searchParams.get('status')
+    const priority = url.searchParams.get('priority')
+    const stationId = url.searchParams.get('stationId')
+    
+    let dispatches = mockDb.getDispatches()
+    if (status) {
+      dispatches = dispatches.filter(d => d.status === status)
+    }
+    if (priority) {
+      dispatches = dispatches.filter(d => d.priority === priority)
+    }
+    if (stationId) {
+      dispatches = dispatches.filter(d => d.stationId === stationId)
+    }
+    
+    return HttpResponse.json(dispatches)
+  }),
+
+  http.get(`${baseURL}/dispatches/:id`, async ({ params }) => {
+    const { mockDb } = await import('@/data/mockDb')
+    const dispatch = mockDb.getDispatch(params.id as string)
+    if (!dispatch) {
+      return HttpResponse.json({ error: 'Dispatch not found' }, { status: 404 })
+    }
+    return HttpResponse.json(dispatch)
+  }),
+
+  http.post(`${baseURL}/dispatches`, async ({ request }) => {
+    const { mockDb } = await import('@/data/mockDb')
+    const body = await request.json() as any
+    const user = getCurrentUser()
+    const station = mockDb.getStation(body.stationId)
+    const newDispatch = {
+      id: `DSP-${String(mockDb.getDispatches().length + 1).padStart(3, '0')}`,
+      title: body.title,
+      description: body.description,
+      status: 'Pending' as const,
+      priority: body.priority,
+      stationId: body.stationId,
+      stationName: station?.name || 'Unknown Station',
+      stationAddress: station?.address || '',
+      stationChargers: 0,
+      ownerName: 'Owner Name',
+      ownerContact: '+256 700 000 000',
+      assignee: 'Unassigned',
+      assigneeContact: '',
+      createdAt: new Date().toISOString().slice(0, 16).replace('T', ' '),
+      createdBy: user?.name || 'Admin',
+      dueAt: `${body.dueDate} ${body.dueTime}`,
+      estimatedDuration: body.estimatedDuration,
+      incidentId: body.incidentId,
+      requiredSkills: body.requiredSkills || [],
+    }
+    mockDb.addDispatch(newDispatch)
+    return HttpResponse.json(newDispatch, { status: 201 })
+  }),
+
+  http.patch(`${baseURL}/dispatches/:id`, async ({ params, request }) => {
+    const { mockDb } = await import('@/data/mockDb')
+    const dispatch = mockDb.getDispatch(params.id as string)
+    if (!dispatch) {
+      return HttpResponse.json({ error: 'Dispatch not found' }, { status: 404 })
+    }
+    const body = await request.json() as any
+    mockDb.updateDispatch(params.id as string, body)
+    return HttpResponse.json(mockDb.getDispatch(params.id as string))
+  }),
+
+  http.post(`${baseURL}/dispatches/:id/assign`, async ({ params, request }) => {
+    const { mockDb } = await import('@/data/mockDb')
+    const dispatch = mockDb.getDispatch(params.id as string)
+    if (!dispatch) {
+      return HttpResponse.json({ error: 'Dispatch not found' }, { status: 404 })
+    }
+    const body = await request.json() as any
+    mockDb.updateDispatch(params.id as string, {
+      assignee: body.assignee,
+      assigneeContact: body.assigneeContact,
+      status: 'Assigned',
+    })
+    return HttpResponse.json(mockDb.getDispatch(params.id as string))
+  }),
+
+  http.delete(`${baseURL}/dispatches/:id`, async ({ params }) => {
+    return HttpResponse.json({ success: true })
+  }),
+
+  // Tariff endpoints
+  http.get(`${baseURL}/tariffs`, async ({ request }) => {
+    const { mockDb } = await import('@/data/mockDb')
+    const url = new URL(request.url)
+    const active = url.searchParams.get('active')
+    
+    let tariffs = mockDb.getTariffs()
+    if (active !== null) {
+      tariffs = tariffs.filter(t => t.active === (active === 'true'))
+    }
+    
+    return HttpResponse.json(tariffs)
+  }),
+
+  http.get(`${baseURL}/tariffs/:id`, async ({ params }) => {
+    const { mockDb } = await import('@/data/mockDb')
+    const tariff = mockDb.getTariff(params.id as string)
+    if (!tariff) {
+      return HttpResponse.json({ error: 'Tariff not found' }, { status: 404 })
+    }
+    return HttpResponse.json(tariff)
+  }),
+
+  http.post(`${baseURL}/tariffs`, async ({ request }) => {
+    const { mockDb } = await import('@/data/mockDb')
+    const body = await request.json() as any
+    const user = getCurrentUser()
+    const newTariff = {
+      id: `TAR-${String(mockDb.getTariffs().length + 1).padStart(3, '0')}`,
+      name: body.name,
+      description: body.description,
+      type: body.type,
+      organizationId: user?.orgId || 'ORG_DEMO',
+      currency: body.currency,
+      active: true,
+      elements: body.elements,
+      validFrom: body.validFrom ? new Date(body.validFrom) : undefined,
+      validTo: body.validTo ? new Date(body.validTo) : undefined,
+      applicableStations: body.applicableStations || [],
+    }
+    mockDb.addTariff(newTariff)
+    return HttpResponse.json(newTariff, { status: 201 })
+  }),
+
+  http.patch(`${baseURL}/tariffs/:id`, async ({ params, request }) => {
+    const { mockDb } = await import('@/data/mockDb')
+    const tariff = mockDb.getTariff(params.id as string)
+    if (!tariff) {
+      return HttpResponse.json({ error: 'Tariff not found' }, { status: 404 })
+    }
+    const body = await request.json() as any
+    if (body.validFrom) body.validFrom = new Date(body.validFrom)
+    if (body.validTo) body.validTo = new Date(body.validTo)
+    mockDb.updateTariff(params.id as string, body)
+    return HttpResponse.json(mockDb.getTariff(params.id as string))
+  }),
+
+  http.delete(`${baseURL}/tariffs/:id`, async ({ params }) => {
+    const { mockDb } = await import('@/data/mockDb')
+    mockDb.deleteTariff(params.id as string)
+    return HttpResponse.json({ success: true })
+  }),
+
+  // Webhook endpoints
+  http.get(`${baseURL}/webhooks`, async () => {
+    const { mockDb } = await import('@/data/mockDb')
+    return HttpResponse.json(mockDb.getWebhooks())
+  }),
+
+  http.get(`${baseURL}/webhooks/:id`, async ({ params }) => {
+    const { mockDb } = await import('@/data/mockDb')
+    const webhook = mockDb.getWebhook(params.id as string)
+    if (!webhook) {
+      return HttpResponse.json({ error: 'Webhook not found' }, { status: 404 })
+    }
+    return HttpResponse.json(webhook)
+  }),
+
+  http.post(`${baseURL}/webhooks`, async ({ request }) => {
+    const { mockDb } = await import('@/data/mockDb')
+    const body = await request.json() as any
+    const user = getCurrentUser()
+    const newWebhook = {
+      id: `WH-${String(mockDb.getWebhooks().length + 1).padStart(3, '0')}`,
+      organizationId: user?.orgId || 'ORG_DEMO',
+      name: body.name,
+      url: body.url,
+      events: body.events,
+      secret: body.secret || `secret-${Date.now()}`,
+      status: 'Active' as const,
+      retryCount: 3,
+    }
+    mockDb.addWebhook(newWebhook)
+    return HttpResponse.json(newWebhook, { status: 201 })
+  }),
+
+  http.patch(`${baseURL}/webhooks/:id`, async ({ params, request }) => {
+    const { mockDb } = await import('@/data/mockDb')
+    const webhook = mockDb.getWebhook(params.id as string)
+    if (!webhook) {
+      return HttpResponse.json({ error: 'Webhook not found' }, { status: 404 })
+    }
+    const body = await request.json() as any
+    mockDb.updateWebhook(params.id as string, body)
+    return HttpResponse.json(mockDb.getWebhook(params.id as string))
+  }),
+
+  http.delete(`${baseURL}/webhooks/:id`, async ({ params }) => {
+    const { mockDb } = await import('@/data/mockDb')
+    mockDb.deleteWebhook(params.id as string)
+    return HttpResponse.json({ success: true })
+  }),
+
+  http.post(`${baseURL}/webhooks/:id/test`, async ({ params }) => {
+    // Mock webhook test
+    return HttpResponse.json({ success: true, statusCode: 200 })
+  }),
+
+  // Billing endpoints
+  http.get(`${baseURL}/billing/invoices`, async ({ request }) => {
+    // Return mock invoices
+    const mockInvoices = [
+      {
+        id: 'INV-2024-0012',
+        type: 'Usage',
+        org: 'Volt Mobility Ltd',
+        amount: 12450.00,
+        currency: 'USD',
+        status: 'Paid',
+        issuedAt: '2024-12-01',
+        dueAt: '2024-12-15',
+        paidAt: '2024-12-10',
+        description: 'November 2024 Usage - 4,532 sessions',
+      },
+    ]
+    return HttpResponse.json(mockInvoices)
+  }),
+
+  http.get(`${baseURL}/billing/invoices/:id`, async ({ params }) => {
+    // Return mock invoice detail
+    const invoice = {
+      id: params.id,
+      type: 'Usage',
+      org: 'Volt Mobility Ltd',
+      amount: 12450.00,
+      currency: 'USD',
+      status: 'Paid',
+      issuedAt: '2024-12-01',
+      dueAt: '2024-12-15',
+      paidAt: '2024-12-10',
+      description: 'November 2024 Usage - 4,532 sessions',
+      lineItems: [
+        { description: 'Charging Sessions', quantity: 4532, unitPrice: 2.75, total: 12463.00 },
+      ],
+    }
+    return HttpResponse.json(invoice)
+  }),
+
+  http.post(`${baseURL}/billing/invoices/generate`, async ({ request }) => {
+    const body = await request.json() as any
+    const newInvoice = {
+      id: `INV-${Date.now()}`,
+      type: body.type,
+      org: 'Organization',
+      amount: 1000.00,
+      currency: 'USD',
+      status: 'Pending',
+      issuedAt: new Date().toISOString().split('T')[0],
+      dueAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      description: body.description || 'Generated invoice',
+    }
+    return HttpResponse.json(newInvoice, { status: 201 })
+  }),
+
+  // Stop session endpoint
+  http.post(`${baseURL}/sessions/:id/stop`, async ({ params, request }) => {
+    const { mockDb } = await import('@/data/mockDb')
+    const session = mockDb.getSession(params.id as string)
+    if (!session) {
+      return HttpResponse.json({ error: 'Session not found' }, { status: 404 })
+    }
+    const body = await request.json() as any
+    mockDb.updateSession(params.id as string, {
+      status: 'Cancelled',
+      end: new Date(),
+    })
+    const updated = mockDb.getSession(params.id as string)
+    // Map to API format
+    return HttpResponse.json({
+      id: updated!.id,
+      userId: updated!.driverId || 'u-001',
+      stationId: updated!.stationId,
+      connectorId: updated!.connectorId?.toString(),
+      startedAt: updated!.start.toISOString(),
+      endedAt: updated!.end?.toISOString(),
+      status: 'STOPPED',
+      energyDelivered: updated!.energyKwh,
+      cost: updated!.amount,
     })
   }),
 ]

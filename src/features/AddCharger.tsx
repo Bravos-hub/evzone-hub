@@ -1,6 +1,9 @@
 import { useState } from 'react'
 import { useAuthStore } from '@/core/auth/authStore'
 import { hasPermission } from '@/constants/permissions'
+import { useCreateChargePoint } from '@/core/api/hooks/useChargePoints'
+import { auditLogger } from '@/core/utils/auditLogger'
+import { getErrorMessage } from '@/core/api/errors'
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Add Charger Wizard — Step-by-step charger provisioning
@@ -182,6 +185,9 @@ export function AddCharger() {
   const [provisioning, setProvisioning] = useState(false)
   const [complete, setComplete] = useState(false)
   const [ack, setAck] = useState('')
+  const [error, setError] = useState('')
+
+  const createChargePointMutation = useCreateChargePoint()
 
   const toast = (m: string) => { setAck(m); setTimeout(() => setAck(''), 2000) }
 
@@ -237,10 +243,33 @@ export function AddCharger() {
 
   const handleProvision = async () => {
     setProvisioning(true)
-    // Simulate provisioning
-    await new Promise(r => setTimeout(r, 2000))
-    setProvisioning(false)
-    setComplete(true)
+    setError('')
+    try {
+      // Create charge point with connectors
+      const chargePoint = await createChargePointMutation.mutateAsync({
+        stationId: form.site,
+        model: form.model,
+        manufacturer: form.manufacturer,
+        serialNumber: form.serialNumber,
+        firmwareVersion: form.firmware,
+        connectors: form.connectors.map((c, idx) => {
+          const spec = CONNECTOR_SPECS.find(cs => cs.key === c.type)
+          return {
+            type: spec?.displayName || c.type,
+            powerType: form.type,
+            maxPowerKw: c.maxPower,
+          }
+        }),
+        ocppId: form.ocppId,
+      })
+      auditLogger.chargePointCreated(chargePoint.id, form.site)
+      setProvisioning(false)
+      setComplete(true)
+      toast('Charger provisioned successfully!')
+    } catch (err) {
+      setError(getErrorMessage(err))
+      setProvisioning(false)
+    }
   }
 
   if (!canAdd) {
@@ -273,6 +302,7 @@ export function AddCharger() {
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       {ack && <div className="rounded-lg bg-accent/10 text-accent px-4 py-2 text-sm">{ack}</div>}
+      {error && <div className="rounded-lg bg-red-50 border border-red-200 text-red-700 px-4 py-2 text-sm">{error}</div>}
 
       {/* Progress */}
       <div className="flex items-center justify-between mb-8">

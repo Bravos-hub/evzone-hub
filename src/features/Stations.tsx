@@ -257,7 +257,12 @@ export function Stations() {
                       )}
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <button className="btn secondary sm:px-4 sm:py-2 px-3 py-1.5 text-xs sm:text-sm">Open</button>
+                      <button 
+                        className="btn secondary sm:px-4 sm:py-2 px-3 py-1.5 text-xs sm:text-sm"
+                        onClick={() => navigate(`/stations/${r.id}`)}
+                      >
+                        Open
+                      </button>
                     </td>
                   </tr>
                   ))
