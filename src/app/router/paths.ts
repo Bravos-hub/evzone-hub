@@ -27,6 +27,7 @@ export const PATHS = {
   INCIDENTS: '/incidents',
   DISPATCHES: '/dispatches',
   BILLING: '/billing',
+  INVOICE_DETAIL: (id: string) => `/billing/invoices/${id}`,
   REPORTS: '/reports',
   TEAM: '/team',
   NOTIFICATIONS: '/notifications',

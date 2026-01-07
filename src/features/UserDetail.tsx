@@ -1,11 +1,16 @@
-import { useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useState, useMemo } from 'react'
+import { useParams, useNavigate, Link } from 'react-router-dom'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { useAuthStore } from '@/core/auth/authStore'
 import { getPermissionsForFeature } from '@/constants/permissions'
 import { ROLE_LABELS, ALL_ROLES } from '@/constants/roles'
 import type { Role } from '@/core/auth/types'
 import { RolePill } from '@/ui/components/RolePill'
+import { useUser } from '@/core/api/hooks/useUsers'
+import { useUserSessions } from '@/core/api/hooks/useSessions'
+import { mockDb } from '@/data/mockDb'
+import { getErrorMessage } from '@/core/api/errors'
+import { PATHS } from '@/app/router/paths'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // MOCK DATA
@@ -69,17 +74,40 @@ export function UserDetail() {
   const [tab, setTab] = useState<'profile' | 'security' | 'activity'>('profile')
   const [busy, setBusy] = useState(false)
 
-  // Get user data (mock)
-  const userData = userId ? mockUserDetails[userId as keyof typeof mockUserDetails] : null
+  const { data: userData, isLoading, error } = useUser(userId || '')
+  const { data: sessionsData } = useUserSessions(userId || '', false)
+  const sessions = Array.isArray(sessionsData) ? sessionsData : (sessionsData as any)?.recent || []
 
-  if (!userData) {
+  // Get audit logs for this user
+  const auditLogs = useMemo(() => {
+    return mockDb.getAuditLogs()
+      .filter(log => log.actor === userData?.name || log.target === userId)
+      .slice(0, 20)
+      .map(log => ({
+        when: log.timestamp,
+        event: log.action,
+        details: log.details,
+      }))
+  }, [userData, userId])
+
+  if (isLoading) {
+    return (
+      <DashboardLayout pageTitle="User Details">
+        <div className="card">
+          <div className="text-center py-8 text-muted">Loading user...</div>
+        </div>
+      </DashboardLayout>
+    )
+  }
+
+  if (error || !userData) {
     return (
       <DashboardLayout pageTitle="User Not Found">
-        <div className="card">
-          <p className="text-muted">User not found or you don't have access.</p>
-          <button className="btn secondary mt-4" onClick={() => nav('/users')}>
+        <div className="card bg-red-50 border border-red-200">
+          <p className="text-red-700">{error ? getErrorMessage(error) : 'User not found or you don\'t have access.'}</p>
+          <Link to={PATHS.ADMIN.USERS} className="btn secondary mt-4">
             Back to Users
-          </button>
+          </Link>
         </div>
       </DashboardLayout>
     )
@@ -154,11 +182,11 @@ export function UserDetail() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
         <div className="card">
           <div className="text-xs text-muted">Last Login</div>
-          <div className="text-lg font-semibold text-text">{userData.lastLogin}</div>
+          <div className="text-lg font-semibold text-text">{userData.lastSeen ? new Date(userData.lastSeen).toLocaleString() : 'Never'}</div>
         </div>
         <div className="card">
-          <div className="text-xs text-muted">Active Sessions</div>
-          <div className="text-lg font-semibold text-text">{userData.sessions}</div>
+          <div className="text-xs text-muted">Recent Sessions</div>
+          <div className="text-lg font-semibold text-text">{sessions.length}</div>
         </div>
         <div className="card">
           <div className="text-xs text-muted">MFA Status</div>
@@ -172,7 +200,7 @@ export function UserDetail() {
         </div>
         <div className="card">
           <div className="text-xs text-muted">Member Since</div>
-          <div className="text-lg font-semibold text-text">{userData.createdAt}</div>
+          <div className="text-lg font-semibold text-text">{new Date(userData.created).toLocaleDateString()}</div>
         </div>
       </div>
 
@@ -203,15 +231,15 @@ export function UserDetail() {
               </div>
               <div>
                 <div className="text-xs text-muted">Email</div>
-                <div className="font-medium">{userData.email}</div>
+                <div className="font-medium">{userData.email || 'N/A'}</div>
               </div>
               <div>
                 <div className="text-xs text-muted">Phone</div>
-                <div className="font-medium">{userData.phone}</div>
+                <div className="font-medium">{userData.phone || 'N/A'}</div>
               </div>
               <div>
-                <div className="text-xs text-muted">Timezone</div>
-                <div className="font-medium">{userData.timezone}</div>
+                <div className="text-xs text-muted">Region</div>
+                <div className="font-medium">{userData.region || 'N/A'}</div>
               </div>
             </div>
           </div>
@@ -220,16 +248,22 @@ export function UserDetail() {
             <div className="space-y-3">
               <div>
                 <div className="text-xs text-muted">Organization</div>
-                <div className="font-medium">{userData.orgId}</div>
+                <div className="font-medium">{userData.organizationId || 'N/A'}</div>
               </div>
               <div>
                 <div className="text-xs text-muted">Region</div>
-                <div className="font-medium">{userData.region}</div>
+                <div className="font-medium">{userData.region || 'N/A'}</div>
               </div>
               <div>
                 <div className="text-xs text-muted">Role</div>
-                <div className="font-medium">{ROLE_LABELS[userData.role]}</div>
+                <div className="font-medium">{ROLE_LABELS[userData.role as Role] || userData.role}</div>
               </div>
+              {userData.assignedStations && userData.assignedStations.length > 0 && (
+                <div>
+                  <div className="text-xs text-muted">Assigned Stations</div>
+                  <div className="font-medium">{userData.assignedStations.length} station(s)</div>
+                </div>
+              )}
             </div>
             {perms.edit && (
               <button className="btn secondary mt-4" onClick={() => alert('Edit role (demo)')}>
@@ -285,27 +319,83 @@ export function UserDetail() {
       )}
 
       {tab === 'activity' && (
-        <div className="card">
-          <h3 className="font-semibold text-text mb-3">Recent Activity</h3>
-          <div className="table-wrap">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>When</th>
-                  <th>Event</th>
-                  <th>Details</th>
-                </tr>
-              </thead>
-              <tbody>
-                {userData.auditLog.map((log, i) => (
-                  <tr key={i}>
-                    <td className="text-muted text-sm">{log.when}</td>
-                    <td className="font-medium">{log.event}</td>
-                    <td className="text-muted text-sm">{log.details}</td>
+        <div className="space-y-4">
+          <div className="card">
+            <h3 className="font-semibold text-text mb-3">Recent Activity</h3>
+            <div className="table-wrap">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>When</th>
+                    <th>Event</th>
+                    <th>Details</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {auditLogs.length > 0 ? (
+                    auditLogs.map((log, i) => (
+                      <tr key={i}>
+                        <td className="text-muted text-sm">{log.when}</td>
+                        <td className="font-medium">{log.event}</td>
+                        <td className="text-muted text-sm">{log.details}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={3} className="text-center text-muted py-4">No activity found</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="card">
+            <h3 className="font-semibold text-text mb-3">Recent Sessions</h3>
+            <div className="table-wrap">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Session ID</th>
+                    <th>Station</th>
+                    <th>Start Time</th>
+                    <th>Energy (kWh)</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sessions.length > 0 ? (
+                    sessions.slice(0, 10).map((session: any) => (
+                      <tr key={session.id}>
+                        <td className="font-semibold">
+                          <Link to={`/sessions/${session.id}`} className="text-accent hover:underline">
+                            {session.id}
+                          </Link>
+                        </td>
+                        <td>{session.stationId}</td>
+                        <td className="text-sm">{new Date(session.startedAt).toLocaleString()}</td>
+                        <td>{session.energyDelivered?.toFixed(2) || '—'}</td>
+                        <td>${session.cost?.toFixed(2) || '0.00'}</td>
+                        <td>
+                          <span className={`pill ${
+                            session.status === 'COMPLETED' ? 'approved' :
+                            session.status === 'ACTIVE' ? 'active' :
+                            'rejected'
+                          }`}>
+                            {session.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={6} className="text-center text-muted py-4">No sessions found</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}

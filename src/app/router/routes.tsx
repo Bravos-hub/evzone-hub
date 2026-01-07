@@ -162,6 +162,7 @@ export function AppRoutes() {
             <Route path={PATHS.INCIDENTS} element={<RequireAuth><Incidents /></RequireAuth>} />
             <Route path={PATHS.DISPATCHES} element={<RequireAuth><Dispatches /></RequireAuth>} />
             <Route path={PATHS.BILLING} element={<RequireAuth><Billing /></RequireAuth>} />
+            <Route path="/billing/invoices/:id" element={<RequireAuth><InvoiceDetailPage /></RequireAuth>} />
             <Route path={PATHS.REPORTS} element={<RequireAuth><Reports /></RequireAuth>} />
             <Route path={PATHS.TEAM} element={<RequireAuth><Team /></RequireAuth>} />
             <Route path={PATHS.NOTIFICATIONS} element={<RequireAuth><Notifications /></RequireAuth>} />

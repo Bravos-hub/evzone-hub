@@ -260,6 +260,60 @@ export function AddSite({ onSuccess, onCancel, isOnboarding = false, isFirstSite
                     </div>
                 </fieldset>
 
+                {/* Tags */}
+                <div className="space-y-2">
+                    <label className="block text-sm font-semibold">Tags</label>
+                    <div className="flex flex-wrap gap-2 mb-2">
+                        {form.tags.map((tag, idx) => (
+                            <span key={idx} className="chip flex items-center gap-1">
+                                {tag}
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setForm(prev => ({ ...prev, tags: prev.tags.filter((_, i) => i !== idx) }))
+                                    }}
+                                    className="ml-1 hover:text-danger"
+                                >
+                                    ×
+                                </button>
+                            </span>
+                        ))}
+                    </div>
+                    <div className="flex gap-2">
+                        <input
+                            type="text"
+                            value={tagInput}
+                            onChange={(e) => setTagInput(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' && tagInput.trim()) {
+                                    e.preventDefault()
+                                    if (!form.tags.includes(tagInput.trim())) {
+                                        setForm(prev => ({ ...prev, tags: [...prev.tags, tagInput.trim()] }))
+                                    }
+                                    setTagInput('')
+                                }
+                            }}
+                            placeholder="Type tag and press Enter"
+                            className="input flex-1"
+                        />
+                        <select
+                            value=""
+                            onChange={(e) => {
+                                if (e.target.value && !form.tags.includes(e.target.value)) {
+                                    setForm(prev => ({ ...prev, tags: [...prev.tags, e.target.value] }))
+                                }
+                                e.target.value = ''
+                            }}
+                            className="select"
+                        >
+                            <option value="">Quick add...</option>
+                            {COMMON_TAGS.filter(t => !form.tags.includes(t)).map(tag => (
+                                <option key={tag} value={tag}>{tag}</option>
+                            ))}
+                        </select>
+                    </div>
+                </div>
+
                 <div className="pt-6 border-t border-border flex items-center justify-between gap-4">
                     {isOnboarding ? (
                         <Link to="/onboarding/site-owner" className="flex-1 text-center py-3 rounded-xl border-2 border-border font-bold hover:bg-muted transition-all">

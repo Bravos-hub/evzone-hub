@@ -4,6 +4,10 @@ import { useAuthStore } from '@/core/auth/authStore'
 import { getPermissionsForFeature } from '@/constants/permissions'
 import { DispatchModal, type DispatchFormData } from '@/modals/DispatchModal'
 import { DispatchDetailModal } from '@/modals/DispatchDetailModal'
+import { useDispatches, useCreateDispatch, useAssignDispatch, useUpdateDispatch } from '@/core/api/hooks/useDispatches'
+import { useStations } from '@/core/api/hooks/useStations'
+import { getErrorMessage } from '@/core/api/errors'
+import { auditLogger } from '@/core/utils/auditLogger'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -145,11 +149,47 @@ export function Dispatches() {
   const [q, setQ] = useState('')
   const [status, setStatus] = useState<DispatchStatus | 'All'>('All')
   const [priority, setPriority] = useState<Priority | 'All'>('All')
-  const [dispatches, setDispatches] = useState<Dispatch[]>(mockDispatches)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [selectedDispatch, setSelectedDispatch] = useState<Dispatch | null>(null)
   const [ack, setAck] = useState('')
+
+  const { data: dispatchesData, isLoading, error } = useDispatches({
+    status: status !== 'All' ? status : undefined,
+    priority: priority !== 'All' ? priority : undefined,
+  })
+  const createDispatchMutation = useCreateDispatch()
+  const assignDispatchMutation = useAssignDispatch()
+  const updateDispatchMutation = useUpdateDispatch()
+  const { data: stationsData } = useStations()
+  const stations = stationsData || []
+
+  // Map API dispatches to display format
+  const dispatches = useMemo(() => {
+    if (!dispatchesData) return []
+    return dispatchesData.map(d => ({
+      id: d.id,
+      title: d.title,
+      description: d.description,
+      status: d.status as DispatchStatus,
+      priority: d.priority as Priority,
+      stationId: d.stationId,
+      stationName: d.stationName,
+      stationAddress: d.stationAddress,
+      stationChargers: d.stationChargers,
+      ownerName: d.ownerName,
+      ownerContact: d.ownerContact,
+      assignee: d.assignee,
+      assigneeContact: d.assigneeContact,
+      createdAt: d.createdAt,
+      createdBy: d.createdBy,
+      dueAt: d.dueAt,
+      estimatedDuration: d.estimatedDuration,
+      incidentId: d.incidentId,
+      requiredSkills: d.requiredSkills,
+      notes: d.notes,
+    }))
+  }, [dispatchesData])
 
   const toast = (m: string) => { setAck(m); setTimeout(() => setAck(''), 3000) }
 
@@ -287,8 +327,9 @@ export function Dispatches() {
       )}
 
       {/* Dispatches Table */}
-      <div className="table-wrap">
-        <table className="table">
+      {!isLoading && (
+        <div className="table-wrap">
+          <table className="table">
           <thead>
             <tr>
               <th className="w-32">Dispatch</th>

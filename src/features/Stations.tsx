@@ -92,12 +92,29 @@ export function Stations() {
     return stationsData.map(mapApiStationToStation)
   }, [stationsData])
 
+  // Get all unique tags from stations
+  const allTags = useMemo(() => {
+    const tags = new Set<string>()
+    stations.forEach(s => {
+      const apiStation = stationsData?.find(st => st.id === s.id)
+      if (apiStation?.tags) {
+        apiStation.tags.forEach(tag => tags.add(tag))
+      }
+    })
+    return Array.from(tags).sort()
+  }, [stations, stationsData])
+
   const rows = useMemo(() => {
     return stations
       .filter(s => (region === 'ALL' ? true : s.region === region))
       .filter(s => (status === 'All' ? true : s.status === status))
       .filter(s => (q ? (s.name + ' ' + s.id + ' ' + s.country).toLowerCase().includes(q.toLowerCase()) : true))
-  }, [stations, q, region, status])
+      .filter(s => {
+        if (tagFilter === 'All') return true
+        const apiStation = stationsData?.find(st => st.id === s.id)
+        return apiStation?.tags?.includes(tagFilter) || false
+      })
+  }, [stations, q, region, status, tagFilter, stationsData])
 
   // Available tabs based on permissions
   const availableTabs = useMemo(() => {
@@ -169,11 +186,14 @@ export function Stations() {
                     <option value="Offline">Offline</option>
                     <option value="Degraded">Degraded</option>
                   </select>
-                  <select className="select">
-                    <option>All Orgs</option>
+                  <select className="select" value={tagFilter} onChange={e => setTagFilter(e.target.value)}>
+                    <option value="All">All Tags</option>
+                    {allTags.map(tag => (
+                      <option key={tag} value={tag}>{tag}</option>
+                    ))}
                   </select>
                   <select className="select">
-                    <option>All Stations</option>
+                    <option>All Orgs</option>
                   </select>
                   <select className="select">
                     <option>Last 7d</option>

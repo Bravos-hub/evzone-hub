@@ -2,6 +2,10 @@ import { useMemo, useState } from 'react'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { useAuthStore } from '@/core/auth/authStore'
 import { getPermissionsForFeature } from '@/constants/permissions'
+import { useTariffs, useCreateTariff, useUpdateTariff, useDeleteTariff } from '@/core/api/hooks/useTariffs'
+import { useStations } from '@/core/api/hooks/useStations'
+import { getErrorMessage } from '@/core/api/errors'
+import { auditLogger } from '@/core/utils/auditLogger'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES & MOCK DATA
@@ -41,33 +45,73 @@ export function Tariffs() {
   const [q, setQ] = useState('')
   const [typeFilter, setTypeFilter] = useState<TariffType | 'All'>('All')
   const [showInactive, setShowInactive] = useState(false)
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [editingTariff, setEditingTariff] = useState<string | null>(null)
+
+  const { data: tariffsData, isLoading, error } = useTariffs({ active: showInactive ? undefined : true })
+  const createTariffMutation = useCreateTariff()
+  const updateTariffMutation = useUpdateTariff()
+  const deleteTariffMutation = useDeleteTariff()
+  const { data: stationsData } = useStations()
+  const stations = stationsData || []
+
+  // Map API tariffs to display format
+  const tariffs = useMemo(() => {
+    if (!tariffsData) return []
+    return tariffsData.map(t => ({
+      id: t.id,
+      name: t.name,
+      type: (t.type === 'Energy-based' ? 'kWh-based' : t.type === 'Time-based' ? 'Time-based' : t.type === 'Fixed' ? 'Flat' : 'Dynamic') as TariffType,
+      baseRate: t.elements[0]?.pricePerKwh || t.elements[0]?.pricePerMinute || t.elements[0]?.pricePerSession || 0,
+      currency: t.currency,
+      stations: t.applicableStations?.length || 0,
+      active: t.active,
+      createdAt: t.validFrom?.toISOString().split('T')[0] || new Date().toISOString().split('T')[0],
+    }))
+  }, [tariffsData])
 
   const filtered = useMemo(() => {
-    return mockTariffs
+    return tariffs
       .filter((t) => (q ? t.name.toLowerCase().includes(q.toLowerCase()) : true))
       .filter((t) => (typeFilter === 'All' ? true : t.type === typeFilter))
       .filter((t) => (showInactive ? true : t.active))
-  }, [q, typeFilter, showInactive])
+  }, [tariffs, q, typeFilter, showInactive])
 
   return (
     <DashboardLayout pageTitle="Tariffs & Pricing">
+      {/* Error Message */}
+      {error && (
+        <div className="card mb-4 bg-red-50 border border-red-200">
+          <div className="text-red-700 text-sm">{getErrorMessage(error)}</div>
+        </div>
+      )}
+
+      {/* Loading State */}
+      {isLoading && (
+        <div className="card mb-4">
+          <div className="text-center py-8 text-muted">Loading tariffs...</div>
+        </div>
+      )}
+
       {/* Summary */}
-      <div className="grid grid-cols-3 gap-3 mb-4">
-        <div className="card">
-          <div className="text-xs text-muted">Total Tariffs</div>
-          <div className="text-xl font-bold text-text">{mockTariffs.length}</div>
-        </div>
-        <div className="card">
-          <div className="text-xs text-muted">Active</div>
-          <div className="text-xl font-bold text-ok">{mockTariffs.filter((t) => t.active).length}</div>
-        </div>
-        <div className="card">
-          <div className="text-xs text-muted">Avg Rate</div>
-          <div className="text-xl font-bold text-accent">
-            ${(mockTariffs.reduce((a, t) => a + t.baseRate, 0) / mockTariffs.length).toFixed(2)}
+      {!isLoading && (
+        <div className="grid grid-cols-3 gap-3 mb-4">
+          <div className="card">
+            <div className="text-xs text-muted">Total Tariffs</div>
+            <div className="text-xl font-bold text-text">{tariffs.length}</div>
+          </div>
+          <div className="card">
+            <div className="text-xs text-muted">Active</div>
+            <div className="text-xl font-bold text-ok">{tariffs.filter((t) => t.active).length}</div>
+          </div>
+          <div className="card">
+            <div className="text-xs text-muted">Avg Rate</div>
+            <div className="text-xl font-bold text-accent">
+              ${tariffs.length > 0 ? (tariffs.reduce((a, t) => a + t.baseRate, 0) / tariffs.length).toFixed(2) : '0.00'}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Filters */}
       <div className="card mb-4">
@@ -90,7 +134,7 @@ export function Tariffs() {
       {/* Actions */}
       {perms.edit && (
         <div className="mb-4">
-          <button className="btn secondary" onClick={() => alert('Create tariff (demo)')}>
+          <button className="btn secondary" onClick={() => setShowCreateModal(true)}>
             + New Tariff
           </button>
         </div>

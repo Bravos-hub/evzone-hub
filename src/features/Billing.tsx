@@ -1,7 +1,12 @@
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { useAuthStore } from '@/core/auth/authStore'
 import { getPermissionsForFeature } from '@/constants/permissions'
+import { billingService } from '@/core/api/services/billingService'
+import { useQuery } from '@tanstack/react-query'
+import { getErrorMessage } from '@/core/api/errors'
+import { PATHS } from '@/app/router/paths'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -110,19 +115,44 @@ export function Billing() {
   const [status, setStatus] = useState<InvoiceStatus | 'All'>('All')
   const [org, setOrg] = useState<string>('All')
 
+  const { data: invoicesData, isLoading, error } = useQuery({
+    queryKey: ['invoices', 'all', { type: type !== 'All' ? type : undefined, status: status !== 'All' ? status : undefined }],
+    queryFn: () => billingService.getInvoices({
+      type: type !== 'All' ? type : undefined,
+      status: status !== 'All' ? status : undefined,
+    }),
+  })
+
+  // Map API invoices to display format
+  const invoices = useMemo(() => {
+    if (!invoicesData) return []
+    return invoicesData.map(i => ({
+      id: i.id,
+      type: i.type as InvoiceType,
+      org: i.org,
+      amount: i.amount,
+      currency: i.currency,
+      status: i.status as InvoiceStatus,
+      issuedAt: i.issuedAt,
+      dueAt: i.dueAt,
+      paidAt: i.paidAt,
+      description: i.description,
+    }))
+  }, [invoicesData])
+
   // Filter invoices - in real app, filter by user's access
   const filtered = useMemo(() => {
-    return mockInvoices
+    return invoices
       .filter((r) => (q ? (r.id + ' ' + r.org + ' ' + r.description).toLowerCase().includes(q.toLowerCase()) : true))
       .filter((r) => (type === 'All' ? true : r.type === type))
       .filter((r) => (status === 'All' ? true : r.status === status))
       .filter((r) => (org === 'All' ? true : r.org === org))
-  }, [q, type, status, org])
+  }, [invoices, q, type, status, org])
 
   const orgs = useMemo(() => {
-    const set = new Set(mockInvoices.map((i) => i.org))
+    const set = new Set(invoices.map((i) => i.org))
     return ['All', ...Array.from(set)]
-  }, [])
+  }, [invoices])
 
   const stats = useMemo(() => ({
     total: filtered.reduce((acc, i) => acc + Math.abs(i.amount), 0),
@@ -142,8 +172,23 @@ export function Billing() {
 
   return (
     <DashboardLayout pageTitle="Billing">
+      {/* Error Message */}
+      {error && (
+        <div className="card mb-4 bg-red-50 border border-red-200">
+          <div className="text-red-700 text-sm">{getErrorMessage(error)}</div>
+        </div>
+      )}
+
+      {/* Loading State */}
+      {isLoading && (
+        <div className="card mb-4">
+          <div className="text-center py-8 text-muted">Loading invoices...</div>
+        </div>
+      )}
+
       {/* Summary Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+      {!isLoading && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
         <div className="card">
           <div className="text-xs text-muted">Total Volume</div>
           <div className="text-xl font-bold text-text">${stats.total.toLocaleString()}</div>
@@ -158,9 +203,9 @@ export function Billing() {
         </div>
         <div className="card">
           <div className="text-xs text-muted">Overdue</div>
-          <div className="text-xl font-bold text-danger">${stats.overdue.toLocaleString()}</div>
+          <div className="text-xl font-bold text-danger">${stats.overdue.toLocaleString()}          </div>
         </div>
-      </div>
+      )}
 
       {/* Filters */}
       <div className="card mb-4">
@@ -246,9 +291,9 @@ export function Billing() {
                 <td className="text-sm whitespace-nowrap">{r.dueAt}</td>
                 <td className="text-right">
                   <div className="inline-flex items-center gap-2">
-                    <button className="btn secondary" onClick={() => alert(`View ${r.id} (demo)`)}>
+                    <Link to={`/billing/invoices/${r.id}`} className="btn secondary">
                       View
-                    </button>
+                    </Link>
                     {perms.refund && r.status === 'Paid' && (
                       <button className="btn secondary" onClick={() => alert(`Refund ${r.id} (demo)`)}>
                         Refund

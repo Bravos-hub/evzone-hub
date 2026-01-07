@@ -30,6 +30,7 @@ interface DispatchModalProps {
   dispatchId?: string
   stationId?: string
   incidentId?: string
+  stations?: Array<{ id: string; name: string; address: string }>
 }
 
 export interface DispatchFormData {
@@ -62,7 +63,7 @@ const MOCK_TECHNICIANS: Technician[] = [
 
 const SKILLS_LIST = ['OCPP', 'Electrical', 'Firmware', 'HVAC', 'Mechanical', 'Networking', 'Battery', 'Swap Station']
 
-export function DispatchModal({ isOpen, onClose, onSubmit, mode, dispatchId, stationId: initialStationId, incidentId }: DispatchModalProps) {
+export function DispatchModal({ isOpen, onClose, onSubmit, mode, dispatchId, stationId: initialStationId, incidentId, stations: propStations }: DispatchModalProps) {
   const { user } = useAuthStore()
   const isSuperAdmin = user?.role === 'SUPER_ADMIN'
   const isOwner = ['OWNER', 'STATION_ADMIN', 'MANAGER'].includes(user?.role ?? '')
@@ -79,7 +80,8 @@ export function DispatchModal({ isOpen, onClose, onSubmit, mode, dispatchId, sta
   const [requiredSkills, setRequiredSkills] = useState<string[]>([])
   const [showTechnicianType, setShowTechnicianType] = useState<'org' | 'public' | 'all'>('org')
   
-  const selectedStation = MOCK_STATIONS.find(s => s.id === stationId)
+  const stations = propStations || MOCK_STATIONS
+  const selectedStation = stations.find(s => s.id === stationId)
   const selectedTechnician = MOCK_TECHNICIANS.find(t => t.id === technicianId)
 
   // Filter technicians based on role and selection
@@ -232,9 +234,9 @@ export function DispatchModal({ isOpen, onClose, onSubmit, mode, dispatchId, sta
                 required
               >
                 <option value="">Select a station</option>
-                {MOCK_STATIONS.map(station => (
+                {stations.map(station => (
                   <option key={station.id} value={station.id}>
-                    {station.name} ({station.id}) - {station.chargers} chargers
+                    {station.name} ({station.id})
                   </option>
                 ))}
               </select>
@@ -245,16 +247,6 @@ export function DispatchModal({ isOpen, onClose, onSubmit, mode, dispatchId, sta
                     <div className="flex items-center gap-2">
                       <span className="text-muted">Address:</span>
                       <span className="text-text">{selectedStation.address}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-muted">Chargers:</span>
-                      <span className="text-text">{selectedStation.chargers} units</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-muted">Owner Contact:</span>
-                      <a href={`tel:${selectedStation.ownerContact}`} className="text-accent hover:underline">
-                        {selectedStation.ownerContact}
-                      </a>
                     </div>
                   </div>
                 </div>
