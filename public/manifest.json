@@ -1,0 +1,76 @@
+{
+  "name": "EVzone Portal - EV Charging Management Platform",
+  "short_name": "EVzone Portal",
+  "description": "Comprehensive EV charging management solution. Manage charging stations, monitor sessions, track revenue, and optimize your electric vehicle charging network.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0D1117",
+  "theme_color": "#F77F00",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "en",
+  "categories": ["business", "utilities", "productivity"],
+  "icons": [
+    {
+      "src": "/assets/evzone-icon-16.png",
+      "sizes": "16x16",
+      "type": "image/png"
+    },
+    {
+      "src": "/assets/evzone-icon-32.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "/assets/evzone-icon-180.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/evzone-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/evzone-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/evzone-icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "description": "View your EVzone dashboard",
+      "url": "/dashboard",
+      "icons": [{ "src": "/assets/evzone-icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Stations",
+      "short_name": "Stations",
+      "description": "Manage charging stations",
+      "url": "/stations",
+      "icons": [{ "src": "/assets/evzone-icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Sessions",
+      "short_name": "Sessions",
+      "description": "View charging sessions",
+      "url": "/sessions",
+      "icons": [{ "src": "/assets/evzone-icon-192.png", "sizes": "192x192" }]
+    }
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false
+}
+

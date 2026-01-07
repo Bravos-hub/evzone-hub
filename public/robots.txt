@@ -1,0 +1,17 @@
+# EVzone Portal - Robots.txt
+# https://portal.evzone.app
+
+User-agent: *
+Allow: /
+
+# Disallow admin/private areas
+Disallow: /api/
+Disallow: /admin/audit-logs
+Disallow: /admin/webhooks-log
+
+# Sitemap
+Sitemap: https://portal.evzone.app/sitemap.xml
+
+# Crawl-delay for respectful crawling
+Crawl-delay: 1
+

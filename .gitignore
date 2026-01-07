@@ -1,0 +1,48 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+out/
+
+# Vite / tooling caches
+.vite/
+.cache/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# Environment files
+.env
+.env.*
+
+# TypeScript build info
+*.tsbuildinfo
+
+# Coverage
+coverage/
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+.idea/
+
+# Local tooling (optional)
+.eslintcache
+
+# Archives
+*.zip
+*.tar
+*.tar.gz
+*.7z
+*.rar
+
+# Extracted / imported sources (your workspace artifacts)
+extracted_src/
+extracted_zip/
+
