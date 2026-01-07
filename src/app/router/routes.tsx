@@ -294,7 +294,7 @@ export function AppRoutes() {
           PUBLIC ROUTES (No auth required)
           ═══════════════════════════════════════════════════════════════════════ */}
             <Route path={PATHS.ONBOARDING} element={<Onboarding />} />
-            <Route path={PATHS.AUTH.LOGIN} element={<Login />} />
+            {/* Login route is already defined above at line 134 (LoginPage) */}
             <Route path={PATHS.AUTH.REGISTER} element={<Register />} />
             <Route path={PATHS.AUTH.FORGOT_PASSWORD} element={<ForgotPassword />} />
             <Route path={PATHS.AUTH.VERIFY_EMAIL} element={<VerifyEmail />} />

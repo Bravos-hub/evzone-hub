@@ -107,9 +107,7 @@ class ApiClient {
     options: RequestOptions = {}
   ): Promise<T> {
     const { skipAuth = false, skipRefresh = false, ...fetchOptions } = options
-    if (DEMO_MODE) {
-      throw new ApiException('Backend API disabled in demo mode.', 503)
-    }
+    // Note: In demo mode, MSW will intercept requests, so we don't block here
 
     // Build full URL
     const url = endpoint.startsWith('http') ? endpoint : `${this.baseURL}${endpoint}`
