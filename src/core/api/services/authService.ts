@@ -203,5 +203,23 @@ export const authService = {
     
     return response
   },
+
+  /**
+   * Reset password
+   * Supports both token-based (from reset link) and OTP-based (from OTP verification) resets
+   */
+  async resetPassword(data: {
+    token?: string
+    email?: string
+    phone?: string
+    otp?: string
+    newPassword: string
+    confirmPassword: string
+  }): Promise<{ message: string }> {
+    if (DEMO_MODE) {
+      throw new ApiException('Demo mode: password reset is disabled.', 403)
+    }
+    return apiClient.post('/auth/password/reset', data, { skipAuth: true })
+  },
 }
 

@@ -1,6 +1,8 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { RequireAuth } from './guards'
 import { LoginPage } from '@/pages/auth/LoginPage'
+import { ForgotPasswordPage } from '@/pages/auth/ForgotPasswordPage'
+import { ResetPasswordPage } from '@/pages/auth/ResetPasswordPage'
 import { UnauthorizedPage } from '@/pages/errors/UnauthorizedPage'
 import { HomeRouter } from '@/pages/landing/HomeRouter'
 import { PlaceholderPage } from '@/pages/errors/PlaceholderPage'
@@ -296,7 +298,8 @@ export function AppRoutes() {
             <Route path={PATHS.ONBOARDING} element={<Onboarding />} />
             {/* Login route is already defined above at line 134 (LoginPage) */}
             <Route path={PATHS.AUTH.REGISTER} element={<Register />} />
-            <Route path={PATHS.AUTH.FORGOT_PASSWORD} element={<ForgotPassword />} />
+            <Route path={PATHS.AUTH.FORGOT_PASSWORD} element={<ForgotPasswordPage />} />
+            <Route path={PATHS.AUTH.RESET_PASSWORD} element={<ResetPasswordPage />} />
             <Route path={PATHS.AUTH.VERIFY_EMAIL} element={<VerifyEmail />} />
 
             {/* ═══════════════════════════════════════════════════════════════════════

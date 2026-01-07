@@ -10,6 +10,7 @@ export const PATHS = {
     LOGIN: '/auth/login',
     REGISTER: '/register',
     FORGOT_PASSWORD: '/forgot-password',
+    RESET_PASSWORD: '/auth/reset-password',
     VERIFY_EMAIL: '/verify-email',
   },
   DASHBOARD: '/dashboard',

@@ -72,3 +72,43 @@ export function useMe() {
   })
 }
 
+export function useSendOtp() {
+  return useMutation({
+    mutationFn: (data: { email?: string; phone?: string; type: string }) => authService.sendOtp(data),
+    onError: (error) => {
+      console.error('Send OTP error:', error)
+    },
+  })
+}
+
+export function useVerifyOtp() {
+  const queryClient = useQueryClient()
+  const { loginWithResponse } = useAuthStore()
+
+  return useMutation({
+    mutationFn: (data: { email?: string; phone?: string; code: string; type: string }) => authService.verifyOtp(data),
+    onSuccess: (response) => {
+      loginWithResponse(response)
+      queryClient.invalidateQueries({ queryKey: queryKeys.auth.me })
+    },
+    onError: (error) => {
+      console.error('Verify OTP error:', error)
+    },
+  })
+}
+
+export function useResetPassword() {
+  return useMutation({
+    mutationFn: (data: {
+      token?: string
+      email?: string
+      phone?: string
+      otp?: string
+      newPassword: string
+      confirmPassword: string
+    }) => authService.resetPassword(data),
+    onError: (error) => {
+      console.error('Reset password error:', error)
+    },
+  })
+}

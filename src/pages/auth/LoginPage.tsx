@@ -6,6 +6,7 @@ import { EVChargingAnimation } from '@/ui/components/EVChargingAnimation'
 import { DEMO_MODE } from '@/core/api/config'
 import { DEMO_AUTH_PASSWORD, DEMO_AUTH_USERS } from '@/data/mockDb/demoAuth'
 import { ROLE_LABELS } from '@/constants/roles'
+import { PATHS } from '@/app/router/paths'
 
 export function LoginPage() {
   const nav = useNavigate()
@@ -210,7 +211,7 @@ export function LoginPage() {
                 type="button"
                 className="text-muted text-xs hover:text-text transition-colors"
                 onClick={() => {
-                  // TODO: Navigate to forgot password page
+                  nav(PATHS.AUTH.FORGOT_PASSWORD)
                 }}
               >
                 Forgot password?
