@@ -100,7 +100,7 @@ const initialChargePoints: ChargePoint[] = [
     connectors: [
       {
         id: 1,
-        type: 'CCS2',
+        type: 'CCS',
         powerType: 'DC',
         maxPowerKw: 50,
         status: 'Available',
@@ -134,7 +134,7 @@ const initialChargePoints: ChargePoint[] = [
       },
       {
         id: 2,
-        type: 'CCS2',
+        type: 'CCS',
         powerType: 'DC',
         maxPowerKw: 50,
         status: 'Available',
@@ -561,8 +561,7 @@ export const mockDb = {
   },
 }
 
-// Export types
-export type { Dispatch, AuditLogEntry }
+// Note: Dispatch and AuditLogEntry are local types, not exported to avoid conflicts with API types
 
 // Re-export existing
 export * from './sessions'

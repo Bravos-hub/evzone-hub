@@ -360,7 +360,7 @@ export function Incidents() {
               alert(`Failed to assign incident: ${getErrorMessage(err)}`)
             }
           }}
-          onResolve={async (incidentId) => {
+          onResolve={async (incidentId: string) => {
             try {
               await resolveIncidentMutation.mutateAsync({
                 id: incidentId,
@@ -466,10 +466,14 @@ function IncidentDrawer({
   incident,
   onClose,
   perms,
+  onAssign,
+  onResolve,
 }: {
   incident: Incident
   onClose: () => void
   perms: Record<string, boolean>
+  onAssign?: (incidentId: string, assigneeId: string) => Promise<void>
+  onResolve?: (incidentId: string) => Promise<void>
 }) {
   function sevColor(sev: Severity) {
     return sev === 'SEV1' ? 'bg-danger text-white' : sev === 'SEV2' ? 'bg-warn text-white' : 'bg-muted/30 text-muted'

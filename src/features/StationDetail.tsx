@@ -1,7 +1,8 @@
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
-import { useStation, useChargePointsByStation, useStationSessions } from '@/core/api/hooks/useStations'
-import { useChargePointsByStation as useChargePoints } from '@/core/api/hooks/useChargePoints'
+import { useStation } from '@/core/api/hooks/useStations'
+import { useChargePointsByStation } from '@/core/api/hooks/useChargePoints'
+import { useStationSessions } from '@/core/api/hooks/useSessions'
 import { PATHS } from '@/app/router/paths'
 import { StationStatusPill } from '@/ui/components/StationStatusPill'
 import { getErrorMessage } from '@/core/api/errors'
@@ -51,7 +52,7 @@ export function StationDetail() {
             <h1 className="text-3xl font-bold">{station.name}</h1>
             <p className="text-muted">{station.address}</p>
           </div>
-          <StationStatusPill status={station.status} />
+          <StationStatusPill status={station.status === 'ACTIVE' ? 'Online' : station.status === 'INACTIVE' ? 'Offline' : 'Maintenance'} />
         </div>
       </div>
 
@@ -60,12 +61,12 @@ export function StationDetail() {
         <div className="card">
           <div className="text-xs text-muted mb-1">Status</div>
           <div className="text-xl font-bold">
-            <StationStatusPill status={station.status} />
+            <StationStatusPill status={station.status === 'ACTIVE' ? 'Online' : station.status === 'INACTIVE' ? 'Offline' : 'Maintenance'} />
           </div>
         </div>
         <div className="card">
-          <div className="text-xs text-muted mb-1">Capacity</div>
-          <div className="text-xl font-bold">{station.capacity} kW</div>
+          <div className="text-xs text-muted mb-1">Type</div>
+          <div className="text-xl font-bold">{station.type}</div>
         </div>
         <div className="card">
           <div className="text-xs text-muted mb-1">Charge Points</div>
@@ -86,16 +87,8 @@ export function StationDetail() {
             <div className="font-semibold">{station.type}</div>
           </div>
           <div>
-            <div className="text-xs text-muted mb-1">Region</div>
-            <div className="font-semibold">{station.region}</div>
-          </div>
-          <div>
-            <div className="text-xs text-muted mb-1">City</div>
-            <div className="font-semibold">{station.city}</div>
-          </div>
-          <div>
-            <div className="text-xs text-muted mb-1">Country</div>
-            <div className="font-semibold">{station.country}</div>
+            <div className="text-xs text-muted mb-1">Organization</div>
+            <div className="font-semibold">{station.orgId || 'N/A'}</div>
           </div>
           <div>
             <div className="text-xs text-muted mb-1">Coordinates</div>
@@ -105,7 +98,7 @@ export function StationDetail() {
             <div className="md:col-span-2">
               <div className="text-xs text-muted mb-1">Tags</div>
               <div className="flex flex-wrap gap-2">
-                {station.tags.map(tag => (
+                {station.tags.map((tag: string) => (
                   <span key={tag} className="chip text-xs">{tag}</span>
                 ))}
               </div>
@@ -133,7 +126,7 @@ export function StationDetail() {
                 </tr>
               </thead>
               <tbody>
-                {chargePoints.map(cp => (
+                {chargePoints.map((cp: any) => (
                   <tr key={cp.id}>
                     <td className="font-semibold">{cp.id}</td>
                     <td>{cp.manufacturer}</td>

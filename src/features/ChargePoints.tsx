@@ -135,22 +135,23 @@ export function ChargePoints() {
 
       {/* Summary */}
       {!isLoading && (
-        <div className="grid grid-cols-3 gap-3 mb-4">
-        <div className="card">
-          <div className="text-xs text-muted">Total Charge Points</div>
-          <div className="text-xl font-bold text-text">{stats.total}</div>
-        </div>
-        <div className="card">
-          <div className="text-xs text-muted">Online</div>
-          <div className="text-xl font-bold text-ok">{stats.online}</div>
-        </div>
-        <div className="card">
-          <div className="text-xs text-muted">Issues</div>
-          <div className="text-xl font-bold text-danger">{stats.offline}</div>
-        </div>
-      </div>
+        <>
+          <div className="grid grid-cols-3 gap-3 mb-4">
+            <div className="card">
+              <div className="text-xs text-muted">Total Charge Points</div>
+              <div className="text-xl font-bold text-text">{stats.total}</div>
+            </div>
+            <div className="card">
+              <div className="text-xs text-muted">Online</div>
+              <div className="text-xl font-bold text-ok">{stats.online}</div>
+            </div>
+            <div className="card">
+              <div className="text-xs text-muted">Issues</div>
+              <div className="text-xl font-bold text-danger">{stats.offline}</div>
+            </div>
+          </div>
 
-      {/* Actions */}
+          {/* Actions */}
       {perms.create && (
         <div className="flex items-center gap-2 mb-4">
           <button className="btn secondary" onClick={() => nav('/add-charger')}>
@@ -207,7 +208,7 @@ export function ChargePoints() {
                 <td>
                   <div className="flex flex-wrap gap-1">
                     {c.connectors.map((conn, i) => (
-                      <span key={i} className={`chip text-xs ${conn.status === 'Online' ? 'bg-ok/20 text-ok' : 'bg-danger/20 text-danger'}`}>
+                      <span key={i} className={`chip text-xs ${conn.status === 'Available' || conn.status === 'Occupied' ? 'bg-ok/20 text-ok' : 'bg-danger/20 text-danger'}`}>
                         {conn.type} {conn.kw}kW
                       </span>
                     ))}

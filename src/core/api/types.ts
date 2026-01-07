@@ -46,7 +46,14 @@ export interface User {
   phone?: string
   role: Role
   orgId?: string
+  organizationId?: string
   tenantId?: string
+  region?: string
+  status?: 'Active' | 'Pending' | 'Suspended' | 'Inactive'
+  mfaEnabled?: boolean
+  lastSeen?: string
+  created?: string
+  assignedStations?: string[]
   createdAt: string
   updatedAt: string
 }
@@ -68,6 +75,7 @@ export interface Station {
   type: 'CHARGING' | 'SWAP' | 'BOTH'
   status: 'ACTIVE' | 'INACTIVE' | 'MAINTENANCE'
   orgId?: string
+  tags?: string[]
   createdAt: string
   updatedAt: string
 }
@@ -172,6 +180,7 @@ export interface Organization {
   name: string
   type: string
   createdAt: string
+  updatedAt?: string
 }
 
 export interface CreateOrganizationRequest {

@@ -24,6 +24,7 @@ const Bolt = (props: React.SVGProps<SVGSVGElement>) => (
 )
 
 const AMENITIES = ['Security', 'Lighting', 'Coffee', 'Restrooms', 'Shelter']
+const COMMON_TAGS = ['premium', 'high-traffic', 'airport', 'public', 'private', 'fast-charging', 'overnight', 'commercial']
 
 interface AddSiteProps {
     onSuccess?: (site: SiteForm) => void
@@ -307,7 +308,7 @@ export function AddSite({ onSuccess, onCancel, isOnboarding = false, isFirstSite
                             className="select"
                         >
                             <option value="">Quick add...</option>
-                            {COMMON_TAGS.filter(t => !form.tags.includes(t)).map(tag => (
+                            {COMMON_TAGS.filter((t: string) => !form.tags.includes(t)).map((tag: string) => (
                                 <option key={tag} value={tag}>{tag}</option>
                             ))}
                         </select>

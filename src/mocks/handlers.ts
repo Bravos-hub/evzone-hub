@@ -3,6 +3,7 @@
  * Mock API handlers for demo mode
  */
 
+// @ts-ignore - MSW types may not be available during build
 import { http, HttpResponse } from 'msw'
 import { mockUsers } from '@/data/mockDb/users'
 import { mockChargingSessions } from '@/data/mockDb/sessions'
@@ -91,6 +92,22 @@ const mockOrganizations: Organization[] = [
   },
 ]
 
+// Helper to map domain User to API User
+function mapUser(domainUser: typeof mockUsers[0]): User {
+  return {
+    id: domainUser.id,
+    name: domainUser.name,
+    email: domainUser.email,
+    phone: domainUser.phone,
+    role: domainUser.role as any,
+    orgId: domainUser.organizationId,
+    organizationId: domainUser.organizationId,
+    tenantId: undefined,
+    createdAt: domainUser.created.toISOString(),
+    updatedAt: domainUser.lastSeen?.toISOString() || domainUser.created.toISOString(),
+  }
+}
+
 export const handlers = [
   // Auth endpoints (handled by authService demo logic, but provide refresh endpoint)
   http.post(`${baseURL}/auth/refresh`, async () => {
@@ -106,19 +123,6 @@ export const handlers = [
       user: getCurrentUser(),
     })
   }),
-
-  // Helper to map domain User to API User
-  const mapUser = (domainUser: typeof mockUsers[0]): User => ({
-    id: domainUser.id,
-    name: domainUser.name,
-    email: domainUser.email,
-    phone: domainUser.phone,
-    role: domainUser.role,
-    orgId: domainUser.organizationId,
-    tenantId: undefined,
-    createdAt: domainUser.created.toISOString(),
-    updatedAt: domainUser.lastSeen?.toISOString() || domainUser.created.toISOString(),
-  })
 
   // User endpoints
   http.get(`${baseURL}/users/me`, async ({ request }) => {
@@ -227,7 +231,7 @@ export const handlers = [
       id: `STATION_${Date.now()}`,
       name: body.name || 'New Station',
       type: (body.type === 'CHARGING' ? 'Charging' : body.type === 'SWAP' ? 'Swap' : 'Both') as any,
-      organizationId: user?.orgId || 'ORG_DEMO',
+      organizationId: (user as any)?.organizationId || (user as any)?.orgId || 'ORG_DEMO',
       address: body.address || '',
       city: '',
       region: 'AFRICA',
@@ -597,10 +601,11 @@ export const handlers = [
 
   // Analytics endpoints
   http.get(`${baseURL}/analytics/dashboard`, async () => {
+    const stations = mockDb.getStations()
     const metrics: DashboardMetrics = {
       realTime: {
         activeSessions: mockChargingSessions.filter(s => s.status === 'Active' || !s.end).length,
-        onlineChargers: mockStations.length,
+        onlineChargers: stations.length,
         totalPower: 120.5,
         currentRevenue: 3500.75,
       },
@@ -610,10 +615,10 @@ export const handlers = [
         revenue: mockChargingSessions.reduce((sum, s) => sum + (s.amount || 0), 0),
       },
       chargers: {
-        total: mockStations.length,
-        online: mockStations.filter(s => s.status === 'ACTIVE').length,
-        offline: 0,
-        maintenance: mockStations.filter(s => s.status === 'MAINTENANCE').length,
+        total: stations.length,
+        online: stations.filter(s => s.status === 'Online').length,
+        offline: stations.filter(s => s.status === 'Offline').length,
+        maintenance: stations.filter(s => s.status === 'Maintenance').length,
       },
     }
     return HttpResponse.json(metrics)
@@ -675,8 +680,9 @@ export const handlers = [
   }),
 
   http.get(`${baseURL}/analytics/operator/dashboard`, async () => {
+    const stations = mockDb.getStations()
     return HttpResponse.json({
-      stations: mockStations.length,
+      stations: stations.length,
       sessions: mockChargingSessions.length,
       revenue: 3500.75,
       energy: 1250.5,
@@ -987,7 +993,7 @@ export const handlers = [
       name: body.name,
       description: body.description,
       type: body.type,
-      organizationId: user?.orgId || 'ORG_DEMO',
+      organizationId: (user as any)?.organizationId || (user as any)?.orgId || 'ORG_DEMO',
       currency: body.currency,
       active: true,
       elements: body.elements,
@@ -1039,7 +1045,7 @@ export const handlers = [
     const user = getCurrentUser()
     const newWebhook = {
       id: `WH-${String(mockDb.getWebhooks().length + 1).padStart(3, '0')}`,
-      organizationId: user?.orgId || 'ORG_DEMO',
+      organizationId: (user as any)?.organizationId || (user as any)?.orgId || 'ORG_DEMO',
       name: body.name,
       url: body.url,
       events: body.events,

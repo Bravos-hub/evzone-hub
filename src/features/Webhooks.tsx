@@ -72,7 +72,7 @@ export function Webhooks() {
             </tr>
           </thead>
           <tbody>
-            {mockWebhooks.map((w) => (
+            {webhooks.map((w) => (
               <tr key={w.id}>
                 <td>
                   <div className="font-medium text-text truncate max-w-[200px]">{w.url}</div>
@@ -199,3 +199,115 @@ export function Webhooks() {
   )
 }
 
+// Webhook Modal Component
+function WebhookModal({ 
+  webhook, 
+  onClose, 
+  onSubmit 
+}: { 
+  webhook?: any
+  onClose: () => void
+  onSubmit: (data: any) => Promise<void>
+}) {
+  const [form, setForm] = useState({
+    name: webhook?.name || '',
+    url: webhook?.url || '',
+    events: webhook?.events || [] as string[],
+    status: webhook?.status || 'Active' as 'Active' | 'Disabled',
+  })
+
+  const availableEvents = [
+    'session.started',
+    'session.completed',
+    'session.failed',
+    'booking.created',
+    'booking.cancelled',
+    'station.status',
+    'incident.created',
+    'payment.completed',
+    'chargepoint.faulted',
+  ]
+
+  const toggleEvent = (event: string) => {
+    setForm(f => ({
+      ...f,
+      events: f.events.includes(event) 
+        ? f.events.filter(e => e !== event)
+        : [...f.events, event]
+    }))
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex">
+      <div className="flex-1 bg-black/30" onClick={onClose} />
+      <div className="w-full max-w-xl bg-panel border-l border-border-light shadow-xl p-5 space-y-4 overflow-y-auto">
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold text-text">{webhook ? 'Edit Webhook' : 'Create New Webhook'}</h3>
+          <button className="btn secondary" onClick={onClose}>Close</button>
+        </div>
+        <form onSubmit={async (e) => {
+          e.preventDefault()
+          await onSubmit(form)
+        }} className="space-y-4">
+          <label className="grid gap-1">
+            <span className="text-sm font-medium">Name *</span>
+            <input
+              value={form.name}
+              onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+              className="input"
+              required
+            />
+          </label>
+          <label className="grid gap-1">
+            <span className="text-sm font-medium">URL *</span>
+            <input
+              type="url"
+              value={form.url}
+              onChange={e => setForm(f => ({ ...f, url: e.target.value }))}
+              className="input"
+              placeholder="https://example.com/webhook"
+              required
+            />
+          </label>
+          <label className="grid gap-1">
+            <span className="text-sm font-medium">Events *</span>
+            <div className="flex flex-wrap gap-2 p-3 border border-border-light rounded-lg min-h-[100px]">
+              {availableEvents.map(event => (
+                <button
+                  key={event}
+                  type="button"
+                  onClick={() => toggleEvent(event)}
+                  className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                    form.events.includes(event)
+                      ? 'bg-accent text-white'
+                      : 'bg-panel text-text-secondary hover:bg-panel-2'
+                  }`}
+                >
+                  {event}
+                </button>
+              ))}
+            </div>
+            <span className="text-xs text-muted">Select events to subscribe to</span>
+          </label>
+          {webhook && (
+            <label className="grid gap-1">
+              <span className="text-sm font-medium">Status</span>
+              <select
+                value={form.status}
+                onChange={e => setForm(f => ({ ...f, status: e.target.value as 'Active' | 'Disabled' }))}
+                className="select"
+              >
+                <option value="Active">Active</option>
+                <option value="Disabled">Disabled</option>
+              </select>
+            </label>
+          )}
+          <div className="flex gap-2">
+            <button type="button" className="btn secondary flex-1" onClick={onClose}>Cancel</button>
+            <button type="submit" className="btn flex-1">{webhook ? 'Update' : 'Create'} Webhook</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}

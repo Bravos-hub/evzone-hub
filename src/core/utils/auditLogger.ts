@@ -4,7 +4,7 @@
  */
 
 import { mockDb, type AuditLogEntry } from '@/data/mockDb'
-import type { User } from '@/core/auth/types'
+import type { User } from '@/core/api/types'
 
 export type AuditCategory = 'Auth' | 'Config' | 'User' | 'Station' | 'Billing' | 'System'
 export type AuditSeverity = 'Info' | 'Warning' | 'Critical'
@@ -205,6 +205,16 @@ export const auditLogger = {
       action: 'Dispatch created',
       target: dispatchId,
       details: `Dispatch: ${title}`,
+      severity: 'Info',
+    })
+  },
+
+  dispatchUpdated: (dispatchId: string, changes: string) => {
+    logAuditEvent({
+      category: 'System',
+      action: 'Dispatch updated',
+      target: dispatchId,
+      details: changes,
       severity: 'Info',
     })
   },

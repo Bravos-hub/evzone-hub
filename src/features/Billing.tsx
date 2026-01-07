@@ -203,7 +203,8 @@ export function Billing() {
         </div>
         <div className="card">
           <div className="text-xs text-muted">Overdue</div>
-          <div className="text-xl font-bold text-danger">${stats.overdue.toLocaleString()}          </div>
+          <div className="text-xl font-bold text-danger">${stats.overdue.toLocaleString()}</div>
+        </div>
         </div>
       )}
 

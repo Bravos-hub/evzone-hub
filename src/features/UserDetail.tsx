@@ -170,7 +170,7 @@ export function UserDetail() {
           <div className="flex items-center gap-3 mt-1">
             <span className="text-muted">{userData.email}</span>
             <RolePill role={userData.role} />
-            <span className={`pill ${statusColor(userData.status)}`}>{userData.status}</span>
+            <span className={`pill ${statusColor(userData.status || 'Active')}`}>{userData.status || 'Active'}</span>
           </div>
         </div>
         <button className="btn secondary" onClick={() => nav('/users')}>
@@ -200,7 +200,7 @@ export function UserDetail() {
         </div>
         <div className="card">
           <div className="text-xs text-muted">Member Since</div>
-          <div className="text-lg font-semibold text-text">{new Date(userData.created).toLocaleDateString()}</div>
+          <div className="text-lg font-semibold text-text">{new Date(userData.created || userData.createdAt).toLocaleDateString()}</div>
         </div>
       </div>
 

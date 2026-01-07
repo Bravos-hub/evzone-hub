@@ -85,6 +85,7 @@ export function Stations() {
   const [q, setQ] = useState('')
   const [region, setRegion] = useState<Region | 'ALL'>('ALL')
   const [status, setStatus] = useState<StationStatus | 'All'>('All')
+  const [tagFilter, setTagFilter] = useState<string>('All')
 
   // Map API stations to Station format
   const stations = useMemo(() => {
@@ -96,9 +97,9 @@ export function Stations() {
   const allTags = useMemo(() => {
     const tags = new Set<string>()
     stations.forEach(s => {
-      const apiStation = stationsData?.find(st => st.id === s.id)
+      const apiStation = stationsData?.find((st: any) => st.id === s.id)
       if (apiStation?.tags) {
-        apiStation.tags.forEach(tag => tags.add(tag))
+        apiStation.tags.forEach((tag: string) => tags.add(tag))
       }
     })
     return Array.from(tags).sort()
@@ -111,7 +112,7 @@ export function Stations() {
       .filter(s => (q ? (s.name + ' ' + s.id + ' ' + s.country).toLowerCase().includes(q.toLowerCase()) : true))
       .filter(s => {
         if (tagFilter === 'All') return true
-        const apiStation = stationsData?.find(st => st.id === s.id)
+        const apiStation = stationsData?.find((st: any) => st.id === s.id)
         return apiStation?.tags?.includes(tagFilter) || false
       })
   }, [stations, q, region, status, tagFilter, stationsData])

@@ -226,39 +226,56 @@ export function Dispatches() {
     }
   }
 
-  const handleCreateDispatch = (formData: DispatchFormData) => {
-    const newDispatch: Dispatch = {
-      id: `DSP-${String(dispatches.length + 1).padStart(3, '0')}`,
-      title: formData.title,
-      description: formData.description,
-      status: 'Assigned',
-      priority: formData.priority,
-      stationId: formData.stationId,
-      stationName: 'New Station', // In real app, lookup from station ID
-      stationAddress: 'Address from API',
-      stationChargers: 8,
-      ownerName: 'Owner Name',
-      ownerContact: '+256 700 000 000',
-      assignee: 'Technician Name', // In real app, lookup from technician ID
-      assigneeContact: '+256 701 000 000',
-      createdAt: new Date().toISOString().slice(0, 16).replace('T', ' '),
-      createdBy: user?.name || 'Admin',
-      dueAt: `${formData.dueDate} ${formData.dueTime}`,
-      estimatedDuration: formData.estimatedDuration,
-      incidentId: formData.incidentId,
-      requiredSkills: formData.requiredSkills,
+  const handleCreateDispatch = async (formData: DispatchFormData) => {
+    try {
+      const newDispatch = await createDispatchMutation.mutateAsync({
+        title: formData.title,
+        description: formData.description,
+        priority: formData.priority,
+        stationId: formData.stationId,
+        dueDate: formData.dueDate,
+        dueTime: formData.dueTime,
+        estimatedDuration: formData.estimatedDuration,
+        incidentId: formData.incidentId,
+        requiredSkills: formData.requiredSkills,
+      })
+      auditLogger.dispatchCreated(newDispatch.id, newDispatch.title)
+      
+      // Assign dispatch if technician is selected
+      if (formData.technicianId) {
+        try {
+          await assignDispatchMutation.mutateAsync({
+            id: newDispatch.id,
+            data: {
+              assignee: formData.technicianId,
+              assigneeContact: '', // Would be fetched from user data
+            },
+          })
+          auditLogger.dispatchAssigned(newDispatch.id, formData.technicianId)
+        } catch (err) {
+          // Assignment failed but dispatch was created
+          console.error('Failed to assign dispatch:', err)
+        }
+      }
+      
+      alert(`Dispatch ${newDispatch.id} created${formData.technicianId ? ' and assigned' : ''} successfully`)
+      setShowCreateModal(false)
+    } catch (err) {
+      alert(`Failed to create dispatch: ${getErrorMessage(err)}`)
     }
-    setDispatches([newDispatch, ...dispatches])
-    toast(`Dispatch ${newDispatch.id} created and assigned successfully`)
   }
 
-  const handleStatusChange = (dispatchId: string, newStatus: DispatchStatus, notes?: string) => {
-    setDispatches(dispatches.map(d => 
-      d.id === dispatchId 
-        ? { ...d, status: newStatus, notes: notes || d.notes }
-        : d
-    ))
-    toast(`Dispatch ${dispatchId} updated to ${newStatus}`)
+  const handleStatusChange = async (dispatchId: string, newStatus: DispatchStatus, notes?: string) => {
+    try {
+      await updateDispatchMutation.mutateAsync({
+        id: dispatchId,
+        data: { status: newStatus, notes },
+      })
+      auditLogger.dispatchUpdated(dispatchId, `Status changed to ${newStatus}`)
+      alert(`Dispatch ${dispatchId} updated to ${newStatus}`)
+    } catch (err) {
+      alert(`Failed to update dispatch: ${getErrorMessage(err)}`)
+    }
   }
 
   const handleViewDispatch = (dispatch: Dispatch) => {
@@ -377,6 +394,7 @@ export function Dispatches() {
           </tbody>
         </table>
       </div>
+      )}
 
       {/* Modals */}
       <DispatchModal
