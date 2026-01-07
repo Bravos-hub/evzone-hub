@@ -121,6 +121,8 @@ export { Payouts } from './Payouts'
 // Site Owner Features
 export { Parking } from './Parking'
 export { Tenants } from './Tenants'
+export { TenantDetail } from './TenantDetail'
+export { SiteOwnerWithdrawals } from './SiteOwnerWithdrawals'
 
 // Owner Features (additional)
 export { Discounts } from './Discounts'

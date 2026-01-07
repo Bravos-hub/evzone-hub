@@ -87,6 +87,8 @@ export const PATHS = {
     DASHBOARD: '/site-owner-dashboard',
     PARKING: '/parking',
     TENANTS: '/tenants',
+    TENANT_DETAIL: (id: string) => `/tenants/${id}`,
+    WITHDRAWALS: '/site-owner/withdrawals',
   },
 
   // Technician

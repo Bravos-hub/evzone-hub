@@ -7,7 +7,7 @@
 import { http, HttpResponse } from 'msw'
 import { mockUsers } from '@/data/mockDb/users'
 import { mockChargingSessions } from '@/data/mockDb/sessions'
-import type { User, Station, Booking, ChargingSession, WalletBalance, WalletTransaction, Organization, DashboardMetrics } from '@/core/api/types'
+import type { User, Station, Booking, ChargingSession, WalletBalance, WalletTransaction, Organization, DashboardMetrics, Tenant, TenantApplication, LeaseContract, NoticeRequest, Notice, PaymentMethod, CreatePaymentMethodRequest, WithdrawalRequest, WithdrawalTransaction } from '@/core/api/types'
 import { API_CONFIG } from '@/core/api/config'
 import { mockDb } from '@/data/mockDb'
 
@@ -1160,5 +1160,318 @@ export const handlers = [
       energyDelivered: updated!.energyKwh,
       cost: updated!.amount,
     })
+  }),
+
+  // Site Owner - Sites endpoints
+  http.get(`${baseURL}/sites`, async () => {
+    const stations = mockDb.getStations()
+    const sites = stations.map(s => ({
+      id: s.id,
+      name: s.name,
+      address: s.address,
+      region: 'AFRICA',
+      status: s.status === 'Online' ? 'Listed' : s.status === 'Offline' ? 'Draft' : 'Leased',
+      slots: 5,
+      payout: Math.floor(Math.random() * 5000),
+    }))
+    return HttpResponse.json(sites)
+  }),
+
+  // Tenant endpoints
+  http.get(`${baseURL}/tenants`, async ({ request }: { request: any }) => {
+    const url = new URL(request.url)
+    const status = url.searchParams.get('status')
+    
+    const mockTenants: Tenant[] = [
+      {
+        id: 'TN-001',
+        name: 'VoltOps Ltd',
+        type: 'Operator',
+        siteId: 'ST-0001',
+        siteName: 'City Mall Roof',
+        model: 'Revenue Share',
+        terms: '15%',
+        startDate: '2024-06-01',
+        status: 'Active',
+        earnings: 4520,
+        outstandingDebt: 0,
+        totalPaid: 4520,
+        overduePayments: [],
+        nextPaymentDue: { date: '2024-12-01', amount: 750 },
+        paymentHistory: [
+          { id: 'PH-001', amount: 750, date: '2024-11-01', method: 'Bank Transfer', reference: 'REF-001', status: 'completed' },
+          { id: 'PH-002', amount: 750, date: '2024-10-01', method: 'Bank Transfer', reference: 'REF-002', status: 'completed' },
+        ],
+        email: 'contact@voltops.com',
+        phone: '+1000000001',
+      },
+      {
+        id: 'TN-002',
+        name: 'GridCity Charging',
+        type: 'Owner',
+        siteId: 'ST-0001',
+        siteName: 'City Mall Roof',
+        model: 'Fixed Rent',
+        terms: '$500/mo',
+        startDate: '2024-08-15',
+        status: 'Active',
+        earnings: 1500,
+        outstandingDebt: 500,
+        totalPaid: 1000,
+        overduePayments: [
+          { id: 'OD-001', amount: 500, dueDate: '2024-11-15', daysOverdue: 15, description: 'November rent' },
+        ],
+        nextPaymentDue: { date: '2024-12-15', amount: 500 },
+        paymentHistory: [
+          { id: 'PH-003', amount: 500, date: '2024-10-15', method: 'Bank Transfer', reference: 'REF-003', status: 'completed' },
+        ],
+        email: 'info@gridcity.com',
+      },
+    ]
+
+    const mockApplications: TenantApplication[] = [
+      {
+        id: 'APP-001',
+        applicantId: 'u-005',
+        applicantName: 'QuickCharge Co',
+        organizationId: 'org-003',
+        organizationName: 'QuickCharge Co',
+        siteId: 'ST-0002',
+        siteName: 'Airport Long-Stay',
+        status: 'Pending',
+        proposedRent: 800,
+        proposedTerm: 12,
+        message: 'Interested in leasing this site for our charging network expansion.',
+        createdAt: new Date(Date.now() - 86400000).toISOString(),
+      },
+    ]
+
+    if (status === 'pending' || status === 'Pending') {
+      return HttpResponse.json(mockApplications)
+    }
+    
+    return HttpResponse.json(mockTenants.filter(t => !status || t.status === status))
+  }),
+
+  http.get(`${baseURL}/tenants/:id`, async ({ params }: { params: any }) => {
+    const mockTenant: Tenant = {
+      id: params.id,
+      name: 'VoltOps Ltd',
+      type: 'Operator',
+      siteId: 'ST-0001',
+      siteName: 'City Mall Roof',
+      model: 'Revenue Share',
+      terms: '15%',
+      startDate: '2024-06-01',
+      status: 'Active',
+      earnings: 4520,
+      outstandingDebt: 0,
+      totalPaid: 4520,
+      overduePayments: [],
+      nextPaymentDue: { date: '2024-12-01', amount: 750 },
+      paymentHistory: [
+        { id: 'PH-001', amount: 750, date: '2024-11-01', method: 'Bank Transfer', reference: 'REF-001', status: 'completed' },
+        { id: 'PH-002', amount: 750, date: '2024-10-01', method: 'Bank Transfer', reference: 'REF-002', status: 'completed' },
+      ],
+      email: 'contact@voltops.com',
+      phone: '+1000000001',
+    }
+    return HttpResponse.json(mockTenant)
+  }),
+
+  http.get(`${baseURL}/tenants/:id/contract`, async ({ params }: { params: any }) => {
+    const contract: LeaseContract = {
+      id: 'LEASE-001',
+      siteId: 'ST-0001',
+      tenantId: params.id,
+      tenantName: 'VoltOps Ltd',
+      organizationId: 'org-001',
+      status: 'Active',
+      startDate: '2024-06-01',
+      endDate: '2025-06-01',
+      rent: 750,
+      currency: 'USD',
+      paymentSchedule: 'Monthly',
+      autoRenew: true,
+      model: 'Revenue Share',
+      terms: '15% of revenue',
+      stationIds: ['ST-0001'],
+    }
+    return HttpResponse.json(contract)
+  }),
+
+  // Notice endpoints
+  http.post(`${baseURL}/notices`, async ({ request }: { request: any }) => {
+    const body = await request.json() as NoticeRequest
+    const notice: Notice = {
+      id: `NOTICE-${Date.now()}`,
+      tenantId: body.tenantId,
+      tenantName: 'VoltOps Ltd',
+      type: body.type,
+      message: body.message,
+      channels: body.channels,
+      status: 'sent',
+      sentAt: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+    }
+    return HttpResponse.json(notice, { status: 201 })
+  }),
+
+  http.get(`${baseURL}/notices`, async ({ request }: { request: any }) => {
+    const url = new URL(request.url)
+    const tenantId = url.searchParams.get('tenantId')
+    
+    const notices: Notice[] = [
+      {
+        id: 'NOTICE-001',
+        tenantId: 'TN-001',
+        tenantName: 'VoltOps Ltd',
+        type: 'payment_reminder',
+        message: 'Reminder: Payment due on December 1st',
+        channels: ['in-app', 'email'],
+        status: 'sent',
+        sentAt: new Date(Date.now() - 86400000).toISOString(),
+        createdAt: new Date(Date.now() - 86400000).toISOString(),
+      },
+    ]
+    
+    const filtered = tenantId ? notices.filter(n => n.tenantId === tenantId) : notices
+    return HttpResponse.json(filtered)
+  }),
+
+  // Payment Method endpoints
+  http.get(`${baseURL}/payment-methods`, async () => {
+    const methods: PaymentMethod[] = [
+      {
+        id: 'PM-001',
+        type: 'bank',
+        label: 'Main Bank Account',
+        accountNumber: '****1234',
+        bankName: 'First National Bank',
+        routingNumber: '123456789',
+        accountHolderName: 'John Doe',
+        isVerified: true,
+        isDefault: true,
+        createdAt: new Date(Date.now() - 2592000000).toISOString(),
+      },
+      {
+        id: 'PM-002',
+        type: 'mobile',
+        label: 'Mobile Money',
+        phoneNumber: '+256700000000',
+        provider: 'MTN',
+        isVerified: true,
+        isDefault: false,
+        createdAt: new Date(Date.now() - 1728000000).toISOString(),
+      },
+    ]
+    return HttpResponse.json(methods)
+  }),
+
+  http.post(`${baseURL}/payment-methods`, async ({ request }: { request: any }) => {
+    const body = await request.json() as CreatePaymentMethodRequest
+    const method: PaymentMethod = {
+      id: `PM-${Date.now()}`,
+      type: body.type,
+      label: body.label,
+      phoneNumber: body.phoneNumber,
+      provider: body.provider,
+      walletType: body.walletType,
+      walletAddress: body.walletAddress,
+      cardLast4: body.cardNumber ? body.cardNumber.slice(-4) : undefined,
+      cardBrand: body.cardNumber ? 'Visa' : undefined,
+      cardExpiry: body.cardExpiry,
+      cardHolderName: body.cardHolderName,
+      accountNumber: body.accountNumber ? `****${body.accountNumber.slice(-4)}` : undefined,
+      bankName: body.bankName,
+      routingNumber: body.routingNumber,
+      accountHolderName: body.accountHolderName,
+      isVerified: false,
+      isDefault: false,
+      createdAt: new Date().toISOString(),
+    }
+    return HttpResponse.json(method, { status: 201 })
+  }),
+
+  http.patch(`${baseURL}/payment-methods/:id`, async ({ params, request }: { params: any; request: any }) => {
+    const body = await request.json() as Partial<CreatePaymentMethodRequest>
+    const method: PaymentMethod = {
+      id: params.id,
+      type: body.type || 'bank',
+      label: body.label || 'Updated Method',
+      isVerified: true,
+      isDefault: false,
+      createdAt: new Date().toISOString(),
+    }
+    return HttpResponse.json(method)
+  }),
+
+  http.delete(`${baseURL}/payment-methods/:id`, async () => {
+    return HttpResponse.json({ message: 'Payment method deleted' })
+  }),
+
+  http.post(`${baseURL}/payment-methods/:id/set-default`, async ({ params }: { params: any }) => {
+    const method: PaymentMethod = {
+      id: params.id,
+      type: 'bank',
+      label: 'Default Method',
+      isVerified: true,
+      isDefault: true,
+      createdAt: new Date().toISOString(),
+    }
+    return HttpResponse.json(method)
+  }),
+
+  // Withdrawal endpoints
+  http.post(`${baseURL}/withdrawals`, async ({ request }: { request: any }) => {
+    const body = await request.json() as WithdrawalRequest
+    const fee = body.amount * 0.02 // 2% fee
+    const transaction: WithdrawalTransaction = {
+      id: `WD-${Date.now()}`,
+      amount: body.amount,
+      fee: fee,
+      netAmount: body.amount - fee,
+      method: body.method,
+      paymentMethodId: body.paymentMethodId,
+      paymentMethodLabel: 'Main Bank Account',
+      currency: body.currency,
+      status: 'pending',
+      reference: `REF-${Date.now()}`,
+      createdAt: new Date().toISOString(),
+    }
+    return HttpResponse.json(transaction, { status: 201 })
+  }),
+
+  http.get(`${baseURL}/withdrawals`, async () => {
+    const transactions: WithdrawalTransaction[] = [
+      {
+        id: 'WD-001',
+        amount: 1000,
+        fee: 20,
+        netAmount: 980,
+        method: 'bank',
+        paymentMethodId: 'PM-001',
+        paymentMethodLabel: 'Main Bank Account',
+        currency: 'USD',
+        status: 'completed',
+        reference: 'REF-001',
+        createdAt: new Date(Date.now() - 1728000000).toISOString(),
+        completedAt: new Date(Date.now() - 1728000000 + 3600000).toISOString(),
+      },
+      {
+        id: 'WD-002',
+        amount: 500,
+        fee: 10,
+        netAmount: 490,
+        method: 'mobile',
+        paymentMethodId: 'PM-002',
+        paymentMethodLabel: 'Mobile Money',
+        currency: 'USD',
+        status: 'processing',
+        reference: 'REF-002',
+        createdAt: new Date(Date.now() - 86400000).toISOString(),
+      },
+    ]
+    return HttpResponse.json(transactions)
   }),
 ]

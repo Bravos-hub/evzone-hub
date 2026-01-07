@@ -1,9 +1,15 @@
 import { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { useAuthStore } from '@/core/auth/authStore'
 import { getPermissionsForFeature } from '@/constants/permissions'
 import { regionInScope } from '@/core/scope/utils'
 import { useScopeStore } from '@/core/scope/scopeStore'
+import { useStations, useCreateStation } from '@/core/api/hooks/useStations'
+import { AddSite, type SiteForm } from './AddSite'
+import { getErrorMessage } from '@/core/api/errors'
+import { auditLogger } from '@/core/utils/auditLogger'
+import { PATHS } from '@/app/router/paths'
 
 type SiteStatus = 'Draft' | 'Listed' | 'Leased'
 
@@ -17,30 +23,88 @@ type Site = {
   payout: number
 }
 
-const mockSites: Site[] = [
-  { id: 'SITE-001', name: 'City Mall Rooftop', address: 'Kampala Road', region: 'AFRICA', status: 'Leased', slots: 5, payout: 5200 },
-  { id: 'SITE-002', name: 'Tech Park Lot', address: 'Innovation Dr', region: 'AFRICA', status: 'Listed', slots: 8, payout: 0 },
-  { id: 'SITE-003', name: 'Airport Terminal', address: 'Entebbe', region: 'AFRICA', status: 'Draft', slots: 3, payout: 0 },
-]
-
 export function SiteOwnerSites() {
   const { user } = useAuthStore()
   const perms = getPermissionsForFeature(user?.role, 'sites')
   const { scope } = useScopeStore()
+  const navigate = useNavigate()
+
+  const { data: sitesData, isLoading, error } = useStations()
+  const createStationMutation = useCreateStation()
 
   const [status, setStatus] = useState<SiteStatus | 'All'>('All')
   const [q, setQ] = useState('')
+  const [isAdding, setIsAdding] = useState(false)
+  const [errorMessage, setErrorMessage] = useState('')
+
+  // Map stations to sites format
+  const sites = useMemo(() => {
+    if (!sitesData) return []
+    return sitesData.map((station) => ({
+      id: station.id,
+      name: station.name,
+      address: station.address,
+      region: 'AFRICA', // Default region, could be from station data
+      status: station.status === 'ACTIVE' ? 'Listed' : station.status === 'INACTIVE' ? 'Draft' : 'Leased' as SiteStatus,
+      slots: 5, // Default, could be calculated from charge points
+      payout: Math.floor(Math.random() * 5000), // Mock payout, would come from analytics
+    }))
+  }, [sitesData])
 
   const rows = useMemo(() => {
-    return mockSites
+    return sites
       .filter((s) => regionInScope(scope, s.region))
       .filter((s) => (status === 'All' ? true : s.status === status))
       .filter((s) => (q ? (s.name + ' ' + s.address).toLowerCase().includes(q.toLowerCase()) : true))
-  }, [status, q, scope])
+  }, [sites, status, q, scope])
+
+  const handleAddSite = async (newSite: SiteForm) => {
+    try {
+      setErrorMessage('')
+      const station = await createStationMutation.mutateAsync({
+        code: `ST-${Date.now()}`,
+        name: newSite.name,
+        address: `${newSite.address}, ${newSite.city}`,
+        latitude: parseFloat(newSite.latitude) || 0,
+        longitude: parseFloat(newSite.longitude) || 0,
+        type: 'CHARGING',
+        tags: Array.from(newSite.tags),
+      })
+      auditLogger.stationCreated(station.id, station.name)
+      setIsAdding(false)
+    } catch (err) {
+      setErrorMessage(getErrorMessage(err))
+    }
+  }
+
+  if (isAdding) {
+    return (
+      <DashboardLayout pageTitle="Add New Site">
+        <AddSite
+          onSuccess={handleAddSite}
+          onCancel={() => setIsAdding(false)}
+        />
+        {errorMessage && (
+          <div className="mt-4 p-3 bg-danger/10 text-danger rounded-lg text-sm">
+            {errorMessage}
+          </div>
+        )}
+      </DashboardLayout>
+    )
+  }
 
   return (
     <DashboardLayout pageTitle="Site Owner — Sites">
       <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold">My Sites</h2>
+          {perms.create && (
+            <button className="btn" onClick={() => setIsAdding(true)}>
+              Add Site
+            </button>
+          )}
+        </div>
+
         <div className="card grid md:grid-cols-3 gap-3">
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search site/address" className="input md:col-span-2" />
           <select value={status} onChange={(e) => setStatus(e.target.value as any)} className="select">
@@ -50,55 +114,68 @@ export function SiteOwnerSites() {
           </select>
         </div>
 
-        <div className="table-wrap">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Site</th>
-                <th>Address</th>
-                <th>Status</th>
-                <th>Slots</th>
-                <th className="!text-right">Expected payout</th>
-                <th className="!text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((s) => (
-                <tr key={s.id}>
-                  <td className="font-semibold">{s.name}</td>
-                  <td className="text-sm text-muted">{s.address}</td>
-                  <td>
-                    <span
-                      className={`pill ${
-                        s.status === 'Leased'
-                          ? 'approved'
-                          : s.status === 'Listed'
-                          ? 'pending'
-                          : 'bg-muted/30 text-muted'
-                      }`}
-                    >
-                      {s.status}
-                    </span>
-                  </td>
-                  <td>{s.slots}</td>
-                  <td className="text-right">${s.payout.toLocaleString()}</td>
-                  <td className="text-right">
-                    <div className="inline-flex gap-2">
-                      <button className="btn secondary" onClick={() => alert('Open site (mock)')}>
-                        Open
-                      </button>
-                      {perms.edit && (
-                        <button className="btn secondary" onClick={() => alert('Edit (mock)')}>
-                          Edit
-                        </button>
-                      )}
-                    </div>
-                  </td>
+        {isLoading && <div className="text-center py-8 text-muted">Loading sites...</div>}
+        {error && <div className="p-3 bg-danger/10 text-danger rounded-lg text-sm">{getErrorMessage(error)}</div>}
+
+        {!isLoading && !error && (
+          <div className="table-wrap">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Site</th>
+                  <th>Address</th>
+                  <th>Status</th>
+                  <th>Slots</th>
+                  <th className="!text-right">Expected payout</th>
+                  <th className="!text-right">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {rows.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="text-center py-8 text-muted">
+                      No sites found. {perms.create && <button className="btn secondary mt-2" onClick={() => setIsAdding(true)}>Add your first site</button>}
+                    </td>
+                  </tr>
+                ) : (
+                  rows.map((s) => (
+                    <tr key={s.id}>
+                      <td className="font-semibold">{s.name}</td>
+                      <td className="text-sm text-muted">{s.address}</td>
+                      <td>
+                        <span
+                          className={`pill ${
+                            s.status === 'Leased'
+                              ? 'approved'
+                              : s.status === 'Listed'
+                              ? 'pending'
+                              : 'bg-muted/30 text-muted'
+                          }`}
+                        >
+                          {s.status}
+                        </span>
+                      </td>
+                      <td>{s.slots}</td>
+                      <td className="text-right">${s.payout.toLocaleString()}</td>
+                      <td className="text-right">
+                        <div className="inline-flex gap-2">
+                          <button className="btn secondary" onClick={() => navigate(PATHS.SITE_OWNER.SITE_DETAIL(s.id))}>
+                            View
+                          </button>
+                          {perms.edit && (
+                            <button className="btn secondary" onClick={() => navigate(PATHS.SITE_OWNER.SITE_DETAIL(s.id))}>
+                              Edit
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </DashboardLayout>
   )

@@ -58,6 +58,8 @@ import {
     Bookings,
     // Site Owner Features
     Sites,
+    TenantDetail,
+    SiteOwnerWithdrawals,
     // Technician Features
     Jobs,
     // New Ported Features
@@ -268,6 +270,8 @@ export function AppRoutes() {
             <Route path={PATHS.SITE_OWNER.DASHBOARD} element={<Navigate to={PATHS.DASHBOARD} replace />} />
             <Route path={PATHS.SITE_OWNER.PARKING} element={<RequireAuth><Parking /></RequireAuth>} />
             <Route path={PATHS.SITE_OWNER.TENANTS} element={<RequireAuth><Tenants /></RequireAuth>} />
+            <Route path={PATHS.SITE_OWNER.TENANT_DETAIL(':id')} element={<RequireAuth><TenantDetail /></RequireAuth>} />
+            <Route path={PATHS.SITE_OWNER.WITHDRAWALS} element={<RequireAuth><SiteOwnerWithdrawals /></RequireAuth>} />
 
             {/* Operator Tools */}
             <Route path={PATHS.OPERATOR.DASHBOARD} element={<Navigate to={PATHS.DASHBOARD} replace />} />

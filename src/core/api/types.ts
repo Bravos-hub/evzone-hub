@@ -206,3 +206,166 @@ export interface PaginatedResponse<T> {
   }
 }
 
+
+// Tenant Types
+export interface OverduePayment {
+  id: string
+  amount: number
+  dueDate: string
+  daysOverdue: number
+  description: string
+}
+
+export interface PaymentHistoryEntry {
+  id: string
+  amount: number
+  date: string
+  method: string
+  reference: string
+  status: 'completed' | 'pending' | 'failed'
+}
+
+export interface Tenant {
+  id: string
+  name: string
+  type: 'Operator' | 'Owner' | 'Fleet'
+  siteId: string
+  siteName: string
+  model: 'Revenue Share' | 'Fixed Rent' | 'Hybrid'
+  terms: string
+  startDate: string
+  status: 'Active' | 'Pending' | 'Suspended' | 'Terminated'
+  earnings: number
+  outstandingDebt: number
+  totalPaid: number
+  overduePayments: OverduePayment[]
+  nextPaymentDue?: {
+    date: string
+    amount: number
+  }
+  paymentHistory: PaymentHistoryEntry[]
+  email?: string
+  phone?: string
+  organizationId?: string
+}
+
+export interface TenantApplication {
+  id: string
+  applicantId: string
+  applicantName: string
+  organizationId?: string
+  organizationName?: string
+  siteId: string
+  siteName: string
+  status: 'Pending' | 'Approved' | 'Rejected' | 'Negotiating'
+  proposedRent?: number
+  proposedTerm?: number
+  message?: string
+  createdAt: string
+  respondedAt?: string
+  responseMessage?: string
+}
+
+export interface LeaseContract {
+  id: string
+  siteId: string
+  tenantId: string
+  tenantName: string
+  organizationId?: string
+  status: 'Active' | 'Expiring' | 'Expired' | 'Terminated'
+  startDate: string
+  endDate: string
+  rent: number
+  currency: string
+  paymentSchedule: 'Monthly' | 'Quarterly' | 'Annually'
+  autoRenew: boolean
+  model: 'Revenue Share' | 'Fixed Rent' | 'Hybrid'
+  terms: string
+  violations?: string[]
+  stationIds?: string[]
+}
+
+export type NoticeType = 'payment_reminder' | 'overdue' | 'general'
+export type NoticeChannel = 'in-app' | 'email' | 'sms'
+
+export interface NoticeRequest {
+  tenantId: string
+  type: NoticeType
+  message: string
+  channels: NoticeChannel[]
+}
+
+export interface Notice {
+  id: string
+  tenantId: string
+  tenantName: string
+  type: NoticeType
+  message: string
+  channels: NoticeChannel[]
+  status: 'sent' | 'pending' | 'failed'
+  sentAt?: string
+  createdAt: string
+}
+
+export type PaymentMethodType = 'mobile' | 'wallet' | 'card' | 'bank'
+
+export interface PaymentMethod {
+  id: string
+  type: PaymentMethodType
+  label: string
+  phoneNumber?: string
+  provider?: string
+  walletType?: string
+  walletAddress?: string
+  cardLast4?: string
+  cardBrand?: string
+  cardExpiry?: string
+  cardHolderName?: string
+  accountNumber?: string
+  bankName?: string
+  routingNumber?: string
+  accountHolderName?: string
+  isVerified: boolean
+  isDefault: boolean
+  createdAt: string
+}
+
+export interface CreatePaymentMethodRequest {
+  type: PaymentMethodType
+  label: string
+  phoneNumber?: string
+  provider?: string
+  walletType?: string
+  walletAddress?: string
+  cardNumber?: string
+  cardExpiry?: string
+  cardCvv?: string
+  cardHolderName?: string
+  accountNumber?: string
+  bankName?: string
+  routingNumber?: string
+  accountHolderName?: string
+}
+
+export interface WithdrawalRequest {
+  amount: number
+  method: PaymentMethodType
+  paymentMethodId: string
+  currency: string
+}
+
+export interface WithdrawalTransaction {
+  id: string
+  amount: number
+  fee: number
+  netAmount: number
+  method: PaymentMethodType
+  paymentMethodId: string
+  paymentMethodLabel: string
+  currency: string
+  status: 'pending' | 'processing' | 'completed' | 'failed'
+  reference: string
+  createdAt: string
+  completedAt?: string
+  failureReason?: string
+}

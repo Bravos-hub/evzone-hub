@@ -354,7 +354,7 @@ export const DASHBOARD_CONFIGS: Record<DashboardKey, DashboardConfig> = {
       { id: 'kpi-generic', config: { title: 'Listed sites', value: '12' } },
       { id: 'kpi-generic', config: { title: 'Leased sites', value: '7' } },
       { id: 'kpi-generic', config: { title: 'New applications', value: '9', trend: 'up' } },
-      { id: 'kpi-revenue', config: { amount: 6240, period: 'Expected payout' } },
+      { id: 'kpi-generic', config: { title: 'Available Balance', value: '$1,250.50' } },
     ],
     rows: [
       {
@@ -364,10 +364,10 @@ export const DASHBOARD_CONFIGS: Record<DashboardKey, DashboardConfig> = {
             id: 'panel-quick-actions', size: 'full', config: {
               title: 'Site Management Actions',
               actions: [
-                { label: 'List a Site', path: '/sites', variant: 'primary' },
+                { label: 'Add Site', path: '/site-owner-sites', variant: 'primary' },
+                { label: 'View Tenants', path: '/tenants', variant: 'secondary' },
+                { label: 'Withdraw Funds', path: '/site-owner/withdrawals', variant: 'secondary' },
                 { label: 'Manage Parking', path: '/parking', variant: 'secondary' },
-                { label: 'Tenants', path: '/tenants', variant: 'secondary' },
-                { label: 'View Earnings', path: '/earnings', variant: 'secondary' },
               ]
             }
           }
