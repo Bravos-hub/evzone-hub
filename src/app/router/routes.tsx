@@ -6,6 +6,8 @@ import { ResetPasswordPage } from '@/pages/auth/ResetPasswordPage'
 import { UnauthorizedPage } from '@/pages/errors/UnauthorizedPage'
 import { HomeRouter } from '@/pages/landing/HomeRouter'
 import { PlaceholderPage } from '@/pages/errors/PlaceholderPage'
+import { SessionDetailPage } from '@/pages/sessions/SessionDetailPage'
+import { InvoiceDetailPage } from '@/pages/billing/InvoiceDetailPage'
 import { PATHS } from './paths'
 
 // Generic Dashboard (RBAC-controlled widget system)
@@ -15,6 +17,7 @@ import { GenericDashboard } from '@/ui/dashboard'
 import {
     // Core Features
     Stations,
+    StationDetail,
     Sessions,
     Incidents,
     Dispatches,
