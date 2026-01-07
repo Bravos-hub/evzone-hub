@@ -184,10 +184,10 @@ export function LoginPage() {
             )}
 
             {/* Action Buttons */}
-            <div className="flex gap-3 pt-2">
+            <div className="pt-2">
               <button
                 type="submit"
-                className="flex-1 bg-accent border border-accent text-white py-3 px-6 rounded-xl text-sm font-semibold transition-all duration-200 shadow-sm hover:bg-accent-hover hover:border-accent-hover hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+                className="w-full bg-accent border border-accent text-white py-3 px-6 rounded-xl text-sm font-semibold transition-all duration-200 shadow-sm hover:bg-accent-hover hover:border-accent-hover hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
                 disabled={loginMutation.isPending}
               >
                 {loginMutation.isPending ? (
@@ -202,20 +202,10 @@ export function LoginPage() {
                   'Sign In'
                 )}
               </button>
-              <button
-                type="button"
-                className="px-6 py-3 bg-panel-2 border border-border text-text rounded-xl text-sm font-semibold transition-all duration-200 hover:bg-panel hover:border-border-light hover:shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                onClick={() => nav('/', { replace: true })}
-                disabled={loginMutation.isPending}
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
             </div>
 
-            {/* Footer Text */}
-            <div className="mt-6 text-center">
+            {/* Forgot Password Link */}
+            <div className="text-center mt-4">
               <button
                 type="button"
                 className="text-muted text-xs hover:text-text transition-colors"
@@ -225,6 +215,8 @@ export function LoginPage() {
               >
                 Forgot password?
               </button>
+            </div>
+          </form>
             </div>
           </div>
         </div>
