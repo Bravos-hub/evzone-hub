@@ -15,7 +15,7 @@ export type LockerId = string
 
 // ==================== Session Management ====================
 
-export type SessionStatus = 'Pending' | 'Active' | 'Completed' | 'Failed' | 'Cancelled'
+export type SessionStatus = 'Pending' | 'Active' | 'Completed' | 'Failed' | 'Cancelled' | 'Stopped'
 export type PaymentMethod = 'Card' | 'Mobile Money' | 'Roaming' | 'Wallet' | 'Cash'
 
 export interface ChargingSession {
@@ -270,7 +270,7 @@ export interface OCPICDR {
 
 // ==================== OCPP Management ====================
 
-export type OCPPAction = 
+export type OCPPAction =
   | 'RemoteStartTransaction'
   | 'RemoteStopTransaction'
   | 'Reset'
@@ -484,7 +484,7 @@ export interface OpenADREvent {
 // ==================== Webhooks & Integrations ====================
 
 export type WebhookStatus = 'Active' | 'Disabled' | 'Failed'
-export type WebhookEvent = 
+export type WebhookEvent =
   | 'session.started'
   | 'session.completed'
   | 'session.failed'
@@ -585,7 +585,7 @@ export interface OperationalMetrics {
 // ==================== Onboarding ====================
 
 export type OnboardingStatus = 'Not-Started' | 'In-Progress' | 'Completed' | 'Awaiting-Approval'
-export type OnboardingStep = 
+export type OnboardingStep =
   | 'profile'
   | 'organization'
   | 'payment'
