@@ -1,4 +1,4 @@
-/**
+﻿/**
  * MSW Request Handlers
  * Mock API handlers for demo mode
  */
@@ -131,6 +131,7 @@ function mapStationToAPI(station: any): Station {
     longitude: station.longitude,
     type: station.type === 'Charging' ? 'CHARGING' : station.type === 'Swap' ? 'SWAP' : 'BOTH',
     status: station.status === 'Online' ? 'ACTIVE' : station.status === 'Offline' ? 'INACTIVE' : 'MAINTENANCE',
+    capacity: station.capacity,
     orgId: station.organizationId,
     createdAt: station.created.toISOString(),
     updatedAt: new Date().toISOString(),
@@ -506,7 +507,7 @@ export const handlers = [
     const now = new Date()
 
     mockDb.updateSession(params.id as string, {
-      status: 'Stopped',
+      status: 'STOPPED' as any,
       end: now,
     })
 
@@ -518,7 +519,7 @@ export const handlers = [
       connectorId: updated.connectorId?.toString(),
       startedAt: updated.start.toISOString(),
       endedAt: updated.end?.toISOString(),
-      status: 'STOPPED',
+      status: 'STOPPED' as any,
       energyDelivered: updated.energyKwh,
       cost: updated.amount,
     })

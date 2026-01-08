@@ -98,8 +98,8 @@ export function SiteDetail() {
                                         <td>{c.model}</td>
                                         <td>{c.connectors?.reduce((max, conn) => Math.max(max, conn.maxPowerKw), 0) || 0} kW</td>
                                         <td>
-                                            <span className={`pill ${c.status === 'ACTIVE' ? 'approved' :
-                                                    c.status === 'INACTIVE' ? 'declined' :
+                                            <span className={`pill ${c.status === 'Online' ? 'approved' :
+                                                    c.status === 'Offline' ? 'declined' :
                                                         'active'
                                                 }`}>
                                                 {c.status}

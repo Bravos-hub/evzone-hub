@@ -74,6 +74,7 @@ export interface Station {
   longitude: number
   type: 'CHARGING' | 'SWAP' | 'BOTH'
   status: 'ACTIVE' | 'INACTIVE' | 'MAINTENANCE'
+  capacity?: number
   orgId?: string
   tags?: string[]
   createdAt: string
@@ -288,13 +289,6 @@ export interface LeaseContract {
 export type NoticeType = 'payment_reminder' | 'overdue' | 'general'
 export type NoticeChannel = 'in-app' | 'email' | 'sms'
 
-export interface NoticeRequest {
-  tenantId: string
-  type: NoticeType
-  message: string
-  channels: NoticeChannel[]
-}
-
 export interface Notice {
   id: string
   tenantId: string
@@ -352,30 +346,6 @@ export interface PaymentMethod {
   isVerified: boolean
   isDefault: boolean
   createdAt: string
-}
-
-export interface CreatePaymentMethodRequest {
-  type: PaymentMethodType
-  label: string
-  phoneNumber?: string
-  provider?: string
-  walletType?: string
-  walletAddress?: string
-  cardNumber?: string
-  cardExpiry?: string
-  cardCvv?: string
-  cardHolderName?: string
-  accountNumber?: string
-  bankName?: string
-  routingNumber?: string
-  accountHolderName?: string
-}
-
-export interface WithdrawalRequest {
-  amount: number
-  method: PaymentMethodType
-  paymentMethodId: string
-  currency: string
 }
 
 export interface WithdrawalTransaction {

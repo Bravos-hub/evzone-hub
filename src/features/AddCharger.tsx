@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useAuthStore } from '@/core/auth/authStore'
 import { hasPermission } from '@/constants/permissions'
 import { useCreateChargePoint } from '@/core/api/hooks/useChargePoints'
+import { useStations } from '@/core/api/hooks/useStations'
 import { auditLogger } from '@/core/utils/auditLogger'
 import { getErrorMessage } from '@/core/api/errors'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
@@ -188,6 +189,7 @@ export function AddCharger() {
   const [ack, setAck] = useState('')
   const [error, setError] = useState('')
 
+  const { data: fetchStations, isLoading: loadingStations } = useStations()
   const createChargePointMutation = useCreateChargePoint()
 
   const toast = (m: string) => { setAck(m); setTimeout(() => setAck(''), 2000) }
@@ -291,7 +293,7 @@ export function AddCharger() {
             </div>
             <h2 className="text-2xl font-semibold mb-2">Charger Provisioned!</h2>
             <p className="text-subtle mb-4">
-              {form.name || 'Your charger'} at {form.site} has been successfully provisioned.
+              {form.name || 'Your charger'} at {fetchStations?.find(s => s.id === form.site)?.name || 'the selected site'} has been successfully provisioned.
             </p>
             <p className="text-sm text-subtle mb-6">
               OCPP ID: <code className="bg-muted px-2 py-0.5 rounded">{form.ocppId}</code>
@@ -334,12 +336,11 @@ export function AddCharger() {
               <h3 className="text-lg font-semibold">Select Installation Site</h3>
               <label className="grid gap-1">
                 <span className="text-sm font-medium">Site *</span>
-                <select value={form.site} onChange={e => updateForm('site', e.target.value)} className="select">
-                  <option value="">Choose a site...</option>
-                  <option>Central Hub</option>
-                  <option>Airport East</option>
-                  <option>Tech Park</option>
-                  <option>Downtown Garage</option>
+                <select value={form.site} onChange={e => updateForm('site', e.target.value)} className="select" disabled={loadingStations}>
+                  <option value="">{loadingStations ? 'Loading sites...' : 'Choose a site...'}</option>
+                  {fetchStations?.map(s => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
                 </select>
               </label>
               <label className="grid gap-1">
