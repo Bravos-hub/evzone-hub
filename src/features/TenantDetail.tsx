@@ -4,6 +4,9 @@ import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { useTenant, useTenantContract } from '@/core/api/hooks/useTenants'
 import { useSendNotice, useNotices } from '@/core/api/hooks/useNotices'
 import { SendNoticeModal } from '@/modals/SendNoticeModal'
+import { NoticeDetailModal } from '@/modals/NoticeDetailModal'
+import { DocumentUploadModal } from '@/modals/DocumentUploadModal'
+import { DocumentPreviewModal } from '@/modals/DocumentPreviewModal'
 import { FinancialStatusCard } from '@/ui/components/FinancialStatusCard'
 import { getErrorMessage } from '@/core/api/errors'
 import type { Tenant, LeaseContract } from '@/core/api/types'
@@ -22,6 +25,14 @@ export function TenantDetail() {
   }
   const [activeTab, setActiveTab] = useState<Tab>(resolveTab(searchParams.get('tab')))
   const [showNoticeModal, setShowNoticeModal] = useState(false)
+  const [selectedNotice, setSelectedNotice] = useState<any>(null)
+  const [showUploadModal, setShowUploadModal] = useState(false)
+  const [selectedDoc, setSelectedDoc] = useState<any>(null)
+  const [documents, setDocuments] = useState([
+    { id: 'DOC-01', name: 'Lease Agreement 2024.pdf', size: '2.4 MB', date: '2024-01-15', category: 'Legal' },
+    { id: 'DOC-02', name: 'Public Liability Insurance.pdf', size: '1.1 MB', date: '2024-03-20', category: 'Insurance' },
+    { id: 'DOC-03', name: 'Site Maintenance Guidelines.pdf', size: '850 KB', date: '2024-05-10', category: 'Operational' },
+  ])
 
   const { data: tenant, isLoading, error } = useTenant(id || '')
   const { data: contract, isLoading: contractLoading } = useTenantContract(id || '')
@@ -97,8 +108,21 @@ export function TenantDetail() {
           {activeTab === 'overview' && <OverviewTab tenant={tenant} />}
           {activeTab === 'financial' && <FinancialTab tenant={tenant} />}
           {activeTab === 'contract' && <ContractTab contract={contract} isLoading={contractLoading} />}
-          {activeTab === 'documents' && <DocumentsTab tenantId={id!} />}
-          {activeTab === 'notices' && <NoticesTab notices={notices} isLoading={noticesLoading} />}
+          {activeTab === 'documents' && (
+            <DocumentsTab
+              tenantId={id!}
+              documents={documents}
+              onUpload={() => setShowUploadModal(true)}
+              onPreview={(doc) => setSelectedDoc(doc)}
+            />
+          )}
+          {activeTab === 'notices' && (
+            <NoticesTab
+              notices={notices}
+              isLoading={noticesLoading}
+              onView={(notice) => setSelectedNotice(notice)}
+            />
+          )}
           {activeTab === 'actions' && (
             <ActionsTab
               tenant={tenant}
@@ -116,6 +140,34 @@ export function TenantDetail() {
           onSuccess={() => {
             setShowNoticeModal(false)
             alert('Notice sent successfully')
+          }}
+        />
+      )}
+
+      {selectedNotice && (
+        <NoticeDetailModal
+          notice={selectedNotice}
+          onClose={() => setSelectedNotice(null)}
+        />
+      )}
+
+      {showUploadModal && (
+        <DocumentUploadModal
+          tenantId={tenant.id}
+          onClose={() => setShowUploadModal(false)}
+          onSuccess={(doc) => {
+            setDocuments(prev => [doc, ...prev])
+            setShowUploadModal(false)
+          }}
+        />
+      )}
+
+      {selectedDoc && (
+        <DocumentPreviewModal
+          document={selectedDoc}
+          onClose={() => setSelectedDoc(null)}
+          onDownload={() => {
+            alert(`Downloading ${selectedDoc.name}...`)
           }}
         />
       )}
@@ -311,23 +363,21 @@ function ContractTab({ contract, isLoading }: { contract?: LeaseContract; isLoad
   )
 }
 
-function DocumentsTab({ tenantId }: { tenantId: string }) {
-  // Mock documents since no API yet
-  const docs = [
-    { id: 'DOC-01', name: 'Lease Agreement 2024.pdf', size: '2.4 MB', date: '2024-01-15', category: 'Legal' },
-    { id: 'DOC-02', name: 'Public Liability Insurance.pdf', size: '1.1 MB', date: '2024-03-20', category: 'Insurance' },
-    { id: 'DOC-03', name: 'Site Maintenance Guidelines.pdf', size: '850 KB', date: '2024-05-10', category: 'Operational' },
-  ]
-
+function DocumentsTab({ tenantId, documents, onUpload, onPreview }: {
+  tenantId: string;
+  documents: any[];
+  onUpload: () => void;
+  onPreview: (doc: any) => void
+}) {
   return (
     <div className="space-y-4 p-2">
       <div className="flex justify-between items-center mb-2">
         <h3 className="text-lg font-semibold">Document Vault</h3>
-        <button className="btn secondary text-xs">Upload Document</button>
+        <button className="btn secondary text-xs" onClick={onUpload}>Upload Document</button>
       </div>
       <div className="grid gap-2">
-        {docs.map(doc => (
-          <div key={doc.id} className="flex items-center justify-between p-3 border border-border rounded-lg hover:bg-muted/30 transition-colors group">
+        {documents.map(doc => (
+          <div key={doc.id} className="flex items-center justify-between p-3 border border-border rounded-lg hover:bg-muted/30 transition-colors group cursor-pointer" onClick={() => onPreview(doc)}>
             <div className="flex items-center gap-3">
               <div className="p-2 bg-accent/10 text-accent rounded transition-colors group-hover:bg-accent group-hover:text-white">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
@@ -337,9 +387,28 @@ function DocumentsTab({ tenantId }: { tenantId: string }) {
                 <div className="text-xs text-muted">{doc.category} • {doc.date} • {doc.size}</div>
               </div>
             </div>
-            <button className="p-2 hover:bg-accent/10 text-accent rounded-full transition-colors" title="Download">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-            </button>
+            <div className="flex gap-2">
+              <button
+                className="p-2 hover:bg-accent/10 text-accent rounded-full transition-colors"
+                title="View"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onPreview(doc)
+                }}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+              </button>
+              <button
+                className="p-2 hover:bg-accent/10 text-accent rounded-full transition-colors"
+                title="Download"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  alert(`Downloading ${doc.name}...`)
+                }}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+              </button>
+            </div>
           </div>
         ))}
       </div>
@@ -347,7 +416,7 @@ function DocumentsTab({ tenantId }: { tenantId: string }) {
   )
 }
 
-function NoticesTab({ notices, isLoading }: { notices?: any[]; isLoading: boolean }) {
+function NoticesTab({ notices, isLoading, onView }: { notices?: any[]; isLoading: boolean; onView: (notice: any) => void }) {
   if (isLoading) return <div className="text-center py-8 text-muted">Loading history...</div>
 
   return (
@@ -361,21 +430,29 @@ function NoticesTab({ notices, isLoading }: { notices?: any[]; isLoading: boolea
       ) : (
         <div className="space-y-3">
           {notices.map((n: any) => (
-            <div key={n.id} className="p-4 border border-border rounded-lg relative overflow-hidden bg-surface hover:border-accent/30 transition-colors">
+            <div key={n.id} className="p-4 border border-border rounded-lg relative overflow-hidden bg-surface hover:border-accent/30 transition-colors group cursor-pointer" onClick={() => onView(n)}>
               <div className={`absolute left-0 top-0 bottom-0 w-1 ${n.type === 'Warning' ? 'bg-amber-500' : n.type === 'Legal' ? 'bg-rose-500' : 'bg-blue-500'}`} />
               <div className="flex justify-between items-start mb-2">
                 <span className={`text-[10px] uppercase font-black px-1.5 py-0.5 rounded ${n.type === 'Warning' ? 'bg-amber-100 text-amber-700' :
-                    n.type === 'Legal' ? 'bg-rose-100 text-rose-700' :
-                      'bg-blue-100 text-blue-700'
+                  n.type === 'Legal' ? 'bg-rose-100 text-rose-700' :
+                    'bg-blue-100 text-blue-700'
                   }`}>
                   {n.type}
                 </span>
-                <span className="text-xs text-muted">{new Date(n.createdAt).toLocaleDateString()}</span>
+                <span className="text-xs text-muted">/{new Date(n.createdAt).toLocaleDateString()}</span>
               </div>
-              <h4 className="text-sm font-bold mb-1">{n.subject}</h4>
-              <p className="text-xs text-muted line-clamp-2">{n.content}</p>
+              <h4 className="text-sm font-bold mb-1">{n.subject || 'Official Notice'}</h4>
+              <p className="text-xs text-muted line-clamp-2">{n.message || n.content}</p>
               <div className="mt-3 flex justify-end">
-                <button className="text-[10px] text-accent font-black hover:underline tracking-wider">VIEW FULL NOTICE →</button>
+                <button
+                  className="text-[10px] text-accent font-black hover:underline tracking-wider"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onView(n)
+                  }}
+                >
+                  VIEW FULL NOTICE →
+                </button>
               </div>
             </div>
           ))}
