@@ -7,7 +7,8 @@
 import { http, HttpResponse } from 'msw'
 import { mockUsers } from '@/data/mockDb/users'
 import { mockChargingSessions } from '@/data/mockDb/sessions'
-import type { User, Station, Booking, ChargingSession, WalletBalance, WalletTransaction, Organization, DashboardMetrics, Tenant, TenantApplication, LeaseContract, NoticeRequest, Notice, PaymentMethod, CreatePaymentMethodRequest, WithdrawalRequest, WithdrawalTransaction, NotificationItem } from '@/core/api/types'
+import type { User, Station, Booking, ChargingSession, WalletBalance, WalletTransaction, Organization, DashboardMetrics, Tenant, TenantApplication, LeaseContract, NoticeRequest, Notice, PaymentMethod, CreatePaymentMethodRequest, WithdrawalRequest, WithdrawalTransaction, NotificationItem, ChargePoint } from '@/core/api/types'
+import type { ChargePoint as DomainChargePoint } from '@/core/types/domain'
 import { API_CONFIG } from '@/core/api/config'
 import { mockDb } from '@/data/mockDb'
 
@@ -869,6 +870,8 @@ export const handlers = [
         maxPowerKw: c.maxPowerKw,
         status: 'Available' as const,
       })),
+      maxCapacityKw: body.maxCapacityKw || 0,
+      parkingBays: body.parkingBays || [],
       ocppStatus: 'Available' as const,
       lastHeartbeat: new Date(),
     }
@@ -884,7 +887,22 @@ export const handlers = [
     }
     const body = await request.json() as any
     mockDb.updateChargePoint(params.id as string, body)
-    return HttpResponse.json(mockDb.getChargePoint(params.id as string))
+    const updatedChargePoint = mockDb.getChargePoint(params.id as string)!
+    const mapChargePointToAPI = (cp: DomainChargePoint): ChargePoint => ({
+      id: cp.id,
+      stationId: cp.stationId,
+      model: cp.model,
+      manufacturer: cp.manufacturer,
+      serialNumber: cp.serialNumber,
+      firmwareVersion: cp.firmwareVersion,
+      status: cp.status as any,
+      connectors: cp.connectors as any,
+      maxCapacityKw: cp.maxCapacityKw,
+      parkingBays: cp.parkingBays,
+      ocppStatus: cp.ocppStatus,
+      lastHeartbeat: cp.lastHeartbeat?.toISOString(),
+    })
+    return HttpResponse.json(mapChargePointToAPI(updatedChargePoint))
   }),
 
   http.delete(`${baseURL}/charge-points/:id`, async ({ params }) => {

@@ -4,7 +4,8 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { chargePointService, type CreateChargePointRequest, type UpdateChargePointRequest } from '../services/chargePointService'
+import { chargePointService } from '../services/chargePointService'
+import type { CreateChargePointRequest, UpdateChargePointRequest } from '../types'
 import { queryKeys } from '@/data/queryKeys'
 
 export function useChargePoints(filters?: { stationId?: string; status?: string }) {

@@ -120,6 +120,20 @@ export interface Station {
   lastMaintenance?: Date
 }
 
+export type ParkingStatus = 'Active' | 'Maintenance' | 'Reserved' | 'Inactive'
+
+export interface ParkingBay {
+  id: string
+  siteId: string
+  bay: string
+  type: 'EV Charging' | 'Regular' | 'Handicap' | 'VIP'
+  status: ParkingStatus
+  chargerId?: string
+  rate: number
+  occupancy: number
+  lastUsed: string
+}
+
 export interface ChargePoint {
   id: ChargePointId
   stationId: StationId
@@ -129,6 +143,8 @@ export interface ChargePoint {
   firmwareVersion: string
   status: StationStatus
   connectors: Connector[]
+  maxCapacityKw?: number
+  parkingBays?: string[] // Bay IDs
   ocppStatus?: 'Available' | 'Preparing' | 'Charging' | 'SuspendedEVSE' | 'SuspendedEV' | 'Finishing' | 'Reserved' | 'Unavailable' | 'Faulted'
   lastHeartbeat?: Date
 }
@@ -653,5 +669,24 @@ export interface MQTTTopic {
   subscribers: number
   messagesPerMinute: number
   lastMessage?: Date
+}
+
+export interface Invoice {
+  id: string
+  type: string
+  org: string
+  amount: number
+  currency: string
+  status: 'Paid' | 'Pending' | 'Overdue' | 'Draft'
+  issuedAt: string
+  dueAt: string
+  paidAt?: string
+  description: string
+  lineItems?: Array<{
+    description: string
+    quantity: number
+    unitPrice: number
+    total: number
+  }>
 }
 

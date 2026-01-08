@@ -1,4 +1,4 @@
-import { useParams, Link } from 'react-router-dom'
+import { useParams, useNavigate, Link } from 'react-router-dom'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { PATHS } from '@/app/router/paths'
 import { useStation, useStationStats } from '@/core/api/hooks/useStations'
@@ -6,6 +6,7 @@ import { useChargePointsByStation } from '@/core/api/hooks/useChargePoints'
 
 export function SiteDetail() {
     const { id } = useParams<{ id: string }>()
+    const nav = useNavigate()
 
     const { data: station, isLoading: loadingStation, error: stationError } = useStation(id!)
     const { data: stats, isLoading: loadingStats } = useStationStats(id!)
@@ -99,14 +100,19 @@ export function SiteDetail() {
                                         <td>{c.connectors?.reduce((max, conn) => Math.max(max, conn.maxPowerKw), 0) || 0} kW</td>
                                         <td>
                                             <span className={`pill ${c.status === 'Online' ? 'approved' :
-                                                    c.status === 'Offline' ? 'declined' :
-                                                        'active'
+                                                c.status === 'Offline' ? 'declined' :
+                                                    'active'
                                                 }`}>
                                                 {c.status}
                                             </span>
                                         </td>
                                         <td className="text-right">
-                                            <button className="btn secondary text-xs">Manage</button>
+                                            <button
+                                                className="btn secondary text-xs font-bold"
+                                                onClick={() => nav(PATHS.STATIONS.CHARGE_POINT_DETAIL(c.id))}
+                                            >
+                                                Manage
+                                            </button>
                                         </td>
                                     </tr>
                                 ))

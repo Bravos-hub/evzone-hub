@@ -5,35 +5,7 @@
 
 import { apiClient } from '../client'
 import type { ChargePoint } from '@/core/types/domain'
-
-export interface CreateChargePointRequest {
-  stationId: string
-  model: string
-  manufacturer: string
-  serialNumber: string
-  firmwareVersion?: string
-  connectors: Array<{
-    type: string
-    powerType: 'AC' | 'DC'
-    maxPowerKw: number
-  }>
-  ocppId?: string
-}
-
-export interface UpdateChargePointRequest {
-  model?: string
-  manufacturer?: string
-  serialNumber?: string
-  firmwareVersion?: string
-  status?: 'Online' | 'Degraded' | 'Offline' | 'Maintenance'
-  connectors?: Array<{
-    id: number
-    type: string
-    powerType: 'AC' | 'DC'
-    maxPowerKw: number
-    status?: 'Available' | 'Occupied' | 'Faulted' | 'Reserved'
-  }>
-}
+import type { CreateChargePointRequest, UpdateChargePointRequest } from '../types'
 
 export const chargePointService = {
   /**
@@ -43,7 +15,7 @@ export const chargePointService = {
     const params = new URLSearchParams()
     if (query?.stationId) params.append('stationId', query.stationId)
     if (query?.status) params.append('status', query.status)
-    
+
     const queryString = params.toString()
     return apiClient.get<ChargePoint[]>(`/charge-points${queryString ? `?${queryString}` : ''}`)
   },

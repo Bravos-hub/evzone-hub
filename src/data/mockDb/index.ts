@@ -3,15 +3,16 @@
  * In-memory database with localStorage persistence for MVP
  */
 
-import type { 
-  Station, 
-  ChargePoint, 
-  ChargingSession, 
-  Incident, 
+import type {
+  Station,
+  ChargePoint,
+  ChargingSession,
+  Incident,
   Tariff,
   Webhook,
   User,
-  Invoice
+  Invoice,
+  ParkingBay
 } from '@/core/types/domain'
 import { mockChargingSessions } from './sessions'
 import { mockUsers } from './users'
@@ -319,6 +320,7 @@ export interface MockDatabase {
   auditLogs: AuditLogEntry[]
   users: User[]
   invoices: Invoice[]
+  parkingBays: ParkingBay[]
 }
 
 // Load from localStorage or use initial data
@@ -337,6 +339,8 @@ function loadDatabase(): MockDatabase {
         chargePoints: parsed.chargePoints?.map((cp: any) => ({
           ...cp,
           lastHeartbeat: cp.lastHeartbeat ? new Date(cp.lastHeartbeat) : undefined,
+          maxCapacityKw: cp.maxCapacityKw || 50,
+          parkingBays: cp.parkingBays || [],
         })) || initialChargePoints,
         sessions: parsed.sessions?.map((s: any) => ({
           ...s,
@@ -367,12 +371,13 @@ function loadDatabase(): MockDatabase {
           lastSeen: u.lastSeen ? new Date(u.lastSeen) : undefined,
         })) || mockUsers,
         invoices: parsed.invoices || initialInvoices,
+        parkingBays: parsed.parkingBays || [],
       }
     } catch (e) {
       console.error('Failed to parse stored database:', e)
     }
   }
-  
+
   // Return initial data
   return {
     stations: initialStations,
@@ -385,6 +390,7 @@ function loadDatabase(): MockDatabase {
     auditLogs: initialAuditLogs,
     users: mockUsers,
     invoices: initialInvoices,
+    parkingBays: [],
   }
 }
 
@@ -431,6 +437,7 @@ function saveDatabase(db: MockDatabase): void {
         lastSeen: u.lastSeen?.toISOString(),
       })),
       invoices: db.invoices,
+      parkingBays: db.parkingBays,
     }
     localStorage.setItem('evzone:mockDb', JSON.stringify(serializable))
   } catch (e) {
@@ -591,7 +598,7 @@ export const mockDb = {
       saveDatabase(db)
     }
   },
-  
+
   // Invoices
   getInvoices: () => db.invoices,
   getInvoice: (id: string) => db.invoices.find(i => i.id === id),
@@ -605,6 +612,26 @@ export const mockDb = {
       db.invoices[index] = { ...db.invoices[index], ...updates }
       saveDatabase(db)
     }
+  },
+
+  // Parking Bays
+  getParkingBays: () => db.parkingBays,
+  getParkingBaysBySite: (siteId: string) => db.parkingBays.filter(b => b.siteId === siteId),
+  getParkingBaysByCharger: (chargerId: string) => db.parkingBays.filter(b => b.chargerId === chargerId),
+  addParkingBay: (bay: ParkingBay) => {
+    db.parkingBays.push(bay)
+    saveDatabase(db)
+  },
+  updateParkingBay: (id: string, updates: Partial<ParkingBay>) => {
+    const index = db.parkingBays.findIndex(b => b.id === id)
+    if (index !== -1) {
+      db.parkingBays[index] = { ...db.parkingBays[index], ...updates }
+      saveDatabase(db)
+    }
+  },
+  deleteParkingBay: (id: string) => {
+    db.parkingBays = db.parkingBays.filter(b => b.id !== id)
+    saveDatabase(db)
   },
 }
 

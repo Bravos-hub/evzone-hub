@@ -153,4 +153,5 @@ export { OperatorAvailability } from './OperatorAvailability'
 export { KioskScan } from './KioskScan'
 export { OperatorSwapStationDetail } from './OperatorSwapStationDetail'
 export { OperatorTeamDetail } from './OperatorTeamDetail'
+export { ChargePointDetail } from './ChargePointDetail'
 

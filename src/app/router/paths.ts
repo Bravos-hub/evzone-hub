@@ -18,6 +18,7 @@ export const PATHS = {
     ROOT: '/stations',
     DETAIL: (id: string) => `/stations/${id}`,
     CHARGE_POINTS: '/stations/charge-points',
+    CHARGE_POINT_DETAIL: (id: string) => `/stations/charge-points/${id}`,
     SWAP_STATIONS: '/stations/swap-stations',
     SMART_CHARGING: '/stations/smart-charging',
     BOOKINGS: '/stations/bookings',

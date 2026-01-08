@@ -97,6 +97,76 @@ export interface UpdateStationRequest {
   latitude?: number
   longitude?: number
   status?: 'ACTIVE' | 'INACTIVE' | 'MAINTENANCE'
+  capacity?: number
+}
+
+// Charge Point Types
+export type ParkingStatus = 'Active' | 'Maintenance' | 'Reserved' | 'Inactive'
+
+export interface ParkingBay {
+  id: string
+  siteId: string
+  bay: string
+  type: 'EV Charging' | 'Regular' | 'Handicap' | 'VIP'
+  status: ParkingStatus
+  chargerId?: string
+  rate: number
+  occupancy: number
+  lastUsed: string
+}
+
+export interface Connector {
+  id: number
+  type: string
+  powerType: 'AC' | 'DC'
+  maxPowerKw: number
+  status: 'Available' | 'Occupied' | 'Faulted' | 'Reserved'
+}
+
+export interface ChargePoint {
+  id: string
+  stationId: string
+  model: string
+  manufacturer: string
+  serialNumber: string
+  firmwareVersion: string
+  status: 'Online' | 'Degraded' | 'Offline' | 'Maintenance'
+  connectors: Connector[]
+  maxCapacityKw?: number
+  parkingBays?: string[]
+  ocppStatus?: string
+  lastHeartbeat?: string
+}
+
+export interface CreateChargePointRequest {
+  stationId: string
+  model: string
+  manufacturer: string
+  serialNumber: string
+  firmwareVersion?: string
+  connectors: Array<{
+    type: string
+    powerType: 'AC' | 'DC'
+    maxPowerKw: number
+  }>
+  ocppId?: string
+}
+
+export interface UpdateChargePointRequest {
+  model?: string
+  manufacturer?: string
+  serialNumber?: string
+  firmwareVersion?: string
+  status?: 'Online' | 'Degraded' | 'Offline' | 'Maintenance'
+  maxCapacityKw?: number
+  parkingBays?: string[]
+  connectors?: Array<{
+    id: number
+    type: string
+    powerType: 'AC' | 'DC'
+    maxPowerKw: number
+    status?: 'Available' | 'Occupied' | 'Faulted' | 'Reserved'
+  }>
 }
 
 // Booking Types
@@ -301,6 +371,13 @@ export interface Notice {
   createdAt: string
 }
 
+export interface NoticeRequest {
+  tenantId: string
+  type: NoticeType
+  message: string
+  channels: NoticeChannel[]
+}
+
 export type NotificationKind =
   | 'system'
   | 'alert'
@@ -348,6 +425,23 @@ export interface PaymentMethod {
   createdAt: string
 }
 
+export interface CreatePaymentMethodRequest {
+  type: PaymentMethodType
+  label: string
+  phoneNumber?: string
+  provider?: string
+  walletType?: string
+  walletAddress?: string
+  cardNumber?: string
+  cardExpiry?: string
+  cardCvv?: string
+  cardHolderName?: string
+  accountNumber?: string
+  bankName?: string
+  routingNumber?: string
+  accountHolderName?: string
+}
+
 export interface WithdrawalTransaction {
   id: string
   amount: number
@@ -362,4 +456,11 @@ export interface WithdrawalTransaction {
   createdAt: string
   completedAt?: string
   failureReason?: string
+}
+
+export interface WithdrawalRequest {
+  amount: number
+  method: PaymentMethodType
+  paymentMethodId: string
+  currency: string
 }
