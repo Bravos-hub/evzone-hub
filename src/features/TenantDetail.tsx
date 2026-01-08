@@ -13,6 +13,17 @@ import type { Tenant, LeaseContract } from '@/core/api/types'
 
 type Tab = 'overview' | 'financial' | 'contract' | 'documents' | 'notices' | 'actions'
 
+type DocumentItem = {
+  id: string
+  name: string
+  size: string
+  date: string
+  category: string
+  content?: string
+  title?: string
+  file?: File
+}
+
 export function TenantDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -27,11 +38,66 @@ export function TenantDetail() {
   const [showNoticeModal, setShowNoticeModal] = useState(false)
   const [selectedNotice, setSelectedNotice] = useState<any>(null)
   const [showUploadModal, setShowUploadModal] = useState(false)
-  const [selectedDoc, setSelectedDoc] = useState<any>(null)
-  const [documents, setDocuments] = useState([
-    { id: 'DOC-01', name: 'Lease Agreement 2024.pdf', size: '2.4 MB', date: '2024-01-15', category: 'Legal' },
-    { id: 'DOC-02', name: 'Public Liability Insurance.pdf', size: '1.1 MB', date: '2024-03-20', category: 'Insurance' },
-    { id: 'DOC-03', name: 'Site Maintenance Guidelines.pdf', size: '850 KB', date: '2024-05-10', category: 'Operational' },
+  const [selectedDoc, setSelectedDoc] = useState<DocumentItem | null>(null)
+  const [documents, setDocuments] = useState<DocumentItem[]>([
+    {
+      id: 'DOC-01',
+      name: 'Lease Agreement 2024.pdf',
+      title: 'MASTER LEASE AGREEMENT',
+      size: '2.4 MB',
+      date: '2024-01-15',
+      category: 'Legal',
+      content: `TENANT LEASE AGREEMENT (REVISED 2024)
+
+This Lease is entered into between EVZONE OPERATIONAL ASSETS and CITY MALL MANAGEMENT.
+
+SECTION 1: PREMISES
+The landlord hereby leases to the tenant the designated roof space (Zone B-12) for the purpose of operating 15 ultra-fast charging stations.
+
+SECTION 2: RENT & UTILITIES
+The monthly rental rate is fixed at $4,500, inclusive of basic maintenance services but exclusive of electricity draw, which is metered separately via the SmartGrid subsystem.
+
+SECTION 3: ENVIRONMENTAL COMPLIANCE
+The tenant guarantees that all hardware meets Grade-A safety standards and will be recycled at end-of-life status.`
+    },
+    {
+      id: 'DOC-02',
+      name: 'Public Liability Insurance.pdf',
+      title: 'CERTIFICATE OF LIABILITY INSURANCE',
+      size: '1.1 MB',
+      date: '2024-03-20',
+      category: 'Insurance',
+      content: `POLICY NUMBER: EV-PL-9900234
+INSURED: CITY MALL EV CHARGING HUB
+COVERAGE PERIOD: MARCH 2024 - MARCH 2025
+
+COVERAGE SUMMARY:
+- General Aggregate: $5,000,000
+- Products Completed Operations: $2,000,000
+- Personal & Advertising Injury: $1,000,000
+- Each Occurrence: $1,000,000
+
+SPECIAL PROVISIONS:
+Policy covers accidental damage to consumer vehicles and electrical fires originating from certified charge points.`
+    },
+    {
+      id: 'DOC-03',
+      name: 'Site Maintenance Guidelines.pdf',
+      title: 'SITE MAINTENANCE & SAFETY PROTOCOLS',
+      size: '850 KB',
+      date: '2024-05-10',
+      category: 'Operational',
+      content: `OPERATIONAL GUIDELINES V4.2
+
+1. CLEANLINESS
+The charging bay area must be kept free of debris. Daily inspections are required between 08:00 and 10:00 AM.
+
+2. CABLE MANAGEMENT
+Inspectors must verify that all retractable cables are functioning and not showing signs of frayed insulation.
+
+3. EMERGENCY SHUTOFF
+The emergency red-button cutoff must be tested monthly and logged in the digital vault. Failure to log a test will result in a safety warning.`
+    },
   ])
 
   const { data: tenant, isLoading, error } = useTenant(id || '')
@@ -167,7 +233,16 @@ export function TenantDetail() {
           document={selectedDoc}
           onClose={() => setSelectedDoc(null)}
           onDownload={() => {
-            alert(`Downloading ${selectedDoc.name}...`)
+            if (selectedDoc.file) {
+              const url = URL.createObjectURL(selectedDoc.file)
+              const a = window.document.createElement('a')
+              a.href = url
+              a.download = selectedDoc.name
+              a.click()
+              URL.revokeObjectURL(url)
+            } else {
+              console.log('Simulating download for mock file:', selectedDoc.name)
+            }
           }}
         />
       )}

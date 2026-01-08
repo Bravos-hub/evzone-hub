@@ -24,7 +24,8 @@ export function DocumentUploadModal({ tenantId, onClose, onSuccess }: DocumentUp
                 name: name || file.name,
                 size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
                 date: new Date().toISOString().split('T')[0],
-                category
+                category,
+                file // Pass the actual File object
             })
             setIsUploading(false)
         }, 1500)
