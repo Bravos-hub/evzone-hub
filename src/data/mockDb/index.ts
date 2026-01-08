@@ -10,7 +10,8 @@ import type {
   Incident, 
   Tariff,
   Webhook,
-  User
+  User,
+  Invoice
 } from '@/core/types/domain'
 import { mockChargingSessions } from './sessions'
 import { mockUsers } from './users'
@@ -51,6 +52,33 @@ export type AuditLogEntry = {
   ip: string
   severity: 'Info' | 'Warning' | 'Critical'
 }
+
+const initialInvoices: Invoice[] = [
+  {
+    id: 'INV-2024-0012',
+    type: 'Usage',
+    org: 'Volt Mobility Ltd',
+    amount: 12450.00,
+    currency: 'USD',
+    status: 'Paid',
+    issuedAt: '2024-12-01',
+    dueAt: '2024-12-15',
+    paidAt: '2024-12-10',
+    description: 'November 2024 Usage - 4,532 sessions',
+  },
+  {
+    id: 'INV-2024-0011',
+    type: 'Subscription',
+    org: 'Volt Mobility Ltd',
+    amount: 2500.00,
+    currency: 'USD',
+    status: 'Paid',
+    issuedAt: '2024-12-01',
+    dueAt: '2024-12-15',
+    paidAt: '2024-12-05',
+    description: 'Pro Plan - December 2024',
+  },
+]
 
 // Initial mock data
 const initialStations: Station[] = [
@@ -290,6 +318,7 @@ export interface MockDatabase {
   webhooks: Webhook[]
   auditLogs: AuditLogEntry[]
   users: User[]
+  invoices: Invoice[]
 }
 
 // Load from localStorage or use initial data
@@ -337,6 +366,7 @@ function loadDatabase(): MockDatabase {
           created: new Date(u.created),
           lastSeen: u.lastSeen ? new Date(u.lastSeen) : undefined,
         })) || mockUsers,
+        invoices: parsed.invoices || initialInvoices,
       }
     } catch (e) {
       console.error('Failed to parse stored database:', e)
@@ -354,6 +384,7 @@ function loadDatabase(): MockDatabase {
     webhooks: initialWebhooks,
     auditLogs: initialAuditLogs,
     users: mockUsers,
+    invoices: initialInvoices,
   }
 }
 
@@ -399,6 +430,7 @@ function saveDatabase(db: MockDatabase): void {
         created: u.created.toISOString(),
         lastSeen: u.lastSeen?.toISOString(),
       })),
+      invoices: db.invoices,
     }
     localStorage.setItem('evzone:mockDb', JSON.stringify(serializable))
   } catch (e) {
@@ -556,6 +588,21 @@ export const mockDb = {
     const index = db.users.findIndex(u => u.id === id)
     if (index !== -1) {
       db.users[index] = { ...db.users[index], ...updates }
+      saveDatabase(db)
+    }
+  },
+  
+  // Invoices
+  getInvoices: () => db.invoices,
+  getInvoice: (id: string) => db.invoices.find(i => i.id === id),
+  addInvoice: (invoice: Invoice) => {
+    db.invoices.push(invoice)
+    saveDatabase(db)
+  },
+  updateInvoice: (id: string, updates: Partial<Invoice>) => {
+    const index = db.invoices.findIndex(i => i.id === id)
+    if (index !== -1) {
+      db.invoices[index] = { ...db.invoices[index], ...updates }
       saveDatabase(db)
     }
   },

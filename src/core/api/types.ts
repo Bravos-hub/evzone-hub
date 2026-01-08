@@ -307,6 +307,30 @@ export interface Notice {
   createdAt: string
 }
 
+export type NotificationKind =
+  | 'system'
+  | 'alert'
+  | 'info'
+  | 'warning'
+  | 'notice'
+  | 'message'
+  | 'payment'
+  | 'application'
+
+export interface NotificationItem {
+  id: string
+  kind: NotificationKind
+  title: string
+  message: string
+  source: string
+  read: boolean
+  createdAt: string
+  channels?: NoticeChannel[]
+  status?: Notice['status']
+  targetPath?: string
+  metadata?: Record<string, string>
+}
+
 export type PaymentMethodType = 'mobile' | 'wallet' | 'card' | 'bank'
 
 export interface PaymentMethod {

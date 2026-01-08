@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { useAuthStore } from '@/core/auth/authStore'
 import { hasPermission } from '@/constants/permissions'
@@ -18,11 +18,13 @@ type ViewMode = 'applications' | 'tenants'
 export function Tenants() {
   const { user } = useAuthStore()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const role = user?.role ?? 'SITE_OWNER'
   const canView = hasPermission(role, 'tenants', 'view')
   const canEdit = hasPermission(role, 'tenants', 'edit')
 
-  const [viewMode, setViewMode] = useState<ViewMode>('tenants')
+  const initialViewMode = searchParams.get('tab') === 'applications' ? 'applications' : 'tenants'
+  const [viewMode, setViewMode] = useState<ViewMode>(initialViewMode)
   const [site, setSite] = useState('All')
   const [type, setType] = useState('All')
   const [status, setStatus] = useState('All')
@@ -73,6 +75,13 @@ export function Tenants() {
 
   if (!canView) {
     return <div className="p-8 text-center text-subtle">No permission to view Tenants.</div>
+  }
+
+  const updateTab = (tab: ViewMode) => {
+    setViewMode(tab)
+    const next = new URLSearchParams(searchParams)
+    next.set('tab', tab)
+    setSearchParams(next, { replace: true })
   }
 
   return (

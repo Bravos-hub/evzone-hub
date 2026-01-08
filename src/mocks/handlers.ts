@@ -7,11 +7,98 @@
 import { http, HttpResponse } from 'msw'
 import { mockUsers } from '@/data/mockDb/users'
 import { mockChargingSessions } from '@/data/mockDb/sessions'
-import type { User, Station, Booking, ChargingSession, WalletBalance, WalletTransaction, Organization, DashboardMetrics, Tenant, TenantApplication, LeaseContract, NoticeRequest, Notice, PaymentMethod, CreatePaymentMethodRequest, WithdrawalRequest, WithdrawalTransaction } from '@/core/api/types'
+import type { User, Station, Booking, ChargingSession, WalletBalance, WalletTransaction, Organization, DashboardMetrics, Tenant, TenantApplication, LeaseContract, NoticeRequest, Notice, PaymentMethod, CreatePaymentMethodRequest, WithdrawalRequest, WithdrawalTransaction, NotificationItem } from '@/core/api/types'
 import { API_CONFIG } from '@/core/api/config'
 import { mockDb } from '@/data/mockDb'
 
 const baseURL = API_CONFIG.baseURL
+
+const notificationSeedTime = Date.now()
+let mockNotifications: NotificationItem[] = [
+  {
+    id: 'NTF-001',
+    kind: 'alert',
+    title: 'Incident INC-2401 opened',
+    message: 'Mobile money confirmations delayed',
+    source: 'EVZONE Ops',
+    read: false,
+    createdAt: new Date(notificationSeedTime - 10 * 60 * 1000).toISOString(),
+    targetPath: '/incidents',
+  },
+  {
+    id: 'NTF-002',
+    kind: 'system',
+    title: 'Scheduled maintenance',
+    message: 'Analytics pipeline maintenance tonight 2:00 AM',
+    source: 'EVZONE Ops',
+    read: false,
+    createdAt: new Date(notificationSeedTime - 60 * 60 * 1000).toISOString(),
+    targetPath: '/reports',
+  },
+  {
+    id: 'NTF-003',
+    kind: 'info',
+    title: 'New station added',
+    message: 'ST-0018 Berlin North has been registered',
+    source: 'Platform',
+    read: true,
+    createdAt: new Date(notificationSeedTime - 3 * 60 * 60 * 1000).toISOString(),
+    targetPath: '/sites',
+  },
+  {
+    id: 'NTF-004',
+    kind: 'warning',
+    title: 'Low battery inventory',
+    message: 'Gulu Main Street swap station below threshold',
+    source: 'Platform',
+    read: true,
+    createdAt: new Date(notificationSeedTime - 5 * 60 * 60 * 1000).toISOString(),
+    targetPath: '/owner-alerts',
+  },
+  {
+    id: 'NTF-005',
+    kind: 'notice',
+    title: 'Demand notice sent',
+    message: 'To VoltOps Ltd: Payment overdue for November rent. Please settle within 7 days.',
+    source: 'Site Owner',
+    channels: ['in-app', 'email', 'sms'],
+    status: 'sent',
+    read: false,
+    createdAt: new Date(notificationSeedTime - 2 * 60 * 60 * 1000).toISOString(),
+    targetPath: '/tenants/TN-001?tab=actions',
+  },
+  {
+    id: 'NTF-006',
+    kind: 'message',
+    title: 'Message from tenant',
+    message: 'VoltOps Ltd asked to reschedule their maintenance window.',
+    source: 'Tenant',
+    read: false,
+    createdAt: new Date(notificationSeedTime - 7 * 60 * 60 * 1000).toISOString(),
+    targetPath: '/tenants/TN-001?tab=overview',
+  },
+  {
+    id: 'NTF-007',
+    kind: 'payment',
+    title: 'Payment received',
+    message: 'GridCity Charging paid $500 via Bank Transfer.',
+    source: 'Tenant',
+    read: true,
+    createdAt: new Date(notificationSeedTime - 26 * 60 * 60 * 1000).toISOString(),
+    targetPath: '/tenants/TN-002?tab=financial',
+    metadata: { amount: '500', method: 'Bank Transfer' },
+  },
+  {
+    id: 'NTF-008',
+    kind: 'application',
+    title: 'New tenant application',
+    message: 'QuickCharge Co applied for Airport Long-Stay.',
+    source: 'Tenant',
+    read: false,
+    createdAt: new Date(notificationSeedTime - 28 * 60 * 60 * 1000).toISOString(),
+    targetPath: '/tenants?tab=applications',
+  },
+]
 
 // Helper to get auth token from request
 function getAuthToken(request: Request): string | null {
@@ -182,7 +269,7 @@ export const handlers = [
     const url = new URL(request.url)
     const status = url.searchParams.get('status')
     const orgId = url.searchParams.get('orgId')
-    
+
     let stations = mockDb.getStations().map(mapStationToAPI)
     if (status) {
       stations = stations.filter(s => s.status === status.toUpperCase())
@@ -190,7 +277,7 @@ export const handlers = [
     if (orgId) {
       stations = stations.filter(s => s.orgId === orgId)
     }
-    
+
     return HttpResponse.json(stations)
   }),
 
@@ -373,7 +460,7 @@ export const handlers = [
     const limit = parseInt(url.searchParams.get('limit') || '10')
     const status = url.searchParams.get('status')
     const stationId = url.searchParams.get('stationId')
-    
+
     let sessions = [...mockDb.getSessions()]
     if (status) {
       sessions = sessions.filter(s => s.status === status)
@@ -381,11 +468,11 @@ export const handlers = [
     if (stationId) {
       sessions = sessions.filter(s => s.stationId === stationId)
     }
-    
+
     const start = (page - 1) * limit
     const end = start + limit
     const paginated = sessions.slice(start, end)
-    
+
     const mapSession = (s: typeof mockChargingSessions[0]): ChargingSession => ({
       id: s.id,
       userId: 'u-001',
@@ -397,7 +484,7 @@ export const handlers = [
       energyDelivered: s.energyKwh,
       cost: s.amount,
     })
-    
+
     return HttpResponse.json({
       sessions: paginated.map(mapSession),
       pagination: {
@@ -406,6 +493,34 @@ export const handlers = [
         total: sessions.length,
         totalPages: Math.ceil(sessions.length / limit),
       },
+    })
+  }),
+
+  http.post(`${baseURL}/sessions/:id/stop`, async ({ params, request }) => {
+    const { mockDb } = await import('@/data/mockDb')
+    const session = mockDb.getSession(params.id as string)
+    if (!session) {
+      return HttpResponse.json({ error: 'Session not found' }, { status: 404 })
+    }
+
+    const now = new Date()
+
+    mockDb.updateSession(params.id as string, {
+      status: 'Stopped',
+      end: now,
+    })
+
+    const updated = mockDb.getSession(params.id as string)!
+    return HttpResponse.json({
+      id: updated.id,
+      userId: updated.driverId || 'u-001',
+      stationId: updated.stationId,
+      connectorId: updated.connectorId?.toString(),
+      startedAt: updated.start.toISOString(),
+      endedAt: updated.end?.toISOString(),
+      status: 'STOPPED',
+      energyDelivered: updated.energyKwh,
+      cost: updated.amount,
     })
   }),
 
@@ -714,7 +829,7 @@ export const handlers = [
     const url = new URL(request.url)
     const stationId = url.searchParams.get('stationId')
     const status = url.searchParams.get('status')
-    
+
     let chargePoints = mockDb.getChargePoints()
     if (stationId) {
       chargePoints = chargePoints.filter(cp => cp.stationId === stationId)
@@ -722,7 +837,7 @@ export const handlers = [
     if (status) {
       chargePoints = chargePoints.filter(cp => cp.status === status)
     }
-    
+
     return HttpResponse.json(chargePoints)
   }),
 
@@ -784,7 +899,7 @@ export const handlers = [
     const status = url.searchParams.get('status')
     const severity = url.searchParams.get('severity')
     const stationId = url.searchParams.get('stationId')
-    
+
     let incidents = mockDb.getIncidents()
     if (status) {
       incidents = incidents.filter(i => i.status === status)
@@ -795,7 +910,7 @@ export const handlers = [
     if (stationId) {
       incidents = incidents.filter(i => i.stationId === stationId)
     }
-    
+
     return HttpResponse.json(incidents)
   }),
 
@@ -877,7 +992,7 @@ export const handlers = [
     const status = url.searchParams.get('status')
     const priority = url.searchParams.get('priority')
     const stationId = url.searchParams.get('stationId')
-    
+
     let dispatches = mockDb.getDispatches()
     if (status) {
       dispatches = dispatches.filter(d => d.status === status)
@@ -888,7 +1003,7 @@ export const handlers = [
     if (stationId) {
       dispatches = dispatches.filter(d => d.stationId === stationId)
     }
-    
+
     return HttpResponse.json(dispatches)
   }),
 
@@ -966,12 +1081,12 @@ export const handlers = [
     const { mockDb } = await import('@/data/mockDb')
     const url = new URL(request.url)
     const active = url.searchParams.get('active')
-    
+
     let tariffs = mockDb.getTariffs()
     if (active !== null) {
       tariffs = tariffs.filter(t => t.active === (active === 'true'))
     }
-    
+
     return HttpResponse.json(tariffs)
   }),
 
@@ -1081,86 +1196,56 @@ export const handlers = [
 
   // Billing endpoints
   http.get(`${baseURL}/billing/invoices`, async ({ request }) => {
-    // Return mock invoices
-    const mockInvoices = [
-      {
-        id: 'INV-2024-0012',
-        type: 'Usage',
-        org: 'Volt Mobility Ltd',
-        amount: 12450.00,
-        currency: 'USD',
-        status: 'Paid',
-        issuedAt: '2024-12-01',
-        dueAt: '2024-12-15',
-        paidAt: '2024-12-10',
-        description: 'November 2024 Usage - 4,532 sessions',
-      },
-    ]
-    return HttpResponse.json(mockInvoices)
+    const { mockDb } = await import('@/data/mockDb')
+    const url = new URL(request.url)
+    const typeFilter = url.searchParams.get('type')
+    const statusFilter = url.searchParams.get('status')
+
+    let invoices = mockDb.getInvoices()
+    if (typeFilter) invoices = invoices.filter(i => i.type === typeFilter)
+    if (statusFilter) invoices = invoices.filter(i => i.status === statusFilter)
+
+    return HttpResponse.json(invoices)
   }),
 
   http.get(`${baseURL}/billing/invoices/:id`, async ({ params }) => {
-    // Return mock invoice detail
-    const invoice = {
-      id: params.id,
-      type: 'Usage',
-      org: 'Volt Mobility Ltd',
-      amount: 12450.00,
-      currency: 'USD',
-      status: 'Paid',
-      issuedAt: '2024-12-01',
-      dueAt: '2024-12-15',
-      paidAt: '2024-12-10',
-      description: 'November 2024 Usage - 4,532 sessions',
-      lineItems: [
-        { description: 'Charging Sessions', quantity: 4532, unitPrice: 2.75, total: 12463.00 },
-      ],
+    const { mockDb } = await import('@/data/mockDb')
+    const invoice = mockDb.getInvoice(params.id as string)
+    if (!invoice) {
+      return HttpResponse.json({ error: 'Invoice not found' }, { status: 404 })
     }
     return HttpResponse.json(invoice)
   }),
 
   http.post(`${baseURL}/billing/invoices/generate`, async ({ request }) => {
+    const { mockDb } = await import('@/data/mockDb')
     const body = await request.json() as any
+    const user = getCurrentUser()
+
     const newInvoice = {
       id: `INV-${Date.now()}`,
-      type: body.type,
-      org: 'Organization',
-      amount: 1000.00,
+      type: body.type || 'Usage',
+      org: body.organizationId || (user as any)?.organizationId || 'Unknown Org',
+      amount: Math.random() * 5000 + 500,
       currency: 'USD',
-      status: 'Pending',
+      status: 'Pending' as const,
       issuedAt: new Date().toISOString().split('T')[0],
-      dueAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      description: body.description || 'Generated invoice',
+      dueAt: new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0],
+      description: body.description || `Generated ${body.type} invoice for period`,
+      lineItems: [
+        {
+          description: 'Platform Usage Fee',
+          quantity: 1,
+          unitPrice: 500,
+          total: 500
+        }
+      ]
     }
+
+    mockDb.addInvoice(newInvoice)
     return HttpResponse.json(newInvoice, { status: 201 })
   }),
 
-  // Stop session endpoint
-  http.post(`${baseURL}/sessions/:id/stop`, async ({ params, request }) => {
-    const { mockDb } = await import('@/data/mockDb')
-    const session = mockDb.getSession(params.id as string)
-    if (!session) {
-      return HttpResponse.json({ error: 'Session not found' }, { status: 404 })
-    }
-    const body = await request.json() as any
-    mockDb.updateSession(params.id as string, {
-      status: 'Cancelled',
-      end: new Date(),
-    })
-    const updated = mockDb.getSession(params.id as string)
-    // Map to API format
-    return HttpResponse.json({
-      id: updated!.id,
-      userId: updated!.driverId || 'u-001',
-      stationId: updated!.stationId,
-      connectorId: updated!.connectorId?.toString(),
-      startedAt: updated!.start.toISOString(),
-      endedAt: updated!.end?.toISOString(),
-      status: 'STOPPED',
-      energyDelivered: updated!.energyKwh,
-      cost: updated!.amount,
-    })
-  }),
 
   // Site Owner - Sites endpoints
   http.get(`${baseURL}/sites`, async () => {
@@ -1181,7 +1266,7 @@ export const handlers = [
   http.get(`${baseURL}/tenants`, async ({ request }: { request: any }) => {
     const url = new URL(request.url)
     const status = url.searchParams.get('status')
-    
+
     const mockTenants: Tenant[] = [
       {
         id: 'TN-001',
@@ -1249,7 +1334,7 @@ export const handlers = [
     if (status === 'pending' || status === 'Pending') {
       return HttpResponse.json(mockApplications)
     }
-    
+
     return HttpResponse.json(mockTenants.filter(t => !status || t.status === status))
   }),
 
@@ -1314,13 +1399,26 @@ export const handlers = [
       sentAt: new Date().toISOString(),
       createdAt: new Date().toISOString(),
     }
+    const newNotification: NotificationItem = {
+      id: `NTF-${Date.now()}`,
+      kind: 'notice',
+      title: 'Notice sent',
+      message: `To ${notice.tenantName}: ${notice.message}`,
+      source: 'Site Owner',
+      read: false,
+      createdAt: notice.sentAt || notice.createdAt,
+      channels: notice.channels,
+      status: notice.status,
+      targetPath: `/tenants/${notice.tenantId}?tab=actions`,
+    }
+    mockNotifications = [newNotification, ...mockNotifications]
     return HttpResponse.json(notice, { status: 201 })
   }),
 
   http.get(`${baseURL}/notices`, async ({ request }: { request: any }) => {
     const url = new URL(request.url)
     const tenantId = url.searchParams.get('tenantId')
-    
+
     const notices: Notice[] = [
       {
         id: 'NOTICE-001',
@@ -1334,9 +1432,14 @@ export const handlers = [
         createdAt: new Date(Date.now() - 86400000).toISOString(),
       },
     ]
-    
+
     const filtered = tenantId ? notices.filter(n => n.tenantId === tenantId) : notices
     return HttpResponse.json(filtered)
+  }),
+
+  // Notifications endpoints
+  http.get(`${baseURL}/notifications`, async () => {
+    return HttpResponse.json(mockNotifications)
   }),
 
   // Payment Method endpoints
