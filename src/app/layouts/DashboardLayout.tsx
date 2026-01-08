@@ -4,7 +4,12 @@ import { Header } from '@/ui/components/Header'
 import { useAuthStore } from '@/core/auth/authStore'
 import clsx from 'clsx'
 
-export function DashboardLayout({ children, pageTitle }: PropsWithChildren<{ pageTitle: string }>) {
+type DashboardLayoutProps = PropsWithChildren<{
+  pageTitle: string
+  contentClassName?: string
+}>
+
+export function DashboardLayout({ children, pageTitle, contentClassName }: DashboardLayoutProps) {
   const { user } = useAuthStore()
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
 
@@ -46,7 +51,7 @@ export function DashboardLayout({ children, pageTitle }: PropsWithChildren<{ pag
           title={pageTitle}
           onMenuClick={() => setIsSidebarOpen(true)}
         />
-        <main className="flex-1 p-4 lg:p-7 overflow-y-auto bg-bg">
+        <main className={clsx("flex-1 p-4 lg:p-7 overflow-y-auto bg-bg", contentClassName)}>
           {children}
         </main>
       </div>

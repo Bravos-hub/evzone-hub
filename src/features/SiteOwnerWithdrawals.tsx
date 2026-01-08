@@ -3,6 +3,7 @@ import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { useWalletBalance, usePaymentMethods, useWithdrawalHistory, useDeletePaymentMethod, useSetDefaultPaymentMethod } from '@/core/api/hooks/useWithdrawals'
 import { WithdrawalModal } from '@/modals/WithdrawalModal'
 import { PaymentMethodModal } from '@/modals/PaymentMethodModal'
+import { PaymentMethodCard } from '@/ui/components/PaymentMethodCard'
 import { getErrorMessage } from '@/core/api/errors'
 import type { PaymentMethod, WithdrawalTransaction } from '@/core/api/types'
 
@@ -57,20 +58,6 @@ export function SiteOwnerWithdrawals() {
     }
   }
 
-  const getMethodIcon = (type: string) => {
-    switch (type) {
-      case 'bank':
-        return '🏦'
-      case 'mobile':
-        return '📱'
-      case 'wallet':
-        return '💳'
-      case 'card':
-        return '💳'
-      default:
-        return '💰'
-    }
-  }
 
   return (
     <DashboardLayout pageTitle="Withdrawals">
@@ -149,77 +136,16 @@ export function SiteOwnerWithdrawals() {
             ) : (
               <div className="grid md:grid-cols-2 gap-4">
                 {paymentMethods.map((method) => (
-                  <div
+                  <PaymentMethodCard
                     key={method.id}
-                    className="p-4 border border-border-light rounded-lg hover:border-accent transition-colors"
-                  >
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center gap-3">
-                        <span className="text-2xl">{getMethodIcon(method.type)}</span>
-                        <div>
-                          <div className="font-semibold">{method.label}</div>
-                          <div className="text-sm text-muted capitalize">{method.type}</div>
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        {method.isDefault && (
-                          <span className="pill approved text-xs">Default</span>
-                        )}
-                        {!method.isVerified && (
-                          <span className="pill bg-warning/20 text-warning text-xs">Unverified</span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="text-sm text-muted mb-3">
-                      {method.type === 'bank' && (
-                        <>
-                          {method.bankName} • {method.accountNumber}
-                        </>
-                      )}
-                      {method.type === 'mobile' && (
-                        <>
-                          {method.provider} • {method.phoneNumber}
-                        </>
-                      )}
-                      {method.type === 'wallet' && (
-                        <>
-                          {method.walletType} • {method.walletAddress?.slice(0, 10)}...
-                        </>
-                      )}
-                      {method.type === 'card' && (
-                        <>
-                          {method.cardBrand} • ****{method.cardLast4} • {method.cardExpiry}
-                        </>
-                      )}
-                    </div>
-                    <div className="flex gap-2">
-                      {!method.isDefault && (
-                        <button
-                          onClick={() => handleSetDefault(method.id)}
-                          className="btn secondary text-xs"
-                          disabled={setDefaultMutation.isPending}
-                        >
-                          Set Default
-                        </button>
-                      )}
-                      <button
-                        onClick={() => {
-                          setEditingMethod(method)
-                          setShowAddMethodModal(true)
-                        }}
-                        className="btn secondary text-xs"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDeleteMethod(method.id)}
-                        className="btn secondary text-xs text-danger hover:bg-danger/10"
-                        disabled={deleteMethodMutation.isPending}
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
+                    method={method}
+                    onEdit={() => {
+                      setEditingMethod(method)
+                      setShowAddMethodModal(true)
+                    }}
+                    onDelete={() => handleDeleteMethod(method.id)}
+                    onSetDefault={!method.isDefault ? () => handleSetDefault(method.id) : undefined}
+                  />
                 ))}
               </div>
             )}

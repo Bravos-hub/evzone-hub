@@ -31,9 +31,10 @@ interface AddSiteProps {
     onCancel?: () => void
     isOnboarding?: boolean
     isFirstSite?: boolean
+    fullBleed?: boolean
 }
 
-export function AddSite({ onSuccess, onCancel, isOnboarding = false, isFirstSite = false }: AddSiteProps) {
+export function AddSite({ onSuccess, onCancel, isOnboarding = false, isFirstSite = false, fullBleed = false }: AddSiteProps) {
     const [form, setForm] = useState<SiteForm>({
         name: '',
         address: '',
@@ -125,8 +126,14 @@ export function AddSite({ onSuccess, onCancel, isOnboarding = false, isFirstSite
         if (onSuccess) onSuccess(form)
     }
 
+    const wrapperClassName = isOnboarding
+        ? ''
+        : fullBleed
+            ? 'bg-surface min-h-full w-full p-6 sm:p-8 lg:p-10'
+            : 'bg-surface rounded-2xl border border-border p-8 shadow-lg'
+
     return (
-        <div className={`${isOnboarding ? '' : 'bg-surface rounded-2xl border border-border p-8 shadow-lg'}`}>
+        <div className={wrapperClassName}>
             <div className="mb-6">
                 <div className="flex items-center gap-3 mb-2">
                     <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-accent text-white shadow-sm">

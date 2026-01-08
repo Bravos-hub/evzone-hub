@@ -1,14 +1,18 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { useAuthStore } from '@/core/auth/authStore'
 import { getPermissionsForFeature } from '@/constants/permissions'
+import { PATHS } from '@/app/router/paths'
 
 /**
  * Earnings Page - Owner/Site Owner feature
  */
 export function Earnings() {
   const { user } = useAuthStore()
+  const navigate = useNavigate()
   const perms = getPermissionsForFeature(user?.role, 'earnings')
+  const isSiteOwner = user?.role === 'SITE_OWNER'
 
   const [period, setPeriod] = useState<'day' | 'week' | 'month' | 'year'>('month')
 
@@ -27,17 +31,27 @@ export function Earnings() {
 
   return (
     <DashboardLayout pageTitle="Earnings">
-      {/* Period Selector */}
-      <div className="flex gap-2 mb-4">
-        {(['day', 'week', 'month', 'year'] as const).map((p) => (
+      {/* Header with Period Selector and Withdraw Button */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex gap-2">
+          {(['day', 'week', 'month', 'year'] as const).map((p) => (
+            <button
+              key={p}
+              className={`px-4 py-2 rounded-lg text-sm font-medium ${period === p ? 'bg-accent text-white' : 'bg-panel border border-border-light text-muted hover:text-text'}`}
+              onClick={() => setPeriod(p)}
+            >
+              {p.charAt(0).toUpperCase() + p.slice(1)}
+            </button>
+          ))}
+        </div>
+        {isSiteOwner && (
           <button
-            key={p}
-            className={`px-4 py-2 rounded-lg text-sm font-medium ${period === p ? 'bg-accent text-white' : 'bg-panel border border-border-light text-muted hover:text-text'}`}
-            onClick={() => setPeriod(p)}
+            onClick={() => navigate(PATHS.SITE_OWNER.WITHDRAWALS)}
+            className="btn"
           >
-            {p.charAt(0).toUpperCase() + p.slice(1)}
+            Withdraw Funds
           </button>
-        ))}
+        )}
       </div>
 
       {/* Summary */}

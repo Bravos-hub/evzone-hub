@@ -66,7 +66,7 @@ export function Sites() {
   if (sites.length === 0 || isAdding) {
     return (
       <DashboardLayout pageTitle={sites.length === 0 ? 'Welcome to EVzone' : 'Add New Site'}>
-        <div className="max-w-3xl mx-auto">
+        <div className="w-full">
           <AddSite
             onSuccess={handleAddSite}
             onCancel={sites.length > 0 ? () => setIsAdding(false) : undefined}
@@ -163,4 +163,3 @@ export function Sites() {
     </DashboardLayout>
   )
 }
-

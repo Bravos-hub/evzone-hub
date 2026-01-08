@@ -79,11 +79,14 @@ export function SiteOwnerSites() {
 
   if (isAdding) {
     return (
-      <DashboardLayout pageTitle="Add New Site">
-        <AddSite
-          onSuccess={handleAddSite}
-          onCancel={() => setIsAdding(false)}
-        />
+      <DashboardLayout pageTitle="Add New Site" contentClassName="p-0 bg-surface">
+        <div className="h-full">
+          <AddSite
+            onSuccess={handleAddSite}
+            onCancel={() => setIsAdding(false)}
+            fullBleed
+          />
+        </div>
         {errorMessage && (
           <div className="mt-4 p-3 bg-danger/10 text-danger rounded-lg text-sm">
             {errorMessage}

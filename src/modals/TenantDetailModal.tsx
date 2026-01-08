@@ -1,40 +1,54 @@
 import { useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { useTenant, useTenantContract } from '@/core/api/hooks/useTenants'
 import { useSendNotice } from '@/core/api/hooks/useNotices'
-import { SendNoticeModal } from '@/modals/SendNoticeModal'
+import { SendNoticeModal } from './SendNoticeModal'
 import { FinancialStatusCard } from '@/ui/components/FinancialStatusCard'
 import { getErrorMessage } from '@/core/api/errors'
 import type { Tenant, LeaseContract } from '@/core/api/types'
 
+interface TenantDetailModalProps {
+  tenantId: string
+  onClose: () => void
+}
+
 type Tab = 'overview' | 'financial' | 'contract' | 'actions'
 
-export function TenantDetail() {
-  const { id } = useParams<{ id: string }>()
-  const navigate = useNavigate()
+/**
+ * TenantDetailModal
+ * Modal version of tenant detail (alternative to separate page)
+ * Reusable component for viewing tenant information
+ */
+export function TenantDetailModal({ tenantId, onClose }: TenantDetailModalProps) {
   const [activeTab, setActiveTab] = useState<Tab>('overview')
   const [showNoticeModal, setShowNoticeModal] = useState(false)
 
-  const { data: tenant, isLoading, error } = useTenant(id || '')
-  const { data: contract, isLoading: contractLoading } = useTenantContract(id || '')
+  const { data: tenant, isLoading, error } = useTenant(tenantId)
+  const { data: contract, isLoading: contractLoading } = useTenantContract(tenantId)
   const sendNoticeMutation = useSendNotice()
 
   if (isLoading) {
     return (
-      <DashboardLayout pageTitle="Tenant Details">
-        <div className="text-center py-8 text-muted">Loading tenant details...</div>
-      </DashboardLayout>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+        <div className="bg-panel border border-border-light rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+          <div className="p-6">
+            <div className="text-center py-8 text-muted">Loading tenant details...</div>
+          </div>
+        </div>
+      </div>
     )
   }
 
   if (error || !tenant) {
     return (
-      <DashboardLayout pageTitle="Tenant Details">
-        <div className="p-4 bg-danger/10 text-danger rounded-lg">
-          {error ? getErrorMessage(error) : 'Tenant not found'}
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+        <div className="bg-panel border border-border-light rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+          <div className="p-6">
+            <div className="p-4 bg-danger/10 text-danger rounded-lg">
+              {error ? getErrorMessage(error) : 'Tenant not found'}
+            </div>
+          </div>
         </div>
-      </DashboardLayout>
+      </div>
     )
   }
 
@@ -46,49 +60,57 @@ export function TenantDetail() {
   ]
 
   return (
-    <DashboardLayout pageTitle={`Tenant: ${tenant.name}`}>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">{tenant.name}</h1>
-            <p className="text-muted">{tenant.type} • {tenant.siteName}</p>
-          </div>
-          <button className="btn secondary" onClick={() => navigate(-1)}>
-            Back
-          </button>
-        </div>
-
-        {/* Tabs */}
-        <div className="border-b border-border">
-          <div className="flex gap-4">
-            {tabs.map((tab) => (
+    <>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+        <div className="bg-panel border border-border-light rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+          <div className="p-6 border-b border-border-light sticky top-0 bg-panel z-10">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-semibold">{tenant.name}</h2>
+                <p className="text-muted">{tenant.type} • {tenant.siteName}</p>
+              </div>
               <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`pb-3 px-1 border-b-2 transition-colors ${
-                  activeTab === tab.id
-                    ? 'border-accent text-accent font-medium'
-                    : 'border-transparent text-muted hover:text-text'
-                }`}
+                onClick={onClose}
+                className="text-muted hover:text-text transition-colors"
               >
-                {tab.label}
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </button>
-            ))}
+            </div>
           </div>
-        </div>
 
-        {/* Tab Content */}
-        <div className="card">
-          {activeTab === 'overview' && <OverviewTab tenant={tenant} />}
-          {activeTab === 'financial' && <FinancialTab tenant={tenant} />}
-          {activeTab === 'contract' && <ContractTab contract={contract} isLoading={contractLoading} />}
-          {activeTab === 'actions' && (
-            <ActionsTab
-              tenant={tenant}
-              onSendNotice={() => setShowNoticeModal(true)}
-            />
-          )}
+          {/* Tabs */}
+          <div className="border-b border-border-light px-6">
+            <div className="flex gap-4">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`pb-3 px-1 border-b-2 transition-colors ${
+                    activeTab === tab.id
+                      ? 'border-accent text-accent font-medium'
+                      : 'border-transparent text-muted hover:text-text'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Tab Content */}
+          <div className="p-6">
+            {activeTab === 'overview' && <OverviewTab tenant={tenant} />}
+            {activeTab === 'financial' && <FinancialTab tenant={tenant} />}
+            {activeTab === 'contract' && <ContractTab contract={contract} isLoading={contractLoading} />}
+            {activeTab === 'actions' && (
+              <ActionsTab
+                tenant={tenant}
+                onSendNotice={() => setShowNoticeModal(true)}
+              />
+            )}
+          </div>
         </div>
       </div>
 
@@ -103,7 +125,7 @@ export function TenantDetail() {
           }}
         />
       )}
-    </DashboardLayout>
+    </>
   )
 }
 
