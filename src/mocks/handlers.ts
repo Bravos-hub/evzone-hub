@@ -1286,122 +1286,141 @@ export const handlers = [
     const url = new URL(request.url)
     const status = url.searchParams.get('status')
 
-    const mockTenants: Tenant[] = [
-      {
-        id: 'TN-001',
-        name: 'VoltOps Ltd',
-        type: 'Operator',
-        siteId: 'ST-0001',
-        siteName: 'City Mall Roof',
-        model: 'Revenue Share',
-        terms: '15%',
-        startDate: '2024-06-01',
-        status: 'Active',
-        earnings: 4520,
-        outstandingDebt: 0,
-        totalPaid: 4520,
-        overduePayments: [],
-        nextPaymentDue: { date: '2024-12-01', amount: 750 },
-        paymentHistory: [
-          { id: 'PH-001', amount: 750, date: '2024-11-01', method: 'Bank Transfer', reference: 'REF-001', status: 'completed' },
-          { id: 'PH-002', amount: 750, date: '2024-10-01', method: 'Bank Transfer', reference: 'REF-002', status: 'completed' },
-        ],
-        email: 'contact@voltops.com',
-        phone: '+1000000001',
-      },
-      {
-        id: 'TN-002',
-        name: 'GridCity Charging',
-        type: 'Owner',
-        siteId: 'ST-0001',
-        siteName: 'City Mall Roof',
-        model: 'Fixed Rent',
-        terms: '$500/mo',
-        startDate: '2024-08-15',
-        status: 'Active',
-        earnings: 1500,
-        outstandingDebt: 500,
-        totalPaid: 1000,
-        overduePayments: [
-          { id: 'OD-001', amount: 500, dueDate: '2024-11-15', daysOverdue: 15, description: 'November rent' },
-        ],
-        nextPaymentDue: { date: '2024-12-15', amount: 500 },
-        paymentHistory: [
-          { id: 'PH-003', amount: 500, date: '2024-10-15', method: 'Bank Transfer', reference: 'REF-003', status: 'completed' },
-        ],
-        email: 'info@gridcity.com',
-      },
-    ]
+    const { mockDb } = await import('@/data/mockDb')
 
-    const mockApplications: TenantApplication[] = [
-      {
-        id: 'APP-001',
-        applicantId: 'u-005',
-        applicantName: 'QuickCharge Co',
-        organizationId: 'org-003',
-        organizationName: 'QuickCharge Co',
-        siteId: 'ST-0002',
-        siteName: 'Airport Long-Stay',
-        status: 'Pending',
-        proposedRent: 800,
-        proposedTerm: 12,
-        message: 'Interested in leasing this site for our charging network expansion.',
-        createdAt: new Date(Date.now() - 86400000).toISOString(),
-      },
-    ]
+    // Initialize if empty
+    if (mockDb.getTenants().length === 0) {
+      const initialTenants: Tenant[] = [
+        {
+          id: 'TN-001',
+          name: 'VoltOps Ltd',
+          type: 'Operator',
+          siteId: 'ST-0001',
+          siteName: 'City Mall Roof',
+          model: 'Revenue Share',
+          terms: '15%',
+          startDate: '2024-06-01',
+          status: 'Active',
+          earnings: 4520,
+          outstandingDebt: 0,
+          totalPaid: 4520,
+          overduePayments: [],
+          nextPaymentDue: { date: '2024-12-01', amount: 750 },
+          paymentHistory: [
+            { id: 'PH-001', amount: 750, date: '2024-11-01', method: 'Bank Transfer', reference: 'REF-001', status: 'completed' },
+            { id: 'PH-002', amount: 750, date: '2024-10-01', method: 'Bank Transfer', reference: 'REF-002', status: 'completed' },
+          ],
+          email: 'contact@voltops.com',
+          phone: '+1000000001',
+        },
+        {
+          id: 'TN-002',
+          name: 'GridCity Charging',
+          type: 'Owner',
+          siteId: 'ST-0001',
+          siteName: 'City Mall Roof',
+          model: 'Fixed Rent',
+          terms: '$500/mo',
+          startDate: '2024-08-15',
+          status: 'Active',
+          earnings: 1500,
+          outstandingDebt: 500,
+          totalPaid: 1000,
+          overduePayments: [
+            { id: 'OD-001', amount: 500, dueDate: '2024-11-15', daysOverdue: 15, description: 'November rent' },
+          ],
+          nextPaymentDue: { date: '2024-12-15', amount: 500 },
+          paymentHistory: [
+            { id: 'PH-003', amount: 500, date: '2024-10-15', method: 'Bank Transfer', reference: 'REF-003', status: 'completed' },
+          ],
+          email: 'info@gridcity.com',
+        },
+      ]
+      mockDb.setTenants(initialTenants)
+    }
+
+    if (mockDb.getApplications().length === 0) {
+      const initialApplications: TenantApplication[] = [
+        {
+          id: 'APP-001',
+          applicantId: 'u-005',
+          applicantName: 'QuickCharge Co',
+          organizationId: 'org-003',
+          organizationName: 'QuickCharge Co',
+          siteId: 'ST-0002',
+          siteName: 'Airport Long-Stay',
+          status: 'Pending',
+          proposedRent: 800,
+          proposedTerm: 12,
+          message: 'Interested in leasing this site for our charging network expansion.',
+          createdAt: new Date(Date.now() - 86400000).toISOString(),
+        },
+      ]
+      mockDb.setApplications(initialApplications)
+    }
 
     if (status === 'pending' || status === 'Pending') {
-      return HttpResponse.json(mockApplications)
+      return HttpResponse.json(mockDb.getApplications())
     }
 
-    return HttpResponse.json(mockTenants.filter(t => !status || t.status === status))
+    return HttpResponse.json(mockDb.getTenants().filter(t => !status || t.status === status))
   }),
 
-  http.get(`${baseURL}/tenants/:id`, async ({ params }: { params: any }) => {
-    const mockTenant: Tenant = {
-      id: params.id,
-      name: 'VoltOps Ltd',
-      type: 'Operator',
-      siteId: 'ST-0001',
-      siteName: 'City Mall Roof',
-      model: 'Revenue Share',
-      terms: '15%',
-      startDate: '2024-06-01',
-      status: 'Active',
-      earnings: 4520,
-      outstandingDebt: 0,
-      totalPaid: 4520,
-      overduePayments: [],
-      nextPaymentDue: { date: '2024-12-01', amount: 750 },
-      paymentHistory: [
-        { id: 'PH-001', amount: 750, date: '2024-11-01', method: 'Bank Transfer', reference: 'REF-001', status: 'completed' },
-        { id: 'PH-002', amount: 750, date: '2024-10-01', method: 'Bank Transfer', reference: 'REF-002', status: 'completed' },
-      ],
-      email: 'contact@voltops.com',
-      phone: '+1000000001',
+  http.get(`${baseURL}/tenants/:id`, async ({ params }) => {
+    const tenantTarget = mockDb.getTenant(params.id as string)
+    if (!tenantTarget) {
+      return HttpResponse.json({ error: 'Tenant not found' }, { status: 404 })
     }
-    return HttpResponse.json(mockTenant)
+    return HttpResponse.json(tenantTarget)
   }),
 
-  http.get(`${baseURL}/tenants/:id/contract`, async ({ params }: { params: any }) => {
-    const contract: LeaseContract = {
-      id: 'LEASE-001',
-      siteId: 'ST-0001',
-      tenantId: params.id,
-      tenantName: 'VoltOps Ltd',
-      organizationId: 'org-001',
-      status: 'Active',
-      startDate: '2024-06-01',
-      endDate: '2025-06-01',
-      rent: 750,
-      currency: 'USD',
-      paymentSchedule: 'Monthly',
-      autoRenew: true,
-      model: 'Revenue Share',
-      terms: '15% of revenue',
-      stationIds: ['ST-0001'],
+  http.get(`${baseURL}/tenants/:id/contract`, async ({ params }) => {
+    // Initialize if empty
+    if (mockDb.getContract(params.id as string) === undefined) {
+      const initialContracts: LeaseContract[] = [
+        {
+          id: 'LEASE-001',
+          siteId: 'ST-0001',
+          tenantId: 'TN-001',
+          tenantName: 'VoltOps Ltd',
+          organizationId: 'org-001',
+          status: 'Active',
+          startDate: '2024-06-01',
+          endDate: '2025-06-01',
+          rent: 750,
+          currency: 'USD',
+          paymentSchedule: 'Monthly',
+          autoRenew: true,
+          model: 'Revenue Share',
+          terms: '15% of revenue',
+          stationIds: ['ST-0001'],
+        },
+        {
+          id: 'LEASE-002',
+          siteId: 'ST-0001',
+          tenantId: 'TN-002',
+          tenantName: 'GridCity Charging',
+          organizationId: 'org-002',
+          status: 'Active',
+          startDate: '2024-08-15',
+          endDate: '2025-08-15',
+          rent: 500,
+          currency: 'USD',
+          paymentSchedule: 'Monthly',
+          autoRenew: true,
+          model: 'Fixed Rent',
+          terms: '$500/mo flat fee',
+          stationIds: ['ST-0001'],
+        },
+      ]
+      mockDb.setContracts(initialContracts)
     }
-    return HttpResponse.json(contract)
+
+    const contractResult = mockDb.getContract(params.id as string)
+    if (!contractResult) {
+      return HttpResponse.json({ error: 'Contract not found' }, { status: 404 })
+    }
+    return HttpResponse.json(contractResult)
   }),
 
   // Notice endpoints

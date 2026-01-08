@@ -14,6 +14,11 @@ import type {
   Invoice,
   ParkingBay
 } from '@/core/types/domain'
+import type {
+  Tenant,
+  TenantApplication,
+  LeaseContract
+} from '@/core/api/types'
 import { mockChargingSessions } from './sessions'
 import { mockUsers } from './users'
 
@@ -321,6 +326,9 @@ export interface MockDatabase {
   users: User[]
   invoices: Invoice[]
   parkingBays: ParkingBay[]
+  tenants: Tenant[]
+  applications: TenantApplication[]
+  contracts: LeaseContract[]
 }
 
 // Load from localStorage or use initial data
@@ -372,6 +380,9 @@ function loadDatabase(): MockDatabase {
         })) || mockUsers,
         invoices: parsed.invoices || initialInvoices,
         parkingBays: parsed.parkingBays || [],
+        tenants: parsed.tenants || [],
+        applications: parsed.applications || [],
+        contracts: parsed.contracts || [],
       }
     } catch (e) {
       console.error('Failed to parse stored database:', e)
@@ -391,6 +402,9 @@ function loadDatabase(): MockDatabase {
     users: mockUsers,
     invoices: initialInvoices,
     parkingBays: [],
+    tenants: [],
+    applications: [],
+    contracts: [],
   }
 }
 
@@ -438,6 +452,9 @@ function saveDatabase(db: MockDatabase): void {
       })),
       invoices: db.invoices,
       parkingBays: db.parkingBays,
+      tenants: db.tenants,
+      applications: db.applications,
+      contracts: db.contracts,
     }
     localStorage.setItem('evzone:mockDb', JSON.stringify(serializable))
   } catch (e) {
@@ -631,6 +648,24 @@ export const mockDb = {
   },
   deleteParkingBay: (id: string) => {
     db.parkingBays = db.parkingBays.filter(b => b.id !== id)
+    saveDatabase(db)
+  },
+
+  // Tenants & Applications
+  getTenants: () => db.tenants,
+  getTenant: (id: string) => db.tenants.find(t => t.id === id),
+  getApplications: () => db.applications,
+  getContract: (tenantId: string) => db.contracts.find(c => c.tenantId === tenantId),
+  setTenants: (tenants: Tenant[]) => {
+    db.tenants = tenants
+    saveDatabase(db)
+  },
+  setApplications: (apps: TenantApplication[]) => {
+    db.applications = apps
+    saveDatabase(db)
+  },
+  setContracts: (contracts: LeaseContract[]) => {
+    db.contracts = contracts
     saveDatabase(db)
   },
 }

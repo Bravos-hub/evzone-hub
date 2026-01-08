@@ -74,9 +74,9 @@ export function SendNoticeModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-panel border border-border-light rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="p-6 border-b border-border-light">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 sm:p-6">
+      <div className="bg-panel border border-border-light rounded-2xl shadow-2xl w-full max-w-2xl max-h-full overflow-hidden flex flex-col scale-in">
+        <div className="p-5 sm:p-6 border-b border-border-light flex-shrink-0">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold">Send Notice to {tenantName}</h2>
             <button
@@ -90,7 +90,7 @@ export function SendNoticeModal({
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        <form onSubmit={handleSubmit} className="p-5 sm:p-6 space-y-5 overflow-y-auto flex-1 custom-scrollbar">
           {error && (
             <div className="p-3 bg-danger/10 text-danger rounded-lg text-sm">
               {error}
@@ -118,8 +118,8 @@ export function SendNoticeModal({
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               placeholder="Enter your message..."
-              rows={8}
-              className="input w-full resize-none"
+              rows={window.innerHeight < 700 ? 4 : 8}
+              className="input w-full resize-none text-sm sm:text-base"
               required
             />
             <button
@@ -155,7 +155,7 @@ export function SendNoticeModal({
           </div>
 
           {/* Actions */}
-          <div className="flex gap-3 justify-end pt-4 border-t border-border-light">
+          <div className="flex gap-3 justify-end pt-5 border-t border-border-light flex-shrink-0 mt-auto">
             <button
               type="button"
               onClick={onClose}
