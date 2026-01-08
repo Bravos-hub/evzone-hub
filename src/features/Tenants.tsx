@@ -92,7 +92,7 @@ export function Tenants() {
         {/* View Mode Tabs */}
         <div className="flex gap-2 border-b border-border">
           <button
-            onClick={() => setViewMode('tenants')}
+            onClick={() => updateTab('tenants')}
             className={`pb-3 px-4 border-b-2 transition-colors ${
               viewMode === 'tenants'
                 ? 'border-accent text-accent font-medium'
@@ -102,7 +102,7 @@ export function Tenants() {
             Active Tenants
           </button>
           <button
-            onClick={() => setViewMode('applications')}
+            onClick={() => updateTab('applications')}
             className={`pb-3 px-4 border-b-2 transition-colors ${
               viewMode === 'applications'
                 ? 'border-accent text-accent font-medium'

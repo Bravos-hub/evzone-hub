@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { useTenant, useTenantContract } from '@/core/api/hooks/useTenants'
 import { useSendNotice } from '@/core/api/hooks/useNotices'
@@ -13,7 +13,14 @@ type Tab = 'overview' | 'financial' | 'contract' | 'actions'
 export function TenantDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const [activeTab, setActiveTab] = useState<Tab>('overview')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const resolveTab = (value: string | null): Tab => {
+    if (value === 'financial' || value === 'contract' || value === 'actions') {
+      return value
+    }
+    return 'overview'
+  }
+  const [activeTab, setActiveTab] = useState<Tab>(resolveTab(searchParams.get('tab')))
   const [showNoticeModal, setShowNoticeModal] = useState(false)
 
   const { data: tenant, isLoading, error } = useTenant(id || '')
@@ -65,7 +72,12 @@ export function TenantDetail() {
             {tabs.map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => {
+                  setActiveTab(tab.id)
+                  const next = new URLSearchParams(searchParams)
+                  next.set('tab', tab.id)
+                  setSearchParams(next, { replace: true })
+                }}
                 className={`pb-3 px-1 border-b-2 transition-colors ${
                   activeTab === tab.id
                     ? 'border-accent text-accent font-medium'
