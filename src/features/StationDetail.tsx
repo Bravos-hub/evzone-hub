@@ -6,13 +6,24 @@ import { useStationSessions } from '@/core/api/hooks/useSessions'
 import { PATHS } from '@/app/router/paths'
 import { StationStatusPill } from '@/ui/components/StationStatusPill'
 import { getErrorMessage } from '@/core/api/errors'
+import { useMe } from '@/core/api/hooks/useAuth'
+import { ROLE_GROUPS, isInGroup } from '@/constants/roles'
+import { useMemo } from 'react'
 
 export function StationDetail() {
   const { id } = useParams<{ id: string }>()
+  const nav = useNavigate()
 
   const { data: station, isLoading: stationLoading, error: stationError } = useStation(id || '')
   const { data: chargePoints, isLoading: chargePointsLoading } = useChargePointsByStation(id || '')
   const { data: sessionsData, isLoading: sessionsLoading } = useStationSessions(id || '', false)
+  const { data: user } = useMe()
+
+  const canManage = useMemo(() => {
+    if (!user) return false
+    return isInGroup(user.role, ROLE_GROUPS.PLATFORM_ADMINS) ||
+      isInGroup(user.role, ROLE_GROUPS.STATION_MANAGERS)
+  }, [user])
 
   if (stationLoading) {
     return (
@@ -134,7 +145,16 @@ export function StationDetail() {
                     <td><StationStatusPill status={cp.status} /></td>
                     <td>{cp.connectors.length}</td>
                     <td className="text-right">
-                      <button className="btn secondary text-xs">View</button>
+                      {canManage ? (
+                        <button
+                          className="btn secondary text-xs font-bold"
+                          onClick={() => nav(PATHS.STATIONS.CHARGE_POINT_DETAIL(cp.id))}
+                        >
+                          Manage
+                        </button>
+                      ) : (
+                        <button className="btn secondary text-xs">View</button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -176,11 +196,10 @@ export function StationDetail() {
                     <td>{session.energyDelivered?.toFixed(2) || '—'}</td>
                     <td>${session.cost?.toFixed(2) || '0.00'}</td>
                     <td>
-                      <span className={`pill ${
-                        session.status === 'COMPLETED' ? 'approved' :
+                      <span className={`pill ${session.status === 'COMPLETED' ? 'approved' :
                         session.status === 'ACTIVE' ? 'active' :
-                        'rejected'
-                      }`}>
+                          'rejected'
+                        }`}>
                         {session.status}
                       </span>
                     </td>

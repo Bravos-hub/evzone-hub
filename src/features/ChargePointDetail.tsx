@@ -7,7 +7,7 @@ import { StationStatusPill } from '@/ui/components/StationStatusPill'
 import { getErrorMessage } from '@/core/api/errors'
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   ChargePointDetail — Granular charger management for site owners
+   ChargePointDetail — Granular charger management for station owners/admins
    Allows editing capacity, managing parking bays, and remote commands.
 ───────────────────────────────────────────────────────────────────────────── */
 
@@ -67,7 +67,12 @@ export function ChargePointDetail() {
     return (
         <DashboardLayout pageTitle={`Manage ${cp.id}`}>
             <div className="mb-6">
-                <Link to={PATHS.SITE_OWNER.SITE_DETAIL(cp.stationId)} className="text-sm text-subtle hover:text-text mb-2 inline-block">← Back to Site Details</Link>
+                <button
+                    onClick={() => window.history.back()}
+                    className="text-sm text-subtle hover:text-text mb-2 inline-block bg-transparent border-none cursor-pointer p-0"
+                >
+                    ← Back
+                </button>
                 <div className="flex items-center justify-between">
                     <div>
                         <h1 className="text-3xl font-bold">{cp.id}</h1>
