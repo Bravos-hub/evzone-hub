@@ -49,7 +49,7 @@ export const PERMISSIONS: Record<string, FeaturePermissions> = {
     viewAll: ROLE_GROUPS.PLATFORM_OPS,
     export: [...ROLE_GROUPS.PLATFORM_OPS, 'OWNER'],
     refund: ROLE_GROUPS.PLATFORM_OPS,
-    stopSession: [...ROLE_GROUPS.PLATFORM_OPS, 'OWNER', 'STATION_ADMIN', 'ATTENDANT'],
+    stopSession: [...ROLE_GROUPS.PLATFORM_OPS, 'OWNER', 'STATION_ADMIN', 'ATTENDANT', 'CASHIER'],
   },
 
   incidents: {
@@ -86,11 +86,11 @@ export const PERMISSIONS: Record<string, FeaturePermissions> = {
   },
 
   team: {
-    access: ['STATION_ADMIN'],
-    viewAll: ['STATION_ADMIN'],
-    invite: ['STATION_ADMIN'],
-    remove: ['STATION_ADMIN'],
-    changeRole: ['STATION_ADMIN'],
+    access: ['STATION_ADMIN', 'OWNER'],
+    viewAll: ['STATION_ADMIN', 'OWNER'],
+    invite: ['STATION_ADMIN', 'OWNER'],
+    remove: ['STATION_ADMIN', 'OWNER'],
+    changeRole: ['STATION_ADMIN', 'OWNER'],
   },
 
   notifications: {

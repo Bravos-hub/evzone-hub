@@ -49,7 +49,7 @@ export interface User {
   organizationId?: string
   tenantId?: string
   region?: string
-  status?: 'Active' | 'Pending' | 'Suspended' | 'Inactive'
+  status?: 'Active' | 'Pending' | 'Suspended' | 'Inactive' | 'Invited'
   mfaEnabled?: boolean
   lastSeen?: string
   created?: string

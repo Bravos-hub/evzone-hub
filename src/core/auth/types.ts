@@ -9,6 +9,7 @@ export type Role =
   | 'STATION_ADMIN'
   | 'MANAGER'
   | 'ATTENDANT'
+  | 'CASHIER'
   | 'TECHNICIAN_ORG'
   | 'TECHNICIAN_PUBLIC'
 

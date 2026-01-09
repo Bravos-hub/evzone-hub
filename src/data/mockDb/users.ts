@@ -50,5 +50,16 @@ export const mockUsers: User[] = [
     lastSeen: new Date('2025-09-02T14:22:00'),
     mfaEnabled: true,
   },
+  {
+    id: 'u-005',
+    name: 'Cathy Cashier',
+    email: 'cathy@evzone.io',
+    organizationId: 'ORG_ALPHA',
+    role: 'CASHIER',
+    status: 'Active',
+    region: 'AFRICA',
+    created: new Date('2025-08-15'),
+    mfaEnabled: false,
+  },
 ]
 

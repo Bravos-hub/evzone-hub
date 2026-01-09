@@ -8,6 +8,7 @@ import { http, HttpResponse } from 'msw'
 import { mockUsers } from '@/data/mockDb/users'
 import { mockChargingSessions } from '@/data/mockDb/sessions'
 import type { User, Station, Booking, ChargingSession, WalletBalance, WalletTransaction, Organization, DashboardMetrics, RevenueTrendPoint, UtilizationHour, StationPerformanceRank, Tenant, TenantApplication, LeaseContract, NoticeRequest, Notice, PaymentMethod, CreatePaymentMethodRequest, WithdrawalRequest, WithdrawalTransaction, NotificationItem, ChargePoint } from '@/core/api/types'
+import type { Role } from '@/core/auth/types'
 import type { ChargePoint as DomainChargePoint } from '@/core/types/domain'
 import { API_CONFIG } from '@/core/api/config'
 import { mockDb } from '@/data/mockDb'
@@ -211,6 +212,21 @@ export const handlers = [
       refreshToken,
       user: getCurrentUser(),
     })
+  }),
+
+  http.post(`${baseURL}/users/invite`, async ({ request }) => {
+    const data = await request.json() as { email: string; role: Role }
+    const newUser: any = {
+      id: `u-${Date.now()}`,
+      name: data.email.split('@')[0],
+      email: data.email,
+      role: data.role,
+      status: 'Invited',
+      created: new Date(),
+      lastSeen: new Date(),
+    }
+    mockUsers.push(newUser)
+    return new HttpResponse(null, { status: 204 })
   }),
 
   // User endpoints
