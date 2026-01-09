@@ -17,7 +17,8 @@ import type {
 import type {
   Tenant,
   TenantApplication,
-  LeaseContract
+  LeaseContract,
+  ApplicationDocument
 } from '@/core/api/types'
 import { mockChargingSessions } from './sessions'
 import { mockUsers } from './users'
@@ -682,6 +683,83 @@ export const mockDb = {
       }
       saveDatabase(db)
     }
+  },
+
+  // Application submission
+  createApplication: (data: any) => {
+    const newApp: TenantApplication = {
+      id: `APP-${Date.now()}`,
+      applicantId: 'USER_TEMP', // Would come from auth in real app
+      applicantName: data.contactPersonName,
+      organizationName: data.organizationName,
+      businessRegistrationNumber: data.businessRegistrationNumber,
+      taxComplianceNumber: data.taxComplianceNumber,
+      contactPersonName: data.contactPersonName,
+      contactEmail: data.contactEmail,
+      contactPhone: data.contactPhone,
+      physicalAddress: data.physicalAddress,
+      companyWebsite: data.companyWebsite,
+      yearsInEVBusiness: data.yearsInEVBusiness,
+      existingStationsOperated: data.existingStationsOperated,
+      siteId: data.siteId,
+      siteName: db.stations.find(s => s.id === data.siteId)?.name || 'Unknown Site',
+      preferredLeaseModel: data.preferredLeaseModel,
+      businessPlanSummary: data.businessPlanSummary,
+      sustainabilityCommitments: data.sustainabilityCommitments,
+      additionalServices: data.additionalServices,
+      estimatedStartDate: data.estimatedStartDate,
+      status: 'Pending',
+      message: data.message,
+      createdAt: new Date().toISOString(),
+      documents: []
+    }
+    db.applications.push(newApp)
+    saveDatabase(db)
+    return newApp
+  },
+
+  // Document upload
+  uploadDocument: (applicationId: string, doc: any) => {
+    const newDoc = {
+      id: `DOC-${Date.now()}`,
+      applicationId,
+      category: doc.category,
+      documentType: doc.documentType,
+      fileName: doc.fileName,
+      fileSize: doc.fileSize,
+      fileUrl: doc.fileUrl || `/uploads/${doc.fileName}`,
+      uploadedAt: new Date().toISOString(),
+      required: doc.required
+    }
+
+    const appIndex = db.applications.findIndex(a => a.id === applicationId)
+    if (appIndex !== -1) {
+      if (!db.applications[appIndex].documents) {
+        db.applications[appIndex].documents = []
+      }
+      db.applications[appIndex].documents!.push(newDoc)
+      saveDatabase(db)
+    }
+    return newDoc
+  },
+
+  // Update commercial terms (site owner sets these during approval)
+  updateApplicationTerms: (id: string, terms: any) => {
+    const index = db.applications.findIndex(a => a.id === id)
+    if (index !== -1) {
+      db.applications[index] = {
+        ...db.applications[index],
+        proposedRent: terms.proposedRent,
+        proposedTerm: terms.proposedTerm,
+        numberOfChargingPoints: terms.numberOfChargingPoints,
+        totalPowerRequirement: terms.totalPowerRequirement,
+        chargingTechnology: terms.chargingTechnology,
+        targetCustomerSegment: terms.targetCustomerSegment
+      }
+      saveDatabase(db)
+      return db.applications[index]
+    }
+    return null
   },
 }
 

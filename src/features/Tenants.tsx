@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { useAuthStore } from '@/core/auth/authStore'
 import { hasPermission } from '@/constants/permissions'
-import { useTenants, useApplications, useUpdateApplicationStatus } from '@/core/api/hooks/useTenants'
+import { useTenants, useApplications, useUpdateApplicationStatus, useUpdateApplicationTerms } from '@/core/api/hooks/useTenants'
 import { getErrorMessage } from '@/core/api/errors'
 import { PATHS } from '@/app/router/paths'
 import type { Tenant, TenantApplication } from '@/core/api/types'
@@ -34,6 +34,7 @@ export function Tenants() {
 
   const [selectedApp, setSelectedApp] = useState<TenantApplication | null>(null)
   const updateStatus = useUpdateApplicationStatus()
+  const updateTerms = useUpdateApplicationTerms()
 
   const toast = (m: string) => { setAck(m); setTimeout(() => setAck(''), 2000) }
 
@@ -109,20 +110,31 @@ export function Tenants() {
     setSearchParams(next, { replace: true })
   }
 
-  const handleUpdateStatus = (id: string, status: 'Approved' | 'Rejected') => {
-    updateStatus.mutate({ id, status }, {
-      onSuccess: () => {
-        toast(`Application ${status.toLowerCase()} successfully`)
-        setSelectedApp(null)
-        // Clear appId from URL if present
-        if (searchParams.get('appId')) {
-          const next = new URLSearchParams(searchParams)
-          next.delete('appId')
-          setSearchParams(next, { replace: true })
-        }
-      },
-      onError: (err) => toast(`Error: ${getErrorMessage(err)}`)
-    })
+  const handleUpdateStatus = (id: string, status: 'Approved' | 'Rejected', terms?: any) => {
+    const updateAppStatus = () => {
+      updateStatus.mutate({ id, status }, {
+        onSuccess: () => {
+          toast(`Application ${status.toLowerCase()} successfully`)
+          setSelectedApp(null)
+          // Clear appId from URL if present
+          if (searchParams.get('appId')) {
+            const next = new URLSearchParams(searchParams)
+            next.delete('appId')
+            setSearchParams(next, { replace: true })
+          }
+        },
+        onError: (err) => toast(`Error: ${getErrorMessage(err)}`)
+      })
+    }
+
+    if (status === 'Approved' && terms) {
+      updateTerms.mutate({ id, terms }, {
+        onSuccess: updateAppStatus,
+        onError: (err) => toast(`Error updating terms: ${getErrorMessage(err)}`)
+      })
+    } else {
+      updateAppStatus()
+    }
   }
 
   return (
@@ -135,8 +147,8 @@ export function Tenants() {
           <button
             onClick={() => updateTab('tenants')}
             className={`pb-3 px-4 border-b-2 transition-colors ${viewMode === 'tenants'
-                ? 'border-accent text-accent font-medium'
-                : 'border-transparent text-muted hover:text-text'
+              ? 'border-accent text-accent font-medium'
+              : 'border-transparent text-muted hover:text-text'
               }`}
           >
             Active Tenants
@@ -144,8 +156,8 @@ export function Tenants() {
           <button
             onClick={() => updateTab('applications')}
             className={`pb-3 px-4 border-b-2 transition-colors ${viewMode === 'applications'
-                ? 'border-accent text-accent font-medium'
-                : 'border-transparent text-muted hover:text-text'
+              ? 'border-accent text-accent font-medium'
+              : 'border-transparent text-muted hover:text-text'
               }`}
           >
             Applications {apps.length > 0 && <span className="ml-1 pill bg-accent/20 text-accent text-xs">{apps.length}</span>}

@@ -125,6 +125,7 @@ import {
   OperatorAvailability,
   SiteDetail,
   ChargePointDetail,
+  SiteApplicationForm,
 } from '@/features'
 
 /**
@@ -274,6 +275,7 @@ export function AppRoutes() {
       <Route path={PATHS.SITE_OWNER.TENANTS} element={<RequireAuth><Tenants /></RequireAuth>} />
       <Route path={PATHS.SITE_OWNER.TENANT_DETAIL(':id')} element={<RequireAuth><TenantDetail /></RequireAuth>} />
       <Route path={PATHS.SITE_OWNER.WITHDRAWALS} element={<RequireAuth><SiteOwnerWithdrawals /></RequireAuth>} />
+      <Route path={PATHS.SITE_OWNER.APPLY_FOR_SITE} element={<RequireAuth><SiteApplicationForm /></RequireAuth>} />
 
       {/* Operator Tools */}
       <Route path={PATHS.OPERATOR.DASHBOARD} element={<Navigate to={PATHS.DASHBOARD} replace />} />

@@ -90,6 +90,7 @@ export const PATHS = {
     TENANTS: '/tenants',
     TENANT_DETAIL: (id: string) => `/tenants/${id}`,
     WITHDRAWALS: '/site-owner/withdrawals',
+    APPLY_FOR_SITE: '/apply-for-site',
   },
 
   // Technician

@@ -1295,16 +1295,28 @@ export const handlers = [
         {
           id: 'APP-001',
           applicantId: 'u-005',
-          applicantName: 'QuickCharge Co',
-          organizationId: 'org-003',
+          applicantName: 'John Doe',
           organizationName: 'QuickCharge Co',
-          siteId: 'ST-0002',
-          siteName: 'Airport Long-Stay',
+          businessRegistrationNumber: 'BRN-2023-001',
+          taxComplianceNumber: 'TAX-QC-2023',
+          contactPersonName: 'John Doe',
+          contactEmail: 'john@quickcharge.com',
+          contactPhone: '+256-700-123456',
+          physicalAddress: '123 Business Park, Kampala',
+          companyWebsite: 'https://quickcharge.com',
+          yearsInEVBusiness: '3-5',
+          existingStationsOperated: 12,
+          siteId: 'STATION_002',
+          siteName: 'Airport East',
+          preferredLeaseModel: 'Fixed Rent',
+          businessPlanSummary: 'Interested in leasing this site for our charging network expansion. We plan to install 10 fast chargers to serve airport traffic.',
+          sustainabilityCommitments: 'We commit to using 100% renewable energy and recycling all equipment at end-of-life.',
+          additionalServices: ['EV Maintenance', 'Retail'],
+          estimatedStartDate: new Date(Date.now() + 2592000000).toISOString(),
           status: 'Pending',
-          proposedRent: 800,
-          proposedTerm: 12,
           message: 'Interested in leasing this site for our charging network expansion.',
           createdAt: new Date(Date.now() - 86400000).toISOString(),
+          documents: []
         },
       ]
       mockDb.setApplications(initialApplications)
@@ -1677,5 +1689,51 @@ export const handlers = [
       },
     ]
     return HttpResponse.json(transactions)
+  }),
+
+  // ============================================================================
+  // Application Submission Endpoints
+  // ============================================================================
+
+  // Submit new application
+  http.post(`${baseURL}/applications`, async ({ request }) => {
+    const body = await request.json() as any
+    const newApp = mockDb.createApplication(body)
+    return HttpResponse.json(newApp, { status: 201 })
+  }),
+
+  // Upload document to application
+  http.post(`${baseURL}/applications/:id/documents`, async ({ params, request }) => {
+    const { id } = params
+    const formData = await request.formData()
+
+    const file = formData.get('file') as File
+    const category = formData.get('category') as string
+    const documentType = formData.get('documentType') as string
+    const required = formData.get('required') === 'true'
+
+    const doc = mockDb.uploadDocument(id as string, {
+      category,
+      documentType,
+      fileName: file?.name || 'document.pdf',
+      fileSize: file?.size || 0,
+      fileUrl: `/uploads/${file?.name || 'document.pdf'}`,
+      required
+    })
+
+    return HttpResponse.json(doc, { status: 201 })
+  }),
+
+  // Update commercial terms (site owner only)
+  http.patch(`${baseURL}/applications/:id/terms`, async ({ params, request }) => {
+    const { id } = params
+    const body = await request.json() as any
+
+    const updated = mockDb.updateApplicationTerms(id as string, body)
+    if (!updated) {
+      return HttpResponse.json({ error: 'Application not found' }, { status: 404 })
+    }
+
+    return HttpResponse.json(updated)
   }),
 ]

@@ -51,4 +51,35 @@ export const tenantService = {
   async getContract(tenantId: string): Promise<LeaseContract> {
     return apiClient.get<LeaseContract>(`/tenants/${tenantId}/contract`)
   },
+
+  /**
+   * Submit new application
+   */
+  async submitApplication(data: any): Promise<TenantApplication> {
+    return apiClient.post<TenantApplication>('/applications', data)
+  },
+
+  /**
+   * Upload document to application
+   */
+  async uploadDocument(applicationId: string, file: File, category: string, documentType: string, required: boolean): Promise<any> {
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('category', category)
+    formData.append('documentType', documentType)
+    formData.append('required', String(required))
+
+    return apiClient.post(`/applications/${applicationId}/documents`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+  },
+
+  /**
+   * Update commercial terms (site owner only)
+   */
+  async updateApplicationTerms(id: string, terms: any): Promise<TenantApplication> {
+    return apiClient.patch<TenantApplication>(`/applications/${id}/terms`, terms)
+  },
 }

@@ -55,3 +55,44 @@ export function useTenantContract(tenantId: string) {
     enabled: !!tenantId,
   })
 }
+
+export function useSubmitApplication() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (data: any) => tenantService.submitApplication(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['applications'] })
+    },
+  })
+}
+
+export function useUploadDocument() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ applicationId, file, category, documentType, required }: {
+      applicationId: string
+      file: File
+      category: string
+      documentType: string
+      required: boolean
+    }) => tenantService.uploadDocument(applicationId, file, category, documentType, required),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['applications'] })
+      queryClient.invalidateQueries({ queryKey: ['applications', variables.applicationId] })
+    },
+  })
+}
+
+export function useUpdateApplicationTerms() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, terms }: { id: string; terms: any }) =>
+      tenantService.updateApplicationTerms(id, terms),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['applications'] })
+    },
+  })
+}

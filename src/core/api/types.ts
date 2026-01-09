@@ -326,17 +326,107 @@ export interface TenantApplication {
   id: string
   applicantId: string
   applicantName: string
+
+  // Organization Details
   organizationId?: string
-  organizationName?: string
+  organizationName: string
+  businessRegistrationNumber: string
+  taxComplianceNumber?: string
+
+  // Contact Information
+  contactPersonName: string
+  contactEmail: string
+  contactPhone: string
+  physicalAddress: string
+  companyWebsite?: string
+
+  // Business Experience
+  yearsInEVBusiness: string // '<1', '1-3', '3-5', '5+'
+  existingStationsOperated?: number
+
+  // Site & Proposal
   siteId: string
   siteName: string
+  preferredLeaseModel: 'Revenue Share' | 'Fixed Rent' | 'Hybrid'
+  businessPlanSummary: string
+  sustainabilityCommitments?: string
+  additionalServices?: string[] // ['EV Maintenance', 'Retail', 'Food & Beverage']
+  estimatedStartDate?: string
+
+  // Commercial Terms (Set by Site Owner during approval)
+  proposedRent?: number // Set by site owner
+  proposedTerm?: number // Set by site owner (in months)
+  numberOfChargingPoints?: number // Set by site owner
+  totalPowerRequirement?: number // Set by site owner (kW)
+  chargingTechnology?: string[] // Set by site owner ['AC', 'DC Fast', 'Ultra-Fast', 'Battery Swap']
+  targetCustomerSegment?: string[] // Set by site owner ['Public', 'Fleet', 'Residential']
+
+  // Application Status
   status: 'Pending' | 'Approved' | 'Rejected' | 'Negotiating'
-  proposedRent?: number
-  proposedTerm?: number
-  message?: string
+  message?: string // Initial application message
   createdAt: string
   respondedAt?: string
   responseMessage?: string
+
+  // Documents
+  documents?: ApplicationDocument[]
+}
+
+// Application Document Types
+export interface ApplicationDocument {
+  id: string
+  applicationId: string
+  category: 'Legal' | 'Financial' | 'Technical' | 'Experience' | 'Other'
+  documentType: string // 'Certificate of Incorporation', 'Bank Reference', etc.
+  fileName: string
+  fileSize: number
+  fileUrl: string
+  uploadedAt: string
+  required: boolean
+}
+
+export interface CreateApplicationRequest {
+  // Organization Details
+  organizationName: string
+  businessRegistrationNumber: string
+  taxComplianceNumber?: string
+
+  // Contact Information
+  contactPersonName: string
+  contactEmail: string
+  contactPhone: string
+  physicalAddress: string
+  companyWebsite?: string
+
+  // Business Experience
+  yearsInEVBusiness: string
+  existingStationsOperated?: number
+
+  // Site & Proposal
+  siteId: string
+  preferredLeaseModel: 'Revenue Share' | 'Fixed Rent' | 'Hybrid'
+  businessPlanSummary: string
+  sustainabilityCommitments?: string
+  additionalServices?: string[]
+  estimatedStartDate?: string
+  message?: string
+}
+
+export interface UploadDocumentRequest {
+  applicationId: string
+  category: 'Legal' | 'Financial' | 'Technical' | 'Experience' | 'Other'
+  documentType: string
+  file: File
+  required: boolean
+}
+
+export interface UpdateApplicationTermsRequest {
+  proposedRent: number
+  proposedTerm: number // months
+  numberOfChargingPoints: number
+  totalPowerRequirement: number // kW
+  chargingTechnology: string[]
+  targetCustomerSegment: string[]
 }
 
 export interface LeaseContract {
