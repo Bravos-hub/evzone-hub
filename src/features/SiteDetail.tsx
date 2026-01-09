@@ -8,6 +8,9 @@ import { useMe } from '@/core/api/hooks/useAuth'
 import { useTenants } from '@/core/api/hooks/useTenants'
 import { ROLE_GROUPS, isInGroup } from '@/constants/roles'
 import { StationStatusPill } from '@/ui/components/StationStatusPill'
+import { SiteEditModal } from '@/modals'
+import { useState } from 'react'
+import { useUpdateStation } from '@/core/api/hooks/useStations'
 
 export function SiteDetail() {
     const { id } = useParams<{ id: string }>()
@@ -19,10 +22,14 @@ export function SiteDetail() {
     const { data: user } = useMe()
     const { data: tenants, isLoading: loadingTenants } = useTenants({ siteId: id })
 
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+    const updateStation = useUpdateStation()
+
     const canManage = useMemo(() => {
         if (!user) return false
         return isInGroup(user.role, ROLE_GROUPS.PLATFORM_ADMINS) ||
-            isInGroup(user.role, ROLE_GROUPS.STATION_MANAGERS)
+            isInGroup(user.role, ROLE_GROUPS.STATION_MANAGERS) ||
+            user.role === 'SITE_OWNER'
     }, [user])
 
     // Mock data for documentation since there's no backend endpoint yet
@@ -69,9 +76,19 @@ export function SiteDetail() {
                         <h1 className="text-3xl font-bold">{station.name}</h1>
                         <p className="text-muted">{station.address}</p>
                     </div>
-                    <span className={`pill ${station.status === 'ACTIVE' ? 'approved' : station.status === 'MAINTENANCE' ? 'active' : 'declined'} text-lg px-4 py-1`}>
-                        {station.status}
-                    </span>
+                    <div className="flex items-center gap-4">
+                        <span className={`pill ${station.status === 'ACTIVE' ? 'approved' : station.status === 'MAINTENANCE' ? 'active' : 'declined'} text-lg px-4 py-1`}>
+                            {station.status}
+                        </span>
+                        {user?.role === 'SITE_OWNER' && (
+                            <button
+                                className="btn secondary"
+                                onClick={() => setIsEditModalOpen(true)}
+                            >
+                                Edit Site
+                            </button>
+                        )}
+                    </div>
                 </div>
             </div>
 
@@ -213,6 +230,19 @@ export function SiteDetail() {
                     </div>
                 </div>
             </div>
+            {station && (
+                <SiteEditModal
+                    open={isEditModalOpen}
+                    station={station}
+                    loading={updateStation.isPending}
+                    onCancel={() => setIsEditModalOpen(false)}
+                    onConfirm={(data) => {
+                        updateStation.mutate({ id: station.id, data }, {
+                            onSuccess: () => setIsEditModalOpen(false)
+                        })
+                    }}
+                />
+            )}
         </DashboardLayout>
     )
 }
