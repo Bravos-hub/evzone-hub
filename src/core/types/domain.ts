@@ -184,6 +184,23 @@ export interface BatteryPack {
   lockerId?: LockerId
 }
 
+// ==================== Swap Providers ====================
+
+export type ProviderStandard = 'Gogoro G2' | 'NIO BaaS' | 'Zembo Standard' | 'Spiro S1' | 'BatterySmart' | 'Universal'
+
+export interface SwapProvider {
+  id: string
+  name: string
+  logoUrl?: string
+  region: string
+  standard: ProviderStandard
+  batteriesSupported: string[]
+  stationCount: number
+  website?: string
+  status: 'Active' | 'Pending' | 'Inactive'
+  partnerSince: Date
+}
+
 // ==================== Pricing & Tariffs ====================
 
 export type TariffType = 'Time-based' | 'Energy-based' | 'Fixed' | 'Dynamic'

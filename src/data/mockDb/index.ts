@@ -12,7 +12,8 @@ import type {
   Webhook,
   User,
   Invoice,
-  ParkingBay
+  ParkingBay,
+  SwapProvider
 } from '@/core/types/domain'
 import type {
   Tenant,
@@ -291,6 +292,64 @@ const initialWebhooks: Webhook[] = [
   },
 ]
 
+const initialProviders: SwapProvider[] = [
+  {
+    id: 'prov-001',
+    name: 'Gogoro',
+    region: 'Taiwan / Global',
+    standard: 'Gogoro G2',
+    batteriesSupported: ['G2 Battery', 'G2 Plus'],
+    stationCount: 2500,
+    website: 'https://www.gogoro.com',
+    status: 'Active',
+    partnerSince: new Date('2023-01-10'),
+  },
+  {
+    id: 'prov-002',
+    name: 'Spiro',
+    region: 'Africa (Benin, Togo, Rwanda)',
+    standard: 'Spiro S1',
+    batteriesSupported: ['Spiro Pack Alpha', 'Spiro Pack Beta'],
+    stationCount: 450,
+    website: 'https://spiro.mobility',
+    status: 'Active',
+    partnerSince: new Date('2023-05-15'),
+  },
+  {
+    id: 'prov-003',
+    name: 'NIO',
+    region: 'China / Europe',
+    standard: 'NIO BaaS',
+    batteriesSupported: ['75kWh Standard', '100kWh Long Range'],
+    stationCount: 2200,
+    website: 'https://www.nio.com',
+    status: 'Active',
+    partnerSince: new Date('2024-02-01'),
+  },
+  {
+    id: 'prov-004',
+    name: 'Zembo',
+    region: 'East Africa (Uganda)',
+    standard: 'Zembo Standard',
+    batteriesSupported: ['Zembo Power 1'],
+    stationCount: 50,
+    website: 'https://www.zembo.bike',
+    status: 'Active',
+    partnerSince: new Date('2022-11-20'),
+  },
+  {
+    id: 'prov-005',
+    name: 'Battery Smart',
+    region: 'India',
+    standard: 'BatterySmart',
+    batteriesSupported: ['LFP 48V', 'NMC 60V'],
+    stationCount: 1200,
+    website: 'https://www.batterysmart.in',
+    status: 'Active',
+    partnerSince: new Date('2023-08-12'),
+  },
+]
+
 const initialAuditLogs: AuditLogEntry[] = [
   {
     id: 'AUD-001',
@@ -334,6 +393,7 @@ export interface MockDatabase {
   tenants: Tenant[]
   applications: TenantApplication[]
   contracts: LeaseContract[]
+  providers: SwapProvider[]
 }
 
 // Load from localStorage or use initial data
@@ -388,6 +448,10 @@ function loadDatabase(): MockDatabase {
         tenants: parsed.tenants || [],
         applications: parsed.applications || [],
         contracts: parsed.contracts || [],
+        providers: parsed.providers?.map((p: any) => ({
+          ...p,
+          partnerSince: new Date(p.partnerSince),
+        })) || initialProviders,
       }
     } catch (e) {
       console.error('Failed to parse stored database:', e)
@@ -410,6 +474,7 @@ function loadDatabase(): MockDatabase {
     tenants: [],
     applications: [],
     contracts: [],
+    providers: initialProviders,
   }
 }
 
@@ -460,6 +525,10 @@ function saveDatabase(db: MockDatabase): void {
       tenants: db.tenants,
       applications: db.applications,
       contracts: db.contracts,
+      providers: db.providers.map(p => ({
+        ...p,
+        partnerSince: p.partnerSince.toISOString(),
+      })),
     }
     localStorage.setItem('evzone:mockDb', JSON.stringify(serializable))
   } catch (e) {
@@ -762,6 +831,21 @@ export const mockDb = {
       return db.applications[index]
     }
     return null
+  },
+
+  // Providers
+  getProviders: () => db.providers,
+  getProvider: (id: string) => db.providers.find(p => p.id === id),
+  addProvider: (provider: SwapProvider) => {
+    db.providers.push(provider)
+    saveDatabase(db)
+  },
+  updateProvider: (id: string, updates: Partial<SwapProvider>) => {
+    const index = db.providers.findIndex(p => p.id === id)
+    if (index !== -1) {
+      db.providers[index] = { ...db.providers[index], ...updates }
+      saveDatabase(db)
+    }
   },
 }
 

@@ -10,18 +10,16 @@ import { SessionDetailPage } from '@/pages/sessions/SessionDetailPage'
 import { InvoiceDetailPage } from '@/pages/billing/InvoiceDetailPage'
 import { PATHS } from './paths'
 
-import { GenericDashboard as GenericDashboardContent } from '@/ui/dashboard'
+import { GenericDashboard } from '@/ui/dashboard'
 import { useAuthStore } from '@/core/auth/authStore'
-
-export function GenericDashboard() {
-  return <GenericDashboardContent />
-}
 
 // Unified Feature Pages (role-agnostic, RBAC handled internally)
 import {
   // Core Features
   Stations,
   StationDetail,
+  SwapProviders,
+  SwapStations,
   Sessions,
   Incidents,
   Dispatches,
@@ -56,7 +54,6 @@ import {
   // Owner Features
   Tariffs,
   ChargePoints,
-  SwapStations,
   SmartCharging,
   Earnings,
   Bookings,
@@ -132,7 +129,6 @@ import {
   SiteApplicationForm,
   AddStation,
   OwnerIncidentCenter,
-  StationOwnerDashboard,
   ApplicationTracker,
   LeaseCompliance,
   AdvancedReporting,
@@ -140,7 +136,7 @@ import {
 
 /**
  * Application Routes - Unified flat structure
- * 
+ *
  * All routes use RequireAuth (must be logged in).
  * Role-based access control is handled INSIDE each feature component.
  * The sidebar dynamically shows/hides menu items based on role.
@@ -241,6 +237,8 @@ export function AppRoutes() {
           OWNER FEATURES - RBAC checked inside each component
           ═══════════════════════════════════════════════════════════════════════ */}
       <Route path={PATHS.OWNER.TARIFFS} element={<RequireAuth><Tariffs /></RequireAuth>} />
+      <Route path={PATHS.OWNER.PROVIDERS} element={<RequireAuth><SwapProviders /></RequireAuth>} />
+      <Route path={PATHS.STATIONS.CHARGE_POINTS} element={<RequireAuth><ChargePoints /></RequireAuth>} />
       <Route path={PATHS.OWNER.EARNINGS} element={<RequireAuth><Earnings /></RequireAuth>} />
       <Route path={PATHS.OWNER.BOOKING_LEDGER} element={<RequireAuth><BookingLedger /></RequireAuth>} />
       <Route path={PATHS.OWNER.PRICING_RECIPES} element={<RequireAuth><PricingRecipes /></RequireAuth>} />

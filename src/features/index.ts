@@ -34,6 +34,7 @@ export { StatusPage } from './StatusPage'
 // Owner Features
 export { Tariffs } from './Tariffs'
 export { ChargePoints } from './ChargePoints'
+export { SwapProviders } from './SwapProviders'
 export { SwapStations } from './SwapStations'
 export { SmartCharging } from './SmartCharging'
 export { Earnings } from './Earnings'

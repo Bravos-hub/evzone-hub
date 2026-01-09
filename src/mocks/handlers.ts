@@ -7,7 +7,7 @@
 import { http, HttpResponse } from 'msw'
 import { mockUsers } from '@/data/mockDb/users'
 import { mockChargingSessions } from '@/data/mockDb/sessions'
-import type { User, Station, Booking, ChargingSession, WalletBalance, WalletTransaction, Organization, DashboardMetrics, RevenueTrendPoint, UtilizationHour, StationPerformanceRank, Tenant, TenantApplication, LeaseContract, NoticeRequest, Notice, PaymentMethod, CreatePaymentMethodRequest, WithdrawalRequest, WithdrawalTransaction, NotificationItem, ChargePoint } from '@/core/api/types'
+import type { User as ApiUser, Station, Booking, ChargingSession, WalletBalance, WalletTransaction, Organization, DashboardMetrics, RevenueTrendPoint, UtilizationHour, StationPerformanceRank, Tenant, TenantApplication, LeaseContract, NoticeRequest, Notice, PaymentMethod, CreatePaymentMethodRequest, WithdrawalRequest, WithdrawalTransaction, NotificationItem, ChargePoint, SwapProvider } from '@/core/api/types'
 import type { Role } from '@/core/auth/types'
 import type { ChargePoint as DomainChargePoint } from '@/core/types/domain'
 import { API_CONFIG } from '@/core/api/config'
@@ -167,6 +167,22 @@ function getCurrentUser(): typeof mockUsers[0] | null {
   }
 }
 
+// Helper to convert domain SwapProvider to API SwapProvider
+function mapProviderToAPI(provider: any): SwapProvider {
+  return {
+    id: provider.id,
+    name: provider.name,
+    logoUrl: provider.logoUrl,
+    region: provider.region,
+    standard: provider.standard,
+    batteriesSupported: provider.batteriesSupported,
+    stationCount: provider.stationCount,
+    website: provider.website,
+    status: provider.status === 'Active' ? 'Active' : provider.status === 'Pending' ? 'Pending' : 'Inactive',
+    partnerSince: provider.partnerSince.toISOString(),
+  }
+}
+
 // Helper to convert domain Station to API Station
 function mapStationToAPI(station: any): Station {
   return {
@@ -228,7 +244,7 @@ const mockOrganizations: Organization[] = [
 ]
 
 // Helper to map domain User to API User
-function mapUser(domainUser: typeof mockUsers[0]): User {
+function mapUser(domainUser: typeof mockUsers[0]): ApiUser {
   return {
     id: domainUser.id,
     name: domainUser.name,
@@ -244,6 +260,18 @@ function mapUser(domainUser: typeof mockUsers[0]): User {
 }
 
 export const handlers = [
+  http.get(`${baseURL}/providers`, async () => {
+    const providers = mockDb.getProviders().map(mapProviderToAPI)
+    return HttpResponse.json(providers)
+  }),
+
+  http.get(`${baseURL}/providers/:id`, async ({ params }) => {
+    const provider = mockDb.getProvider(params.id as string)
+    if (!provider) {
+      return HttpResponse.json({ error: 'Provider not found' }, { status: 404 })
+    }
+    return HttpResponse.json(mapProviderToAPI(provider))
+  }),
   // Auth endpoints (handled by authService demo logic, but provide refresh endpoint)
   http.post(`${baseURL}/auth/refresh`, async () => {
     const refreshToken = localStorage.getItem('evzone:refreshToken')
@@ -300,7 +328,7 @@ export const handlers = [
     if (!domainUser) {
       return HttpResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-    const body = await request.json() as Partial<User>
+    const body = await request.json() as Partial<ApiUser>
     const mapped = mapUser(domainUser)
     return HttpResponse.json({ ...mapped, ...body, updatedAt: new Date().toISOString() })
   }),
@@ -310,7 +338,7 @@ export const handlers = [
     if (!domainUser) {
       return HttpResponse.json({ error: 'User not found' }, { status: 404 })
     }
-    const body = await request.json() as Partial<User>
+    const body = await request.json() as Partial<ApiUser>
     const mapped = mapUser(domainUser)
     return HttpResponse.json({ ...mapped, ...body, updatedAt: new Date().toISOString() })
   }),

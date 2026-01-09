@@ -106,6 +106,7 @@ export const MENU_ITEMS: MenuItem[] = [
   { path: PATHS.ROAMING, label: 'Roaming', icon: 'globe', roles: ROLE_GROUPS.PLATFORM_ADMINS },
   { path: PATHS.REGULATORY, label: 'Regulatory', icon: 'shield', roles: ROLE_GROUPS.PLATFORM_ADMINS },
   { path: PATHS.UTILITY, label: 'Utility', icon: 'grid', roles: ROLE_GROUPS.PLATFORM_ADMINS },
+  { path: PATHS.OWNER.PROVIDERS, label: 'Swapping Providers', icon: 'share-2', roles: [...ROLE_GROUPS.PLATFORM_ADMINS, 'OWNER', 'SITE_OWNER'] },
   { path: PATHS.OWNER.PARTNERS, label: 'Partners', icon: 'users', roles: ROLE_GROUPS.PLATFORM_ADMINS },
 
   // ═══════════════════════════════════════════════════════════════════════

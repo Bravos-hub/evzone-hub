@@ -74,12 +74,28 @@ export interface Station {
   longitude: number
   type: 'CHARGING' | 'SWAP' | 'BOTH'
   status: 'ACTIVE' | 'INACTIVE' | 'MAINTENANCE'
+  providerId?: string // Link to SwapProvider
   capacity?: number
   parkingBays?: number
   orgId?: string
   tags?: string[]
   createdAt: string
   updatedAt: string
+}
+
+export type ProviderStandard = 'Gogoro G2' | 'NIO BaaS' | 'Zembo Standard' | 'Spiro S1' | 'BatterySmart' | 'Universal'
+
+export interface SwapProvider {
+  id: string
+  name: string
+  logoUrl?: string
+  region: string
+  standard: ProviderStandard
+  batteriesSupported: string[]
+  stationCount: number
+  website?: string
+  status: 'Active' | 'Pending' | 'Inactive'
+  partnerSince: string
 }
 
 export interface CreateStationRequest {
