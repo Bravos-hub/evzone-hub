@@ -1,15 +1,12 @@
-/**
- * Incident Hooks
- * React Query hooks for incident management
- */
-
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { incidentService, type CreateIncidentRequest, type UpdateIncidentRequest, type AssignIncidentRequest, type ResolveIncidentRequest } from '../services/incidentService'
+import { incidentService } from '../services/incidentService'
+import { queryKeys } from '@/data/queryKeys'
+import type { IncidentStatus } from '../types'
 
-export function useIncidents(filters?: { status?: string; severity?: string; stationId?: string }) {
+export function useIncidents() {
   return useQuery({
-    queryKey: ['incidents', 'all', filters],
-    queryFn: () => incidentService.getAll(filters),
+    queryKey: ['incidents', 'all'],
+    queryFn: () => incidentService.getAll(),
   })
 }
 
@@ -21,63 +18,40 @@ export function useIncident(id: string) {
   })
 }
 
-export function useCreateIncident() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: (data: CreateIncidentRequest) => incidentService.create(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['incidents', 'all'] })
-    },
-  })
-}
-
-export function useUpdateIncident() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: UpdateIncidentRequest }) =>
-      incidentService.update(id, data),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['incidents', 'detail', variables.id] })
-      queryClient.invalidateQueries({ queryKey: ['incidents', 'all'] })
-    },
-  })
-}
-
 export function useAssignIncident() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: AssignIncidentRequest }) =>
-      incidentService.assign(id, data),
+    mutationFn: ({ incidentId, technicianId, technicianName }: { incidentId: string; technicianId: string; technicianName: string }) =>
+      incidentService.assign(incidentId, technicianId, technicianName),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['incidents', 'detail', variables.id] })
       queryClient.invalidateQueries({ queryKey: ['incidents', 'all'] })
+      queryClient.invalidateQueries({ queryKey: ['incidents', 'detail', variables.incidentId] })
     },
   })
 }
 
-export function useResolveIncident() {
+export function useAddIncidentNote() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data?: ResolveIncidentRequest }) =>
-      incidentService.resolve(id, data),
+    mutationFn: ({ incidentId, data }: { incidentId: string; data: { content: string; authorId: string; authorName: string } }) =>
+      incidentService.addNote(incidentId, data),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['incidents', 'detail', variables.id] })
-      queryClient.invalidateQueries({ queryKey: ['incidents', 'all'] })
+      queryClient.invalidateQueries({ queryKey: ['incidents', 'detail', variables.incidentId] })
     },
   })
 }
 
-export function useDeleteIncident() {
+export function useUpdateIncidentStatus() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (id: string) => incidentService.delete(id),
-    onSuccess: () => {
+    mutationFn: ({ incidentId, status }: { incidentId: string; status: IncidentStatus }) =>
+      incidentService.updateStatus(incidentId, status),
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['incidents', 'all'] })
+      queryClient.invalidateQueries({ queryKey: ['incidents', 'detail', variables.incidentId] })
     },
   })
 }

@@ -12,8 +12,53 @@ import type { Role } from '@/core/auth/types'
 import type { ChargePoint as DomainChargePoint } from '@/core/types/domain'
 import { API_CONFIG } from '@/core/api/config'
 import { mockDb } from '@/data/mockDb'
+import type { Incident, MaintenanceNote } from '@/core/api/types'
 
 const baseURL = API_CONFIG.baseURL
+
+// Mock Incidents Data
+let mockIncidents: Incident[] = [
+  {
+    id: 'INC-001',
+    stationId: 'STATION_001',
+    stationName: 'Downtown Hub',
+    chargerId: 'CP-A1',
+    title: 'Connector Fault',
+    description: 'CCS2 connector not locking properly.',
+    severity: 'HIGH',
+    status: 'OPEN',
+    errorCode: 'ERR_LOCK_TIMEOUT',
+    reportedBy: 'System',
+    createdAt: new Date(Date.now() - 3600000).toISOString(),
+    updatedAt: new Date(Date.now() - 3600000).toISOString(),
+    notes: []
+  },
+  {
+    id: 'INC-002',
+    stationId: 'STATION_002',
+    stationName: 'Westside Plaza',
+    title: 'Offline Station',
+    description: 'Station heartbeat missing for 2 hours.',
+    severity: 'CRITICAL',
+    status: 'IN_PROGRESS',
+    errorCode: 'ERR_COMM_LOST',
+    reportedBy: 'Watchdog',
+    assignedTo: 'u-003',
+    assignedName: 'Sam P',
+    createdAt: new Date(Date.now() - 7200000).toISOString(),
+    updatedAt: new Date(Date.now() - 1800000).toISOString(),
+    notes: [
+      {
+        id: 'NOTE-001',
+        incidentId: 'INC-002',
+        authorId: 'u-003',
+        authorName: 'Sam P',
+        content: 'Investigating network latency at the site.',
+        createdAt: new Date(Date.now() - 1800000).toISOString()
+      }
+    ]
+  }
+]
 
 const notificationSeedTime = Date.now()
 let mockNotifications: NotificationItem[] = [
@@ -977,91 +1022,61 @@ export const handlers = [
   }),
 
   // Incident endpoints
-  http.get(`${baseURL}/incidents`, async ({ request }) => {
-    const { mockDb } = await import('@/data/mockDb')
-    const url = new URL(request.url)
-    const status = url.searchParams.get('status')
-    const severity = url.searchParams.get('severity')
-    const stationId = url.searchParams.get('stationId')
-
-    let incidents = mockDb.getIncidents()
-    if (status) {
-      incidents = incidents.filter(i => i.status === status)
-    }
-    if (severity) {
-      incidents = incidents.filter(i => i.severity === severity)
-    }
-    if (stationId) {
-      incidents = incidents.filter(i => i.stationId === stationId)
-    }
-
-    return HttpResponse.json(incidents)
+  http.get(`${baseURL}/incidents`, async () => {
+    return HttpResponse.json(mockIncidents)
   }),
 
   http.get(`${baseURL}/incidents/:id`, async ({ params }) => {
-    const { mockDb } = await import('@/data/mockDb')
-    const incident = mockDb.getIncident(params.id as string)
-    if (!incident) {
-      return HttpResponse.json({ error: 'Incident not found' }, { status: 404 })
-    }
+    const incident = mockIncidents.find(i => i.id === params.id)
+    if (!incident) return new HttpResponse(null, { status: 404 })
     return HttpResponse.json(incident)
   }),
 
-  http.post(`${baseURL}/incidents`, async ({ request }) => {
-    const { mockDb } = await import('@/data/mockDb')
-    const body = await request.json() as any
-    const user = getCurrentUser()
-    const newIncident = {
-      id: `INC-${Date.now()}`,
-      stationId: body.stationId,
-      assetId: body.assetId,
-      severity: body.severity,
-      title: body.title,
-      description: body.description,
-      status: 'Open' as const,
-      reportedBy: user?.id || 'u-001',
-      created: new Date(),
+  http.post(`${baseURL}/incidents/:id/assign`, async ({ params, request }) => {
+    const { technicianId, technicianName } = await request.json() as { technicianId: string; technicianName: string }
+    const index = mockIncidents.findIndex(i => i.id === params.id)
+    if (index === -1) return new HttpResponse(null, { status: 404 })
+
+    mockIncidents[index] = {
+      ...mockIncidents[index],
+      assignedTo: technicianId,
+      assignedName: technicianName,
+      status: 'IN_PROGRESS',
+      updatedAt: new Date().toISOString()
     }
-    mockDb.addIncident(newIncident)
-    return HttpResponse.json(newIncident, { status: 201 })
+    return HttpResponse.json(mockIncidents[index])
+  }),
+
+  http.post(`${baseURL}/incidents/:id/notes`, async ({ params, request }) => {
+    const { content, authorId, authorName } = await request.json() as { content: string; authorId: string; authorName: string }
+    const index = mockIncidents.findIndex(i => i.id === params.id)
+    if (index === -1) return new HttpResponse(null, { status: 404 })
+
+    const newNote: MaintenanceNote = {
+      id: `NOTE-${Date.now()}`,
+      incidentId: params.id as string,
+      authorId,
+      authorName,
+      content,
+      createdAt: new Date().toISOString()
+    }
+
+    mockIncidents[index].notes.push(newNote)
+    mockIncidents[index].updatedAt = new Date().toISOString()
+    return HttpResponse.json(newNote)
   }),
 
   http.patch(`${baseURL}/incidents/:id`, async ({ params, request }) => {
-    const { mockDb } = await import('@/data/mockDb')
-    const incident = mockDb.getIncident(params.id as string)
-    if (!incident) {
-      return HttpResponse.json({ error: 'Incident not found' }, { status: 404 })
-    }
-    const body = await request.json() as any
-    mockDb.updateIncident(params.id as string, body)
-    return HttpResponse.json(mockDb.getIncident(params.id as string))
-  }),
+    const body = await request.json() as Partial<Incident>
+    const index = mockIncidents.findIndex(i => i.id === params.id)
+    if (index === -1) return new HttpResponse(null, { status: 404 })
 
-  http.post(`${baseURL}/incidents/:id/assign`, async ({ params, request }) => {
-    const { mockDb } = await import('@/data/mockDb')
-    const incident = mockDb.getIncident(params.id as string)
-    if (!incident) {
-      return HttpResponse.json({ error: 'Incident not found' }, { status: 404 })
+    mockIncidents[index] = {
+      ...mockIncidents[index],
+      ...body,
+      updatedAt: new Date().toISOString()
     }
-    const body = await request.json() as any
-    mockDb.updateIncident(params.id as string, {
-      assignedTo: body.assignedTo,
-      status: 'Acknowledged',
-    })
-    return HttpResponse.json(mockDb.getIncident(params.id as string))
-  }),
-
-  http.post(`${baseURL}/incidents/:id/resolve`, async ({ params, request }) => {
-    const { mockDb } = await import('@/data/mockDb')
-    const incident = mockDb.getIncident(params.id as string)
-    if (!incident) {
-      return HttpResponse.json({ error: 'Incident not found' }, { status: 404 })
-    }
-    mockDb.updateIncident(params.id as string, {
-      status: 'Resolved',
-      resolved: new Date(),
-    })
-    return HttpResponse.json(mockDb.getIncident(params.id as string))
+    return HttpResponse.json(mockIncidents[index])
   }),
 
   http.delete(`${baseURL}/incidents/:id`, async ({ params }) => {

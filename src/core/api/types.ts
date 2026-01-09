@@ -200,13 +200,16 @@ export interface UpdateBookingStatusRequest {
 export interface ChargingSession {
   id: string
   userId: string
+  userName?: string
   stationId: string
+  stationName?: string
   connectorId?: string
   startedAt: string
   endedAt?: string
   status: 'ACTIVE' | 'COMPLETED' | 'STOPPED'
   energyDelivered?: number
   cost?: number
+  durationMinutes?: number
 }
 
 // Wallet Types
@@ -582,4 +585,48 @@ export interface WithdrawalRequest {
   method: PaymentMethodType
   paymentMethodId: string
   currency: string
+}
+
+// Incident & Maintenance Types
+export type IncidentSeverity = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW'
+export type IncidentStatus = 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED'
+
+export interface Incident {
+  id: string
+  stationId: string
+  stationName: string
+  chargerId?: string
+  title: string
+  description: string
+  severity: IncidentSeverity
+  status: IncidentStatus
+  errorCode?: string
+  reportedBy: string
+  assignedTo?: string // User ID (Technician)
+  assignedName?: string
+  createdAt: string
+  updatedAt: string
+  resolvedAt?: string
+  notes: MaintenanceNote[]
+}
+
+export interface MaintenanceNote {
+  id: string
+  incidentId: string
+  authorId: string
+  authorName: string
+  content: string
+  createdAt: string
+}
+
+export interface MaintenanceDispatch {
+  id: string
+  incidentId: string
+  technicianId: string
+  scheduledAt: string
+  status: 'PENDING' | 'EN_ROUTE' | 'ON_SITE' | 'COMPLETED' | 'CANCELLED'
+  arrivalAt?: string
+  completionAt?: string
+  initialFindings?: string
+  resolutionSummary?: string
 }

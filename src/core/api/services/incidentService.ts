@@ -1,92 +1,48 @@
-/**
- * Incident Service
- * Handles incident-related API calls
- */
+import { API_CONFIG } from '../config'
+import type { Incident, MaintenanceNote, IncidentStatus } from '../types'
 
-import { apiClient } from '../client'
-import type { Incident } from '@/core/types/domain'
-
-export interface CreateIncidentRequest {
-  stationId: string
-  assetId?: string
-  severity: 'Critical' | 'High' | 'Medium' | 'Low'
-  title: string
-  description: string
-}
-
-export interface UpdateIncidentRequest {
-  severity?: 'Critical' | 'High' | 'Medium' | 'Low'
-  title?: string
-  description?: string
-  status?: 'Open' | 'Acknowledged' | 'In-Progress' | 'Resolved' | 'Closed'
-  assignedTo?: string
-}
-
-export interface AssignIncidentRequest {
-  assignedTo: string
-}
-
-export interface ResolveIncidentRequest {
-  resolution?: string
-}
+const baseURL = API_CONFIG.baseURL
 
 export const incidentService = {
-  /**
-   * Get all incidents
-   */
-  async getAll(query?: { 
-    status?: string
-    severity?: string
-    stationId?: string
-  }): Promise<Incident[]> {
-    const params = new URLSearchParams()
-    if (query?.status) params.append('status', query.status)
-    if (query?.severity) params.append('severity', query.severity)
-    if (query?.stationId) params.append('stationId', query.stationId)
-    
-    const queryString = params.toString()
-    return apiClient.get<Incident[]>(`/incidents${queryString ? `?${queryString}` : ''}`)
+  getAll: async () => {
+    const response = await fetch(`${baseURL}/incidents`)
+    if (!response.ok) throw new Error('Failed to fetch incidents')
+    return response.json() as Promise<Incident[]>
   },
 
-  /**
-   * Get incident by ID
-   */
-  async getById(id: string): Promise<Incident> {
-    return apiClient.get<Incident>(`/incidents/${id}`)
+  getById: async (id: string) => {
+    const response = await fetch(`${baseURL}/incidents/${id}`)
+    if (!response.ok) throw new Error('Failed to fetch incident')
+    return response.json() as Promise<Incident>
   },
 
-  /**
-   * Create incident
-   */
-  async create(data: CreateIncidentRequest): Promise<Incident> {
-    return apiClient.post<Incident>('/incidents', data)
+  assign: async (incidentId: string, technicianId: string, technicianName: string) => {
+    const response = await fetch(`${baseURL}/incidents/${incidentId}/assign`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ technicianId, technicianName }),
+    })
+    if (!response.ok) throw new Error('Failed to assign incident')
+    return response.json() as Promise<Incident>
   },
 
-  /**
-   * Update incident
-   */
-  async update(id: string, data: UpdateIncidentRequest): Promise<Incident> {
-    return apiClient.patch<Incident>(`/incidents/${id}`, data)
+  addNote: async (incidentId: string, data: { content: string; authorId: string; authorName: string }) => {
+    const response = await fetch(`${baseURL}/incidents/${incidentId}/notes`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    })
+    if (!response.ok) throw new Error('Failed to add note')
+    return response.json() as Promise<MaintenanceNote>
   },
 
-  /**
-   * Assign incident
-   */
-  async assign(id: string, data: AssignIncidentRequest): Promise<Incident> {
-    return apiClient.post<Incident>(`/incidents/${id}/assign`, data)
-  },
-
-  /**
-   * Resolve incident
-   */
-  async resolve(id: string, data?: ResolveIncidentRequest): Promise<Incident> {
-    return apiClient.post<Incident>(`/incidents/${id}/resolve`, data || {})
-  },
-
-  /**
-   * Delete incident
-   */
-  async delete(id: string): Promise<void> {
-    return apiClient.delete<void>(`/incidents/${id}`)
-  },
+  updateStatus: async (incidentId: string, status: IncidentStatus) => {
+    const response = await fetch(`${baseURL}/incidents/${incidentId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+    })
+    if (!response.ok) throw new Error('Failed to update status')
+    return response.json() as Promise<Incident>
+  }
 }

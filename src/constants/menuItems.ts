@@ -55,7 +55,7 @@ export const MENU_ITEMS: MenuItem[] = [
   // ═══════════════════════════════════════════════════════════════════════
   // TEAM & USERS
   // ═══════════════════════════════════════════════════════════════════════
-  { path: PATHS.TEAM, label: 'Team', icon: 'users', roles: ['STATION_ADMIN'] },
+  { path: PATHS.TEAM, label: 'Team', icon: 'users', roles: ['STATION_ADMIN', 'OWNER'] },
   { path: PATHS.ADMIN.USERS, label: 'Users & Roles', icon: 'user-check', roles: ROLE_GROUPS.PLATFORM_ADMINS },
   { path: PATHS.ADMIN.APPROVALS, label: 'Approvals', icon: 'check-circle', roles: ROLE_GROUPS.PLATFORM_OPS },
 
@@ -118,6 +118,16 @@ export const MENU_ITEMS: MenuItem[] = [
   // OWNER TOOLS
   // ═══════════════════════════════════════════════════════════════════════
   { path: PATHS.OWNER.TECH_REQUESTS, label: 'Tech Requests', icon: 'tool', roles: ['OWNER', 'STATION_ADMIN'] },
+  {
+    path: '#expansion',
+    label: 'Expansion',
+    icon: 'trending-up',
+    roles: ['OWNER'],
+    children: [
+      { path: PATHS.OWNER.EXPANSION_TRACKER, label: 'Tracker', roles: ['OWNER'] },
+      { path: PATHS.OWNER.LEASE_COMPLIANCE, label: 'Lease & Compliance', roles: ['OWNER'] },
+    ]
+  },
 ]
 
 /** Get menu items visible to a specific role */

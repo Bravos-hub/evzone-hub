@@ -39,6 +39,10 @@ export { SmartCharging } from './SmartCharging'
 export { Earnings } from './Earnings'
 export { Bookings } from './Bookings'
 export { default as StationOwnerDashboard } from './dashboard/StationOwnerDashboard'
+export { OwnerIncidentCenter } from './OwnerIncidentCenter'
+export { ApplicationTracker } from './ApplicationTracker'
+export { LeaseCompliance } from './LeaseCompliance'
+export { AdvancedReporting } from './AdvancedReporting'
 
 // Site Owner Features
 export { Sites } from './Sites'

@@ -78,6 +78,8 @@ export const PATHS = {
     PLANS: '/owner-plans',
     SETTLEMENT: '/owner-settlement',
     PARTNERS: '/partners',
+    EXPANSION_TRACKER: '/expansion/tracker',
+    LEASE_COMPLIANCE: '/expansion/compliance',
   },
 
   // Site Owner
