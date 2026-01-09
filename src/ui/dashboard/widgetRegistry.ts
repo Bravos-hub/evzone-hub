@@ -2,7 +2,7 @@ import type { Role } from '@/core/auth/types'
 import type { WidgetDef, WidgetId } from './types'
 
 // KPI Widgets
-import { KpiGenericWidget, KpiSimpleWidget, KpiStationsWidget, KpiRevenueWidget, KpiSessionsWidget, KpiIncidentsWidget, KpiUptimeWidget, KpiUtilizationWidget } from './widgets/kpi'
+import { KpiGenericWidget, KpiSimpleWidget, KpiStationsWidget, KpiRevenueWidget, KpiSessionsWidget, KpiIncidentsWidget, KpiUptimeWidget, KpiUtilizationWidget, KpiSwapsWidget, KpiReadyBatteriesWidget, KpiActiveSessionsWidget, KpiEnergyDeliveredWidget } from './widgets/kpi'
 
 // Chart Widgets
 import { BarChartWidget, LineChartWidget, DonutGaugeWidget } from './widgets/charts'
@@ -31,8 +31,16 @@ import {
   SwapWorkflowWidget,
   SitesTableWidget,
   ApplicationsTableWidget,
+  ActiveLeasesWidget,
   ShiftHandoffWidget,
-  QuickActionsWidget
+  QuickActionsWidget,
+  OwnerWorkflowWidget,
+  BatteryHealthWidget,
+  RevenueChartWidget,
+  StatusDonutWidget,
+  UtilizationHeatmapWidget,
+  TeamActivityWidget,
+  QuickNavigationWidget
 } from './widgets/panels'
 
 /** All roles for convenience */
@@ -135,7 +143,38 @@ export const WIDGET_REGISTRY: Record<WidgetId, WidgetDef> = {
     defaultSize: '1',
     category: 'kpi',
   },
-
+  'kpi-swaps': {
+    id: 'kpi-swaps',
+    title: 'Swaps Today',
+    allowedRoles: STATION_MANAGERS,
+    component: KpiSwapsWidget as any,
+    defaultSize: '1',
+    category: 'kpi',
+  },
+  'kpi-ready-batteries': {
+    id: 'kpi-ready-batteries',
+    title: 'Ready Batteries',
+    allowedRoles: STATION_MANAGERS,
+    component: KpiReadyBatteriesWidget as any,
+    defaultSize: '1',
+    category: 'kpi',
+  },
+  'kpi-active-sessions': {
+    id: 'kpi-active-sessions',
+    title: 'Active Sessions',
+    allowedRoles: STATION_MANAGERS,
+    component: KpiActiveSessionsWidget as any,
+    defaultSize: '1',
+    category: 'kpi',
+  },
+  'kpi-energy-delivered': {
+    id: 'kpi-energy-delivered',
+    title: 'Energy Delivered',
+    allowedRoles: STATION_MANAGERS,
+    component: KpiEnergyDeliveredWidget as any,
+    defaultSize: '1',
+    category: 'kpi',
+  },
   // ═══════════════════════════════════════════════════════════════════════════
   // CHART WIDGETS
   // ═══════════════════════════════════════════════════════════════════════════
@@ -381,6 +420,62 @@ export const WIDGET_REGISTRY: Record<WidgetId, WidgetDef> = {
     allowedRoles: ALL_ROLES,
     component: QuickActionsWidget as any,
     defaultSize: 'full',
+    category: 'panel',
+  },
+  'panel-owner-workflow': {
+    id: 'panel-owner-workflow',
+    title: 'Owner Workflow',
+    allowedRoles: ['OWNER', 'SITE_OWNER'],
+    component: OwnerWorkflowWidget as any,
+    defaultSize: 'full',
+    category: 'panel',
+  },
+  'panel-battery-health': {
+    id: 'panel-battery-health',
+    title: 'Battery Health Summary',
+    allowedRoles: STATION_MANAGERS,
+    component: BatteryHealthWidget as any,
+    defaultSize: '2',
+    category: 'panel',
+  },
+  'panel-revenue-chart': {
+    id: 'panel-revenue-chart',
+    title: 'Revenue Chart',
+    allowedRoles: STATION_MANAGERS,
+    component: RevenueChartWidget as any,
+    defaultSize: '2',
+    category: 'panel',
+  },
+  'panel-status-donut': {
+    id: 'panel-status-donut',
+    title: 'Hardware Status',
+    allowedRoles: STATION_MANAGERS,
+    component: StatusDonutWidget as any,
+    defaultSize: '1',
+    category: 'panel',
+  },
+  'panel-utilization-heatmap': {
+    id: 'panel-utilization-heatmap',
+    title: 'Utilization Heatmap',
+    allowedRoles: STATION_MANAGERS,
+    component: UtilizationHeatmapWidget as any,
+    defaultSize: '2',
+    category: 'panel',
+  },
+  'panel-team-activity': {
+    id: 'panel-team-activity',
+    title: 'Team Activity',
+    allowedRoles: STATION_MANAGERS,
+    component: TeamActivityWidget as any,
+    defaultSize: '1',
+    category: 'panel',
+  },
+  'panel-quick-nav': {
+    id: 'panel-quick-nav',
+    title: 'Quick Navigation',
+    allowedRoles: ALL_ROLES,
+    component: QuickNavigationWidget as any,
+    defaultSize: '1',
     category: 'panel',
   },
 }

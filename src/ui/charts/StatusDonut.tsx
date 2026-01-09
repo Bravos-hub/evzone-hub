@@ -8,9 +8,10 @@ interface StatusDonutProps {
         offline: number
         maintenance: number
     }
+    title?: string
 }
 
-export function StatusDonut({ data }: StatusDonutProps) {
+export function StatusDonut({ data, title = 'Charger Status' }: StatusDonutProps) {
     const chartData = [
         { name: 'Online', value: data.online, color: '#10b981' }, // Green-500
         { name: 'Offline', value: data.offline, color: '#ef4444' }, // Red-500
@@ -20,7 +21,7 @@ export function StatusDonut({ data }: StatusDonutProps) {
     return (
         <Card className="p-6 flex flex-col gap-6">
             <div>
-                <h3 className="text-lg font-bold text-text">Charger Status</h3>
+                <h3 className="text-lg font-bold text-text">{title}</h3>
                 <p className="text-sm text-text-secondary">Current availability of your network</p>
             </div>
 

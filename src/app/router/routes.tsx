@@ -14,12 +14,6 @@ import { GenericDashboard as GenericDashboardContent } from '@/ui/dashboard'
 import { useAuthStore } from '@/core/auth/authStore'
 
 export function GenericDashboard() {
-  const { user } = useAuthStore()
-
-  if (user?.role === 'OWNER') {
-    return <StationOwnerDashboard />
-  }
-
   return <GenericDashboardContent />
 }
 

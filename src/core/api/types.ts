@@ -212,6 +212,31 @@ export interface ChargingSession {
   durationMinutes?: number
 }
 
+// Battery & Swap Types
+export interface Battery {
+  id: string
+  type: string
+  soc: number
+  health: number
+  status: 'Ready' | 'Charging' | 'Maintenance' | 'Faulted'
+  location: string
+  cycles?: number
+  lastSwapped?: string
+}
+
+export interface SwapSession {
+  id: string
+  stationId: string
+  driverId: string
+  batteryInId: string
+  batteryOutId: string
+  startedAt: string
+  endedAt?: string
+  status: 'COMPLETED' | 'IN_PROGRESS' | 'FAILED'
+  fee: number
+  energyExchanged?: number
+}
+
 // Wallet Types
 export interface WalletBalance {
   balance: number
@@ -274,6 +299,22 @@ export interface DashboardMetrics {
     revenue: RevenueTrendPoint[]
     utilization: UtilizationHour[]
     topStations: StationPerformanceRank[]
+    swaps?: Array<{ date: string; count: number }>
+  }
+  swaps?: {
+    today: number
+    total: number
+    avgTime: string
+  }
+  inventory?: {
+    ready: number
+    charging: number
+    maintenance: number
+    total: number
+  }
+  batteryHealth?: {
+    average: number
+    lowHealthCount: number
   }
 }
 

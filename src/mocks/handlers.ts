@@ -823,6 +823,15 @@ export const handlers = [
       { stationId: 'ST-003', stationName: 'Airport Road', revenue: 2800, uptime: 94.2, sessions: 150 },
     ]
 
+    const swapTrend = Array.from({ length: 7 }, (_, i) => {
+      const date = new Date()
+      date.setDate(date.getDate() - (6 - i))
+      return {
+        date: date.toISOString().split('T')[0],
+        count: Math.floor(Math.random() * 50) + 100
+      }
+    })
+
     const metrics: DashboardMetrics = {
       realTime: {
         activeSessions: mockChargingSessions.filter(s => s.status === 'Active' || !s.end).length,
@@ -845,6 +854,22 @@ export const handlers = [
         revenue: trends,
         utilization,
         topStations,
+        swaps: swapTrend,
+      },
+      swaps: {
+        today: 187,
+        total: 12450,
+        avgTime: '4m 30s',
+      },
+      inventory: {
+        ready: 42,
+        charging: 12,
+        maintenance: 4,
+        total: 58,
+      },
+      batteryHealth: {
+        average: 94.5,
+        lowHealthCount: 5,
       }
     }
     return HttpResponse.json(metrics)

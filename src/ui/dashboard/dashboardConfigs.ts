@@ -250,29 +250,37 @@ export const DASHBOARD_CONFIGS: Record<DashboardKey, DashboardConfig> = {
   OWNER_CHARGE: {
     title: 'Charge Owner Dashboard',
     kpiRow: [
-      { id: 'kpi-stations', config: { total: 92, online: 88, variant: 'online', trend: 'up', delta: '+2 vs yesterday' } },
-      { id: 'kpi-revenue', config: { amount: 2080, period: 'Today', trend: 'up', delta: '+8% vs avg' } },
-      { id: 'kpi-sessions', config: { count: 529, period: 'Today', trend: 'up', delta: '+12 vs yesterday' } },
-      { id: 'kpi-utilization', config: { value: 67, trend: 'up', delta: '+3% this week' } },
+      { id: 'kpi-revenue', config: { period: 'Today', trend: 'up', delta: '+8% vs avg' } },
+      { id: 'kpi-active-sessions', config: {} },
+      { id: 'kpi-energy-delivered', config: {} },
+      { id: 'kpi-uptime', config: { value: 99.1, trend: 'up', delta: '+0.5% vs last week' } },
     ],
     rows: [
       {
+        sectionTitle: 'Operational Workflow',
         widgets: [
-          { id: 'chart-bar', size: '2', config: { title: 'Sessions (7 days)', values: [0, 342, 487, 421, 598, 612, 0], color: '#f77f00', labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] } },
-          { id: 'chart-donut', size: '2', config: { title: 'Uptime', value: 99.1, label: 'Uptime', target: 99.5, secondaryLabel: 'Drivers impacted', secondaryValue: '18' } },
+          { id: 'panel-owner-workflow', size: 'full', config: {} },
         ],
       },
       {
+        sectionTitle: 'Analytics & Hardware',
         widgets: [
-          { id: 'chart-line', size: '2', config: { title: 'Revenue (7 days)', values: [0, 1240, 1820, 1680, 2450, 2140, 0], stroke: '#03cd8c', labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] } },
-          { id: 'chart-bar', size: '2', config: { title: 'Utilization (7 days)', values: [0, 58, 63, 61, 68, 72, 0], color: '#f59e0b', labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] } },
+          { id: 'panel-revenue-chart', size: '2', config: { title: 'Charging Revenue' } },
+          { id: 'panel-status-donut', size: '1', config: { title: 'Hardware Status' } },
         ],
       },
       {
-        sectionTitle: 'Operations',
+        sectionTitle: 'Operations & Health',
         widgets: [
-          { id: 'panel-placeholder', size: '2', config: { title: 'Degraded chargers', subtitle: 'Diagnostics + remote commands' } },
-          { id: 'panel-placeholder', size: '2', config: { title: 'Maintenance queue', subtitle: 'Internal + public tech requests' } },
+          { id: 'panel-utilization-heatmap', size: '2', config: {} },
+          { id: 'panel-placeholder', size: '2', config: { title: 'Maintenance Queue', subtitle: 'Technical requests and tickets' } },
+        ],
+      },
+      {
+        sectionTitle: 'Team & Quick Links',
+        widgets: [
+          { id: 'panel-team-activity', size: '2', config: {} },
+          { id: 'panel-quick-nav', size: '2', config: {} },
         ],
       },
     ],
@@ -284,23 +292,37 @@ export const DASHBOARD_CONFIGS: Record<DashboardKey, DashboardConfig> = {
   OWNER_SWAP: {
     title: 'Swap Owner Dashboard',
     kpiRow: [
-      { id: 'kpi-generic', config: { title: 'Swap stations', value: '14', trend: 'flat' } },
-      { id: 'kpi-generic', config: { title: 'Battery stock', value: '342', trend: 'up', delta: '+28 restocked' } },
-      { id: 'kpi-sessions', config: { count: 187, period: 'Today', trend: 'up', delta: '+8% vs avg' } },
-      { id: 'kpi-revenue', config: { amount: 4120, period: 'Today', trend: 'up', delta: '+5% vs avg' } },
+      { id: 'kpi-revenue', config: { period: 'Today', trend: 'up', delta: '+5% vs avg' } },
+      { id: 'kpi-swaps', config: {} },
+      { id: 'kpi-ready-batteries', config: {} },
+      { id: 'kpi-uptime', config: { value: 98.5, trend: 'up', delta: '+0.5% vs last week' } },
     ],
     rows: [
       {
+        sectionTitle: 'Operational Workflow',
         widgets: [
-          { id: 'chart-bar', size: '2', config: { title: 'Swaps (7 days)', values: [156, 168, 172, 165, 180, 192, 187], color: '#8b5cf6' } },
-          { id: 'chart-donut', size: '2', config: { title: 'Battery Health', value: 94.2, label: 'Avg Health', target: 90, secondaryLabel: 'Low health units', secondaryValue: '12' } },
+          { id: 'panel-owner-workflow', size: 'full', config: {} },
         ],
       },
       {
-        sectionTitle: 'Operations',
+        sectionTitle: 'Analytics & Hardware',
         widgets: [
-          { id: 'panel-placeholder', size: '2', config: { title: 'Station inventory', subtitle: 'Battery levels by station' } },
-          { id: 'panel-placeholder', size: '2', config: { title: 'Bookings', subtitle: 'Upcoming reservations' } },
+          { id: 'panel-revenue-chart', size: '2', config: { title: 'Combined Swap Revenue' } },
+          { id: 'panel-status-donut', size: '1', config: { title: 'Hardware Status' } },
+        ],
+      },
+      {
+        sectionTitle: 'Operations & Health',
+        widgets: [
+          { id: 'panel-utilization-heatmap', size: '2', config: {} },
+          { id: 'panel-battery-health', size: '2', config: {} },
+        ],
+      },
+      {
+        sectionTitle: 'Team & Quick Links',
+        widgets: [
+          { id: 'panel-team-activity', size: '2', config: {} },
+          { id: 'panel-quick-nav', size: '2', config: {} },
         ],
       },
     ],
@@ -312,22 +334,37 @@ export const DASHBOARD_CONFIGS: Record<DashboardKey, DashboardConfig> = {
   OWNER_BOTH: {
     title: 'Owner Dashboard',
     kpiRow: [
-      { id: 'kpi-stations', config: { total: 106, online: 102, variant: 'online', trend: 'up' } },
-      { id: 'kpi-revenue', config: { amount: 6200, period: 'Today', trend: 'up', delta: '+6% combined' } },
-      { id: 'kpi-sessions', config: { count: 716, period: 'Today', trend: 'up' } },
-      { id: 'kpi-utilization', config: { value: 71, trend: 'up' } },
+      { id: 'kpi-revenue', config: { period: 'Today', trend: 'up', delta: '+6% combined' } },
+      { id: 'kpi-swaps', config: {} },
+      { id: 'kpi-active-sessions', config: {} },
+      { id: 'kpi-uptime', config: { value: 98.8, trend: 'up' } },
     ],
     rows: [
       {
+        sectionTitle: 'Operational Workflow',
         widgets: [
-          { id: 'chart-bar', size: '2', config: { title: 'Charge Sessions', values: [0, 342, 487, 421, 598, 612, 0], color: '#f77f00', labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] } },
-          { id: 'chart-bar', size: '2', config: { title: 'Swap Sessions', values: [0, 128, 165, 142, 198, 205, 0], color: '#8b5cf6', labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] } },
+          { id: 'panel-owner-workflow', size: 'full', config: {} },
         ],
       },
       {
+        sectionTitle: 'Analytics & Hardware',
         widgets: [
-          { id: 'chart-line', size: '2', config: { title: 'Combined Revenue', values: [0, 4870, 6520, 6080, 7960, 8370, 0], stroke: '#03cd8c', labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] } },
-          { id: 'chart-donut', size: '2', config: { title: 'Fleet Uptime', value: 98.8, label: 'Combined', target: 99.0 } },
+          { id: 'panel-revenue-chart', size: '2', config: { title: 'Combined Revenue' } },
+          { id: 'panel-status-donut', size: '1', config: { title: 'Hardware Status' } },
+        ],
+      },
+      {
+        sectionTitle: 'Operations & Health',
+        widgets: [
+          { id: 'panel-utilization-heatmap', size: '2', config: {} },
+          { id: 'panel-battery-health', size: '2', config: {} },
+        ],
+      },
+      {
+        sectionTitle: 'Team & Quick Links',
+        widgets: [
+          { id: 'panel-team-activity', size: '2', config: {} },
+          { id: 'panel-quick-nav', size: '2', config: {} },
         ],
       },
     ],
@@ -535,6 +572,7 @@ export const DASHBOARD_CONFIGS: Record<DashboardKey, DashboardConfig> = {
   // TECHNICIAN PUBLIC DASHBOARD
   // ─────────────────────────────────────────────────────────────────────────
   TECHNICIAN_PUBLIC: {
+    // ...
     title: 'Technician — Public',
     kpiRow: [
       { id: 'kpi-generic', config: { title: 'Available jobs', value: '12' } },
@@ -555,6 +593,21 @@ export const DASHBOARD_CONFIGS: Record<DashboardKey, DashboardConfig> = {
         widgets: [
           { id: 'panel-placeholder', size: '2', config: { title: 'Current job', subtitle: 'Details, checklist, submit' } },
           { id: 'panel-placeholder', size: '2', config: { title: 'Earnings', subtitle: 'This month, pending payout' } },
+        ],
+      },
+    ],
+  },
+  CASHIER: {
+    title: 'Cashier Dashboard',
+    kpiRow: [
+      { id: 'kpi-generic', config: { title: 'Transactions today', value: '42' } },
+      { id: 'kpi-generic', config: { title: 'Collections', value: '$840.00' } },
+      { id: 'kpi-generic', config: { title: 'Pending', value: '3' } },
+    ],
+    rows: [
+      {
+        widgets: [
+          { id: 'panel-placeholder', size: '4', config: { title: 'Recent Payments', subtitle: 'Confirm and issue receipts' } },
         ],
       },
     ],

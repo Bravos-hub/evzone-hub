@@ -4,14 +4,15 @@ import { Card } from '../components/Card'
 
 interface RevenueChartProps {
     data: RevenueTrendPoint[]
+    title?: string
 }
 
-export function RevenueChart({ data }: RevenueChartProps) {
+export function RevenueChart({ data, title = 'Revenue Overview' }: RevenueChartProps) {
     return (
         <Card className="p-6 flex flex-col gap-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h3 className="text-lg font-bold text-text">Revenue Overview</h3>
+                    <h3 className="text-lg font-bold text-text">{title}</h3>
                     <p className="text-sm text-text-secondary">Historical revenue vs operating costs</p>
                 </div>
                 <div className="flex items-center gap-4">

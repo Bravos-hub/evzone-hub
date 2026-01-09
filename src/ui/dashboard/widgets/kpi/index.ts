@@ -5,4 +5,8 @@ export { KpiSessionsWidget, type KpiSessionsConfig } from './KpiSessionsWidget'
 export { KpiIncidentsWidget, type KpiIncidentsConfig } from './KpiIncidentsWidget'
 export { KpiUptimeWidget, type KpiUptimeConfig } from './KpiUptimeWidget'
 export { KpiUtilizationWidget, type KpiUtilizationConfig } from './KpiUtilizationWidget'
+export { KpiSwapsWidget } from './KpiSwapsWidget'
+export { KpiReadyBatteriesWidget } from './KpiReadyBatteriesWidget'
+export { KpiActiveSessionsWidget } from './KpiActiveSessionsWidget'
+export { KpiEnergyDeliveredWidget } from './KpiEnergyDeliveredWidget'
 
