@@ -54,4 +54,11 @@ export const chargePointService = {
   async delete(id: string): Promise<void> {
     return apiClient.delete<void>(`/charge-points/${id}`)
   },
+
+  /**
+   * Reboot charge point
+   */
+  async reboot(id: string): Promise<void> {
+    return apiClient.post<void>(`/charge-points/${id}/reboot`)
+  },
 }

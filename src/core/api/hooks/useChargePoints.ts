@@ -68,3 +68,15 @@ export function useDeleteChargePoint() {
     },
   })
 }
+
+export function useRebootChargePoint() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: string) => chargePointService.reboot(id),
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: ['chargePoints', 'detail', id] })
+      queryClient.invalidateQueries({ queryKey: ['chargePoints', 'all'] })
+    },
+  })
+}

@@ -1776,4 +1776,9 @@ export const handlers = [
 
     return HttpResponse.json(updated)
   }),
+
+  // Reboot charge point
+  http.post(`${baseURL}/charge-points/:id/reboot`, async ({ params }) => {
+    return HttpResponse.json({ success: true, message: 'Reboot command accepted' })
+  }),
 ]
