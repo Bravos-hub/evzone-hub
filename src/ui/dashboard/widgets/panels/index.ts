@@ -13,6 +13,7 @@ export { ChargeStartWidget, type ChargeScan, type ChargeStartConfig } from './Ch
 export { SwapWorkflowWidget, type SwapBattery, type SwapPayment, type SwapWorkflowConfig, type SwapWorkflowStep } from './SwapWorkflowWidget'
 export { SitesTableWidget } from './SitesTableWidget'
 export { ApplicationsTableWidget } from './ApplicationsTableWidget'
+export { ActiveLeasesWidget } from './ActiveLeasesWidget'
 export { ShiftHandoffWidget } from './ShiftHandoffWidget'
 export { QuickActionsWidget, type QuickAction } from './QuickActionsWidget'
 

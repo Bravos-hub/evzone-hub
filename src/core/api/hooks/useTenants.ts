@@ -9,7 +9,21 @@ import { tenantService } from '../services/tenantService'
 export function useTenants(filters?: { status?: string; siteId?: string }) {
   return useQuery({
     queryKey: ['tenants', filters],
-    queryFn: () => tenantService.getAll(filters),
+    queryFn: () => tenantService.getLeases(filters), // Default useTenants to leases
+  })
+}
+
+export function useApplications(filters?: { status?: string; siteId?: string }) {
+  return useQuery({
+    queryKey: ['applications', filters],
+    queryFn: () => tenantService.getApplications(filters),
+  })
+}
+
+export function useLeases(filters?: { status?: string; siteId?: string }) {
+  return useQuery({
+    queryKey: ['tenants', 'leases', filters],
+    queryFn: () => tenantService.getLeases(filters),
   })
 }
 

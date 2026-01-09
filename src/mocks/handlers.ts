@@ -1281,6 +1281,36 @@ export const handlers = [
     return HttpResponse.json(sites)
   }),
 
+  // Applications endpoints
+  http.get(`${baseURL}/applications`, async ({ request }: { request: any }) => {
+    const url = new URL(request.url)
+    const status = url.searchParams.get('status')
+    const { mockDb } = await import('@/data/mockDb')
+
+    // Initialize if empty
+    if (mockDb.getApplications().length === 0) {
+      const initialApplications: TenantApplication[] = [
+        {
+          id: 'APP-001',
+          applicantId: 'u-005',
+          applicantName: 'QuickCharge Co',
+          organizationId: 'org-003',
+          organizationName: 'QuickCharge Co',
+          siteId: 'ST-0002',
+          siteName: 'Airport Long-Stay',
+          status: 'Pending',
+          proposedRent: 800,
+          proposedTerm: 12,
+          message: 'Interested in leasing this site for our charging network expansion.',
+          createdAt: new Date(Date.now() - 86400000).toISOString(),
+        },
+      ]
+      mockDb.setApplications(initialApplications)
+    }
+
+    return HttpResponse.json(mockDb.getApplications().filter(a => !status || a.status === status))
+  }),
+
   // Tenant endpoints
   http.get(`${baseURL}/tenants`, async ({ request }: { request: any }) => {
     const url = new URL(request.url)
@@ -1337,30 +1367,6 @@ export const handlers = [
         },
       ]
       mockDb.setTenants(initialTenants)
-    }
-
-    if (mockDb.getApplications().length === 0) {
-      const initialApplications: TenantApplication[] = [
-        {
-          id: 'APP-001',
-          applicantId: 'u-005',
-          applicantName: 'QuickCharge Co',
-          organizationId: 'org-003',
-          organizationName: 'QuickCharge Co',
-          siteId: 'ST-0002',
-          siteName: 'Airport Long-Stay',
-          status: 'Pending',
-          proposedRent: 800,
-          proposedTerm: 12,
-          message: 'Interested in leasing this site for our charging network expansion.',
-          createdAt: new Date(Date.now() - 86400000).toISOString(),
-        },
-      ]
-      mockDb.setApplications(initialApplications)
-    }
-
-    if (status === 'pending' || status === 'Pending') {
-      return HttpResponse.json(mockDb.getApplications())
     }
 
     return HttpResponse.json(mockDb.getTenants().filter(t => !status || t.status === status))

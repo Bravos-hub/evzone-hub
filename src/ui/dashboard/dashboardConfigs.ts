@@ -376,19 +376,19 @@ export const DASHBOARD_CONFIGS: Record<DashboardKey, DashboardConfig> = {
       {
         sectionTitle: 'My Sites & Availability',
         widgets: [
-          { id: 'panel-sites-table', size: 'full', config: { sites: mockSites } },
+          { id: 'panel-sites-table', size: 'full', config: { title: 'My Sites & Availability' } },
         ],
       },
       {
         sectionTitle: 'Applications Pipeline',
         widgets: [
-          { id: 'panel-apps-table', size: 'full', config: { apps: mockApps } },
+          { id: 'panel-apps-table', size: 'full', config: { title: 'Applications Pipeline' } },
         ],
       },
       {
         sectionTitle: 'Leases & Earnings',
         widgets: [
-          { id: 'panel-placeholder', size: '2', config: { title: 'Active leases', subtitle: 'Rent, term, contacts' } },
+          { id: 'panel-leases-table', size: '2', config: { title: 'Active leases', subtitle: 'Rent, term, contacts' } },
           { id: 'chart-line', size: '2', config: { title: 'Earnings trend', values: [5200, 5400, 5800, 6100, 6240], stroke: '#03cd8c' } },
         ],
       },

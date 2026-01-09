@@ -14,6 +14,7 @@ import { IncidentsListWidget, DispatchQueueWidget, ApprovalsQueueWidget, AuditFe
 import { WorldMapWidget } from './widgets/maps'
 
 // Panel Widgets
+import * as Pan from './widgets/panels'
 import {
   AlertsPanelWidget,
   SystemHealthWidget,
@@ -351,14 +352,21 @@ export const WIDGET_REGISTRY: Record<WidgetId, WidgetDef> = {
 
   'panel-apps-table': {
     id: 'panel-apps-table',
-    title: 'Applications Table',
+    title: 'Applications Pipeline',
     allowedRoles: ['SITE_OWNER', 'EVZONE_ADMIN'],
-    component: ApplicationsTableWidget as any,
-    defaultSize: '2',
+    component: Pan.ApplicationsTableWidget as any,
+    defaultSize: 'full',
     category: 'panel',
   },
-
-  'panel-shift-handoff': {
+  'panel-leases-table': {
+    id: 'panel-leases-table',
+    title: 'Active Leases',
+    allowedRoles: ['SITE_OWNER', 'EVZONE_ADMIN'],
+    component: Pan.ActiveLeasesWidget as any,
+    defaultSize: 'full',
+    category: 'panel',
+  },
+  'panel-handoff': {
     id: 'panel-shift-handoff',
     title: 'Shift Handoff',
     allowedRoles: ['EVZONE_OPERATOR', 'EVZONE_ADMIN'],

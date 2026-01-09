@@ -8,15 +8,27 @@ import type { Tenant, TenantApplication, LeaseContract } from '../types'
 
 export const tenantService = {
   /**
-   * Get all tenants/applications
+   * Get all tenant applications
    */
-  async getAll(filters?: { status?: string; siteId?: string }): Promise<(Tenant | TenantApplication)[]> {
+  async getApplications(filters?: { status?: string; siteId?: string }): Promise<TenantApplication[]> {
     const params = new URLSearchParams()
     if (filters?.status) params.append('status', filters.status)
     if (filters?.siteId) params.append('siteId', filters.siteId)
-    
+
     const queryString = params.toString()
-    return apiClient.get<(Tenant | TenantApplication)[]>(`/tenants${queryString ? `?${queryString}` : ''}`)
+    return apiClient.get<TenantApplication[]>(`/applications${queryString ? `?${queryString}` : ''}`)
+  },
+
+  /**
+   * Get all active leases (tenants)
+   */
+  async getLeases(filters?: { status?: string; siteId?: string }): Promise<Tenant[]> {
+    const params = new URLSearchParams()
+    if (filters?.status) params.append('status', filters.status)
+    if (filters?.siteId) params.append('siteId', filters.siteId)
+
+    const queryString = params.toString()
+    return apiClient.get<Tenant[]>(`/tenants${queryString ? `?${queryString}` : ''}`)
   },
 
   /**

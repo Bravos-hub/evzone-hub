@@ -1,52 +1,62 @@
-import React from 'react';
+import { Card } from '@/ui/components/Card'
+import { useApplications } from '@/core/api/hooks/useTenants'
 
-/**
- * Site Owner - Applications Table Widget
- */
 export function ApplicationsTableWidget({ config }: { config: any }) {
-    const apps = config?.apps || [];
+    const { data: applications, isLoading } = useApplications()
+    const apps = applications || []
 
-    const statusColors: Record<string, string> = {
-        'Under Review': 'bg-amber-100/10 text-amber-500 border-amber-500/20',
-        Applied: 'bg-blue-100/10 text-blue-500 border-blue-500/20',
-        Approved: 'bg-emerald-100/10 text-emerald-500 border-emerald-500/20',
-        Rejected: 'bg-rose-100/10 text-rose-500 border-rose-500/20',
-    };
+    if (isLoading) {
+        return (
+            <Card className="flex items-center justify-center p-8">
+                <div className="text-muted animate-pulse">Loading applications...</div>
+            </Card>
+        )
+    }
 
     return (
-        <div className="rounded-xl bg-panel border border-white/5 p-5 shadow-sm h-full flex flex-col">
-            <div className="flex items-center justify-between mb-4">
-                <h2 className="font-semibold text-text">Applications</h2>
+        <Card className="p-0 overflow-hidden">
+            <div className="p-4 border-b border-border-light flex justify-between items-center bg-card-header">
+                <div className="card-title">{config?.title || 'Applications Pipeline'}</div>
                 <a href="/explore" className="text-xs text-accent hover:underline font-medium">Browse sites</a>
             </div>
-            <div className="overflow-x-auto rounded-lg border border-white/5 flex-1">
-                <table className="min-w-full text-[13px]">
-                    <thead className="bg-white/5 text-muted">
+            <div className="table-responsive">
+                <table className="table">
+                    <thead>
                         <tr>
-                            <th className="px-4 py-2.5 text-left font-medium">App ID</th>
-                            <th className="px-4 py-2.5 text-left font-medium">Site</th>
-                            <th className="px-4 py-2.5 text-left font-medium">Model</th>
-                            <th className="px-4 py-2.5 text-left font-medium">Status</th>
-                            <th className="px-4 py-2.5 text-left font-medium">Date</th>
+                            <th>App ID</th>
+                            <th>Site Name</th>
+                            <th>Rent</th>
+                            <th>Term</th>
+                            <th>Status</th>
+                            <th className="text-right">Date</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-white/5">
-                        {apps.map((a: any) => (
-                            <tr key={a.id} className="hover:bg-white/[0.02] transition-colors">
-                                <td className="px-4 py-2.5 font-medium text-text">{a.id}</td>
-                                <td className="px-4 py-2.5 text-muted">{a.site}</td>
-                                <td className="px-4 py-2.5 text-muted">{a.model}</td>
-                                <td className="px-4 py-2.5">
-                                    <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${statusColors[a.status] || 'bg-gray-50 text-gray-500'}`}>
-                                        {a.status}
-                                    </span>
-                                </td>
-                                <td className="px-4 py-2.5 text-muted">{a.date}</td>
+                    <tbody>
+                        {apps.length === 0 ? (
+                            <tr>
+                                <td colSpan={6} className="text-center py-8 text-muted">No applications found.</td>
                             </tr>
-                        ))}
+                        ) : (
+                            apps.map((a) => (
+                                <tr key={a.id}>
+                                    <td className="font-mono text-xs">{a.id}</td>
+                                    <td className="font-semibold">{a.siteName}</td>
+                                    <td>${a.proposedRent?.toLocaleString()}</td>
+                                    <td>{a.proposedTerm} mos</td>
+                                    <td>
+                                        <span className={`pill ${a.status === 'Approved' ? 'approved' : a.status === 'Rejected' ? 'rejected' : 'pending'}`}>
+                                            {a.status}
+                                        </span>
+                                    </td>
+                                    <td className="text-right text-xs text-muted">
+                                        {a.createdAt ? new Date(a.createdAt).toLocaleDateString() : 'N/A'}
+                                    </td>
+                                </tr>
+                            ))
+                        )}
                     </tbody>
                 </table>
             </div>
-        </div>
-    );
+        </Card>
+    )
 }
