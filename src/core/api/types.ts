@@ -229,7 +229,26 @@ export interface TopUpRequest {
   amount: number
 }
 
-// Analytics Types
+export interface RevenueTrendPoint {
+  date: string
+  revenue: number
+  cost: number
+}
+
+export interface UtilizationHour {
+  hour: number
+  day: string
+  utilization: number
+}
+
+export interface StationPerformanceRank {
+  stationId: string
+  stationName: string
+  revenue: number
+  uptime: number
+  sessions: number
+}
+
 export interface DashboardMetrics {
   realTime: {
     activeSessions: number
@@ -247,6 +266,11 @@ export interface DashboardMetrics {
     online: number
     offline: number
     maintenance: number
+  }
+  trends: {
+    revenue: RevenueTrendPoint[]
+    utilization: UtilizationHour[]
+    topStations: StationPerformanceRank[]
   }
 }
 

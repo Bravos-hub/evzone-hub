@@ -38,6 +38,7 @@ export { SwapStations } from './SwapStations'
 export { SmartCharging } from './SmartCharging'
 export { Earnings } from './Earnings'
 export { Bookings } from './Bookings'
+export { default as StationOwnerDashboard } from './dashboard/StationOwnerDashboard'
 
 // Site Owner Features
 export { Sites } from './Sites'

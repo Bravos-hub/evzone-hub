@@ -7,7 +7,7 @@
 import { http, HttpResponse } from 'msw'
 import { mockUsers } from '@/data/mockDb/users'
 import { mockChargingSessions } from '@/data/mockDb/sessions'
-import type { User, Station, Booking, ChargingSession, WalletBalance, WalletTransaction, Organization, DashboardMetrics, Tenant, TenantApplication, LeaseContract, NoticeRequest, Notice, PaymentMethod, CreatePaymentMethodRequest, WithdrawalRequest, WithdrawalTransaction, NotificationItem, ChargePoint } from '@/core/api/types'
+import type { User, Station, Booking, ChargingSession, WalletBalance, WalletTransaction, Organization, DashboardMetrics, RevenueTrendPoint, UtilizationHour, StationPerformanceRank, Tenant, TenantApplication, LeaseContract, NoticeRequest, Notice, PaymentMethod, CreatePaymentMethodRequest, WithdrawalRequest, WithdrawalTransaction, NotificationItem, ChargePoint } from '@/core/api/types'
 import type { ChargePoint as DomainChargePoint } from '@/core/types/domain'
 import { API_CONFIG } from '@/core/api/config'
 import { mockDb } from '@/data/mockDb'
@@ -732,11 +732,41 @@ export const handlers = [
   // Analytics endpoints
   http.get(`${baseURL}/analytics/dashboard`, async () => {
     const stations = mockDb.getStations()
+    const trends: RevenueTrendPoint[] = Array.from({ length: 7 }, (_, i) => {
+      const date = new Date()
+      date.setDate(date.getDate() - (6 - i))
+      const revenue = Math.floor(Math.random() * 500) + 200
+      return {
+        date: date.toISOString().split('T')[0],
+        revenue,
+        cost: Math.floor(revenue * 0.4),
+      }
+    })
+
+    const utilization: UtilizationHour[] = []
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+    days.forEach(day => {
+      for (let hour = 0; hour < 24; hour++) {
+        const base = (hour > 8 && hour < 20) ? 60 : 20
+        utilization.push({
+          day,
+          hour,
+          utilization: Math.floor(Math.random() * 30) + base
+        })
+      }
+    })
+
+    const topStations: StationPerformanceRank[] = [
+      { stationId: 'ST-001', stationName: 'Downtown Hub', revenue: 4500, uptime: 99.8, sessions: 120 },
+      { stationId: 'ST-002', stationName: 'Westside Plaza', revenue: 3200, uptime: 97.5, sessions: 85 },
+      { stationId: 'ST-003', stationName: 'Airport Road', revenue: 2800, uptime: 94.2, sessions: 150 },
+    ]
+
     const metrics: DashboardMetrics = {
       realTime: {
         activeSessions: mockChargingSessions.filter(s => s.status === 'Active' || !s.end).length,
         onlineChargers: stations.length,
-        totalPower: 120.5,
+        totalPower: 156.4,
         currentRevenue: 3500.75,
       },
       today: {
@@ -750,6 +780,11 @@ export const handlers = [
         offline: stations.filter(s => s.status === 'Offline').length,
         maintenance: stations.filter(s => s.status === 'Maintenance').length,
       },
+      trends: {
+        revenue: trends,
+        utilization,
+        topStations,
+      }
     }
     return HttpResponse.json(metrics)
   }),
