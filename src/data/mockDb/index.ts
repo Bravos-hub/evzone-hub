@@ -101,6 +101,7 @@ const initialStations: Station[] = [
     longitude: 32.5825,
     status: 'Online',
     capacity: 150,
+    parkingBays: 150,
     created: new Date('2024-01-15'),
     tags: ['premium', 'high-traffic'],
   },
@@ -117,6 +118,7 @@ const initialStations: Station[] = [
     longitude: 32.4435,
     status: 'Online',
     capacity: 200,
+    parkingBays: 200,
     created: new Date('2024-02-20'),
     tags: ['airport', 'public'],
   },
@@ -655,6 +657,7 @@ export const mockDb = {
   getTenants: () => db.tenants,
   getTenant: (id: string) => db.tenants.find(t => t.id === id),
   getApplications: () => db.applications,
+  getContracts: () => db.contracts,
   getContract: (tenantId: string) => db.contracts.find(c => c.tenantId === tenantId),
   setTenants: (tenants: Tenant[]) => {
     db.tenants = tenants
@@ -667,6 +670,18 @@ export const mockDb = {
   setContracts: (contracts: LeaseContract[]) => {
     db.contracts = contracts
     saveDatabase(db)
+  },
+  updateApplicationStatus: (id: string, status: string, message?: string) => {
+    const index = db.applications.findIndex(a => a.id === id)
+    if (index !== -1) {
+      db.applications[index] = {
+        ...db.applications[index],
+        status: status as any,
+        respondedAt: new Date().toISOString(),
+        responseMessage: message
+      }
+      saveDatabase(db)
+    }
   },
 }
 

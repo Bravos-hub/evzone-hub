@@ -347,6 +347,8 @@ export const handlers = [
     if (body.address) updates.address = body.address
     if (body.latitude !== undefined) updates.latitude = body.latitude
     if (body.longitude !== undefined) updates.longitude = body.longitude
+    if (body.capacity !== undefined) updates.capacity = body.capacity
+    if ((body as any).parkingBays !== undefined) updates.parkingBays = (body as any).parkingBays
     if (body.status) {
       updates.status = body.status === 'ACTIVE' ? 'Online' : body.status === 'INACTIVE' ? 'Offline' : 'Maintenance'
     }
@@ -1309,6 +1311,61 @@ export const handlers = [
     }
 
     return HttpResponse.json(mockDb.getApplications().filter(a => !status || a.status === status))
+  }),
+
+  http.patch(`${baseURL}/applications/:id/status`, async ({ params, request }: { params: any; request: any }) => {
+    const body = await request.json() as { status: string; message?: string }
+    const { mockDb } = await import('@/data/mockDb')
+
+    mockDb.updateApplicationStatus(params.id as string, body.status, body.message)
+    const updated = mockDb.getApplications().find(a => a.id === params.id)
+
+    if (body.status === 'Approved' && updated) {
+      // Create a tenant if approved
+      const tenants = mockDb.getTenants()
+      const newTenant: Tenant = {
+        id: `TN-${Date.now()}`,
+        name: updated.applicantName,
+        type: 'Operator',
+        siteId: updated.siteId,
+        siteName: updated.siteName,
+        model: 'Fixed Rent',
+        terms: `$${updated.proposedRent || 0}/mo`,
+        startDate: new Date().toISOString().split('T')[0],
+        status: 'Active',
+        earnings: 0,
+        outstandingDebt: 0,
+        totalPaid: 0,
+        overduePayments: [],
+        nextPaymentDue: { date: new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0], amount: updated.proposedRent || 0 },
+        paymentHistory: [],
+        email: 'tenant@example.com',
+      }
+      mockDb.setTenants([...tenants, newTenant])
+
+      // Also create a contract
+      const contracts = mockDb.getContracts()
+      const newContract: LeaseContract = {
+        id: `LEASE-${Date.now()}`,
+        siteId: updated.siteId,
+        tenantId: newTenant.id,
+        tenantName: newTenant.name,
+        organizationId: updated.organizationId || 'org-new',
+        status: 'Active',
+        startDate: newTenant.startDate,
+        endDate: new Date(Date.now() + 365 * 86400000).toISOString().split('T')[0],
+        rent: updated.proposedRent || 0,
+        currency: 'USD',
+        paymentSchedule: 'Monthly',
+        autoRenew: true,
+        model: 'Fixed Rent',
+        terms: newTenant.terms,
+        stationIds: [updated.siteId],
+      }
+      mockDb.setContracts([...contracts, newContract])
+    }
+
+    return HttpResponse.json(updated)
   }),
 
   // Tenant endpoints

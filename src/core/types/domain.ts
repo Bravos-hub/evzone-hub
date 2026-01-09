@@ -111,6 +111,7 @@ export interface Station {
   operatorId?: UserId
   managerId?: UserId
   capacity: number // total power in kW
+  parkingBays?: number
   chargePoints?: ChargePoint[]
   swapLockers?: SwapLocker[]
   amenities?: string[]

@@ -3,7 +3,7 @@
  * React Query hooks for tenant management
  */
 
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { tenantService } from '../services/tenantService'
 
 export function useTenants(filters?: { status?: string; siteId?: string }) {
@@ -24,6 +24,19 @@ export function useLeases(filters?: { status?: string; siteId?: string }) {
   return useQuery({
     queryKey: ['tenants', 'leases', filters],
     queryFn: () => tenantService.getLeases(filters),
+  })
+}
+
+export function useUpdateApplicationStatus() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, status, message }: { id: string; status: string; message?: string }) =>
+      tenantService.updateApplicationStatus(id, status, message),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['applications'] })
+      queryClient.invalidateQueries({ queryKey: ['tenants'] })
+    },
   })
 }
 

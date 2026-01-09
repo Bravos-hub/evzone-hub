@@ -75,6 +75,7 @@ export interface Station {
   type: 'CHARGING' | 'SWAP' | 'BOTH'
   status: 'ACTIVE' | 'INACTIVE' | 'MAINTENANCE'
   capacity?: number
+  parkingBays?: number
   orgId?: string
   tags?: string[]
   createdAt: string
@@ -98,6 +99,7 @@ export interface UpdateStationRequest {
   longitude?: number
   status?: 'ACTIVE' | 'INACTIVE' | 'MAINTENANCE'
   capacity?: number
+  parkingBays?: number
 }
 
 // Charge Point Types

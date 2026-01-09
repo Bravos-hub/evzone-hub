@@ -39,6 +39,13 @@ export const tenantService = {
   },
 
   /**
+   * Update application status
+   */
+  async updateApplicationStatus(id: string, status: string, message?: string): Promise<TenantApplication> {
+    return apiClient.patch<TenantApplication>(`/applications/${id}/status`, { status, message })
+  },
+
+  /**
    * Get tenant contract
    */
   async getContract(tenantId: string): Promise<LeaseContract> {
