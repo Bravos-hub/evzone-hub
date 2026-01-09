@@ -41,7 +41,7 @@ export const MENU_ITEMS: MenuItem[] = [
   // ═══════════════════════════════════════════════════════════════════════
   // SITE OWNER
   // ═══════════════════════════════════════════════════════════════════════
-  { path: PATHS.SITE_OWNER.SITES, label: 'My Sites', icon: 'map-pin', roles: ['SITE_OWNER'] },
+  { path: PATHS.SITE_OWNER.SITES, label: 'My Sites', icon: 'map-pin', roles: ['SITE_OWNER', 'OWNER'] },
   { path: PATHS.SITE_OWNER.PARKING, label: 'Parking', icon: 'truck', roles: ['SITE_OWNER'] },
   { path: PATHS.SITE_OWNER.TENANTS, label: 'Tenants', icon: 'users', roles: ['SITE_OWNER'] },
 
