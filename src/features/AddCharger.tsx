@@ -395,7 +395,7 @@ export function AddCharger() {
                     const connectorSpec = CONNECTOR_SPECS.find(cs => cs.key === c.type)
                     const availableConnectors = getAvailableConnectors(form.type)
                     return (
-                      <div key={i} className="bg-muted rounded-lg p-3 space-y-2">
+                      <div key={i} className="border border-white/5 rounded-lg p-3 space-y-2">
                         <div className="flex items-center gap-2">
                           <select
                             value={c.type}
@@ -496,7 +496,7 @@ export function AddCharger() {
                   <input type="password" value={form.networkPassword} onChange={e => updateForm('networkPassword', e.target.value)} className="input" />
                 </label>
               </div>
-              <div className="bg-muted rounded-lg p-4">
+              <div className="border border-white/5 rounded-lg p-4">
                 <div className="text-sm font-medium mb-2">OCPP Backend URL</div>
                 <code className="text-xs bg-surface px-2 py-1 rounded block">wss://ocpp.evzone.io/v1.6/{form.ocppId || 'YOUR_CHARGER_ID'}</code>
               </div>
