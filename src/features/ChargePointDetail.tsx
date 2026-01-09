@@ -20,6 +20,7 @@ export function ChargePointDetail() {
     const [editForm, setEditForm] = useState({
         model: '',
         maxCapacityKw: 0,
+        ocppId: '',
     })
 
     const [isAddingBay, setIsAddingBay] = useState(false)
@@ -33,6 +34,7 @@ export function ChargePointDetail() {
         setEditForm({
             model: cp.model,
             maxCapacityKw: cp.maxCapacityKw || 50,
+            ocppId: cp.ocppId || '',
         })
         setIsEditing(true)
     }
@@ -43,6 +45,7 @@ export function ChargePointDetail() {
             data: {
                 model: editForm.model,
                 maxCapacityKw: editForm.maxCapacityKw,
+                ocppId: editForm.ocppId,
             }
         })
         setIsEditing(false)
@@ -136,6 +139,33 @@ export function ChargePointDetail() {
                         </div>
                     </div>
 
+                    {/* OCPI Configuration */}
+                    <div className="card">
+                        <h2 className="text-xl font-bold mb-4">OCPI Configuration</h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-1">
+                                <label className="text-xs text-muted uppercase font-bold">OCPP Identity</label>
+                                {isEditing ? (
+                                    <input
+                                        type="text"
+                                        className="input w-full"
+                                        value={editForm.ocppId}
+                                        onChange={e => setEditForm({ ...editForm, ocppId: e.target.value })}
+                                    />
+                                ) : (
+                                    <div className="text-lg font-medium">{cp.ocppId || '-'}</div>
+                                )}
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-xs text-muted uppercase font-bold">Roaming Status</label>
+                                <div className="flex items-center gap-2">
+                                    <span className="pill pending">Unpublished</span>
+                                    <button className="text-xs text-accent hover:underline" onClick={() => alert('Roaming publication logic would go here')}>Enable Roaming</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     {/* Parking Bays */}
                     <div className="card">
                         <div className="flex items-center justify-between mb-4">
@@ -185,6 +215,10 @@ export function ChargePointDetail() {
                     <div className="card bg-muted/10 border-accent/20">
                         <h2 className="text-xl font-bold mb-4">Remote Commands</h2>
                         <div className="grid grid-cols-1 gap-3">
+                            <button className="btn secondary w-full flex items-center justify-between" onClick={() => alert('Sending Remote Start session command...')}>
+                                <span>Remote Start Session</span>
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            </button>
                             <button className="btn secondary w-full flex items-center justify-between" onClick={() => alert('Sending Soft Reset...')}>
                                 <span>Soft Reset</span>
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>

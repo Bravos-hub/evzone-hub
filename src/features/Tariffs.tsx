@@ -5,31 +5,14 @@ import { getPermissionsForFeature } from '@/constants/permissions'
 import { useTariffs, useCreateTariff, useUpdateTariff, useDeleteTariff } from '@/core/api/hooks/useTariffs'
 import { useStations } from '@/core/api/hooks/useStations'
 import { getErrorMessage } from '@/core/api/errors'
-import { auditLogger } from '@/core/utils/auditLogger'
+import type { Tariff, TariffType } from '@/core/types/domain'
+import { TariffEditor } from './tariffs/TariffEditor'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES & MOCK DATA
 // ═══════════════════════════════════════════════════════════════════════════
 
-type TariffType = 'Flat' | 'Time-based' | 'kWh-based' | 'Dynamic'
-
-type Tariff = {
-  id: string
-  name: string
-  type: TariffType
-  baseRate: number
-  currency: string
-  stations: number
-  active: boolean
-  createdAt: string
-}
-
-const mockTariffs: Tariff[] = [
-  { id: 'TAR-001', name: 'Standard Rate', type: 'kWh-based', baseRate: 0.35, currency: 'USD', stations: 5, active: true, createdAt: '2024-01-15' },
-  { id: 'TAR-002', name: 'Peak Hours', type: 'Time-based', baseRate: 0.50, currency: 'USD', stations: 3, active: true, createdAt: '2024-02-20' },
-  { id: 'TAR-003', name: 'Off-Peak', type: 'Time-based', baseRate: 0.25, currency: 'USD', stations: 3, active: true, createdAt: '2024-02-20' },
-  { id: 'TAR-004', name: 'Fleet Discount', type: 'Flat', baseRate: 0.30, currency: 'USD', stations: 2, active: false, createdAt: '2024-03-10' },
-]
+// Removed local types in favor of domain types
 
 // ═══════════════════════════════════════════════════════════════════════════
 // MAIN COMPONENT
@@ -45,30 +28,15 @@ export function Tariffs() {
   const [q, setQ] = useState('')
   const [typeFilter, setTypeFilter] = useState<TariffType | 'All'>('All')
   const [showInactive, setShowInactive] = useState(false)
-  const [showCreateModal, setShowCreateModal] = useState(false)
-  const [editingTariff, setEditingTariff] = useState<string | null>(null)
+  const [showEditor, setShowEditor] = useState(false)
+  const [editingTariff, setEditingTariff] = useState<Tariff | undefined>(undefined)
 
   const { data: tariffsData, isLoading, error } = useTariffs({ active: showInactive ? undefined : true })
   const createTariffMutation = useCreateTariff()
   const updateTariffMutation = useUpdateTariff()
   const deleteTariffMutation = useDeleteTariff()
-  const { data: stationsData } = useStations()
-  const stations = stationsData || []
 
-  // Map API tariffs to display format
-  const tariffs = useMemo(() => {
-    if (!tariffsData) return []
-    return tariffsData.map(t => ({
-      id: t.id,
-      name: t.name,
-      type: (t.type === 'Energy-based' ? 'kWh-based' : t.type === 'Time-based' ? 'Time-based' : t.type === 'Fixed' ? 'Flat' : 'Dynamic') as TariffType,
-      baseRate: t.elements[0]?.pricePerKwh || t.elements[0]?.pricePerMinute || t.elements[0]?.pricePerSession || 0,
-      currency: t.currency,
-      stations: t.applicableStations?.length || 0,
-      active: t.active,
-      createdAt: t.validFrom?.toISOString().split('T')[0] || new Date().toISOString().split('T')[0],
-    }))
-  }, [tariffsData])
+  const tariffs = tariffsData || []
 
   const filtered = useMemo(() => {
     return tariffs
@@ -76,6 +44,30 @@ export function Tariffs() {
       .filter((t) => (typeFilter === 'All' ? true : t.type === typeFilter))
       .filter((t) => (showInactive ? true : t.active))
   }, [tariffs, q, typeFilter, showInactive])
+
+  const handleCreate = (data: any) => {
+    createTariffMutation.mutate(data, {
+      onSuccess: () => {
+        setShowEditor(false)
+        setEditingTariff(undefined)
+      }
+    })
+  }
+
+  const handleUpdate = (data: any) => {
+    if (!editingTariff) return
+    updateTariffMutation.mutate({ id: editingTariff.id, data }, {
+      onSuccess: () => {
+        setShowEditor(false)
+        setEditingTariff(undefined)
+      }
+    })
+  }
+
+  const handleEditClick = (tariff: Tariff) => {
+    setEditingTariff(tariff)
+    setShowEditor(true)
+  }
 
   return (
     <DashboardLayout pageTitle="Tariffs & Pricing">
@@ -107,7 +99,7 @@ export function Tariffs() {
           <div className="card">
             <div className="text-xs text-muted">Avg Rate</div>
             <div className="text-xl font-bold text-accent">
-              ${tariffs.length > 0 ? (tariffs.reduce((a, t) => a + t.baseRate, 0) / tariffs.length).toFixed(2) : '0.00'}
+              ${tariffs.length > 0 ? (tariffs.reduce((a, t) => a + (t.elements[0]?.pricePerKwh || 0), 0) / tariffs.length).toFixed(2) : '0.00'}
             </div>
           </div>
         </div>
@@ -119,9 +111,9 @@ export function Tariffs() {
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search tariffs" className="input flex-1" />
           <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value as TariffType | 'All')} className="select">
             <option value="All">All Types</option>
-            <option value="Flat">Flat</option>
+            <option value="Fixed">Fixed</option>
             <option value="Time-based">Time-based</option>
-            <option value="kWh-based">kWh-based</option>
+            <option value="Energy-based">Energy-based</option>
             <option value="Dynamic">Dynamic</option>
           </select>
           <label className="flex items-center gap-2 text-sm">
@@ -134,7 +126,7 @@ export function Tariffs() {
       {/* Actions */}
       {perms.edit && (
         <div className="mb-4">
-          <button className="btn secondary" onClick={() => setShowCreateModal(true)}>
+          <button className="btn secondary" onClick={() => { setEditingTariff(undefined); setShowEditor(true); }}>
             + New Tariff
           </button>
         </div>
@@ -147,10 +139,10 @@ export function Tariffs() {
             <tr>
               <th>Tariff</th>
               <th>Type</th>
+              <th>Model</th>
               <th>Base Rate</th>
               <th>Stations</th>
               <th>Status</th>
-              <th>Created</th>
               <th className="text-right">Actions</th>
             </tr>
           </thead>
@@ -159,17 +151,17 @@ export function Tariffs() {
               <tr key={t.id}>
                 <td className="font-semibold text-text">{t.name}</td>
                 <td><span className="chip">{t.type}</span></td>
-                <td>${t.baseRate.toFixed(2)} / kWh</td>
-                <td>{t.stations}</td>
+                <td><span className="chip">{t.paymentModel}</span></td>
+                <td>${(t.elements[0]?.pricePerKwh || t.elements[0]?.pricePerMinute || 0).toFixed(2)}</td>
+                <td>{t.applicableStations?.length || 0}</td>
                 <td>
                   <span className={`pill ${t.active ? 'approved' : 'rejected'}`}>
                     {t.active ? 'Active' : 'Inactive'}
                   </span>
                 </td>
-                <td className="text-sm">{t.createdAt}</td>
                 <td className="text-right">
                   {perms.edit && (
-                    <button className="btn secondary" onClick={() => alert(`Edit ${t.name} (demo)`)}>
+                    <button className="btn secondary" onClick={() => handleEditClick(t)}>
                       Edit
                     </button>
                   )}
@@ -179,6 +171,15 @@ export function Tariffs() {
           </tbody>
         </table>
       </div>
+
+      {showEditor && (
+        <TariffEditor
+          tariff={editingTariff}
+          onSave={editingTariff ? handleUpdate : handleCreate}
+          onCancel={() => setShowEditor(false)}
+          isSaving={createTariffMutation.isPending || updateTariffMutation.isPending}
+        />
+      )}
     </DashboardLayout>
   )
 }

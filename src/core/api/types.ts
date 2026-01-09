@@ -138,6 +138,7 @@ export interface ChargePoint {
   parkingBays?: string[]
   ocppStatus?: string
   lastHeartbeat?: string
+  ocppId?: string
 }
 
 export interface CreateChargePointRequest {
@@ -161,6 +162,7 @@ export interface UpdateChargePointRequest {
   firmwareVersion?: string
   status?: 'Online' | 'Degraded' | 'Offline' | 'Maintenance'
   maxCapacityKw?: number
+  ocppId?: string
   parkingBays?: string[]
   connectors?: Array<{
     id: number
@@ -215,6 +217,7 @@ export interface WalletBalance {
 
 export interface WalletTransaction {
   id: string
+  stationId?: string
   type: 'CREDIT' | 'DEBIT'
   amount: number
   description: string

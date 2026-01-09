@@ -62,5 +62,11 @@ export const userService = {
   async getUserSessions(userId: string): Promise<unknown[]> {
     return apiClient.get<unknown[]>(`/users/${userId}/sessions`)
   },
+  /**
+   * Invite a new user
+   */
+  async invite(data: { email: string; role: string }): Promise<void> {
+    return apiClient.post<void>('/users/invite', data)
+  },
 }
 

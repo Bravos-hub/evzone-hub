@@ -642,6 +642,7 @@ export const handlers = [
         id: 'TXN-001',
         type: 'CREDIT',
         amount: 100,
+        stationId: 'STATION_001',
         description: 'Top up via card',
         reference: 'REF-001',
         createdAt: new Date(Date.now() - 86400000).toISOString(),
@@ -650,9 +651,19 @@ export const handlers = [
         id: 'TXN-002',
         type: 'DEBIT',
         amount: -25.50,
+        stationId: 'STATION_001',
         description: 'Charging session',
         reference: 'REF-002',
         createdAt: new Date(Date.now() - 3600000).toISOString(),
+      },
+      {
+        id: 'TXN-003',
+        type: 'CREDIT',
+        amount: 250.00,
+        stationId: 'STATION_002',
+        description: 'Monthly payout',
+        reference: 'REF-003',
+        createdAt: new Date(Date.now() - 259200000).toISOString(),
       },
     ]
     return HttpResponse.json(transactions)
@@ -897,6 +908,7 @@ export const handlers = [
       manufacturer: cp.manufacturer,
       serialNumber: cp.serialNumber,
       firmwareVersion: cp.firmwareVersion,
+      ocppId: cp.ocppId,
       status: cp.status as any,
       connectors: cp.connectors as any,
       maxCapacityKw: cp.maxCapacityKw,
@@ -1129,6 +1141,7 @@ export const handlers = [
       name: body.name,
       description: body.description,
       type: body.type,
+      paymentModel: body.paymentModel || 'Postpaid',
       organizationId: (user as any)?.organizationId || (user as any)?.orgId || 'ORG_DEMO',
       currency: body.currency,
       active: true,
@@ -1208,6 +1221,33 @@ export const handlers = [
     const { mockDb } = await import('@/data/mockDb')
     mockDb.deleteWebhook(params.id as string)
     return HttpResponse.json({ success: true })
+  }),
+
+  http.post(`${baseURL}/auth/refresh`, async ({ request }) => {
+    // In a real application, you would validate the refresh token and issue a new access token.
+    // For this mock, we'll just return a dummy new token.
+    const body = await request.json() as { refreshToken: string }
+    if (!body.refreshToken) {
+      return HttpResponse.json({ error: 'Refresh token is required' }, { status: 400 })
+    }
+    return HttpResponse.json({ accessToken: 'new-access-token', refreshToken: 'new-refresh-token' })
+  }),
+
+  // Invite User
+  http.post(`${baseURL}/users/invite`, async ({ request }) => {
+    const { mockDb } = await import('@/data/mockDb')
+    const body = await request.json() as { email: string; role: string }
+    const newUser = {
+      id: `u-${Date.now()}`,
+      name: body.email.split('@')[0],
+      email: body.email,
+      role: body.role,
+      status: 'Pending',
+      created: new Date(),
+      lastSeen: new Date(),
+    }
+    mockDb.addUser(newUser as any) // Assuming mockDb has an addUser method
+    return HttpResponse.json({ success: true }, { status: 201 })
   }),
 
   http.post(`${baseURL}/webhooks/:id/test`, async ({ params }) => {

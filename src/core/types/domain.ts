@@ -142,6 +142,7 @@ export interface ChargePoint {
   manufacturer: string
   serialNumber: string
   firmwareVersion: string
+  ocppId?: string // OCPP Identity
   status: StationStatus
   connectors: Connector[]
   maxCapacityKw?: number
@@ -193,6 +194,7 @@ export interface Tariff {
   name: string
   description?: string
   type: TariffType
+  paymentModel: 'Prepaid' | 'Postpaid'
   organizationId: OrganizationId
   currency: string
   active: boolean
@@ -207,6 +209,9 @@ export interface TariffElement {
   pricePerMinute?: number
   pricePerSession?: number
   period?: PricingPeriod
+  startTime?: string // "HH:mm"
+  endTime?: string // "HH:mm"
+  days?: number[] // 0-6, empty = all days
   stepSize?: number
   minDuration?: number
   maxDuration?: number
@@ -375,6 +380,7 @@ export interface Transaction {
   userId?: UserId
   sessionId?: SessionId
   bookingId?: BookingId
+  stationId?: StationId // New field for station owner tracking
   organizationId?: OrganizationId
   created: Date
   processed?: Date

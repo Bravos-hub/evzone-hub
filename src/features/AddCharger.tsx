@@ -172,7 +172,7 @@ export function AddCharger() {
   const [step, setStep] = useState(0)
   const [form, setForm] = useState<ChargerForm>({
     name: '',
-    site: '',
+    site: new URLSearchParams(window.location.search).get('stationId') || '',
     type: 'AC',
     power: 22,
     connectors: [{ type: 'type2', maxPower: 22 }],

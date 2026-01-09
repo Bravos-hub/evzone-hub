@@ -191,11 +191,6 @@ export function Users() {
       <InviteUserModal
         isOpen={inviteModalOpen}
         onClose={() => setInviteModalOpen(false)}
-        onInvite={(email, role) => {
-          console.log('Inviting user:', { email, role })
-          // In a real app, this would call an API
-          alert(`Invitation sent to ${email} with role ${ROLE_LABELS[role]} (demo)`)
-        }}
       />
 
       {/* Error Message */}
@@ -240,48 +235,48 @@ export function Users() {
                 </tr>
               ) : (
                 filtered.map((r) => (
-              <tr key={r.id}>
-                <td>
-                  <button className="font-semibold text-text hover:underline text-left" onClick={() => nav(`/users/${r.id}`)}>
-                    {r.name}
-                  </button>
-                  <div className="text-xs text-muted">{r.id}</div>
-                </td>
-                <td>{r.email}</td>
-                <td>
-                  <RolePill role={r.role} />
-                </td>
-                <td>{r.orgId}</td>
-                <td>{r.region}</td>
-                <td>
-                  <span className={`pill ${statusColor(r.status)}`}>{r.status}</span>
-                </td>
-                <td className="text-sm text-muted">{r.lastLogin}</td>
-                <td>
-                  {r.mfaEnabled ? (
-                    <span className="text-ok">✓</span>
-                  ) : (
-                    <span className="text-muted">—</span>
-                  )}
-                </td>
-                <td className="text-right">
-                  <div className="inline-flex items-center gap-2">
-                    <button className="btn secondary" onClick={() => nav(`/users/${r.id}`)}>
-                      View
-                    </button>
-                    {perms.impersonate && r.id !== user?.id && r.status === 'Active' && (
-                      <button className="btn secondary" onClick={() => alert(`Impersonate ${r.name} (demo)`)}>
-                        Act As
+                  <tr key={r.id}>
+                    <td>
+                      <button className="font-semibold text-text hover:underline text-left" onClick={() => nav(`/users/${r.id}`)}>
+                        {r.name}
                       </button>
-                    )}
-                    {perms.suspend && r.status === 'Active' && r.id !== user?.id && (
-                      <button className="btn danger" onClick={() => alert(`Suspend ${r.name} (demo)`)}>
-                        Suspend
-                      </button>
-                    )}
-                  </div>
-                </td>
-              </tr>
+                      <div className="text-xs text-muted">{r.id}</div>
+                    </td>
+                    <td>{r.email}</td>
+                    <td>
+                      <RolePill role={r.role} />
+                    </td>
+                    <td>{r.orgId}</td>
+                    <td>{r.region}</td>
+                    <td>
+                      <span className={`pill ${statusColor(r.status)}`}>{r.status}</span>
+                    </td>
+                    <td className="text-sm text-muted">{r.lastLogin}</td>
+                    <td>
+                      {r.mfaEnabled ? (
+                        <span className="text-ok">✓</span>
+                      ) : (
+                        <span className="text-muted">—</span>
+                      )}
+                    </td>
+                    <td className="text-right">
+                      <div className="inline-flex items-center gap-2">
+                        <button className="btn secondary" onClick={() => nav(`/users/${r.id}`)}>
+                          View
+                        </button>
+                        {perms.impersonate && r.id !== user?.id && r.status === 'Active' && (
+                          <button className="btn secondary" onClick={() => alert(`Impersonate ${r.name} (demo)`)}>
+                            Act As
+                          </button>
+                        )}
+                        {perms.suspend && r.status === 'Active' && r.id !== user?.id && (
+                          <button className="btn danger" onClick={() => alert(`Suspend ${r.name} (demo)`)}>
+                            Suspend
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
                 ))
               )}
             </tbody>

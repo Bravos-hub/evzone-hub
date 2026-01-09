@@ -3,6 +3,7 @@ import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { useAuthStore } from '@/core/auth/authStore'
 import { ROLE_GROUPS } from '@/constants/roles'
 import { useWalletBalance, useWalletTransactions, useTopUp } from '@/core/api/hooks/useWallet'
+import { useStations } from '@/core/api/hooks/useStations'
 import { getErrorMessage } from '@/core/api/errors'
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -15,6 +16,7 @@ type TransactionStatus = 'completed' | 'pending' | 'failed'
 
 interface Transaction {
   id: string
+  stationId?: string // Added
   type: TransactionType
   amount: number
   currency: string
@@ -28,6 +30,7 @@ interface Transaction {
 function mapApiTransactionToTransaction(apiTxn: any): Transaction {
   return {
     id: apiTxn.id,
+    stationId: apiTxn.stationId,
     type: apiTxn.type === 'CREDIT' ? 'credit' : 'debit' as TransactionType,
     amount: apiTxn.type === 'CREDIT' ? apiTxn.amount : -apiTxn.amount,
     currency: apiTxn.currency || 'USD',
@@ -47,10 +50,12 @@ export function Wallet() {
 
   const { data: balanceData, isLoading: balanceLoading, error: balanceError } = useWalletBalance()
   const { data: transactionsData, isLoading: transactionsLoading, error: transactionsError } = useWalletTransactions()
+  const { data: stationsData } = useStations()
   const topUpMutation = useTopUp()
 
   const [type, setType] = useState('All')
   const [status, setStatus] = useState('All')
+  const [stationFilter, setStationFilter] = useState('All')
   const [q, setQ] = useState('')
   const [showWithdraw, setShowWithdraw] = useState(false)
   const [withdrawAmount, setWithdrawAmount] = useState('')
@@ -71,7 +76,23 @@ export function Wallet() {
       .filter(t => !q || (t.id + ' ' + t.description).toLowerCase().includes(q.toLowerCase()))
       .filter(t => type === 'All' || t.type === type)
       .filter(t => status === 'All' || t.status === status)
-  , [transactions, q, type, status])
+      .filter(t => stationFilter === 'All' || t.stationId === stationFilter)
+    , [transactions, q, type, status, stationFilter])
+
+  // Calculate By Station
+  const revenueByStation = useMemo(() => {
+    const map = new Map<string, number>()
+    transactions.forEach(t => {
+      if (t.stationId && t.type === 'credit') {
+        map.set(t.stationId, (map.get(t.stationId) || 0) + t.amount)
+      }
+    })
+    return Array.from(map.entries()).map(([stationId, amount]) => ({
+      stationId,
+      stationName: stationsData?.find(s => s.id === stationId)?.name || stationId,
+      amount
+    })).sort((a, b) => b.amount - a.amount)
+  }, [transactions, stationsData])
 
   // Calculate KPIs from data
   const walletKpis = useMemo(() => {
@@ -127,7 +148,7 @@ export function Wallet() {
     <DashboardLayout pageTitle="Wallet">
       <div className="space-y-6">
         {ack && <div className="rounded-lg bg-accent/10 text-accent px-4 py-2 text-sm">{ack}</div>}
-        
+
         {/* Error Message */}
         {(error || errorMessage) && (
           <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-2 text-sm text-red-700">
@@ -146,11 +167,26 @@ export function Wallet() {
         {!isLoading && (
           <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {walletKpis.map(k => (
-            <div key={k.label} className={`rounded-xl border p-5 shadow-sm ${k.highlight ? 'bg-accent text-white border-accent' : 'bg-surface border-border'}`}>
-              <div className={`text-sm ${k.highlight ? 'text-white/80' : 'text-subtle'}`}>{k.label}</div>
-              <div className="mt-2 text-2xl font-bold">{k.value}</div>
+              <div key={k.label} className={`rounded-xl border p-5 shadow-sm ${k.highlight ? 'bg-accent text-white border-accent' : 'bg-surface border-border'}`}>
+                <div className={`text-sm ${k.highlight ? 'text-white/80' : 'text-subtle'}`}>{k.label}</div>
+                <div className="mt-2 text-2xl font-bold">{k.value}</div>
+              </div>
+            ))}
+          </section>
+        )}
+
+        {/* Revenue Breakdown */}
+        {revenueByStation.length > 0 && (
+          <section className="bg-surface rounded-xl border border-border p-5">
+            <h3 className="text-sm font-semibold mb-3">Revenue by Station</h3>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {revenueByStation.map(s => (
+                <div key={s.stationId} className="flex justify-between items-center p-3 bg-muted/30 rounded-lg border border-border/50">
+                  <span className="text-sm font-medium truncate pr-2">{s.stationName}</span>
+                  <span className="text-sm font-bold text-emerald-600">+${s.amount.toFixed(2)}</span>
+                </div>
+              ))}
             </div>
-          ))}
           </section>
         )}
 
@@ -168,40 +204,48 @@ export function Wallet() {
         </section>
 
         {/* Filters */}
-        <section className="bg-surface rounded-xl border border-border p-4 grid md:grid-cols-4 gap-3">
-          <label className="relative">
+        <section className="bg-surface rounded-xl border border-border p-4 grid md:grid-cols-5 gap-3">
+          <label className="relative md:col-span-2">
             <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-subtle" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="M21 21l-3.6-3.6" /></svg>
             <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search transactions" className="w-full rounded-lg border border-border pl-9 pr-3 py-2 outline-none focus:ring-2 focus:ring-accent" />
           </label>
-        <select value={type} onChange={e => setType(e.target.value)} className="select">
-          <option value="All">All Types</option>
-          <option value="credit">Credit</option>
-          <option value="debit">Debit</option>
-          <option value="payout">Payout</option>
-          <option value="refund">Refund</option>
-        </select>
-        <select value={status} onChange={e => setStatus(e.target.value)} className="select">
-          <option value="All">All Status</option>
-          <option value="completed">Completed</option>
-          <option value="pending">Pending</option>
-          <option value="failed">Failed</option>
-        </select>
-          <div className="text-sm text-subtle self-center text-right">{filtered.length} transactions</div>
+          <select value={type} onChange={e => setType(e.target.value)} className="select">
+            <option value="All">All Types</option>
+            <option value="credit">Credit</option>
+            <option value="debit">Debit</option>
+            <option value="payout">Payout</option>
+            <option value="refund">Refund</option>
+          </select>
+          <select value={status} onChange={e => setStatus(e.target.value)} className="select">
+            <option value="All">All Status</option>
+            <option value="completed">Completed</option>
+            <option value="pending">Pending</option>
+            <option value="failed">Failed</option>
+          </select>
+          <select value={stationFilter} onChange={e => setStationFilter(e.target.value)} className="select">
+            <option value="All">All Stations</option>
+            {stationsData?.map(s => (
+              <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
+          </select>
         </section>
+
+        <div className="text-sm text-subtle text-right">{filtered.length} transactions</div>
 
         {/* Transactions table */}
         <section className="overflow-x-auto rounded-xl border border-border bg-surface">
           <table className="min-w-full text-sm">
             <thead className="bg-muted text-subtle">
-            <tr>
-              <th>ID</th>
-              <th>Type</th>
-              <th>Description</th>
-              <th className="px-4 py-3 !text-right font-medium">Amount</th>
-              <th>Date</th>
-              <th>Status</th>
-              <th className="px-4 py-3 !text-right font-medium">Actions</th>
-            </tr>
+              <tr>
+                <th>ID</th>
+                <th>Type</th>
+                <th>Station</th>
+                <th>Description</th>
+                <th className="px-4 py-3 !text-right font-medium">Amount</th>
+                <th>Date</th>
+                <th>Status</th>
+                <th className="px-4 py-3 !text-right font-medium">Actions</th>
+              </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {filtered.map(t => (
@@ -209,6 +253,9 @@ export function Wallet() {
                   <td className="px-4 py-3 font-medium">{t.id}</td>
                   <td className="px-4 py-3">
                     <TypePill type={t.type} />
+                  </td>
+                  <td className="px-4 py-3 text-subtle text-xs">
+                    {t.stationId ? (stationsData?.find(s => s.id === t.stationId)?.name || t.stationId) : '-'}
                   </td>
                   <td className="px-4 py-3">{t.description}</td>
                   <td className={`px-4 py-3 text-right font-medium ${t.amount >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
@@ -237,25 +284,25 @@ export function Wallet() {
               <form onSubmit={handleWithdraw} className="space-y-4">
                 <label className="grid gap-1">
                   <span className="text-sm font-medium">Amount (USD)</span>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="1"
-                  max="1842.50"
-                  value={withdrawAmount}
-                  onChange={e => setWithdrawAmount(e.target.value)}
-                  className="input"
-                  placeholder="0.00"
-                />
-                <span className="text-xs text-subtle">Available: $1,842.50</span>
-              </label>
-              <label className="grid gap-1">
-                <span className="text-sm font-medium">Withdrawal Method</span>
-                <select value={withdrawMethod} onChange={e => setWithdrawMethod(e.target.value)} className="select">
-                  <option value="bank">Bank Transfer (****1234)</option>
-                  <option value="mobile">Mobile Money (MTN)</option>
-                  <option value="paypal">PayPal</option>
-                </select>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="1"
+                    max="1842.50"
+                    value={withdrawAmount}
+                    onChange={e => setWithdrawAmount(e.target.value)}
+                    className="input"
+                    placeholder="0.00"
+                  />
+                  <span className="text-xs text-subtle">Available: $1,842.50</span>
+                </label>
+                <label className="grid gap-1">
+                  <span className="text-sm font-medium">Withdrawal Method</span>
+                  <select value={withdrawMethod} onChange={e => setWithdrawMethod(e.target.value)} className="select">
+                    <option value="bank">Bank Transfer (****1234)</option>
+                    <option value="mobile">Mobile Money (MTN)</option>
+                    <option value="paypal">PayPal</option>
+                  </select>
                 </label>
                 <div className="flex gap-2 justify-end">
                   <button type="button" onClick={() => setShowWithdraw(false)} className="px-4 py-2 rounded-lg border border-border hover:bg-muted">Cancel</button>

@@ -126,6 +126,7 @@ import {
   SiteDetail,
   ChargePointDetail,
   SiteApplicationForm,
+  AddStation,
 } from '@/features'
 
 /**
@@ -257,6 +258,7 @@ export function AppRoutes() {
       {/* Owner Tools */}
       <Route path={PATHS.OWNER.TECH_REQUESTS} element={<RequireAuth><TechRequests /></RequireAuth>} />
       <Route path={PATHS.OWNER.ADD_CHARGER} element={<RequireAuth><AddCharger /></RequireAuth>} />
+      <Route path="/add-station" element={<RequireAuth><AddStation /></RequireAuth>} />
 
 
       {/* Operator Tools */}

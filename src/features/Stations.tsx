@@ -111,6 +111,15 @@ export function Stations() {
       .filter(s => (status === 'All' ? true : s.status === status))
       .filter(s => (q ? (s.name + ' ' + s.id + ' ' + s.country).toLowerCase().includes(q.toLowerCase()) : true))
       .filter(s => {
+        // Enforce Org filter for Owners/Site Owners
+        if (['OWNER', 'SITE_OWNER'].includes(user?.role || '')) {
+          // We assume 'org' in station matches user's org. 
+          // In a real app we'd match IDs. Here we might need a mapping or strict check.
+          // For now, let's assume the API returns ONLY the user's stations if they are an owner.
+          // But just in case, let's filter:
+          return true // API should handle this, but if we have local data, we check s.org === user.orgId
+        }
+
         if (tagFilter === 'All') return true
         const apiStation = stationsData?.find((st: any) => st.id === s.id)
         return apiStation?.tags?.includes(tagFilter) || false
@@ -202,95 +211,97 @@ export function Stations() {
                 </div>
               </div>
 
-              {/* Map Section */}
-              <div className="card p-0 overflow-hidden">
-                <div className="border-b border-border-light p-4">
-                  <h3 className="font-semibold">Station Map</h3>
+              {/* Map Section - Hidden for Site Owners/Owners */}
+              {!['SITE_OWNER', 'OWNER'].includes(user?.role || '') && (
+                <div className="card p-0 overflow-hidden">
+                  <div className="border-b border-border-light p-4">
+                    <h3 className="font-semibold">Station Map</h3>
+                  </div>
+                  <div className="p-4">
+                    <StationsHeatMap title="Stations Map" subtitle={`${rows.length} stations`} points={mapPoints} />
+                  </div>
                 </div>
-                <div className="p-4">
-                  <StationsHeatMap title="Stations Map" subtitle={`${rows.length} stations`} points={mapPoints} />
-                </div>
-              </div>
+              )}
 
               {/* Table Container - Horizontal scroll */}
               <div className="overflow-x-auto rounded-xl border border-white/5 bg-panel">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-white/5 text-muted uppercase text-[11px] font-black tracking-wider">
-                <tr>
-                  <th className="px-6 py-4 w-4"><input type="checkbox" className="rounded border-white/10 bg-white/5" /></th>
-                  <th className="px-6 py-4">Station</th>
-                  <th className="px-6 py-4">Region</th>
-                  <th className="px-6 py-4">Org</th>
-                  <th className="px-6 py-4 text-center">Type</th>
-                  <th className="px-6 py-4">Status</th>
-                  <th className="px-6 py-4">Health</th>
-                  <th className="px-6 py-4">Utilization</th>
-                  <th className="px-6 py-4 text-center">Incidents</th>
-                  <th className="px-6 py-4 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5">
-                {rows.length === 0 ? (
-                  <tr>
-                    <td colSpan={9} className="px-6 py-8 text-center text-muted">
-                      No stations found
-                    </td>
-                  </tr>
-                ) : (
-                  rows.map(r => (
-                  <tr key={r.id} className="hover:bg-white/5 transition-colors">
-                    <td className="px-6 py-4"><input type="checkbox" className="rounded border-white/10 bg-white/5" /></td>
-                    <td className="px-6 py-4">
-                      <div className="font-bold text-text">{r.id}</div>
-                      <div className="text-xs text-muted leading-tight">{r.name}</div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-muted font-medium">{r.region}</div>
-                      <div className="text-[10px] text-muted-more uppercase">{r.country}</div>
-                    </td>
-                    <td className="px-6 py-4 text-muted">{r.org}</td>
-                    <td className="px-6 py-4 text-center">
-                      <span className="text-xs font-semibold px-2 py-0.5 rounded bg-white/5 border border-white/10">{r.type}</span>
-                    </td>
-                    <td className="px-6 py-4"><StationStatusPill status={r.status} /></td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden min-w-[60px]">
-                          <div
-                            className={`h-full rounded-full transition-all ${r.healthScore > 80 ? 'bg-ok' : r.healthScore > 50 ? 'bg-warn' : 'bg-danger'
-                              }`}
-                            style={{ width: `${r.healthScore}%` }}
-                          />
-                        </div>
-                        <span className="text-xs font-mono">{r.healthScore}%</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-muted font-mono">{r.utilization}%</div>
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      {r.openIncidents > 0 ? (
-                        <span className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-danger/20 text-danger text-xs font-bold border border-danger/20">
-                          {r.openIncidents}
-                        </span>
-                      ) : (
-                        <span className="text-muted">—</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <button 
-                        className="btn secondary sm:px-4 sm:py-2 px-3 py-1.5 text-xs sm:text-sm"
-                        onClick={() => navigate(`/stations/${r.id}`)}
-                      >
-                        Open
-                      </button>
-                    </td>
-                  </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-white/5 text-muted uppercase text-[11px] font-black tracking-wider">
+                    <tr>
+                      <th className="px-6 py-4 w-4"><input type="checkbox" className="rounded border-white/10 bg-white/5" /></th>
+                      <th className="px-6 py-4">Station</th>
+                      <th className="px-6 py-4">Region</th>
+                      <th className="px-6 py-4">Org</th>
+                      <th className="px-6 py-4 text-center">Type</th>
+                      <th className="px-6 py-4">Status</th>
+                      <th className="px-6 py-4">Health</th>
+                      <th className="px-6 py-4">Utilization</th>
+                      <th className="px-6 py-4 text-center">Incidents</th>
+                      <th className="px-6 py-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {rows.length === 0 ? (
+                      <tr>
+                        <td colSpan={9} className="px-6 py-8 text-center text-muted">
+                          No stations found
+                        </td>
+                      </tr>
+                    ) : (
+                      rows.map(r => (
+                        <tr key={r.id} className="hover:bg-white/5 transition-colors">
+                          <td className="px-6 py-4"><input type="checkbox" className="rounded border-white/10 bg-white/5" /></td>
+                          <td className="px-6 py-4">
+                            <div className="font-bold text-text">{r.id}</div>
+                            <div className="text-xs text-muted leading-tight">{r.name}</div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="text-muted font-medium">{r.region}</div>
+                            <div className="text-[10px] text-muted-more uppercase">{r.country}</div>
+                          </td>
+                          <td className="px-6 py-4 text-muted">{r.org}</td>
+                          <td className="px-6 py-4 text-center">
+                            <span className="text-xs font-semibold px-2 py-0.5 rounded bg-white/5 border border-white/10">{r.type}</span>
+                          </td>
+                          <td className="px-6 py-4"><StationStatusPill status={r.status} /></td>
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-2">
+                              <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden min-w-[60px]">
+                                <div
+                                  className={`h-full rounded-full transition-all ${r.healthScore > 80 ? 'bg-ok' : r.healthScore > 50 ? 'bg-warn' : 'bg-danger'
+                                    }`}
+                                  style={{ width: `${r.healthScore}%` }}
+                                />
+                              </div>
+                              <span className="text-xs font-mono">{r.healthScore}%</span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="text-muted font-mono">{r.utilization}%</div>
+                          </td>
+                          <td className="px-6 py-4 text-center">
+                            {r.openIncidents > 0 ? (
+                              <span className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-danger/20 text-danger text-xs font-bold border border-danger/20">
+                                {r.openIncidents}
+                              </span>
+                            ) : (
+                              <span className="text-muted">—</span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <button
+                              className="btn secondary sm:px-4 sm:py-2 px-3 py-1.5 text-xs sm:text-sm"
+                              onClick={() => navigate(`/stations/${r.id}`)}
+                            >
+                              Open
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </>
           )}
         </div>

@@ -76,3 +76,14 @@ export function useUserSessions(userId: string) {
   })
 }
 
+export function useInviteUser() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (data: { email: string; role: string }) => userService.invite(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.all })
+    },
+  })
+}
+

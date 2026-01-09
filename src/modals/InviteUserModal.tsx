@@ -2,18 +2,21 @@ import { useState } from 'react'
 import { ALL_ROLES, ROLE_LABELS } from '@/constants/roles'
 import type { Role } from '@/core/auth/types'
 import { Card } from '@/ui/components/Card'
+import { useInviteUser } from '@/core/api/hooks/useUsers'
+import { getErrorMessage } from '@/core/api/errors'
 
 type InviteUserModalProps = {
   isOpen: boolean
   onClose: () => void
-  onInvite: (email: string, role: Role) => void
 }
 
-export function InviteUserModal({ isOpen, onClose, onInvite }: InviteUserModalProps) {
+export function InviteUserModal({ isOpen, onClose }: InviteUserModalProps) {
   const [email, setEmail] = useState('')
   const [role, setRole] = useState<Role>('OWNER')
   const [error, setError] = useState('')
   const [ack, setAck] = useState('')
+
+  const inviteUser = useInviteUser()
 
   if (!isOpen) return null
 
@@ -32,14 +35,20 @@ export function InviteUserModal({ isOpen, onClose, onInvite }: InviteUserModalPr
       return
     }
 
-    onInvite(email.trim(), role)
-    setAck('Invitation sent successfully!')
-    setTimeout(() => {
-      setEmail('')
-      setRole('OWNER')
-      setAck('')
-      onClose()
-    }, 1500)
+    inviteUser.mutate({ email: email.trim(), role }, {
+      onSuccess: () => {
+        setAck('Invitation sent successfully!')
+        setTimeout(() => {
+          setEmail('')
+          setRole('OWNER')
+          setAck('')
+          onClose()
+        }, 1500)
+      },
+      onError: (err) => {
+        setError(getErrorMessage(err))
+      }
+    })
   }
 
   function handleCancel() {

@@ -10,12 +10,16 @@ export interface CreateTariffRequest {
   name: string
   description?: string
   type: 'Time-based' | 'Energy-based' | 'Fixed' | 'Dynamic'
+  paymentModel: 'Prepaid' | 'Postpaid'
   currency: string
   elements: Array<{
     pricePerKwh?: number
     pricePerMinute?: number
     pricePerSession?: number
     period?: 'Peak' | 'Off-Peak' | 'Standard'
+    startTime?: string
+    endTime?: string
+    days?: number[]
     stepSize?: number
     minDuration?: number
     maxDuration?: number
@@ -29,6 +33,7 @@ export interface UpdateTariffRequest {
   name?: string
   description?: string
   type?: 'Time-based' | 'Energy-based' | 'Fixed' | 'Dynamic'
+  paymentModel?: 'Prepaid' | 'Postpaid'
   currency?: string
   active?: boolean
   elements?: Array<{
@@ -36,6 +41,9 @@ export interface UpdateTariffRequest {
     pricePerMinute?: number
     pricePerSession?: number
     period?: 'Peak' | 'Off-Peak' | 'Standard'
+    startTime?: string
+    endTime?: string
+    days?: number[]
     stepSize?: number
     minDuration?: number
     maxDuration?: number
@@ -52,7 +60,7 @@ export const tariffService = {
   async getAll(query?: { active?: boolean }): Promise<Tariff[]> {
     const params = new URLSearchParams()
     if (query?.active !== undefined) params.append('active', query.active.toString())
-    
+
     const queryString = params.toString()
     return apiClient.get<Tariff[]>(`/tariffs${queryString ? `?${queryString}` : ''}`)
   },

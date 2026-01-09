@@ -29,7 +29,7 @@ export function Header({ title, onMenuClick }: { title?: string; onMenuClick?: (
 
   const createItems = useMemo(() => {
     const fallback = '/stations'
-    const addStation = '/add-charger'
+    const addStation = '/add-station'
     const addChargePoint = '/add-charger'
     const addSwapStation = '/add-charger'
     const requestTechnician =
@@ -197,7 +197,7 @@ export function Header({ title, onMenuClick }: { title?: string; onMenuClick?: (
         </button>
       </div>
 
-      <InviteUserModal isOpen={inviteModalOpen} onClose={() => setInviteModalOpen(false)} onInvite={() => { }} />
+      <InviteUserModal isOpen={inviteModalOpen} onClose={() => setInviteModalOpen(false)} />
     </header>
   )
 }
