@@ -22,11 +22,35 @@ export function useAssignIncident() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ incidentId, technicianId, technicianName }: { incidentId: string; technicianId: string; technicianName: string }) =>
-      incidentService.assign(incidentId, technicianId, technicianName),
+    mutationFn: ({ id, data }: { id: string; data: { assignedTo: string } }) =>
+      incidentService.update(id, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['incidents', 'all'] })
-      queryClient.invalidateQueries({ queryKey: ['incidents', 'detail', variables.incidentId] })
+      queryClient.invalidateQueries({ queryKey: ['incidents', 'detail', variables.id] })
+    },
+  })
+}
+
+export function useCreateIncident() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (data: any) => incidentService.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['incidents', 'all'] })
+    },
+  })
+}
+
+export function useResolveIncident() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id }: { id: string; data?: any }) =>
+      incidentService.updateStatus(id, 'RESOLVED'),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['incidents', 'all'] })
+      queryClient.invalidateQueries({ queryKey: ['incidents', 'detail', variables.id] })
     },
   })
 }

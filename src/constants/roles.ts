@@ -19,7 +19,7 @@ export const ALL_ROLES: Role[] = [
 export const ROLE_LABELS: Record<Role, string> = {
   SUPER_ADMIN: 'Super Admin',
   EVZONE_ADMIN: 'EVzone Admin',
-  EVZONE_OPERATOR: 'EVzone Operator',
+  EVZONE_OPERATOR: 'EVzone Ops',
   SITE_OWNER: 'Site Owner',
   OWNER: 'Station Owner',
   STATION_ADMIN: 'Station Admin',

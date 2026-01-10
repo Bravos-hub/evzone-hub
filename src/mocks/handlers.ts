@@ -1085,6 +1085,26 @@ export const handlers = [
     return HttpResponse.json(incident)
   }),
 
+  http.post(`${baseURL}/incidents`, async ({ request }) => {
+    const body = await request.json() as any
+    const newIncident: Incident = {
+      id: `INC-${Date.now()}`,
+      stationId: body.stationId,
+      stationName: 'Station ' + body.stationId, // Simplified
+      chargerId: body.assetId,
+      title: body.title,
+      description: body.description,
+      severity: body.severity.toUpperCase(),
+      status: 'OPEN',
+      reportedBy: 'User',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      notes: []
+    }
+    mockIncidents.push(newIncident)
+    return HttpResponse.json(newIncident, { status: 201 })
+  }),
+
   http.post(`${baseURL}/incidents/:id/assign`, async ({ params, request }) => {
     const { technicianId, technicianName } = await request.json() as { technicianId: string; technicianName: string }
     const index = mockIncidents.findIndex(i => i.id === params.id)

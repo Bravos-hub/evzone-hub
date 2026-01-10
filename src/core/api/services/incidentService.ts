@@ -44,5 +44,25 @@ export const incidentService = {
     })
     if (!response.ok) throw new Error('Failed to update status')
     return response.json() as Promise<Incident>
+  },
+
+  create: async (data: any) => {
+    const response = await fetch(`${baseURL}/incidents`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    })
+    if (!response.ok) throw new Error('Failed to create incident')
+    return response.json() as Promise<Incident>
+  },
+
+  update: async (id: string, data: any) => {
+    const response = await fetch(`${baseURL}/incidents/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    })
+    if (!response.ok) throw new Error('Failed to update incident')
+    return response.json() as Promise<Incident>
   }
 }
