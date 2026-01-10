@@ -266,9 +266,8 @@ function AssignTechnicianModal({ onClose, incident, technicians }: AssignTechnic
                                 key={tech.id}
                                 onClick={async () => {
                                     await assignMutation.mutateAsync({
-                                        incidentId: incident.id,
-                                        technicianId: tech.id,
-                                        technicianName: tech.name
+                                        id: incident.id,
+                                        data: { assignedTo: tech.id }
                                     })
                                     onClose()
                                 }}

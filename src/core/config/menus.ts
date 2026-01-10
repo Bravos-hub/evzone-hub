@@ -32,6 +32,17 @@ export function menuFor(role: Role, ownerCapability?: 'CHARGE' | 'SWAP' | 'BOTH'
         { label: 'Data Governance / Privacy Requests', path: '/admin/privacy' },
         { label: 'Status Page / External Incident Comms', path: '/admin/status' },
       ]
+    case 'STATION_OPERATOR':
+      return [
+        { label: 'Overview', path: '/dashboard' },
+        { label: 'My Stations', path: '/stations' },
+        { label: 'Active Sessions', path: '/sessions' },
+        { label: 'Team Management', path: '/team' },
+        { label: 'Incidents & Alerts', path: '/incidents' },
+        { label: 'Custom Roles', path: '/settings/custom-roles' },
+        { label: 'Reports', path: '/reports' },
+        { label: 'Settings', path: '/settings' },
+      ]
     case 'EVZONE_OPERATOR':
       return [
         { label: 'Overview', path: '/operator' },
@@ -168,6 +179,8 @@ export function menuFor(role: Role, ownerCapability?: 'CHARGE' | 'SWAP' | 'BOTH'
         { label: 'Ratings / Compliance', path: '/technician/public/ratings' },
         { label: 'Settings', path: '/technician/public/settings' },
       ]
+    default:
+      return []
   }
 }
 

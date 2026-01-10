@@ -132,6 +132,8 @@ import {
   ApplicationTracker,
   LeaseCompliance,
   AdvancedReporting,
+  StationOperatorAssignment,
+  OperatorRoleManagement,
 } from '@/features'
 
 /**
@@ -176,6 +178,7 @@ export function AppRoutes() {
       <Route path={PATHS.STATIONS.SWAP_STATIONS} element={<RequireAuth><Stations /></RequireAuth>} />
       <Route path={PATHS.STATIONS.SMART_CHARGING} element={<RequireAuth><Stations /></RequireAuth>} />
       <Route path={PATHS.STATIONS.BOOKINGS} element={<RequireAuth><Stations /></RequireAuth>} />
+      <Route path={PATHS.STATIONS.ASSIGN_OPERATOR(':id')} element={<RequireAuth><StationOperatorAssignment /></RequireAuth>} />
 
       {/* Redirect old routes to stations sub-routes */}
       <Route path="/charge-points" element={<Navigate to={PATHS.STATIONS.CHARGE_POINTS} replace />} />
@@ -290,6 +293,7 @@ export function AppRoutes() {
       <Route path={PATHS.OPERATOR.AVAILABILITY} element={<RequireAuth><OperatorAvailability /></RequireAuth>} />
       <Route path={PATHS.OPERATOR.SWAP_DETAIL(':id')} element={<RequireAuth><OperatorSwapStationDetail /></RequireAuth>} />
       <Route path={PATHS.OPERATOR.TEAM_DETAIL(':id')} element={<RequireAuth><OperatorTeamDetail /></RequireAuth>} />
+      <Route path={PATHS.OPERATOR.CUSTOM_ROLES} element={<RequireAuth><OperatorRoleManagement /></RequireAuth>} />
 
       {/* Site Owner Tools */}
       <Route path={PATHS.SITE_OWNER.MY_SITES} element={<RequireAuth><SiteOwnerSites /></RequireAuth>} />

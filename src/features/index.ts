@@ -5,6 +5,7 @@
 // Core Features (Multiple roles)
 export { Stations } from './Stations'
 export { StationDetail } from './StationDetail'
+export { StationOperatorAssignment } from './StationOperatorAssignment'
 export { Sessions } from './Sessions'
 export { Incidents } from './Incidents'
 export { Dispatches } from './Dispatches'
@@ -161,4 +162,5 @@ export { KioskScan } from './KioskScan'
 export { OperatorSwapStationDetail } from './OperatorSwapStationDetail'
 export { OperatorTeamDetail } from './OperatorTeamDetail'
 export { ChargePointDetail } from './ChargePointDetail'
+export { OperatorRoleManagement } from './OperatorRoleManagement'
 

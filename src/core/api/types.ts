@@ -78,6 +78,9 @@ export interface Station {
   capacity?: number
   parkingBays?: number
   orgId?: string
+  operatorId?: string
+  contractType?: 'FIXED' | 'REVENUE_SHARE' | 'HYBRID'
+  revenueShare?: number // Percentage
   tags?: string[]
   createdAt: string
   updatedAt: string
@@ -116,6 +119,9 @@ export interface UpdateStationRequest {
   status?: 'ACTIVE' | 'INACTIVE' | 'MAINTENANCE'
   capacity?: number
   parkingBays?: number
+  operatorId?: string
+  contractType?: 'FIXED' | 'REVENUE_SHARE' | 'HYBRID'
+  revenueShare?: number
 }
 
 // Charge Point Types

@@ -3,9 +3,9 @@ import { incidentService } from '../services/incidentService'
 import { queryKeys } from '@/data/queryKeys'
 import type { IncidentStatus } from '../types'
 
-export function useIncidents() {
+export function useIncidents(filters?: { status?: string; severity?: string }) {
   return useQuery({
-    queryKey: ['incidents', 'all'],
+    queryKey: ['incidents', 'all', filters],
     queryFn: () => incidentService.getAll(),
   })
 }

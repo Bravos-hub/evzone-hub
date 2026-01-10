@@ -39,9 +39,9 @@ export const PERMISSIONS: Record<string, FeaturePermissions> = {
     access: [...ROLE_GROUPS.PLATFORM_OPS, 'OWNER', 'STATION_ADMIN', 'MANAGER'],
     viewAll: ROLE_GROUPS.PLATFORM_OPS,
     create: ROLE_GROUPS.PLATFORM_OPS,
-    edit: [...ROLE_GROUPS.PLATFORM_OPS, 'OWNER', 'STATION_ADMIN'],
+    edit: [...ROLE_GROUPS.PLATFORM_OPS, 'OWNER', 'STATION_OPERATOR', 'STATION_ADMIN'],
     delete: ROLE_GROUPS.PLATFORM_ADMINS,
-    remoteCommands: [...ROLE_GROUPS.PLATFORM_OPS, 'OWNER', 'STATION_ADMIN'],
+    remoteCommands: [...ROLE_GROUPS.PLATFORM_OPS, 'OWNER', 'STATION_OPERATOR', 'STATION_ADMIN'],
   },
 
   sessions: {
@@ -86,11 +86,11 @@ export const PERMISSIONS: Record<string, FeaturePermissions> = {
   },
 
   team: {
-    access: ['STATION_ADMIN', 'OWNER'],
-    viewAll: ['STATION_ADMIN', 'OWNER'],
-    invite: ['STATION_ADMIN', 'OWNER'],
-    remove: ['STATION_ADMIN', 'OWNER'],
-    changeRole: ['STATION_ADMIN', 'OWNER'],
+    access: ['STATION_ADMIN', 'STATION_OPERATOR', 'OWNER'],
+    viewAll: ['STATION_ADMIN', 'STATION_OPERATOR', 'OWNER'],
+    invite: ['STATION_ADMIN', 'STATION_OPERATOR', 'OWNER'],
+    remove: ['STATION_ADMIN', 'STATION_OPERATOR', 'OWNER'],
+    changeRole: ['STATION_ADMIN', 'STATION_OPERATOR', 'OWNER'],
   },
 
   notifications: {
@@ -256,16 +256,16 @@ export const PERMISSIONS: Record<string, FeaturePermissions> = {
   },
 
   chargePoints: {
-    access: [...ROLE_GROUPS.PLATFORM_OPS, 'OWNER', 'STATION_ADMIN', 'MANAGER'],
-    create: [...ROLE_GROUPS.PLATFORM_OPS, 'OWNER', 'STATION_ADMIN'],
-    edit: [...ROLE_GROUPS.PLATFORM_OPS, 'OWNER', 'STATION_ADMIN'],
-    remoteCommands: [...ROLE_GROUPS.PLATFORM_OPS, 'OWNER', 'STATION_ADMIN'],
+    access: [...ROLE_GROUPS.PLATFORM_OPS, 'OWNER', 'STATION_OPERATOR', 'STATION_ADMIN', 'MANAGER'],
+    create: [...ROLE_GROUPS.PLATFORM_OPS, 'OWNER', 'STATION_OPERATOR', 'STATION_ADMIN'],
+    edit: [...ROLE_GROUPS.PLATFORM_OPS, 'OWNER', 'STATION_OPERATOR', 'STATION_ADMIN'],
+    remoteCommands: [...ROLE_GROUPS.PLATFORM_OPS, 'OWNER', 'STATION_OPERATOR', 'STATION_ADMIN'],
   },
 
   swapStations: {
-    access: [...ROLE_GROUPS.PLATFORM_OPS, 'OWNER', 'STATION_ADMIN', 'MANAGER'],
-    create: [...ROLE_GROUPS.PLATFORM_OPS, 'OWNER', 'STATION_ADMIN'],
-    edit: [...ROLE_GROUPS.PLATFORM_OPS, 'OWNER', 'STATION_ADMIN'],
+    access: [...ROLE_GROUPS.PLATFORM_OPS, 'OWNER', 'STATION_OPERATOR', 'STATION_ADMIN', 'MANAGER'],
+    create: [...ROLE_GROUPS.PLATFORM_OPS, 'OWNER', 'STATION_OPERATOR', 'STATION_ADMIN'],
+    edit: [...ROLE_GROUPS.PLATFORM_OPS, 'OWNER', 'STATION_OPERATOR', 'STATION_ADMIN'],
   },
 
   smartCharging: {
@@ -403,12 +403,19 @@ export const PERMISSIONS: Record<string, FeaturePermissions> = {
   },
 
   'charge-points': {
-    access: [...ROLE_GROUPS.PLATFORM_OPS, 'OWNER', 'STATION_ADMIN', 'MANAGER'],
-    view: [...ROLE_GROUPS.PLATFORM_OPS, 'OWNER', 'STATION_ADMIN', 'MANAGER'],
-    create: [...ROLE_GROUPS.PLATFORM_OPS, 'OWNER', 'STATION_ADMIN'],
-    edit: [...ROLE_GROUPS.PLATFORM_OPS, 'OWNER', 'STATION_ADMIN'],
-    delete: [...ROLE_GROUPS.PLATFORM_ADMINS, 'OWNER'],
-    remoteCommands: [...ROLE_GROUPS.PLATFORM_OPS, 'OWNER', 'STATION_ADMIN'],
+    access: [...ROLE_GROUPS.PLATFORM_OPS, 'OWNER', 'STATION_OPERATOR', 'STATION_ADMIN', 'MANAGER'],
+    view: [...ROLE_GROUPS.PLATFORM_OPS, 'OWNER', 'STATION_OPERATOR', 'STATION_ADMIN', 'MANAGER'],
+    create: [...ROLE_GROUPS.PLATFORM_OPS, 'OWNER', 'STATION_OPERATOR', 'STATION_ADMIN'],
+    edit: [...ROLE_GROUPS.PLATFORM_OPS, 'OWNER', 'STATION_OPERATOR', 'STATION_ADMIN'],
+    delete: [...ROLE_GROUPS.PLATFORM_ADMINS, 'OWNER', 'STATION_OPERATOR'],
+    remoteCommands: [...ROLE_GROUPS.PLATFORM_OPS, 'OWNER', 'STATION_OPERATOR', 'STATION_ADMIN'],
+  },
+
+  customRoles: {
+    access: ['STATION_OPERATOR', ...ROLE_GROUPS.PLATFORM_ADMINS],
+    create: ['STATION_OPERATOR', ...ROLE_GROUPS.PLATFORM_ADMINS],
+    edit: ['STATION_OPERATOR', ...ROLE_GROUPS.PLATFORM_ADMINS],
+    delete: ROLE_GROUPS.PLATFORM_ADMINS,
   },
 }
 

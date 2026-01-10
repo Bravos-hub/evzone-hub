@@ -152,17 +152,17 @@ export function Incidents() {
     return incidentsData.map(i => ({
       id: i.id,
       title: i.title,
-      status: i.status as IncidentStatus,
-      severity: i.severity as Severity,
-      impact: 'Charging' as Impact, // Map from incident data
-      region: 'AFRICA' as Region, // Default
+      status: i.status === 'OPEN' ? 'Investigating' : i.status === 'IN_PROGRESS' ? 'Mitigating' : i.status === 'RESOLVED' ? 'Resolved' : 'Monitoring' as IncidentStatus,
+      severity: i.severity === 'CRITICAL' ? 'SEV1' : i.severity === 'HIGH' ? 'SEV2' : i.severity === 'MEDIUM' ? 'SEV3' : 'SEV4' as Severity,
+      impact: 'Charging' as Impact,
+      region: 'AFRICA' as Region,
       org: '—',
-      commander: i.assignedTo || 'Unassigned',
-      createdAt: i.created.toISOString().slice(0, 16).replace('T', ' '),
-      updatedAt: i.resolved?.toISOString().slice(0, 16).replace('T', ' ') || i.created.toISOString().slice(0, 16).replace('T', ' '),
+      commander: i.assignedName || 'Unassigned',
+      createdAt: new Date(i.createdAt).toISOString().slice(0, 16).replace('T', ' '),
+      updatedAt: new Date(i.updatedAt).toISOString().slice(0, 16).replace('T', ' '),
       summary: i.description,
       affectedStationsCount: 0,
-      eta: i.slaDeadline ? 'Calculating...' : 'Unknown',
+      eta: 'Unknown',
     }))
   }, [incidentsData])
 
@@ -269,56 +269,56 @@ export function Incidents() {
       {!isLoading && (
         <div className="table-wrap">
           <table className="table">
-          <thead>
-            <tr>
-              <th className="w-24">Incident</th>
-              <th className="w-24">Severity</th>
-              <th className="w-24">Status</th>
-              <th className="w-24">Impact</th>
-              {perms.viewAll && <th className="w-24">Region</th>}
-              <th className="w-32">Commander</th>
-              <th className="w-20">Stations</th>
-              <th className="w-20">ETA</th>
-              <th className="w-24 !text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((r) => (
-              <tr key={r.id}>
-                <td className="truncate max-w-[128px]">
-                  <button className="font-semibold text-text hover:underline text-left" onClick={() => setOpenId(r.id)}>
-                    {r.id}
-                  </button>
-                  <div className="text-xs text-muted truncate" title={r.title}>{r.title}</div>
-                </td>
-                <td className="whitespace-nowrap">
-                  <span className={`pill ${sevColor(r.severity)}`}>{r.severity}</span>
-                </td>
-                <td className="whitespace-nowrap">
-                  <span className={`pill ${statusColor(r.status)}`}>{r.status}</span>
-                </td>
-                <td className="whitespace-nowrap">{r.impact}</td>
-                {perms.viewAll && <td className="whitespace-nowrap">{r.region}</td>}
-                <td className="truncate max-w-[96px]" title={r.commander}>{r.commander}</td>
-                <td className="text-center">{r.affectedStationsCount > 0 ? r.affectedStationsCount : '—'}</td>
-                <td className="whitespace-nowrap">{r.eta}</td>
-                <td className="text-right">
-                  <div className="inline-flex items-center gap-2">
-                    <button className="btn secondary" onClick={() => setOpenId(r.id)}>
-                      View
-                    </button>
-                    {perms.resolve && r.status !== 'Resolved' && (
-                      <button className="btn secondary" onClick={() => alert(`Resolve ${r.id} (demo)`)}>
-                        Resolve
-                      </button>
-                    )}
-                  </div>
-                </td>
+            <thead>
+              <tr>
+                <th className="w-24">Incident</th>
+                <th className="w-24">Severity</th>
+                <th className="w-24">Status</th>
+                <th className="w-24">Impact</th>
+                {perms.viewAll && <th className="w-24">Region</th>}
+                <th className="w-32">Commander</th>
+                <th className="w-20">Stations</th>
+                <th className="w-20">ETA</th>
+                <th className="w-24 !text-right">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {filtered.map((r) => (
+                <tr key={r.id}>
+                  <td className="truncate max-w-[128px]">
+                    <button className="font-semibold text-text hover:underline text-left" onClick={() => setOpenId(r.id)}>
+                      {r.id}
+                    </button>
+                    <div className="text-xs text-muted truncate" title={r.title}>{r.title}</div>
+                  </td>
+                  <td className="whitespace-nowrap">
+                    <span className={`pill ${sevColor(r.severity)}`}>{r.severity}</span>
+                  </td>
+                  <td className="whitespace-nowrap">
+                    <span className={`pill ${statusColor(r.status)}`}>{r.status}</span>
+                  </td>
+                  <td className="whitespace-nowrap">{r.impact}</td>
+                  {perms.viewAll && <td className="whitespace-nowrap">{r.region}</td>}
+                  <td className="truncate max-w-[96px]" title={r.commander}>{r.commander}</td>
+                  <td className="text-center">{r.affectedStationsCount > 0 ? r.affectedStationsCount : '—'}</td>
+                  <td className="whitespace-nowrap">{r.eta}</td>
+                  <td className="text-right">
+                    <div className="inline-flex items-center gap-2">
+                      <button className="btn secondary" onClick={() => setOpenId(r.id)}>
+                        View
+                      </button>
+                      {perms.resolve && r.status !== 'Resolved' && (
+                        <button className="btn secondary" onClick={() => alert(`Resolve ${r.id} (demo)`)}>
+                          Resolve
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
 
       {/* Create Incident Modal */}
@@ -542,9 +542,9 @@ function IncidentDrawer({
             </button>
           )}
           {perms.resolve && incident.status !== 'Resolved' && (
-            <button 
-              className="btn" 
-              style={{ background: '#03cd8c', color: 'white' }} 
+            <button
+              className="btn"
+              style={{ background: '#03cd8c', color: 'white' }}
               onClick={() => {
                 if (onResolve) {
                   onResolve(incident.id)

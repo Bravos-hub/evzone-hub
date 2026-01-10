@@ -29,10 +29,18 @@ export function Team() {
 
   const filtered = useMemo(() => {
     if (!users) return []
-    return users
+    let result = users
+
+    // If STATION_OPERATOR, filter to only show manageable roles
+    if (currentUser?.role === 'STATION_OPERATOR') {
+      const manageableRoles: Role[] = ['MANAGER', 'ATTENDANT', 'CASHIER', 'TECHNICIAN_ORG', 'STATION_ADMIN']
+      result = result.filter(u => manageableRoles.includes(u.role))
+    }
+
+    return result
       .filter((r) => (q ? (r.name + ' ' + r.email).toLowerCase().includes(q.toLowerCase()) : true))
       .filter((r) => (roleFilter === 'All' ? true : r.role === roleFilter))
-  }, [users, q, roleFilter])
+  }, [users, q, roleFilter, currentUser])
 
   const stats = useMemo(() => ({
     total: filtered.length,

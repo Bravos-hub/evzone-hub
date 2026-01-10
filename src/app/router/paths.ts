@@ -22,6 +22,7 @@ export const PATHS = {
     SWAP_STATIONS: '/stations/swap-stations',
     SMART_CHARGING: '/stations/smart-charging',
     BOOKINGS: '/stations/bookings',
+    ASSIGN_OPERATOR: (id: string) => `/stations/${id}/assign-operator`,
   },
   SESSIONS: '/sessions',
   SESSION_DETAIL: (id: string) => `/sessions/${id}`,
@@ -117,6 +118,7 @@ export const PATHS = {
     REPORTS: '/operator-reports',
     SWAP_DETAIL: (id: string) => `/swap-stations/${id}`,
     TEAM_DETAIL: (id: string) => `/team/${id}`,
+    CUSTOM_ROLES: '/settings/custom-roles',
   },
 
   // Misc

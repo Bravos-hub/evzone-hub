@@ -6,6 +6,7 @@ export type Role =
   | 'EVZONE_OPERATOR'
   | 'SITE_OWNER'
   | 'OWNER'
+  | 'STATION_OPERATOR'
   | 'STATION_ADMIN'
   | 'MANAGER'
   | 'ATTENDANT'

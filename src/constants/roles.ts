@@ -5,6 +5,7 @@ export const ALL_ROLES: Role[] = [
   'SUPER_ADMIN',
   'EVZONE_ADMIN',
   'EVZONE_OPERATOR',
+  'STATION_OPERATOR',
   'SITE_OWNER',
   'OWNER',
   'STATION_ADMIN',
@@ -20,6 +21,7 @@ export const ROLE_LABELS: Record<Role, string> = {
   SUPER_ADMIN: 'Super Admin',
   EVZONE_ADMIN: 'EVzone Admin',
   EVZONE_OPERATOR: 'EVzone Ops',
+  STATION_OPERATOR: 'Station Operator',
   SITE_OWNER: 'Site Owner',
   OWNER: 'Station Owner',
   STATION_ADMIN: 'Station Admin',
@@ -46,19 +48,19 @@ export const ROLE_GROUPS = {
   PLATFORM_OPS: ['SUPER_ADMIN', 'EVZONE_ADMIN', 'EVZONE_OPERATOR'] as Role[],
 
   /** Station managers (owners, admins, managers) */
-  STATION_MANAGERS: ['OWNER', 'STATION_ADMIN', 'MANAGER'] as Role[],
+  STATION_MANAGERS: ['OWNER', 'STATION_OPERATOR', 'STATION_ADMIN', 'MANAGER'] as Role[],
 
   /** All station-related roles */
-  STATION_STAFF: ['OWNER', 'STATION_ADMIN', 'MANAGER', 'ATTENDANT', 'CASHIER'] as Role[],
+  STATION_STAFF: ['OWNER', 'STATION_OPERATOR', 'STATION_ADMIN', 'MANAGER', 'ATTENDANT', 'CASHIER'] as Role[],
 
   /** Technician roles */
   TECHNICIANS: ['TECHNICIAN_ORG', 'TECHNICIAN_PUBLIC'] as Role[],
 
   /** Roles that can view financial data */
-  FINANCIAL_VIEWERS: ['SUPER_ADMIN', 'EVZONE_ADMIN', 'EVZONE_OPERATOR', 'OWNER', 'SITE_OWNER'] as Role[],
+  FINANCIAL_VIEWERS: ['SUPER_ADMIN', 'EVZONE_ADMIN', 'EVZONE_OPERATOR', 'STATION_OPERATOR', 'OWNER', 'SITE_OWNER'] as Role[],
 
   /** Roles that can manage incidents */
-  INCIDENT_MANAGERS: ['SUPER_ADMIN', 'EVZONE_ADMIN', 'EVZONE_OPERATOR', 'MANAGER'] as Role[],
+  INCIDENT_MANAGERS: ['SUPER_ADMIN', 'EVZONE_ADMIN', 'EVZONE_OPERATOR', 'STATION_OPERATOR', 'MANAGER'] as Role[],
 
   /** All authenticated users */
   ALL_AUTHENTICATED: [
