@@ -17,6 +17,7 @@ export function InviteMemberModal({ onClose, onInvite }: InviteMemberModalProps)
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [showCreateRole, setShowCreateRole] = useState(false)
+    const [roleIdToEdit, setRoleIdToEdit] = useState<string | undefined>(undefined)
 
     // Get custom roles from store
     const { roles: customRoles } = useCustomRolesStore()
@@ -94,34 +95,53 @@ export function InviteMemberModal({ onClose, onInvite }: InviteMemberModalProps)
                                     <>
                                         <div className="px-1 py-1 text-[10px] font-bold text-muted uppercase">Custom Roles</div>
                                         {customRoles.map((r) => (
-                                            <button
-                                                key={r.id}
-                                                type="button"
-                                                onClick={() => setRole(r.id)}
-                                                className={clsx(
-                                                    'flex items-center justify-between px-4 py-3 rounded-xl border transition-all text-left',
-                                                    role === r.id
-                                                        ? 'bg-brand-orange/10 border-brand-orange text-brand-orange'
-                                                        : 'bg-white/5 border-white/5 text-text-secondary hover:border-white/20'
-                                                )}
-                                            >
-                                                <div className="flex flex-col">
-                                                    <span className="text-sm font-bold">{r.name}</span>
-                                                    <span className="text-[10px] opacity-70">{r.permissions.length} permissions</span>
-                                                </div>
-                                                {role === r.id && (
-                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                                                        <polyline points="20 6 9 17 4 12" />
+                                            <div key={r.id} className="flex gap-1 group">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setRole(r.id)}
+                                                    className={clsx(
+                                                        'flex-1 flex items-center justify-between px-4 py-3 rounded-xl border transition-all text-left',
+                                                        role === r.id
+                                                            ? 'bg-brand-orange/10 border-brand-orange text-brand-orange'
+                                                            : 'bg-white/5 border-white/5 text-text-secondary hover:border-white/20'
+                                                    )}
+                                                >
+                                                    <div className="flex flex-col">
+                                                        <span className="text-sm font-bold">{r.name}</span>
+                                                        <span className="text-[10px] opacity-70">{r.permissions.length} permissions</span>
+                                                    </div>
+                                                    {role === r.id && (
+                                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                                                            <polyline points="20 6 9 17 4 12" />
+                                                        </svg>
+                                                    )}
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                        e.preventDefault()
+                                                        setRoleIdToEdit(r.id)
+                                                        setShowCreateRole(true)
+                                                    }}
+                                                    className="w-10 flex items-center justify-center rounded-xl border border-white/5 bg-white/5 text-muted hover:text-white hover:bg-white/10 transition-colors"
+                                                    title="Edit Role Permissions"
+                                                >
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                                                     </svg>
-                                                )}
-                                            </button>
+                                                </button>
+                                            </div>
                                         ))}
                                     </>
                                 )}
 
                                 <button
                                     type="button"
-                                    onClick={() => setShowCreateRole(true)}
+                                    onClick={() => {
+                                        setRoleIdToEdit(undefined)
+                                        setShowCreateRole(true)
+                                    }}
                                     className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-dashed border-white/20 text-muted hover:text-white hover:border-white/40 hover:bg-white/5 transition-all mt-2"
                                 >
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -160,9 +180,14 @@ export function InviteMemberModal({ onClose, onInvite }: InviteMemberModalProps)
 
             {showCreateRole && (
                 <CreateRoleModal
-                    onClose={() => setShowCreateRole(false)}
+                    editRoleId={roleIdToEdit}
+                    onClose={() => {
+                        setShowCreateRole(false)
+                        setRoleIdToEdit(undefined)
+                    }}
                     onRoleCreated={(roleId) => {
                         setRole(roleId)
+                        setRoleIdToEdit(undefined)
                     }}
                 />
             )}

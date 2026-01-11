@@ -6,32 +6,44 @@ import { PermissionSelector } from './PermissionSelector'
 interface CreateRoleModalProps {
     onClose: () => void
     onRoleCreated: (roleId: string) => void
+    editRoleId?: string
 }
 
-export function CreateRoleModal({ onClose, onRoleCreated }: CreateRoleModalProps) {
-    const [name, setName] = useState('')
-    const [permissions, setPermissions] = useState<string[]>([])
-    const { addRole } = useCustomRolesStore()
+export function CreateRoleModal({ onClose, onRoleCreated, editRoleId }: CreateRoleModalProps) {
+    const { addRole, getRole, updateRole } = useCustomRolesStore()
+
+    const editingRole = editRoleId ? getRole(editRoleId) : undefined
+
+    const [name, setName] = useState(editingRole?.name || '')
+    const [permissions, setPermissions] = useState<string[]>(editingRole?.permissions || [])
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
         if (!name) return
 
-        const id = `custom_${Math.random().toString(36).substring(2, 9)}_${Date.now()}`
-        addRole({
-            id,
-            name,
-            permissions
-        })
-        onRoleCreated(id)
-        onClose()
+        if (editRoleId && editingRole) {
+            updateRole(editRoleId, {
+                name,
+                permissions
+            })
+            onClose()
+        } else {
+            const id = `custom_${Math.random().toString(36).substring(2, 9)}_${Date.now()}`
+            addRole({
+                id,
+                name,
+                permissions
+            })
+            onRoleCreated(id)
+            onClose()
+        }
     }
 
     return (
         <div className="fixed inset-0 z-[160] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
             <Card className="w-full max-w-2xl p-6 shadow-2xl border-white/10 flex flex-col max-h-[90vh]">
                 <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-xl font-bold text-text">Create Custom Role</h2>
+                    <h2 className="text-xl font-bold text-text">{editRoleId ? 'Edit Custom Role' : 'Create Custom Role'}</h2>
                     <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-lg text-text-secondary transition-colors">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                             <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
@@ -74,7 +86,7 @@ export function CreateRoleModal({ onClose, onRoleCreated }: CreateRoleModalProps
                             disabled={!name}
                             className="flex-[2] h-11 rounded-xl bg-accent text-white font-bold text-sm hover:bg-accent-hover disabled:opacity-50 transition-all shadow-lg shadow-accent/20"
                         >
-                            Create Role
+                            {editRoleId ? 'Save Changes' : 'Create Role'}
                         </button>
                     </div>
                 </form>
