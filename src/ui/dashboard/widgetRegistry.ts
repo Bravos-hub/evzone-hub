@@ -48,6 +48,7 @@ const ALL_ROLES: Role[] = [
   'SUPER_ADMIN',
   'EVZONE_ADMIN',
   'EVZONE_OPERATOR',
+  'STATION_OPERATOR',
   'SITE_OWNER',
   'OWNER',
   'STATION_ADMIN',
@@ -58,13 +59,13 @@ const ALL_ROLES: Role[] = [
 ]
 
 /** Admin + Operator roles */
-const ADMIN_OPS: Role[] = ['SUPER_ADMIN', 'EVZONE_ADMIN', 'EVZONE_OPERATOR']
+const ADMIN_OPS: Role[] = ['SUPER_ADMIN', 'EVZONE_ADMIN', 'EVZONE_OPERATOR', 'STATION_OPERATOR']
 
 /** Roles that manage stations */
-const STATION_MANAGERS: Role[] = ['SUPER_ADMIN', 'EVZONE_ADMIN', 'EVZONE_OPERATOR', 'OWNER', 'STATION_ADMIN', 'MANAGER']
+const STATION_MANAGERS: Role[] = ['SUPER_ADMIN', 'EVZONE_ADMIN', 'EVZONE_OPERATOR', 'STATION_OPERATOR', 'OWNER', 'STATION_ADMIN', 'MANAGER']
 
 /** Roles that see incidents */
-const INCIDENT_VIEWERS: Role[] = ['SUPER_ADMIN', 'EVZONE_ADMIN', 'EVZONE_OPERATOR', 'OWNER', 'STATION_ADMIN', 'MANAGER', 'TECHNICIAN_ORG']
+const INCIDENT_VIEWERS: Role[] = ['SUPER_ADMIN', 'EVZONE_ADMIN', 'EVZONE_OPERATOR', 'STATION_OPERATOR', 'OWNER', 'STATION_ADMIN', 'MANAGER', 'TECHNICIAN_ORG']
 
 /** Widget registry - all available widgets with RBAC */
 export const WIDGET_REGISTRY: Record<WidgetId, WidgetDef> = {
@@ -102,7 +103,7 @@ export const WIDGET_REGISTRY: Record<WidgetId, WidgetDef> = {
   'kpi-revenue': {
     id: 'kpi-revenue',
     title: 'Revenue',
-    allowedRoles: ['EVZONE_ADMIN', 'EVZONE_OPERATOR', 'OWNER', 'SITE_OWNER'],
+    allowedRoles: ['EVZONE_ADMIN', 'EVZONE_OPERATOR', 'STATION_OPERATOR', 'OWNER', 'SITE_OWNER'],
     component: KpiRevenueWidget as any,
     defaultSize: '1',
     category: 'kpi',
@@ -222,7 +223,7 @@ export const WIDGET_REGISTRY: Record<WidgetId, WidgetDef> = {
   'list-dispatch': {
     id: 'list-dispatch',
     title: 'Dispatch Queue',
-    allowedRoles: ['EVZONE_ADMIN', 'EVZONE_OPERATOR', 'MANAGER', 'TECHNICIAN_ORG', 'TECHNICIAN_PUBLIC'],
+    allowedRoles: ['EVZONE_ADMIN', 'EVZONE_OPERATOR', 'STATION_OPERATOR', 'MANAGER', 'TECHNICIAN_ORG', 'TECHNICIAN_PUBLIC'],
     component: DispatchQueueWidget as any,
     defaultSize: '2',
     category: 'list',
@@ -284,7 +285,7 @@ export const WIDGET_REGISTRY: Record<WidgetId, WidgetDef> = {
   'panel-settlement': {
     id: 'panel-settlement',
     title: 'Settlement Panel',
-    allowedRoles: ['EVZONE_ADMIN', 'EVZONE_OPERATOR', 'OWNER', 'SITE_OWNER'],
+    allowedRoles: ['EVZONE_ADMIN', 'EVZONE_OPERATOR', 'STATION_OPERATOR', 'OWNER', 'SITE_OWNER'],
     component: SettlementPanelWidget as any,
     defaultSize: '2',
     category: 'panel',

@@ -1,4 +1,5 @@
 import type { Role } from '@/core/auth/types'
+import { useCustomRolesStore } from '@/core/auth/customRolesStore'
 import { ROLE_GROUPS } from './roles'
 
 /**
@@ -412,9 +413,9 @@ export const PERMISSIONS: Record<string, FeaturePermissions> = {
   },
 
   customRoles: {
-    access: ['STATION_OPERATOR', ...ROLE_GROUPS.PLATFORM_ADMINS],
-    create: ['STATION_OPERATOR', ...ROLE_GROUPS.PLATFORM_ADMINS],
-    edit: ['STATION_OPERATOR', ...ROLE_GROUPS.PLATFORM_ADMINS],
+    access: ['OWNER', 'STATION_OPERATOR', ...ROLE_GROUPS.PLATFORM_ADMINS],
+    create: ['OWNER', 'STATION_OPERATOR', ...ROLE_GROUPS.PLATFORM_ADMINS],
+    edit: ['OWNER', 'STATION_OPERATOR', ...ROLE_GROUPS.PLATFORM_ADMINS],
     delete: ROLE_GROUPS.PLATFORM_ADMINS,
   },
 }
@@ -428,14 +429,30 @@ export function hasPermission(
   if (!role) return false
   if (role === 'SUPER_ADMIN') return true
 
+  // 1. Check Standard Permissions
   const featurePerms = PERMISSIONS[feature]
-  if (!featurePerms) return false
+  if (featurePerms) {
+    const perm = featurePerms[permission]
+    if (perm) {
+      if (perm === 'ALL') return true
+      if ((perm as Role[]).includes(role)) return true
+    }
+  }
 
-  const perm = featurePerms[permission]
-  if (!perm) return false
-  if (perm === 'ALL') return true
+  // 2. Check Custom Roles
+  // Access the store directly (non-reactive is fine for logic checks)
+  try {
+    const customRole = useCustomRolesStore.getState().getRole(role)
+    if (customRole) {
+      // Custom permissions are stored as 'feature.action'
+      return customRole.permissions.includes(`${feature}.${permission}`)
+    }
+  } catch (e) {
+    // Fallback if store isn't initialized or some other error
+    console.warn('Failed to check custom role permissions', e)
+  }
 
-  return (perm as Role[]).includes(role)
+  return false
 }
 
 /** Get all permissions for a role on a feature */

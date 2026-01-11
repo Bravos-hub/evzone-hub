@@ -59,7 +59,9 @@ export function Widget({ widgetId, config, size, className, scope }: WidgetProps
   }
 
   // Check role permission (empty allowedRoles means all roles)
-  if (user.role !== 'SUPER_ADMIN' && def.allowedRoles.length > 0 && !def.allowedRoles.includes(user.role)) {
+  // Custom roles (id starts with 'custom_') bypass this check as their dashboard is generated based on permissions
+  const isCustomRole = (user.role as string).startsWith('custom_')
+  if (!isCustomRole && user.role !== 'SUPER_ADMIN' && def.allowedRoles.length > 0 && !def.allowedRoles.includes(user.role)) {
     return null
   }
 
