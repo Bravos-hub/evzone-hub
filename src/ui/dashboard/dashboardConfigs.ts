@@ -259,48 +259,6 @@ export const DASHBOARD_CONFIGS: Record<DashboardKey, DashboardConfig> = {
       },
     ],
   },
-  STATION_OPERATOR: {
-    title: 'Station Operator Dashboard',
-    kpiRow: [
-      { id: 'kpi-uptime', config: { value: 99.4, trend: 'up' } },
-      { id: 'kpi-active-sessions', config: {} },
-      { id: 'kpi-generic', config: { title: 'Revenue Share', value: '12%', trend: 'stable' } },
-      { id: 'kpi-incidents', config: { count: 4, period: 'Open' } },
-    ],
-    rows: [
-      {
-        sectionTitle: 'Operational Control',
-        widgets: [
-          { id: 'panel-stations-status', size: '2', config: { stations: mockStationsStatus } },
-          {
-            id: 'panel-quick-actions', size: '2', config: {
-              title: 'Operational Actions',
-              actions: [
-                { label: 'Reboot Stations', path: '/stations', variant: 'primary' },
-                { label: 'System Update', path: '/stations', variant: 'secondary' },
-                { label: 'Manage Team', path: '/team', variant: 'secondary' },
-                { label: 'OCPP Console', path: '/webhooks', variant: 'secondary' },
-              ]
-            }
-          },
-        ],
-      },
-      {
-        sectionTitle: 'Sessions & Utilization',
-        widgets: [
-          { id: 'panel-sessions-console', size: '2', config: { title: 'Live Sessions', sessions: mockActiveSessions } },
-          { id: 'panel-utilization-heatmap', size: '2', config: {} },
-        ],
-      },
-      {
-        sectionTitle: 'Team Performance',
-        widgets: [
-          { id: 'panel-shift-board', size: '2', config: { staff: mockStaffMembers } },
-          { id: 'list-incidents', size: '2', config: { title: 'Recent Incidents', incidents: mockIncidents } },
-        ],
-      },
-    ],
-  },
 
   // ─────────────────────────────────────────────────────────────────────────
   // OWNER DASHBOARD (CHARGE)
