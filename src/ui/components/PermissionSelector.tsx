@@ -74,6 +74,7 @@ export function PermissionSelector({ selectedPermissions, onChange }: Permission
                                     onChange={() => toggleAllInFeature(feature, actions)}
                                 />
                                 <button
+                                    type="button"
                                     onClick={() => setExpandedFeature(isExpanded ? null : feature)}
                                     className="text-sm font-medium text-text capitalize flex items-center gap-2 hover:text-white"
                                 >
@@ -81,6 +82,7 @@ export function PermissionSelector({ selectedPermissions, onChange }: Permission
                                 </button>
                             </div>
                             <button
+                                type="button"
                                 onClick={() => setExpandedFeature(isExpanded ? null : feature)}
                                 className="text-muted hover:text-white p-1"
                             >
