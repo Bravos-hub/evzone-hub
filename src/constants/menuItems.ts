@@ -1,6 +1,7 @@
 import type { Role } from '@/core/auth/types'
 import { ROLE_GROUPS } from './roles'
 import { PATHS } from '@/app/router/paths'
+import { hasPermission } from './permissions'
 
 export type MenuItem = {
   path: string
@@ -154,8 +155,6 @@ export function getMenuItemsForRole(role: Role | undefined): MenuItem[] {
 
 /** Generate menu items based on role permissions (for custom roles) */
 function generateMenuFromPermissions(role: Role): MenuItem[] {
-  // Import permissions dynamically to avoid circular dependencies
-  const { hasPermission } = require('./permissions')
 
   const permissionBasedMenu: MenuItem[] = []
 
