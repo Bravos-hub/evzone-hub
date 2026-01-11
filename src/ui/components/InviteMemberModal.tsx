@@ -9,11 +9,14 @@ import clsx from 'clsx'
 interface InviteMemberModalProps {
     onClose: () => void
     onInvite: (data: { email: string; role: Role }) => Promise<void>
+    onUpdate?: (data: { email: string; role: Role }) => Promise<void>
+    initialMember?: { email: string; role: Role | string }
+    isEditing?: boolean
 }
 
-export function InviteMemberModal({ onClose, onInvite }: InviteMemberModalProps) {
-    const [email, setEmail] = useState('')
-    const [role, setRole] = useState<string>('ATTENDANT') // Allow string for custom roles
+export function InviteMemberModal({ onClose, onInvite, onUpdate, initialMember, isEditing = false }: InviteMemberModalProps) {
+    const [email, setEmail] = useState(initialMember?.email || '')
+    const [role, setRole] = useState<string>(initialMember?.role || 'ATTENDANT') // Allow string for custom roles
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [showCreateRole, setShowCreateRole] = useState(false)
@@ -29,10 +32,14 @@ export function InviteMemberModal({ onClose, onInvite }: InviteMemberModalProps)
         setIsSubmitting(true)
         setError(null)
         try {
-            await onInvite({ email, role: role as Role })
+            if (isEditing && onUpdate) {
+                await onUpdate({ email, role: role as Role })
+            } else {
+                await onInvite({ email, role: role as Role })
+            }
             onClose()
         } catch (err: any) {
-            setError(err.message || 'Failed to send invitation')
+            setError(err.message || 'Failed to save changes')
         } finally {
             setIsSubmitting(false)
         }
@@ -45,7 +52,7 @@ export function InviteMemberModal({ onClose, onInvite }: InviteMemberModalProps)
             <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
                 <Card className="w-full max-w-md p-6 shadow-2xl border-white/10">
                     <div className="flex items-center justify-between mb-6">
-                        <h2 className="text-xl font-bold text-text">Invite Team Member</h2>
+                        <h2 className="text-xl font-bold text-text">{isEditing ? 'Update Team Member' : 'Invite Team Member'}</h2>
                         <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-lg text-text-secondary transition-colors">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                                 <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
@@ -57,13 +64,17 @@ export function InviteMemberModal({ onClose, onInvite }: InviteMemberModalProps)
                         <div className="flex flex-col gap-1.5">
                             <label className="text-[11px] font-black uppercase tracking-wider text-text-secondary ml-1">Email Address</label>
                             <input
-                                autoFocus
+                                autoFocus={!isEditing}
                                 type="email"
                                 required
                                 value={email}
+                                disabled={isEditing}
                                 onChange={(e) => setEmail(e.target.value)}
                                 placeholder="name@example.com"
-                                className="w-full h-11 px-4 rounded-xl bg-white/5 border border-white/10 text-sm text-text focus:outline-none focus:ring-2 focus:ring-accent/50 transition-all"
+                                className={clsx(
+                                    "w-full h-11 px-4 rounded-xl border border-white/10 text-sm text-text focus:outline-none focus:ring-2 focus:ring-accent/50 transition-all",
+                                    isEditing ? "bg-white/5 opacity-50 cursor-not-allowed" : "bg-white/5"
+                                )}
                             />
                         </div>
 
@@ -171,7 +182,7 @@ export function InviteMemberModal({ onClose, onInvite }: InviteMemberModalProps)
                                 disabled={isSubmitting}
                                 className="flex-[2] h-11 rounded-xl bg-accent text-white font-bold text-sm hover:bg-accent-hover disabled:opacity-50 transition-all shadow-lg shadow-accent/20"
                             >
-                                {isSubmitting ? 'Sending...' : 'Send Invitation'}
+                                {isSubmitting ? 'Saving...' : (isEditing ? 'Update Member' : 'Send Invitation')}
                             </button>
                         </div>
                     </form>

@@ -4,6 +4,7 @@ import { useAuthStore } from '@/core/auth/authStore'
 import { getPermissionsForFeature } from '@/constants/permissions'
 import { ROLE_LABELS } from '@/constants/roles'
 import type { Role } from '@/core/auth/types'
+import type { User } from '@/core/api/types'
 import { RolePill } from '@/ui/components/RolePill'
 import { useUsers, useUpdateUser, useDeleteUser, useInviteUser } from '@/core/api/hooks/useUsers'
 import { InviteMemberModal } from '@/ui/components/InviteMemberModal'
@@ -24,6 +25,7 @@ export function Team() {
   const updateMutation = useUpdateUser()
 
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false)
+  const [editingMember, setEditingMember] = useState<User | null>(null)
   const [q, setQ] = useState('')
   const [roleFilter, setRoleFilter] = useState<Role | 'All'>('All')
 
@@ -161,7 +163,7 @@ export function Team() {
                     <div className="inline-flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                       {perms.changeRole && (
                         <button
-                          onClick={() => alert('Edit permissions feature coming soon')}
+                          onClick={() => setEditingMember(r)}
                           className="p-2 rounded-lg bg-white/5 border border-white/5 hover:border-accent text-text-secondary hover:text-accent transition-all"
                           title="Edit Permissions"
                         >
@@ -200,6 +202,21 @@ export function Team() {
           onInvite={async (data) => {
             await inviteMutation.mutateAsync(data)
           }}
+        />
+      )}
+
+      {editingMember && (
+        <InviteMemberModal
+          isEditing
+          initialMember={{ email: editingMember.email || '', role: editingMember.role }}
+          onClose={() => setEditingMember(null)}
+          onUpdate={async (data) => {
+            await updateMutation.mutateAsync({
+              id: editingMember.id,
+              data: { role: data.role as Role }
+            })
+          }}
+          onInvite={async () => { }} // Not used in edit mode
         />
       )}
     </DashboardLayout>
