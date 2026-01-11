@@ -1,5 +1,8 @@
 import type { DashboardConfig, DashboardKey } from './types'
+import type { Role } from '@/core/auth/types'
+
 import type { ChoroplethDatum } from '@/ui/components/WorldChoroplethMap'
+import { hasPermission } from '@/constants/permissions'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // MOCK DATA - In production, this would come from API/stores
@@ -695,6 +698,120 @@ export function getDashboardConfig(
     return DASHBOARD_CONFIGS[key] ?? DASHBOARD_CONFIGS.OWNER
   }
 
-  return DASHBOARD_CONFIGS[role] ?? GENERIC_DASHBOARD
+  // Use static config if available
+  if (DASHBOARD_CONFIGS[role]) {
+    return DASHBOARD_CONFIGS[role]
+  }
+
+  // Fallback: Generate dynamic dashboard based on permissions
+  return generateDashboardFromPermissions(role)
+}
+
+/** 
+ * Generate a dynamic dashboard configuration based on permissions.
+ * Useful for custom roles that don't have a static config.
+ */
+function generateDashboardFromPermissions(roleKey: DashboardKey): DashboardConfig {
+  const role = roleKey as Role
+
+  const kpiRow: any[] = []
+  const actions: any[] = []
+  const contentWidgets: any[] = []
+
+  // 1. Build KPIs based on access
+  if (hasPermission(role, 'stations', 'access')) {
+    kpiRow.push({ id: 'kpi-stations', config: { total: '-', online: '-', variant: 'online' } })
+  }
+  if (hasPermission(role, 'sessions', 'access')) {
+    kpiRow.push({ id: 'kpi-sessions', config: { count: '-', period: 'Today' } })
+  }
+  if (hasPermission(role, 'incidents', 'access')) {
+    kpiRow.push({ id: 'kpi-incidents', config: { count: '-', period: 'Open' } })
+  }
+  if (hasPermission(role, 'billing', 'access') || hasPermission(role, 'earnings', 'access')) {
+    kpiRow.push({ id: 'kpi-revenue', config: { amount: '-', period: 'Today' } })
+  }
+
+  // 2. Build Quick Actions based on permissions
+  if (hasPermission(role, 'stations', 'access')) {
+    actions.push({ label: 'Manage Stations', path: '/stations', variant: 'primary' })
+  }
+  if (hasPermission(role, 'sessions', 'access')) {
+    actions.push({ label: 'View Sessions', path: '/sessions', variant: 'secondary' })
+  }
+  if (hasPermission(role, 'incidents', 'create')) {
+    actions.push({ label: 'Report Incident', path: '/incidents', variant: 'secondary' })
+  }
+  if (hasPermission(role, 'team', 'access')) {
+    actions.push({ label: 'Manage Team', path: '/team', variant: 'secondary' })
+  }
+  if (hasPermission(role, 'reports', 'access')) {
+    actions.push({ label: 'View Reports', path: '/reports', variant: 'secondary' })
+  }
+  if (hasPermission(role, 'billing', 'access')) {
+    actions.push({ label: 'Billing & Wallet', path: '/billing', variant: 'secondary' })
+  }
+
+  // 3. Build Content Widgets
+  const analyticsWidgets: any[] = []
+
+  // Revenue / Analytics
+  if (hasPermission(role, 'earnings', 'access')) {
+    analyticsWidgets.push({ id: 'panel-revenue-chart', size: '2', config: { title: 'Revenue Trends' } })
+  }
+  if (hasPermission(role, 'stations', 'access')) {
+    analyticsWidgets.push({ id: 'panel-utilization-heatmap', size: '2', config: { title: 'Utilization' } })
+  }
+
+  // Lists
+  const listWidgets: any[] = []
+  if (hasPermission(role, 'incidents', 'access')) {
+    listWidgets.push({ id: 'list-incidents', size: '2', config: { title: 'Recent Incidents', incidents: [] } })
+  }
+  if (hasPermission(role, 'techRequests', 'access')) {
+    listWidgets.push({ id: 'list-dispatch', size: '2', config: { title: 'Tech Requests', items: [] } })
+  }
+
+  // Assemble Rows
+  const rows: any[] = []
+
+  // Quick Actions Row
+  if (actions.length > 0) {
+    rows.push({
+      sectionTitle: 'Quick Actions',
+      widgets: [{
+        id: 'panel-quick-actions',
+        size: 'full',
+        config: { title: 'Quick Actions', actions }
+      }]
+    })
+  }
+
+  // Analytics Row
+  if (analyticsWidgets.length > 0) {
+    rows.push({
+      sectionTitle: 'Analytics',
+      widgets: analyticsWidgets
+    })
+  }
+
+  // Lists Row
+  if (listWidgets.length > 0) {
+    rows.push({
+      sectionTitle: 'Operational Monitoring',
+      widgets: listWidgets
+    })
+  }
+
+  // If dashboard is empty, show generic fallback widgets
+  if (kpiRow.length === 0 && rows.length === 0) {
+    return GENERIC_DASHBOARD
+  }
+
+  return {
+    title: 'Overview',
+    kpiRow,
+    rows
+  }
 }
 
