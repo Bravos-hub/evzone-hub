@@ -520,6 +520,60 @@ export const DASHBOARD_CONFIGS: Record<DashboardKey, DashboardConfig> = {
   },
 
   // ─────────────────────────────────────────────────────────────────────────
+  // STATION OPERATOR DASHBOARD
+  // ─────────────────────────────────────────────────────────────────────────
+  STATION_OPERATOR: {
+    title: 'Station Operator Dashboard',
+    kpiRow: [
+      { id: 'kpi-stations', config: { total: 4, online: 4, variant: 'online' } },
+      { id: 'kpi-revenue', config: { amount: 1240, period: 'Today', trend: 'up', delta: '+12% vs avg' } },
+      { id: 'kpi-sessions', config: { count: 287, period: 'Today' } },
+      { id: 'kpi-uptime', config: { value: 98.7, trend: 'up', delta: '+0.3% vs last week' } },
+    ],
+    rows: [
+      {
+        sectionTitle: 'Quick Actions',
+        widgets: [
+          {
+            id: 'panel-quick-actions', size: 'full', config: {
+              title: 'Operational Control',
+              actions: [
+                { label: 'Manage Stations', path: '/stations', variant: 'primary' },
+                { label: 'View Sessions', path: '/sessions', variant: 'secondary' },
+                { label: 'Create Incident', path: '/incidents', variant: 'secondary' },
+                { label: 'Manage Team', path: '/team', variant: 'secondary' },
+                { label: 'View Reports', path: '/reports', variant: 'secondary' },
+                { label: 'Withdraw Funds', path: '/billing', variant: 'secondary' },
+              ]
+            }
+          }
+        ]
+      },
+      {
+        sectionTitle: 'Revenue & Utilization',
+        widgets: [
+          { id: 'panel-revenue-chart', size: '2', config: { title: 'Revenue Trends', subtitle: 'Last 7 days' } },
+          { id: 'panel-utilization-heatmap', size: '2', config: { title: 'Station Utilization', subtitle: 'Peak hours analysis' } },
+        ],
+      },
+      {
+        sectionTitle: 'Operations & Incidents',
+        widgets: [
+          { id: 'list-incidents', size: '2', config: { title: 'Active Incidents', incidents: mockIncidents.slice(0, 3) } },
+          { id: 'chart-bar', size: '2', config: { title: 'Daily Sessions', values: [145, 178, 162, 198, 187, 210, 287], color: '#f77f00', labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] } },
+        ],
+      },
+      {
+        sectionTitle: 'Team & Performance',
+        widgets: [
+          { id: 'panel-team-activity', size: '2', config: { title: 'Team Activity', subtitle: 'Recent actions and updates' } },
+          { id: 'panel-placeholder', size: '2', config: { title: 'Maintenance Queue', subtitle: 'Pending work orders and tech requests' } },
+        ],
+      },
+    ],
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────
   // MANAGER DASHBOARD
   // ─────────────────────────────────────────────────────────────────────────
   MANAGER: {
