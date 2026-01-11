@@ -36,7 +36,7 @@ export const PERMISSIONS: Record<string, FeaturePermissions> = {
   },
 
   stations: {
-    access: [...ROLE_GROUPS.PLATFORM_OPS, 'OWNER', 'STATION_ADMIN', 'MANAGER'],
+    access: [...ROLE_GROUPS.PLATFORM_OPS, 'OWNER', 'STATION_OPERATOR', 'STATION_ADMIN', 'MANAGER'],
     viewAll: ROLE_GROUPS.PLATFORM_OPS,
     create: ROLE_GROUPS.PLATFORM_OPS,
     edit: [...ROLE_GROUPS.PLATFORM_OPS, 'OWNER', 'STATION_OPERATOR', 'STATION_ADMIN'],
@@ -47,7 +47,7 @@ export const PERMISSIONS: Record<string, FeaturePermissions> = {
   sessions: {
     access: [...ROLE_GROUPS.PLATFORM_OPS, ...ROLE_GROUPS.STATION_STAFF],
     viewAll: ROLE_GROUPS.PLATFORM_OPS,
-    export: [...ROLE_GROUPS.PLATFORM_OPS, 'OWNER'],
+    export: [...ROLE_GROUPS.PLATFORM_OPS, 'OWNER', 'STATION_OPERATOR'],
     refund: ROLE_GROUPS.PLATFORM_OPS,
     stopSession: [...ROLE_GROUPS.PLATFORM_OPS, 'OWNER', 'STATION_ADMIN', 'ATTENDANT', 'CASHIER'],
   },
@@ -71,7 +71,7 @@ export const PERMISSIONS: Record<string, FeaturePermissions> = {
   },
 
   billing: {
-    access: ROLE_GROUPS.FINANCIAL_VIEWERS,
+    access: [...ROLE_GROUPS.FINANCIAL_VIEWERS, 'STATION_OPERATOR'],
     viewAll: ROLE_GROUPS.PLATFORM_OPS,
     export: ROLE_GROUPS.PLATFORM_ADMINS,
     refund: ROLE_GROUPS.PLATFORM_OPS,
@@ -79,9 +79,9 @@ export const PERMISSIONS: Record<string, FeaturePermissions> = {
   },
 
   reports: {
-    access: [...ROLE_GROUPS.PLATFORM_OPS, 'OWNER', 'SITE_OWNER'],
+    access: [...ROLE_GROUPS.PLATFORM_OPS, 'OWNER', 'STATION_OPERATOR', 'SITE_OWNER'],
     viewAll: ROLE_GROUPS.PLATFORM_OPS,
-    export: [...ROLE_GROUPS.PLATFORM_OPS, 'OWNER'],
+    export: [...ROLE_GROUPS.PLATFORM_OPS, 'OWNER', 'STATION_OPERATOR'],
     schedule: ROLE_GROUPS.PLATFORM_OPS,
   },
 
@@ -200,7 +200,7 @@ export const PERMISSIONS: Record<string, FeaturePermissions> = {
   },
 
   disputes: {
-    access: [...ROLE_GROUPS.PLATFORM_OPS, 'OWNER'],
+    access: [...ROLE_GROUPS.PLATFORM_OPS, 'OWNER', 'STATION_OPERATOR'],
     viewAll: ROLE_GROUPS.PLATFORM_OPS,
     resolve: ROLE_GROUPS.PLATFORM_OPS,
     escalate: ROLE_GROUPS.PLATFORM_ADMINS,
@@ -251,8 +251,8 @@ export const PERMISSIONS: Record<string, FeaturePermissions> = {
   // ═══════════════════════════════════════════════════════════════════════
 
   tariffs: {
-    access: ['OWNER', 'STATION_ADMIN'],
-    edit: ['OWNER'],
+    access: ['OWNER', 'STATION_OPERATOR', 'STATION_ADMIN'],
+    edit: ['OWNER', 'STATION_OPERATOR'],
   },
 
   chargePoints: {
@@ -269,19 +269,19 @@ export const PERMISSIONS: Record<string, FeaturePermissions> = {
   },
 
   smartCharging: {
-    access: ['OWNER', 'STATION_ADMIN'],
-    configure: ['OWNER'],
+    access: ['OWNER', 'STATION_OPERATOR', 'STATION_ADMIN'],
+    configure: ['OWNER', 'STATION_OPERATOR'],
   },
 
   earnings: {
-    access: ['OWNER', 'SITE_OWNER'],
-    export: ['OWNER', 'SITE_OWNER'],
+    access: ['OWNER', 'STATION_OPERATOR', 'SITE_OWNER'],
+    export: ['OWNER', 'STATION_OPERATOR', 'SITE_OWNER'],
   },
 
   bookings: {
-    access: ['OWNER', 'STATION_ADMIN', 'MANAGER', 'ATTENDANT'],
-    create: ['OWNER', 'STATION_ADMIN', 'MANAGER', 'ATTENDANT'],
-    cancel: ['OWNER', 'STATION_ADMIN', 'MANAGER'],
+    access: ['OWNER', 'STATION_OPERATOR', 'STATION_ADMIN', 'MANAGER', 'ATTENDANT'],
+    create: ['OWNER', 'STATION_OPERATOR', 'STATION_ADMIN', 'MANAGER', 'ATTENDANT'],
+    cancel: ['OWNER', 'STATION_OPERATOR', 'STATION_ADMIN', 'MANAGER'],
   },
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -370,20 +370,20 @@ export const PERMISSIONS: Record<string, FeaturePermissions> = {
   wallet: {
     access: [...ROLE_GROUPS.ALL_AUTHENTICATED],
     view: [...ROLE_GROUPS.ALL_AUTHENTICATED],
-    withdraw: ['OWNER', 'SITE_OWNER', 'TECHNICIAN_ORG', 'TECHNICIAN_PUBLIC'],
+    withdraw: ['OWNER', 'STATION_OPERATOR', 'SITE_OWNER', 'TECHNICIAN_ORG', 'TECHNICIAN_PUBLIC'],
   },
 
   techRequests: {
-    access: ['OWNER', 'STATION_ADMIN', ...ROLE_GROUPS.TECHNICIANS],
-    view: ['OWNER', 'STATION_ADMIN', ...ROLE_GROUPS.TECHNICIANS],
-    create: ['OWNER', 'STATION_ADMIN'],
-    assign: ['OWNER', 'STATION_ADMIN'],
+    access: ['OWNER', 'STATION_OPERATOR', 'STATION_ADMIN', ...ROLE_GROUPS.TECHNICIANS],
+    view: ['OWNER', 'STATION_OPERATOR', 'STATION_ADMIN', ...ROLE_GROUPS.TECHNICIANS],
+    create: ['OWNER', 'STATION_OPERATOR', 'STATION_ADMIN'],
+    assign: ['OWNER', 'STATION_OPERATOR', 'STATION_ADMIN'],
     accept: ROLE_GROUPS.TECHNICIANS,
   },
 
   addCharger: {
-    access: ['OWNER', 'STATION_ADMIN'],
-    create: ['OWNER', 'STATION_ADMIN'],
+    access: ['OWNER', 'STATION_OPERATOR', 'STATION_ADMIN'],
+    create: ['OWNER', 'STATION_OPERATOR', 'STATION_ADMIN'],
   },
 
   technicianJobs: {
