@@ -28,7 +28,7 @@ export const MENU_ITEMS: MenuItem[] = [
   // ═══════════════════════════════════════════════════════════════════════
   // OPERATIONS
   // ═══════════════════════════════════════════════════════════════════════
-  { path: PATHS.STATIONS.ROOT, label: 'Stations', icon: 'zap', roles: [...ROLE_GROUPS.PLATFORM_OPS, 'OWNER', 'STATION_ADMIN', 'MANAGER'] },
+  { path: PATHS.STATIONS.ROOT, label: 'Stations', icon: 'zap', roles: [...ROLE_GROUPS.PLATFORM_OPS, 'OWNER', 'STATION_OPERATOR', 'STATION_ADMIN', 'MANAGER'] },
   { path: PATHS.SESSIONS, label: 'Sessions', icon: 'activity', roles: [...ROLE_GROUPS.PLATFORM_OPS, ...ROLE_GROUPS.STATION_STAFF] },
   { path: PATHS.INCIDENTS, label: 'Incidents', icon: 'alert-triangle', roles: [...ROLE_GROUPS.PLATFORM_OPS, ...ROLE_GROUPS.STATION_MANAGERS, ...ROLE_GROUPS.TECHNICIANS] },
   { path: PATHS.DISPATCHES, label: 'Dispatches', icon: 'truck', roles: [...ROLE_GROUPS.PLATFORM_OPS, 'MANAGER', ...ROLE_GROUPS.TECHNICIANS] },
@@ -36,7 +36,7 @@ export const MENU_ITEMS: MenuItem[] = [
   // ═══════════════════════════════════════════════════════════════════════
   // OWNER-SPECIFIC
   // ═══════════════════════════════════════════════════════════════════════
-  { path: PATHS.OWNER.TARIFFS, label: 'Tariffs & Pricing', icon: 'dollar-sign', roles: ['OWNER', 'STATION_ADMIN'] },
+  { path: PATHS.OWNER.TARIFFS, label: 'Tariffs & Pricing', icon: 'dollar-sign', roles: ['OWNER', 'STATION_OPERATOR', 'STATION_ADMIN'] },
 
   // ═══════════════════════════════════════════════════════════════════════
   // SITE OWNER
@@ -55,17 +55,17 @@ export const MENU_ITEMS: MenuItem[] = [
   // ═══════════════════════════════════════════════════════════════════════
   // TEAM & USERS
   // ═══════════════════════════════════════════════════════════════════════
-  { path: PATHS.TEAM, label: 'Team', icon: 'users', roles: ['STATION_ADMIN', 'OWNER'] },
+  { path: PATHS.TEAM, label: 'Team', icon: 'users', roles: ['STATION_ADMIN', 'STATION_OPERATOR', 'OWNER'] },
   { path: PATHS.ADMIN.USERS, label: 'Users & Roles', icon: 'user-check', roles: ROLE_GROUPS.PLATFORM_ADMINS },
   { path: PATHS.ADMIN.APPROVALS, label: 'Approvals', icon: 'check-circle', roles: ROLE_GROUPS.PLATFORM_OPS },
 
   // ═══════════════════════════════════════════════════════════════════════
   // FINANCIAL
   // ═══════════════════════════════════════════════════════════════════════
-  { path: PATHS.BILLING, label: 'Billing', icon: 'credit-card', roles: ROLE_GROUPS.FINANCIAL_VIEWERS },
-  { path: PATHS.OWNER.EARNINGS, label: 'Earnings', icon: 'trending-up', roles: ['OWNER', 'SITE_OWNER'] },
-  { path: PATHS.ADMIN.DISPUTES, label: 'Disputes', icon: 'alert-circle', roles: [...ROLE_GROUPS.PLATFORM_OPS, 'OWNER'] },
-  { path: PATHS.REPORTS, label: 'Reports', icon: 'file-text', roles: [...ROLE_GROUPS.PLATFORM_OPS, 'OWNER', 'SITE_OWNER'] },
+  { path: PATHS.BILLING, label: 'Billing', icon: 'credit-card', roles: [...ROLE_GROUPS.FINANCIAL_VIEWERS, 'STATION_OPERATOR'] },
+  { path: PATHS.OWNER.EARNINGS, label: 'Earnings', icon: 'trending-up', roles: ['OWNER', 'STATION_OPERATOR', 'SITE_OWNER'] },
+  { path: PATHS.ADMIN.DISPUTES, label: 'Disputes', icon: 'alert-circle', roles: [...ROLE_GROUPS.PLATFORM_OPS, 'OWNER', 'STATION_OPERATOR'] },
+  { path: PATHS.REPORTS, label: 'Reports', icon: 'file-text', roles: [...ROLE_GROUPS.PLATFORM_OPS, 'OWNER', 'STATION_OPERATOR', 'SITE_OWNER'] },
 
   // ═══════════════════════════════════════════════════════════════════════
   // COMMUNICATIONS
@@ -112,13 +112,13 @@ export const MENU_ITEMS: MenuItem[] = [
   // ═══════════════════════════════════════════════════════════════════════
   // USER TOOLS (All authenticated users)
   // ═══════════════════════════════════════════════════════════════════════
-  { path: PATHS.WALLET, label: 'Wallet', icon: 'credit-card', roles: ['OWNER', 'SITE_OWNER', 'TECHNICIAN_ORG', 'TECHNICIAN_PUBLIC'] },
+  { path: PATHS.WALLET, label: 'Wallet', icon: 'credit-card', roles: ['OWNER', 'STATION_OPERATOR', 'SITE_OWNER', 'TECHNICIAN_ORG', 'TECHNICIAN_PUBLIC'] },
   { path: PATHS.SETTING, label: 'Settings', icon: 'settings', roles: 'ALL' },
 
   // ═══════════════════════════════════════════════════════════════════════
   // OWNER TOOLS
   // ═══════════════════════════════════════════════════════════════════════
-  { path: PATHS.OWNER.TECH_REQUESTS, label: 'Tech Requests', icon: 'tool', roles: ['OWNER', 'STATION_ADMIN'] },
+  { path: PATHS.OWNER.TECH_REQUESTS, label: 'Tech Requests', icon: 'tool', roles: ['OWNER', 'STATION_OPERATOR', 'STATION_ADMIN'] },
   {
     path: '#expansion',
     label: 'Expansion',
@@ -136,10 +136,74 @@ export function getMenuItemsForRole(role: Role | undefined): MenuItem[] {
   if (!role) return []
   if (role === 'SUPER_ADMIN') return MENU_ITEMS
 
-  return MENU_ITEMS.filter(item => {
+  // For predefined roles, use the standard role-based filtering
+  const roleBasedItems = MENU_ITEMS.filter(item => {
     if (item.roles === 'ALL') return true
     return item.roles.includes(role)
   })
+
+  // If we got menu items from role-based filtering, use those
+  if (roleBasedItems.length > 0) {
+    return roleBasedItems
+  }
+
+  // For custom roles (no menu items found), generate menu based on permissions
+  // This allows custom roles created by STATION_OPERATOR to have dynamic menus
+  return generateMenuFromPermissions(role)
+}
+
+/** Generate menu items based on role permissions (for custom roles) */
+function generateMenuFromPermissions(role: Role): MenuItem[] {
+  // Import permissions dynamically to avoid circular dependencies
+  const { hasPermission } = require('./permissions')
+
+  const permissionBasedMenu: MenuItem[] = []
+
+  // Add common items
+  permissionBasedMenu.push({ path: PATHS.DASHBOARD, label: 'Dashboard', icon: 'home', roles: 'ALL' })
+  permissionBasedMenu.push({ path: PATHS.MARKETPLACE, label: 'Marketplace', icon: 'briefcase', roles: 'ALL' })
+  permissionBasedMenu.push({ path: PATHS.EXPLORE, label: 'Explore', icon: 'map', roles: 'ALL' })
+
+  // Add permission-based items
+  if (hasPermission(role, 'stations', 'access')) {
+    permissionBasedMenu.push({ path: PATHS.STATIONS.ROOT, label: 'Stations', icon: 'zap', roles: [role] })
+  }
+  if (hasPermission(role, 'sessions', 'access')) {
+    permissionBasedMenu.push({ path: PATHS.SESSIONS, label: 'Sessions', icon: 'activity', roles: [role] })
+  }
+  if (hasPermission(role, 'incidents', 'access')) {
+    permissionBasedMenu.push({ path: PATHS.INCIDENTS, label: 'Incidents', icon: 'alert-triangle', roles: [role] })
+  }
+  if (hasPermission(role, 'tariffs', 'access')) {
+    permissionBasedMenu.push({ path: PATHS.OWNER.TARIFFS, label: 'Tariffs & Pricing', icon: 'dollar-sign', roles: [role] })
+  }
+  if (hasPermission(role, 'team', 'access')) {
+    permissionBasedMenu.push({ path: PATHS.TEAM, label: 'Team', icon: 'users', roles: [role] })
+  }
+  if (hasPermission(role, 'billing', 'access')) {
+    permissionBasedMenu.push({ path: PATHS.BILLING, label: 'Billing', icon: 'credit-card', roles: [role] })
+  }
+  if (hasPermission(role, 'earnings', 'access')) {
+    permissionBasedMenu.push({ path: PATHS.OWNER.EARNINGS, label: 'Earnings', icon: 'trending-up', roles: [role] })
+  }
+  if (hasPermission(role, 'disputes', 'access')) {
+    permissionBasedMenu.push({ path: PATHS.ADMIN.DISPUTES, label: 'Disputes', icon: 'alert-circle', roles: [role] })
+  }
+  if (hasPermission(role, 'reports', 'access')) {
+    permissionBasedMenu.push({ path: PATHS.REPORTS, label: 'Reports', icon: 'file-text', roles: [role] })
+  }
+  if (hasPermission(role, 'wallet', 'access')) {
+    permissionBasedMenu.push({ path: PATHS.WALLET, label: 'Wallet', icon: 'credit-card', roles: [role] })
+  }
+  if (hasPermission(role, 'techRequests', 'access')) {
+    permissionBasedMenu.push({ path: PATHS.OWNER.TECH_REQUESTS, label: 'Tech Requests', icon: 'tool', roles: [role] })
+  }
+
+  // Always add notifications and settings
+  permissionBasedMenu.push({ path: PATHS.NOTIFICATIONS, label: 'Notifications', icon: 'bell', roles: 'ALL' })
+  permissionBasedMenu.push({ path: PATHS.SETTING, label: 'Settings', icon: 'settings', roles: 'ALL' })
+
+  return permissionBasedMenu
 }
 
 /** Check if a role can access a specific path */
