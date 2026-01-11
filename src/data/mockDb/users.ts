@@ -61,5 +61,18 @@ export const mockUsers: User[] = [
     created: new Date('2025-08-15'),
     mfaEnabled: false,
   },
+  {
+    id: 'u-006',
+    name: 'Alex Operator',
+    email: 'alex@stationops.io',
+    organizationId: 'ORG_DELTA',
+    role: 'STATION_OPERATOR',
+    status: 'Active',
+    region: 'AFRICA',
+    created: new Date('2025-09-10'),
+    lastSeen: new Date('2026-01-11T09:30:00'),
+    mfaEnabled: true,
+    assignedStations: ['STATION_003', 'STATION_004'],
+  },
 ]
 
