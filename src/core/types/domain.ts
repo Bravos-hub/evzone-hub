@@ -110,6 +110,7 @@ export interface Station {
   status: StationStatus
   operatorId?: UserId
   managerId?: UserId
+  providerId?: string
   capacity: number // total power in kW
   parkingBays?: number
   chargePoints?: ChargePoint[]

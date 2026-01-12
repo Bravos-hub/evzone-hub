@@ -7,7 +7,7 @@
 import { http, HttpResponse } from 'msw'
 import { mockUsers } from '@/data/mockDb/users'
 import { mockChargingSessions } from '@/data/mockDb/sessions'
-import type { User as ApiUser, Station, Booking, ChargingSession, WalletBalance, WalletTransaction, Organization, DashboardMetrics, RevenueTrendPoint, UtilizationHour, StationPerformanceRank, Tenant, TenantApplication, LeaseContract, NoticeRequest, Notice, PaymentMethod, CreatePaymentMethodRequest, WithdrawalRequest, WithdrawalTransaction, NotificationItem, ChargePoint, SwapProvider } from '@/core/api/types'
+import type { User as ApiUser, Station, Booking, ChargingSession, WalletBalance, WalletTransaction, Organization, DashboardMetrics, RevenueTrendPoint, UtilizationHour, StationPerformanceRank, Tenant, TenantApplication, LeaseContract, NoticeRequest, Notice, PaymentMethod, CreatePaymentMethodRequest, WithdrawalRequest, WithdrawalTransaction, NotificationItem, ChargePoint, SwapProvider, SwapBay, SwapBayInput } from '@/core/api/types'
 import type { Role } from '@/core/auth/types'
 import type { ChargePoint as DomainChargePoint } from '@/core/types/domain'
 import { API_CONFIG } from '@/core/api/config'
@@ -195,6 +195,8 @@ function mapStationToAPI(station: any): Station {
     type: station.type === 'Charging' ? 'CHARGING' : station.type === 'Swap' ? 'SWAP' : 'BOTH',
     status: station.status === 'Online' ? 'ACTIVE' : station.status === 'Offline' ? 'INACTIVE' : 'MAINTENANCE',
     capacity: station.capacity,
+    parkingBays: station.parkingBays,
+    providerId: station.providerId,
     orgId: station.organizationId,
     createdAt: station.created.toISOString(),
     updatedAt: new Date().toISOString(),
@@ -417,7 +419,9 @@ export const handlers = [
       latitude: body.latitude || 0,
       longitude: body.longitude || 0,
       status: 'Online' as any,
-      capacity: 0,
+      capacity: body.capacity ?? 0,
+      parkingBays: (body as any).parkingBays ?? undefined,
+      providerId: (body as any).providerId ?? undefined,
       created: new Date(),
       tags: body.tags || [],
     }
@@ -452,6 +456,49 @@ export const handlers = [
 
   http.post(`${baseURL}/stations/:id/health`, async () => {
     return HttpResponse.json({ healthScore: 95 })
+  }),
+
+  http.get(`${baseURL}/stations/:id/swap-bays`, async ({ params }) => {
+    const station = mockDb.getStation(params.id as string)
+    if (!station) {
+      return HttpResponse.json({ error: 'Station not found' }, { status: 404 })
+    }
+    const bays: SwapBay[] = (station.swapLockers || []).map((locker: any) => ({
+      id: locker.id,
+      stationId: station.id,
+      status: locker.status,
+      batteryId: locker.batteryPackId,
+    }))
+    return HttpResponse.json(bays)
+  }),
+
+  http.put(`${baseURL}/stations/:id/swap-bays`, async ({ params, request }) => {
+    const station = mockDb.getStation(params.id as string)
+    if (!station) {
+      return HttpResponse.json({ error: 'Station not found' }, { status: 404 })
+    }
+    const body = await request.json() as { bays?: SwapBayInput[] }
+    const inputBays = body?.bays || []
+    const validStatuses = new Set(['Available', 'Occupied', 'Charging', 'Faulted', 'Reserved'])
+
+    const swapLockers = inputBays.map((bay, idx) => ({
+      id: bay.id,
+      stationId: station.id,
+      position: idx + 1,
+      status: validStatuses.has(bay.status || '') ? bay.status : (bay.batteryId ? 'Occupied' : 'Available'),
+      batteryPackId: bay.batteryId,
+    }))
+
+    mockDb.updateStation(params.id as string, { swapLockers })
+
+    const response: SwapBay[] = swapLockers.map((locker: any) => ({
+      id: locker.id,
+      stationId: station.id,
+      status: locker.status,
+      batteryId: locker.batteryPackId,
+    }))
+
+    return HttpResponse.json(response)
   }),
 
   // Session endpoints

@@ -263,6 +263,25 @@ export interface SwapSession {
   energyExchanged?: number
 }
 
+export type SwapBayStatus = 'Available' | 'Occupied' | 'Charging' | 'Faulted' | 'Reserved'
+
+export interface SwapBay {
+  id: string
+  stationId: string
+  status: SwapBayStatus
+  batteryId?: string
+}
+
+export interface SwapBayInput {
+  id: string
+  batteryId?: string
+  status?: SwapBayStatus
+}
+
+export interface UpsertSwapBaysRequest {
+  bays: SwapBayInput[]
+}
+
 // Wallet Types
 export interface WalletBalance {
   balance: number

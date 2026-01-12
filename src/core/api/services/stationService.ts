@@ -4,7 +4,7 @@
  */
 
 import { apiClient } from '../client'
-import type { Station, CreateStationRequest, UpdateStationRequest } from '../types'
+import type { Station, CreateStationRequest, UpdateStationRequest, SwapBay, SwapBayInput } from '../types'
 
 export const stationService = {
   /**
@@ -81,6 +81,20 @@ export const stationService = {
    */
   async updateHealth(id: string): Promise<unknown> {
     return apiClient.post<unknown>(`/stations/${id}/health`)
+  },
+
+  /**
+   * Get swap bays for a station
+   */
+  async getSwapBays(id: string): Promise<SwapBay[]> {
+    return apiClient.get<SwapBay[]>(`/stations/${id}/swap-bays`)
+  },
+
+  /**
+   * Upsert swap bays for a station
+   */
+  async upsertSwapBays(id: string, bays: SwapBayInput[]): Promise<SwapBay[]> {
+    return apiClient.put<SwapBay[]>(`/stations/${id}/swap-bays`, { bays })
   },
 }
 

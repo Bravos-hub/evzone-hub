@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { PATHS } from '@/app/router/paths'
 import { getErrorMessage } from '@/core/api/errors'
-import { useCreateStation, useStations } from '@/core/api/hooks/useStations'
+import { useCreateStation, useStations, useUpsertSwapBays } from '@/core/api/hooks/useStations'
 import { useProviders } from '@/core/api/hooks/useProviders'
 import { auditLogger } from '@/core/utils/auditLogger'
 import { useAuthStore } from '@/core/auth/authStore'
@@ -81,6 +81,7 @@ export function AddSwapStation() {
   const { data: sites, isLoading: loadingSites } = useStations()
   const { data: providers, isLoading: loadingProviders } = useProviders()
   const createStationMutation = useCreateStation()
+  const upsertSwapBaysMutation = useUpsertSwapBays()
 
   const selectedSite = useMemo(() => {
     return sites?.find((site) => site.id === form.siteId)
@@ -213,6 +214,15 @@ export function AddSwapStation() {
         providerId: form.providerId,
         capacity: form.bayCount,
         tags,
+      })
+
+      await upsertSwapBaysMutation.mutateAsync({
+        stationId: newStation.id,
+        bays: form.bays.map((bay) => ({
+          id: bay.id,
+          batteryId: bay.batteryId || undefined,
+          status: bay.batteryId ? 'Occupied' : 'Available',
+        })),
       })
 
       auditLogger.stationCreated(newStation.id, newStation.name)
