@@ -6,7 +6,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { stationService } from '../services/stationService'
 import { queryKeys } from '@/data/queryKeys'
-import type { CreateStationRequest, UpdateStationRequest, SwapBayInput } from '../types'
+import type { CreateStationRequest, UpdateStationRequest, SwapBayInput, BatteryInput } from '../types'
 
 export function useStations(filters?: { status?: string; orgId?: string; limit?: number; offset?: number }) {
   return useQuery({
@@ -111,6 +111,26 @@ export function useUpsertSwapBays() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.stations.swapBays(variables.stationId) })
       queryClient.invalidateQueries({ queryKey: queryKeys.stations.detail(variables.stationId) })
+    },
+  })
+}
+
+export function useStationBatteries(stationId: string) {
+  return useQuery({
+    queryKey: queryKeys.stations.batteries(stationId),
+    queryFn: () => stationService.getBatteries(stationId),
+    enabled: !!stationId,
+  })
+}
+
+export function useUpsertStationBatteries() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ stationId, batteries }: { stationId: string; batteries: BatteryInput[] }) =>
+      stationService.upsertBatteries(stationId, batteries),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.stations.batteries(variables.stationId) })
     },
   })
 }

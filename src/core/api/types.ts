@@ -248,6 +248,23 @@ export interface Battery {
   location: string
   cycles?: number
   lastSwapped?: string
+  stationId?: string
+  bayId?: string
+  providerId?: string
+}
+
+export interface BatteryInput {
+  id: string
+  type?: string
+  soc?: number
+  health?: number
+  status?: Battery['status']
+  location?: string
+  cycles?: number
+  lastSwapped?: string
+  stationId?: string
+  bayId?: string
+  providerId?: string
 }
 
 export interface SwapSession {
@@ -280,6 +297,10 @@ export interface SwapBayInput {
 
 export interface UpsertSwapBaysRequest {
   bays: SwapBayInput[]
+}
+
+export interface UpsertStationBatteriesRequest {
+  batteries: BatteryInput[]
 }
 
 // Wallet Types

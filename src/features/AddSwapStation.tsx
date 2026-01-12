@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { PATHS } from '@/app/router/paths'
 import { getErrorMessage } from '@/core/api/errors'
-import { useCreateStation, useStations, useUpsertSwapBays } from '@/core/api/hooks/useStations'
+import { useCreateStation, useStations, useUpsertSwapBays, useUpsertStationBatteries } from '@/core/api/hooks/useStations'
 import { useProviders } from '@/core/api/hooks/useProviders'
 import { auditLogger } from '@/core/utils/auditLogger'
 import { useAuthStore } from '@/core/auth/authStore'
@@ -82,10 +82,15 @@ export function AddSwapStation() {
   const { data: providers, isLoading: loadingProviders } = useProviders()
   const createStationMutation = useCreateStation()
   const upsertSwapBaysMutation = useUpsertSwapBays()
+  const upsertStationBatteriesMutation = useUpsertStationBatteries()
 
   const selectedSite = useMemo(() => {
     return sites?.find((site) => site.id === form.siteId)
   }, [sites, form.siteId])
+
+  const selectedProvider = useMemo(() => {
+    return providers?.find((provider) => provider.id === form.providerId)
+  }, [providers, form.providerId])
 
   const toast = (message: string) => {
     setAck(message)
@@ -213,6 +218,7 @@ export function AddSwapStation() {
         type: 'SWAP',
         providerId: form.providerId,
         capacity: form.bayCount,
+        parkingBays: form.bayCount,
         tags,
       })
 
@@ -223,6 +229,26 @@ export function AddSwapStation() {
           batteryId: bay.batteryId || undefined,
           status: bay.batteryId ? 'Occupied' : 'Available',
         })),
+      })
+
+      const defaultBatteryType = selectedProvider?.batteriesSupported?.[0] || 'Unknown'
+      const stationBatteries = form.bays
+        .filter((bay) => bay.batteryId.trim())
+        .map((bay) => ({
+          id: bay.batteryId.trim(),
+          type: defaultBatteryType,
+          soc: 100,
+          health: 100,
+          status: 'Ready' as const,
+          location: bay.id,
+          stationId: newStation.id,
+          bayId: bay.id,
+          providerId: form.providerId,
+        }))
+
+      await upsertStationBatteriesMutation.mutateAsync({
+        stationId: newStation.id,
+        batteries: stationBatteries,
       })
 
       auditLogger.stationCreated(newStation.id, newStation.name)

@@ -21,6 +21,7 @@ import type {
   LeaseContract,
   ApplicationDocument
 } from '@/core/api/types'
+import type { Battery as ApiBattery } from '@/core/api/types'
 import { mockChargingSessions } from './sessions'
 import { mockUsers } from './users'
 
@@ -377,6 +378,8 @@ const initialAuditLogs: AuditLogEntry[] = [
   },
 ]
 
+const initialSwapBatteries: ApiBattery[] = []
+
 // Database interface
 export interface MockDatabase {
   stations: Station[]
@@ -394,6 +397,7 @@ export interface MockDatabase {
   applications: TenantApplication[]
   contracts: LeaseContract[]
   providers: SwapProvider[]
+  swapBatteries: ApiBattery[]
 }
 
 // Load from localStorage or use initial data
@@ -452,6 +456,7 @@ function loadDatabase(): MockDatabase {
           ...p,
           partnerSince: new Date(p.partnerSince),
         })) || initialProviders,
+        swapBatteries: parsed.swapBatteries || initialSwapBatteries,
       }
     } catch (e) {
       console.error('Failed to parse stored database:', e)
@@ -475,6 +480,7 @@ function loadDatabase(): MockDatabase {
     applications: [],
     contracts: [],
     providers: initialProviders,
+    swapBatteries: initialSwapBatteries,
   }
 }
 
@@ -529,6 +535,7 @@ function saveDatabase(db: MockDatabase): void {
         ...p,
         partnerSince: p.partnerSince.toISOString(),
       })),
+      swapBatteries: db.swapBatteries,
     }
     localStorage.setItem('evzone:mockDb', JSON.stringify(serializable))
   } catch (e) {
@@ -846,6 +853,17 @@ export const mockDb = {
       db.providers[index] = { ...db.providers[index], ...updates }
       saveDatabase(db)
     }
+  },
+
+  // Swap Batteries
+  getSwapBatteries: () => db.swapBatteries,
+  getSwapBatteriesByStation: (stationId: string) => db.swapBatteries.filter(b => b.stationId === stationId),
+  setSwapBatteriesForStation: (stationId: string, batteries: ApiBattery[]) => {
+    db.swapBatteries = [
+      ...db.swapBatteries.filter(b => b.stationId !== stationId),
+      ...batteries.map(b => ({ ...b, stationId })),
+    ]
+    saveDatabase(db)
   },
 }
 

@@ -7,7 +7,7 @@
 import { http, HttpResponse } from 'msw'
 import { mockUsers } from '@/data/mockDb/users'
 import { mockChargingSessions } from '@/data/mockDb/sessions'
-import type { User as ApiUser, Station, Booking, ChargingSession, WalletBalance, WalletTransaction, Organization, DashboardMetrics, RevenueTrendPoint, UtilizationHour, StationPerformanceRank, Tenant, TenantApplication, LeaseContract, NoticeRequest, Notice, PaymentMethod, CreatePaymentMethodRequest, WithdrawalRequest, WithdrawalTransaction, NotificationItem, ChargePoint, SwapProvider, SwapBay, SwapBayInput } from '@/core/api/types'
+import type { User as ApiUser, Station, Booking, ChargingSession, WalletBalance, WalletTransaction, Organization, DashboardMetrics, RevenueTrendPoint, UtilizationHour, StationPerformanceRank, Tenant, TenantApplication, LeaseContract, NoticeRequest, Notice, PaymentMethod, CreatePaymentMethodRequest, WithdrawalRequest, WithdrawalTransaction, NotificationItem, ChargePoint, SwapProvider, SwapBay, SwapBayInput, Battery, BatteryInput } from '@/core/api/types'
 import type { Role } from '@/core/auth/types'
 import type { ChargePoint as DomainChargePoint } from '@/core/types/domain'
 import { API_CONFIG } from '@/core/api/config'
@@ -499,6 +499,41 @@ export const handlers = [
     }))
 
     return HttpResponse.json(response)
+  }),
+
+  http.get(`${baseURL}/stations/:id/batteries`, async ({ params }) => {
+    const station = mockDb.getStation(params.id as string)
+    if (!station) {
+      return HttpResponse.json({ error: 'Station not found' }, { status: 404 })
+    }
+    return HttpResponse.json(mockDb.getSwapBatteriesByStation(station.id))
+  }),
+
+  http.put(`${baseURL}/stations/:id/batteries`, async ({ params, request }) => {
+    const station = mockDb.getStation(params.id as string)
+    if (!station) {
+      return HttpResponse.json({ error: 'Station not found' }, { status: 404 })
+    }
+    const body = await request.json() as { batteries?: BatteryInput[] }
+    const inputBatteries = body?.batteries || []
+    const validStatuses = new Set(['Ready', 'Charging', 'Maintenance', 'Faulted'])
+
+    const normalized: Battery[] = inputBatteries.map((battery) => ({
+      id: battery.id,
+      type: battery.type || 'Unknown',
+      soc: battery.soc ?? 0,
+      health: battery.health ?? 100,
+      status: validStatuses.has(battery.status || '') ? (battery.status as Battery['status']) : 'Ready',
+      location: battery.location || battery.bayId || 'Inventory',
+      cycles: battery.cycles,
+      lastSwapped: battery.lastSwapped,
+      stationId: station.id,
+      bayId: battery.bayId,
+      providerId: battery.providerId,
+    }))
+
+    mockDb.setSwapBatteriesForStation(station.id, normalized)
+    return HttpResponse.json(normalized)
   }),
 
   // Session endpoints

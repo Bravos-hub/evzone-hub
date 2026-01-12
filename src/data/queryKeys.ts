@@ -25,6 +25,7 @@ export const queryKeys = {
     nearby: (lat: number, lng: number, radius?: number) => ['stations', 'nearby', lat, lng, radius] as const,
     stats: (id: string) => ['stations', id, 'stats'] as const,
     swapBays: (id: string) => ['stations', id, 'swap-bays'] as const,
+    batteries: (id: string) => ['stations', id, 'batteries'] as const,
   },
 
   // Bookings

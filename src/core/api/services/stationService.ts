@@ -4,7 +4,7 @@
  */
 
 import { apiClient } from '../client'
-import type { Station, CreateStationRequest, UpdateStationRequest, SwapBay, SwapBayInput } from '../types'
+import type { Station, CreateStationRequest, UpdateStationRequest, SwapBay, SwapBayInput, Battery, BatteryInput } from '../types'
 
 export const stationService = {
   /**
@@ -95,6 +95,20 @@ export const stationService = {
    */
   async upsertSwapBays(id: string, bays: SwapBayInput[]): Promise<SwapBay[]> {
     return apiClient.put<SwapBay[]>(`/stations/${id}/swap-bays`, { bays })
+  },
+
+  /**
+   * Get batteries for a station
+   */
+  async getBatteries(id: string): Promise<Battery[]> {
+    return apiClient.get<Battery[]>(`/stations/${id}/batteries`)
+  },
+
+  /**
+   * Upsert batteries for a station
+   */
+  async upsertBatteries(id: string, batteries: BatteryInput[]): Promise<Battery[]> {
+    return apiClient.put<Battery[]>(`/stations/${id}/batteries`, { batteries })
   },
 }
 
