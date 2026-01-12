@@ -20,7 +20,10 @@ export interface RegisterRequest {
   role: string
   tenantId?: string
   orgId?: string
+  organizationId?: string
   fleetId?: string
+  ownerCapability?: OwnerCapability
+  assignedStations?: string[]
 }
 
 export interface AuthResponse {
@@ -68,6 +71,10 @@ export interface UpdateUserRequest {
   email?: string
   phone?: string
   role?: string
+  orgId?: string
+  organizationId?: string
+  ownerCapability?: OwnerCapability
+  assignedStations?: string[]
 }
 
 // Station Types

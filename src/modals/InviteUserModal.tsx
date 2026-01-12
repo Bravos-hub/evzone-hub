@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { ALL_ROLES, ROLE_LABELS } from '@/constants/roles'
-import type { Role } from '@/core/auth/types'
+import { ALL_ROLES, ROLE_LABELS, CAPABILITY_LABELS } from '@/constants/roles'
+import type { OwnerCapability, Role } from '@/core/auth/types'
 import { Card } from '@/ui/components/Card'
 import { useInviteUser } from '@/core/api/hooks/useUsers'
 import { getErrorMessage } from '@/core/api/errors'
@@ -13,12 +13,15 @@ type InviteUserModalProps = {
 export function InviteUserModal({ isOpen, onClose }: InviteUserModalProps) {
   const [email, setEmail] = useState('')
   const [role, setRole] = useState<Role>('OWNER')
+  const [ownerCapability, setOwnerCapability] = useState<OwnerCapability>('BOTH')
   const [error, setError] = useState('')
   const [ack, setAck] = useState('')
 
   const inviteUser = useInviteUser()
 
   if (!isOpen) return null
+
+  const showCapability = role === 'OWNER' || role === 'STATION_OPERATOR'
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -35,12 +38,17 @@ export function InviteUserModal({ isOpen, onClose }: InviteUserModalProps) {
       return
     }
 
-    inviteUser.mutate({ email: email.trim(), role }, {
+    inviteUser.mutate({
+      email: email.trim(),
+      role,
+      ownerCapability: showCapability ? ownerCapability : undefined,
+    }, {
       onSuccess: () => {
         setAck('Invitation sent successfully!')
         setTimeout(() => {
           setEmail('')
           setRole('OWNER')
+          setOwnerCapability('BOTH')
           setAck('')
           onClose()
         }, 1500)
@@ -54,6 +62,7 @@ export function InviteUserModal({ isOpen, onClose }: InviteUserModalProps) {
   function handleCancel() {
     setEmail('')
     setRole('OWNER')
+    setOwnerCapability('BOTH')
     setError('')
     setAck('')
     onClose()
@@ -103,6 +112,24 @@ export function InviteUserModal({ isOpen, onClose }: InviteUserModalProps) {
                 ))}
               </select>
             </div>
+            {showCapability && (
+              <div>
+                <label className="block text-sm font-medium text-text mb-1">
+                  Capability *
+                </label>
+                <select
+                  value={ownerCapability}
+                  onChange={(e) => setOwnerCapability(e.target.value as OwnerCapability)}
+                  className="select w-full"
+                >
+                  {(['CHARGE', 'SWAP', 'BOTH'] as OwnerCapability[]).map((cap) => (
+                    <option key={cap} value={cap}>
+                      {CAPABILITY_LABELS[cap]}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             {(error || ack) && (
               <div className={`text-sm ${error ? 'text-red-600' : 'text-green-600'}`}>

@@ -8,7 +8,7 @@ import { http, HttpResponse } from 'msw'
 import { mockUsers } from '@/data/mockDb/users'
 import { mockChargingSessions, mockSwapSessions } from '@/data/mockDb/sessions'
 import type { User as ApiUser, Station, Booking, ChargingSession, WalletBalance, WalletTransaction, Organization, DashboardMetrics, RevenueTrendPoint, UtilizationHour, StationPerformanceRank, Tenant, TenantApplication, LeaseContract, NoticeRequest, Notice, PaymentMethod, CreatePaymentMethodRequest, WithdrawalRequest, WithdrawalTransaction, NotificationItem, ChargePoint, SwapProvider, SwapBay, SwapBayInput, Battery, BatteryInput } from '@/core/api/types'
-import type { Role } from '@/core/auth/types'
+import type { Role, OwnerCapability } from '@/core/auth/types'
 import type { ChargePoint as DomainChargePoint } from '@/core/types/domain'
 import { API_CONFIG } from '@/core/api/config'
 import { mockDb } from '@/data/mockDb'
@@ -307,12 +307,22 @@ export const handlers = [
   }),
 
   http.post(`${baseURL}/users/invite`, async ({ request }) => {
-    const data = await request.json() as { email: string; role: Role }
+    const data = await request.json() as {
+      email: string
+      role: Role
+      ownerCapability?: OwnerCapability
+      assignedStations?: string[]
+      orgId?: string
+      organizationId?: string
+    }
     const newUser: any = {
       id: `u-${Date.now()}`,
       name: data.email.split('@')[0],
       email: data.email,
       role: data.role,
+      organizationId: data.organizationId || data.orgId,
+      ownerCapability: data.ownerCapability,
+      assignedStations: data.assignedStations,
       status: 'Invited',
       created: new Date(),
       lastSeen: new Date(),
@@ -1504,17 +1514,27 @@ export const handlers = [
   // Invite User
   http.post(`${baseURL}/users/invite`, async ({ request }) => {
     const { mockDb } = await import('@/data/mockDb')
-    const body = await request.json() as { email: string; role: string }
+    const body = await request.json() as {
+      email: string
+      role: string
+      ownerCapability?: OwnerCapability
+      assignedStations?: string[]
+      orgId?: string
+      organizationId?: string
+    }
     const newUser = {
       id: `u-${Date.now()}`,
       name: body.email.split('@')[0],
       email: body.email,
       role: body.role,
+      organizationId: body.organizationId || body.orgId,
+      ownerCapability: body.ownerCapability,
+      assignedStations: body.assignedStations,
       status: 'Pending',
       created: new Date(),
       lastSeen: new Date(),
     }
-    mockDb.addUser(newUser as any) // Assuming mockDb has an addUser method
+    mockDb.addUser(newUser as any)
     return HttpResponse.json({ success: true }, { status: 201 })
   }),
 

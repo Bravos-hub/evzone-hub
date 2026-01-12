@@ -4,14 +4,60 @@
  */
 
 import { apiClient } from '../client'
+import { DEMO_MODE } from '../config'
+import { ApiException } from '../errors'
 import type { User, UpdateUserRequest, PaginatedResponse } from '../types'
+
+function normalizeMe(user: User): User {
+  const orgId = user.orgId || user.organizationId
+  const organizationId = user.organizationId || user.orgId
+  const assignedStations = user.assignedStations ?? []
+
+  return {
+    ...user,
+    orgId,
+    organizationId,
+    assignedStations,
+  }
+}
+
+function assertScopedFields(user: User): void {
+  if (user.role !== 'OWNER' && user.role !== 'STATION_OPERATOR') return
+
+  const missing: string[] = []
+  const orgId = user.orgId || user.organizationId
+
+  if (user.role === 'OWNER' && !orgId) {
+    missing.push('orgId/organizationId')
+  }
+
+  if (!user.ownerCapability) {
+    missing.push('ownerCapability')
+  }
+
+  if (user.role === 'STATION_OPERATOR' && user.assignedStations == null) {
+    missing.push('assignedStations')
+  }
+
+  if (missing.length > 0) {
+    throw new ApiException(
+      `Missing required fields for ${user.role} on /users/me: ${missing.join(', ')}`,
+      422
+    )
+  }
+}
 
 export const userService = {
   /**
    * Get current user profile
    */
   async getMe(): Promise<User> {
-    return apiClient.get<User>('/users/me')
+    const user = await apiClient.get<User>('/users/me')
+    const normalized = normalizeMe(user)
+    if (!DEMO_MODE) {
+      assertScopedFields(normalized)
+    }
+    return normalized
   },
 
   /**
@@ -65,7 +111,14 @@ export const userService = {
   /**
    * Invite a new user
    */
-  async invite(data: { email: string; role: string }): Promise<void> {
+  async invite(data: {
+    email: string
+    role: string
+    ownerCapability?: User['ownerCapability']
+    assignedStations?: User['assignedStations']
+    orgId?: string
+    organizationId?: string
+  }): Promise<void> {
     return apiClient.post<void>('/users/invite', data)
   },
 }
