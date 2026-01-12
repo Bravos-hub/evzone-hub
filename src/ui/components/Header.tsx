@@ -30,8 +30,8 @@ export function Header({ title, onMenuClick }: { title?: string; onMenuClick?: (
   const createItems = useMemo(() => {
     const fallback = '/stations'
     const addStation = '/add-station'
-    const addChargePoint = '/add-charger'
-    const addSwapStation = '/add-charger'
+    const addChargePoint = PATHS.OWNER.ADD_CHARGER
+    const addSwapStation = PATHS.OWNER.ADD_SWAP_STATION
     const requestTechnician =
       user?.role === 'SUPER_ADMIN' || user?.role === 'EVZONE_ADMIN'
         ? '/dispatches'

@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/core/auth/authStore'
 import { getPermissionsForFeature } from '@/constants/permissions'
+import { PATHS } from '@/app/router/paths'
 import { StationStatusPill, type StationStatus } from '@/ui/components/StationStatusPill'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -79,7 +80,7 @@ export function SwapStations() {
       {/* Actions */}
       {perms.create && (
         <div className="flex items-center gap-2 mb-4">
-          <button className="btn secondary" onClick={() => alert('Add swap station (demo - route to be created)')}>
+          <button className="btn secondary" onClick={() => nav(PATHS.OWNER.ADD_SWAP_STATION)}>
             + Add Swap Station
           </button>
         </div>
