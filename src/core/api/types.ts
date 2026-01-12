@@ -280,6 +280,12 @@ export interface SwapSession {
   energyExchanged?: number
 }
 
+export interface SwapsTodayMetric {
+  stationId: string
+  count: number
+  date: string
+}
+
 export type SwapBayStatus = 'Available' | 'Occupied' | 'Charging' | 'Faulted' | 'Reserved'
 
 export interface SwapBay {

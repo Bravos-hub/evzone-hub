@@ -6,7 +6,7 @@
 // @ts-ignore - MSW types may not be available during build
 import { http, HttpResponse } from 'msw'
 import { mockUsers } from '@/data/mockDb/users'
-import { mockChargingSessions } from '@/data/mockDb/sessions'
+import { mockChargingSessions, mockSwapSessions } from '@/data/mockDb/sessions'
 import type { User as ApiUser, Station, Booking, ChargingSession, WalletBalance, WalletTransaction, Organization, DashboardMetrics, RevenueTrendPoint, UtilizationHour, StationPerformanceRank, Tenant, TenantApplication, LeaseContract, NoticeRequest, Notice, PaymentMethod, CreatePaymentMethodRequest, WithdrawalRequest, WithdrawalTransaction, NotificationItem, ChargePoint, SwapProvider, SwapBay, SwapBayInput, Battery, BatteryInput } from '@/core/api/types'
 import type { Role } from '@/core/auth/types'
 import type { ChargePoint as DomainChargePoint } from '@/core/types/domain'
@@ -401,6 +401,30 @@ export const handlers = [
       totalEnergy: 1250.5,
       totalRevenue: 3500.75,
       averageSessionDuration: 45,
+    })
+  }),
+
+  http.get(`${baseURL}/stations/:id/swaps-today`, async ({ params }) => {
+    const station = mockDb.getStation(params.id as string)
+    if (!station) {
+      return HttpResponse.json({ error: 'Station not found' }, { status: 404 })
+    }
+
+    const todayStart = new Date()
+    todayStart.setHours(0, 0, 0, 0)
+    const todayEnd = new Date(todayStart)
+    todayEnd.setDate(todayStart.getDate() + 1)
+
+    const count = mockSwapSessions.filter((session) => {
+      if (session.stationId !== station.id) return false
+      const start = session.start instanceof Date ? session.start : new Date(session.start)
+      return start >= todayStart && start < todayEnd
+    }).length
+
+    return HttpResponse.json({
+      stationId: station.id,
+      count,
+      date: todayStart.toISOString().split('T')[0],
     })
   }),
 

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { useAuthStore } from '@/core/auth/authStore'
+import { useStationBatteries } from '@/core/api/hooks/useStations'
 import { getPermissionsForFeature } from '@/constants/permissions'
 import { Card } from '@/ui/components/Card'
 
@@ -15,15 +16,6 @@ type QueueItem = {
   requested: string
   priority: number
   eta: string
-}
-
-type Battery = {
-  id: string
-  type: string
-  soc: number
-  health: number
-  status: string
-  loc: string
 }
 
 type HealthMetric = {
@@ -105,6 +97,7 @@ export function OperatorSwapStationDetail() {
   const [paused, setPaused] = useState(false)
   const [closedBays, setClosedBays] = useState(0)
   const [safety, setSafety] = useState(false)
+  const { data: inventory = [], isLoading: inventoryLoading, isError: inventoryError } = useStationBatteries(stationId)
 
   const station = {
     id: stationId,
@@ -124,12 +117,6 @@ export function OperatorSwapStationDetail() {
     { ticket: 'Q-1041', vehicle: 'EV-UG-55A', requested: 'LFP 48V', priority: 2, eta: '~3m' },
     { ticket: 'Q-1040', vehicle: 'EV-UG-88Z', requested: 'LFP 48V', priority: 1, eta: '~1m' },
   ])
-
-  const inventory: Battery[] = [
-    { id: 'BAT-7001', type: 'LFP 48V', soc: 92, health: 98, status: 'Available', loc: 'Bay 2' },
-    { id: 'BAT-7002', type: 'LFP 48V', soc: 54, health: 96, status: 'Charging', loc: 'Chg 1' },
-    { id: 'BAT-7090', type: 'LFP 48V', soc: 14, health: 90, status: 'Maintenance', loc: 'Svc' },
-  ]
 
   const health: HealthMetric[] = [
     { k: 'Uptime (7d)', v: '99.4%' },
@@ -306,14 +293,29 @@ export function OperatorSwapStationDetail() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {inventory.map((b) => (
+                {inventoryLoading && (
+                  <tr>
+                    <td colSpan={7} className="px-4 py-6 text-center text-muted">Loading inventory...</td>
+                  </tr>
+                )}
+                {inventoryError && !inventoryLoading && (
+                  <tr>
+                    <td colSpan={7} className="px-4 py-6 text-center text-muted">Unable to load inventory.</td>
+                  </tr>
+                )}
+                {!inventoryLoading && !inventoryError && inventory.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="px-4 py-6 text-center text-muted">No batteries found.</td>
+                  </tr>
+                )}
+                {!inventoryLoading && !inventoryError && inventory.map((b) => (
                   <tr key={b.id} className="hover:bg-surface-alt">
                     <td className="px-4 py-2 font-medium">{b.id}</td>
                     <td className="px-4 py-2">{b.type}</td>
                     <td className="px-4 py-2">{b.soc}%</td>
                     <td className="px-4 py-2">{b.health}%</td>
                     <td className="px-4 py-2">{b.status}</td>
-                    <td className="px-4 py-2">{b.loc}</td>
+                    <td className="px-4 py-2">{b.location || b.bayId || 'Inventory'}</td>
                     <td className="px-4 py-2 text-right">
                       <div className="inline-flex items-center gap-2">
                         <button className="btn secondary text-xs">Mark out</button>

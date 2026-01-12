@@ -4,7 +4,7 @@
  */
 
 import { apiClient } from '../client'
-import type { Station, CreateStationRequest, UpdateStationRequest, SwapBay, SwapBayInput, Battery, BatteryInput } from '../types'
+import type { Station, CreateStationRequest, UpdateStationRequest, SwapBay, SwapBayInput, Battery, BatteryInput, SwapsTodayMetric } from '../types'
 
 export const stationService = {
   /**
@@ -53,6 +53,13 @@ export const stationService = {
    */
   async getStats(id: string): Promise<unknown> {
     return apiClient.get<unknown>(`/stations/${id}/stats`)
+  },
+
+  /**
+   * Get swaps completed today
+   */
+  async getSwapsToday(id: string): Promise<SwapsTodayMetric> {
+    return apiClient.get<SwapsTodayMetric>(`/stations/${id}/swaps-today`)
   },
 
   /**

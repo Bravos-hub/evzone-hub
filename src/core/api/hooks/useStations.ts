@@ -47,6 +47,14 @@ export function useStationStats(id: string) {
   })
 }
 
+export function useSwapsToday(stationId: string) {
+  return useQuery({
+    queryKey: queryKeys.stations.swapsToday(stationId),
+    queryFn: () => stationService.getSwapsToday(stationId),
+    enabled: !!stationId,
+  })
+}
+
 export function useCreateStation() {
   const queryClient = useQueryClient()
 
