@@ -160,7 +160,7 @@ export { OperatorAvailability } from './OperatorAvailability'
 
 // Operator Tools
 export { KioskScan } from './KioskScan'
-export { OperatorSwapStationDetail } from './OperatorSwapStationDetail'
+export { SwapStationDetail } from './SwapStationDetail'
 export { OperatorTeamDetail } from './OperatorTeamDetail'
 export { ChargePointDetail } from './ChargePointDetail'
 export { OperatorRoleManagement } from './OperatorRoleManagement'

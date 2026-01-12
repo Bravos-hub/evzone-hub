@@ -83,10 +83,10 @@ const IconTools = () => (
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * Operator Swap Station Detail - Operator feature
+ * Swap Station Detail
  * Shows station details with tabs: Overview, Queue, Inventory, Health, Sessions
  */
-export function OperatorSwapStationDetail() {
+export function SwapStationDetail() {
   const { id } = useParams<{ id: string }>()
   const stationId = id || 'SS-701'
   const { user } = useAuthStore()

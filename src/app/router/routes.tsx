@@ -118,7 +118,7 @@ import {
   PricingRecipes,
   LoadPolicy,
   KioskScan,
-  OperatorSwapStationDetail,
+  SwapStationDetail,
   OperatorTeamDetail,
   OwnerOperatorsReport,
   ManualReserve,
@@ -293,7 +293,7 @@ export function AppRoutes() {
       <Route path={PATHS.OPERATOR.RESERVE} element={<RequireAuth><ManualReserve /></RequireAuth>} />
       <Route path={PATHS.OPERATOR.ASSIGNMENTS} element={<RequireAuth><OperatorAssignments /></RequireAuth>} />
       <Route path={PATHS.OPERATOR.AVAILABILITY} element={<RequireAuth><OperatorAvailability /></RequireAuth>} />
-      <Route path={PATHS.OPERATOR.SWAP_DETAIL(':id')} element={<RequireAuth><OperatorSwapStationDetail /></RequireAuth>} />
+      <Route path={PATHS.OPERATOR.SWAP_DETAIL(':id')} element={<RequireAuth><SwapStationDetail /></RequireAuth>} />
       <Route path={PATHS.OPERATOR.TEAM_DETAIL(':id')} element={<RequireAuth><OperatorTeamDetail /></RequireAuth>} />
       <Route path={PATHS.OPERATOR.CUSTOM_ROLES} element={<RequireAuth><OperatorRoleManagement /></RequireAuth>} />
 

@@ -505,13 +505,19 @@ export const handlers = [
     const inputBays = body?.bays || []
     const validStatuses = new Set(['Available', 'Occupied', 'Charging', 'Faulted', 'Reserved'])
 
-    const swapLockers = inputBays.map((bay, idx) => ({
-      id: bay.id,
-      stationId: station.id,
-      position: idx + 1,
-      status: validStatuses.has(bay.status || '') ? bay.status : (bay.batteryId ? 'Occupied' : 'Available'),
-      batteryPackId: bay.batteryId,
-    }))
+    const swapLockers = inputBays.map((bay, idx) => {
+      const status: SwapBay['status'] = validStatuses.has(bay.status || '')
+        ? (bay.status as SwapBay['status'])
+        : (bay.batteryId ? 'Occupied' : 'Available')
+
+      return {
+        id: bay.id,
+        stationId: station.id,
+        position: idx + 1,
+        status,
+        batteryPackId: bay.batteryId,
+      }
+    })
 
     mockDb.updateStation(params.id as string, { swapLockers })
 
