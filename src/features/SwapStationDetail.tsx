@@ -2,8 +2,10 @@ import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { useAuthStore } from '@/core/auth/authStore'
-import { useStationBatteries } from '@/core/api/hooks/useStations'
+import { useMe } from '@/core/api/hooks/useAuth'
+import { useStation, useStationBatteries } from '@/core/api/hooks/useStations'
 import { getPermissionsForFeature } from '@/constants/permissions'
+import { ROLE_GROUPS } from '@/constants/roles'
 import { Card } from '@/ui/components/Card'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -90,7 +92,9 @@ export function SwapStationDetail() {
   const { id } = useParams<{ id: string }>()
   const stationId = id || 'SS-701'
   const { user } = useAuthStore()
-  const perms = getPermissionsForFeature(user?.role, 'stations')
+  const perms = getPermissionsForFeature(user?.role, 'swapStations')
+  const { data: me, isLoading: meLoading } = useMe()
+  const { data: stationData, isLoading: stationLoading } = useStation(stationId)
 
   const [tab, setTab] = useState('Overview')
   const [ack, setAck] = useState('')
@@ -98,6 +102,25 @@ export function SwapStationDetail() {
   const [closedBays, setClosedBays] = useState(0)
   const [safety, setSafety] = useState(false)
   const { data: inventory = [], isLoading: inventoryLoading, isError: inventoryError } = useStationBatteries(stationId)
+
+  const role = user?.role
+  const assignedStations = me?.assignedStations || []
+  const ownerOrgId = me?.orgId || me?.organizationId
+  const isPlatformOps = role ? ROLE_GROUPS.PLATFORM_OPS.includes(role) : false
+  const accessLoading = !perms.viewAll && (meLoading || (role === 'OWNER' && stationLoading))
+
+  const canAccessStation = (() => {
+    if (!perms.access) return false
+    if (isPlatformOps || perms.viewAll) return true
+    if (role === 'OWNER') {
+      if (assignedStations.includes(stationId) || (stationData?.code && assignedStations.includes(stationData.code))) return true
+      return !!ownerOrgId && stationData?.orgId === ownerOrgId
+    }
+    if (role === 'STATION_OPERATOR') {
+      return assignedStations.includes(stationId) || (stationData?.code && assignedStations.includes(stationData.code))
+    }
+    return false
+  })()
 
   const station = {
     id: stationId,
@@ -140,7 +163,27 @@ export function SwapStationDetail() {
     toast(`Calling ${n.ticket} — demo`)
   }
 
-  if (!perms.view) {
+  if (!perms.access) {
+    return (
+      <DashboardLayout pageTitle="Swap Station Detail">
+        <Card>
+          <p className="text-muted">You don't have permission to view this page.</p>
+        </Card>
+      </DashboardLayout>
+    )
+  }
+
+  if (accessLoading) {
+    return (
+      <DashboardLayout pageTitle="Swap Station Detail">
+        <Card>
+          <p className="text-muted">Loading station access...</p>
+        </Card>
+      </DashboardLayout>
+    )
+  }
+
+  if (!canAccessStation) {
     return (
       <DashboardLayout pageTitle="Swap Station Detail">
         <Card>

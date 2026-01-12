@@ -264,9 +264,10 @@ export const PERMISSIONS: Record<string, FeaturePermissions> = {
   },
 
   swapStations: {
-    access: [...ROLE_GROUPS.PLATFORM_OPS, 'OWNER', 'STATION_OPERATOR', 'STATION_ADMIN', 'MANAGER'],
-    create: [...ROLE_GROUPS.PLATFORM_OPS, 'OWNER', 'STATION_OPERATOR', 'STATION_ADMIN'],
-    edit: [...ROLE_GROUPS.PLATFORM_OPS, 'OWNER', 'STATION_OPERATOR', 'STATION_ADMIN'],
+    access: [...ROLE_GROUPS.PLATFORM_OPS, 'OWNER', 'STATION_OPERATOR'],
+    viewAll: ROLE_GROUPS.PLATFORM_OPS,
+    create: [...ROLE_GROUPS.PLATFORM_OPS, 'OWNER'],
+    edit: [...ROLE_GROUPS.PLATFORM_OPS, 'OWNER', 'STATION_OPERATOR'],
   },
 
   smartCharging: {

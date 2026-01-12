@@ -2,7 +2,9 @@ import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQueries } from '@tanstack/react-query'
 import { useAuthStore } from '@/core/auth/authStore'
+import { useMe } from '@/core/api/hooks/useAuth'
 import { getPermissionsForFeature } from '@/constants/permissions'
+import { ROLE_GROUPS } from '@/constants/roles'
 import { PATHS } from '@/app/router/paths'
 import { StationStatusPill, type StationStatus } from '@/ui/components/StationStatusPill'
 import { useStations } from '@/core/api/hooks/useStations'
@@ -15,6 +17,7 @@ import { queryKeys } from '@/data/queryKeys'
 
 type SwapStation = {
   id: string
+  stationId: string
   name: string
   site: string
   status: StationStatus
@@ -36,15 +39,35 @@ export function SwapStations() {
   const { user } = useAuthStore()
   const perms = getPermissionsForFeature(user?.role, 'swapStations')
   const { data: stations, isLoading } = useStations()
+  const { data: me, isLoading: meLoading } = useMe()
 
   const [q, setQ] = useState('')
   const [statusFilter, setStatusFilter] = useState<StationStatus | 'All'>('All')
 
-  const swapStationIds = useMemo(() => {
+  const accessibleSwapStations = useMemo(() => {
+    const role = user?.role
+    const isPlatformOps = role ? ROLE_GROUPS.PLATFORM_OPS.includes(role) : false
+    const ownerOrgId = me?.orgId || me?.organizationId
+    const assigned = new Set(me?.assignedStations || [])
+
     return (stations || [])
       .filter((station) => station.type === 'SWAP' || station.type === 'BOTH')
-      .map((station) => station.id)
-  }, [stations])
+      .filter((station) => {
+        if (isPlatformOps || perms.viewAll) return true
+        if (role === 'OWNER') {
+          if (assigned.has(station.id) || assigned.has(station.code)) return true
+          return !!ownerOrgId && station.orgId === ownerOrgId
+        }
+        if (role === 'STATION_OPERATOR') {
+          return assigned.has(station.id) || assigned.has(station.code)
+        }
+        return false
+      })
+  }, [stations, user?.role, me?.orgId, me?.organizationId, me?.assignedStations, perms.viewAll])
+
+  const swapStationIds = useMemo(() => {
+    return accessibleSwapStations.map((station) => station.id)
+  }, [accessibleSwapStations])
 
   const batteryQueries = useQueries({
     queries: swapStationIds.map((stationId) => ({
@@ -73,25 +96,26 @@ export function SwapStations() {
       return 'Maintenance'
     }
 
-    return (stations || [])
-      .filter((station) => station.type === 'SWAP' || station.type === 'BOTH')
-      .map((station) => ({
-        id: station.code || station.id,
-        name: station.name,
-        site: station.address || 'Unknown site',
-        status: mapStatus(station.status),
-        bays: station.parkingBays || station.capacity || 0,
-        available: batteryCounts.get(station.id)?.ready || 0,
-        charging: batteryCounts.get(station.id)?.charging || 0,
-        swapsToday: 0,
-      }))
-  }, [stations, batteryCounts])
+    return accessibleSwapStations.map((station) => ({
+      id: station.code || station.id,
+      stationId: station.id,
+      name: station.name,
+      site: station.address || 'Unknown site',
+      status: mapStatus(station.status),
+      bays: station.parkingBays || station.capacity || 0,
+      available: batteryCounts.get(station.id)?.ready || 0,
+      charging: batteryCounts.get(station.id)?.charging || 0,
+      swapsToday: 0,
+    }))
+  }, [accessibleSwapStations, batteryCounts])
 
   const filtered = useMemo(() => {
     return swapStations
       .filter((s) => (q ? (s.id + ' ' + s.name + ' ' + s.site).toLowerCase().includes(q.toLowerCase()) : true))
       .filter((s) => (statusFilter === 'All' ? true : s.status === statusFilter))
   }, [swapStations, q, statusFilter])
+
+  const accessLoading = !perms.viewAll && meLoading
 
   const stats = {
     totalBays: swapStations.reduce((a, s) => a + s.bays, 0),
@@ -101,6 +125,14 @@ export function SwapStations() {
   }
 
   // Remove DashboardLayout wrapper - this is now rendered within Stations tabs
+  if (!perms.access) {
+    return (
+      <div className="card">
+        <p className="text-muted">You don't have permission to view this page.</p>
+      </div>
+    )
+  }
+
   return (
     <>
       {/* Summary */}
@@ -176,15 +208,22 @@ export function SwapStations() {
                 <td>{s.swapsToday}</td>
                 <td className="text-right">
                   <div className="inline-flex items-center gap-2">
-                    <button className="btn secondary" onClick={() => alert(`View ${s.id} (demo)`)}>View</button>
+                    <button className="btn secondary" onClick={() => nav(PATHS.OPERATOR.SWAP_DETAIL(s.stationId))}>View</button>
                     {perms.edit && (
-                      <button className="btn secondary" onClick={() => alert(`Manage ${s.id} (demo)`)}>Manage</button>
+                      <button className="btn secondary" onClick={() => nav(PATHS.OPERATOR.SWAP_DETAIL(s.stationId))}>Manage</button>
                     )}
                   </div>
                 </td>
               </tr>
             ))}
-            {!isLoading && filtered.length === 0 && (
+            {accessLoading && (
+              <tr>
+                <td colSpan={8} className="text-center text-muted py-8">
+                  Loading access...
+                </td>
+              </tr>
+            )}
+            {!isLoading && !accessLoading && filtered.length === 0 && (
               <tr>
                 <td colSpan={8} className="text-center text-muted py-8">
                   No swap stations found.

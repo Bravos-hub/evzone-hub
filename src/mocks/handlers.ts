@@ -256,6 +256,7 @@ function mapUser(domainUser: typeof mockUsers[0]): ApiUser {
     orgId: domainUser.organizationId,
     organizationId: domainUser.organizationId,
     tenantId: undefined,
+    assignedStations: domainUser.assignedStations,
     createdAt: domainUser.created.toISOString(),
     updatedAt: domainUser.lastSeen?.toISOString() || domainUser.created.toISOString(),
   }
