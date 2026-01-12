@@ -109,6 +109,9 @@ export interface CreateStationRequest {
   latitude: number
   longitude: number
   type: 'CHARGING' | 'SWAP' | 'BOTH'
+  providerId?: string
+  capacity?: number
+  parkingBays?: number
   tags?: string[]
 }
 
