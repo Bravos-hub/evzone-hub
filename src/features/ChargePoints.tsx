@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/core/auth/authStore'
+import { useMe } from '@/core/api/hooks/useAuth'
 import { getPermissionsForFeature } from '@/constants/permissions'
+import { canAccessStation, capabilityAllowsCharge } from '@/core/auth/rbac'
 import { StationStatusPill, type StationStatus } from '@/ui/components/StationStatusPill'
 import { useChargePoints, useRebootChargePoint } from '@/core/api/hooks/useChargePoints'
 import { useStations } from '@/core/api/hooks/useStations'
@@ -76,6 +78,7 @@ export function ChargePoints() {
   const nav = useNavigate()
   const { user } = useAuthStore()
   const perms = getPermissionsForFeature(user?.role, 'chargePoints')
+  const { data: me, isLoading: meLoading } = useMe()
 
   const [q, setQ] = useState('')
   const [siteFilter, setSiteFilter] = useState('All')
@@ -83,27 +86,53 @@ export function ChargePoints() {
 
   const { data: chargePointsData, isLoading, error } = useChargePoints()
   const { mutate: reboot } = useRebootChargePoint()
+  const { data: stations, isLoading: stationsLoading } = useStations()
 
+  const needsScope = user?.role === 'OWNER' || user?.role === 'STATION_OPERATOR'
+  const capability = me?.ownerCapability || user?.ownerCapability
+
+  const accessContext = useMemo(() => ({
+    role: user?.role,
+    orgId: me?.orgId || me?.organizationId,
+    assignedStations: me?.assignedStations || [],
+    capability,
+    viewAll: perms.viewAll,
+  }), [user?.role, me?.orgId, me?.organizationId, me?.assignedStations, capability, perms.viewAll])
+
+  const accessibleChargeStations = useMemo(() => {
+    return (stations || []).filter((station) => canAccessStation(accessContext, station, 'CHARGE'))
+  }, [stations, accessContext])
+
+  const stationLookup = useMemo(() => {
+    const map = new Map<string, { name: string }>()
+    accessibleChargeStations.forEach((station) => {
+      map.set(station.id, { name: station.name })
+    })
+    return map
+  }, [accessibleChargeStations])
 
   // Map API charge points to display format
   const chargePoints = useMemo(() => {
     if (!chargePointsData) return []
-    return chargePointsData.map(cp => ({
-      id: cp.id,
-      name: cp.model,
-      site: 'Unknown', // Would need to lookup station name
-      make: cp.manufacturer,
-      model: cp.model,
-      status: cp.status,
-      connectors: cp.connectors.map(c => ({
-        type: c.type,
-        kw: c.maxPowerKw,
-        status: c.status,
-      })),
-      lastSession: 'N/A',
-      totalSessions: 0,
-    }))
-  }, [chargePointsData])
+    const allowedStationIds = new Set(accessibleChargeStations.map((station) => station.id))
+    return chargePointsData
+      .filter((cp) => (needsScope ? allowedStationIds.has(cp.stationId) : true))
+      .map(cp => ({
+        id: cp.id,
+        name: cp.model,
+        site: stationLookup.get(cp.stationId)?.name || 'Unknown',
+        make: cp.manufacturer,
+        model: cp.model,
+        status: cp.status,
+        connectors: cp.connectors.map(c => ({
+          type: c.type,
+          kw: c.maxPowerKw,
+          status: c.status,
+        })),
+        lastSession: 'N/A',
+        totalSessions: 0,
+      }))
+  }, [chargePointsData, accessibleChargeStations, stationLookup, needsScope])
 
   const sites = useMemo(() => ['All', ...new Set(chargePoints.map((c) => c.site))], [chargePoints])
 
@@ -120,9 +149,34 @@ export function ChargePoints() {
     offline: chargePoints.filter((c) => c.status === 'Offline' || c.status === 'Degraded').length,
   }
 
+  const accessLoading = needsScope && (meLoading || stationsLoading)
+  const capabilityDenied = needsScope && !capabilityAllowsCharge(capability)
+
   // Remove DashboardLayout wrapper - this is now rendered within Stations tabs
+  if (!perms.access) {
+    return (
+      <div className="card">
+        <p className="text-muted">You don't have permission to view this page.</p>
+      </div>
+    )
+  }
+
+  if (capabilityDenied) {
+    return (
+      <div className="card">
+        <p className="text-muted">You don't have permission to view charge stations.</p>
+      </div>
+    )
+  }
+
   return (
     <>
+      {accessLoading && (
+        <div className="card mb-4">
+          <div className="text-center py-8 text-muted">Loading access...</div>
+        </div>
+      )}
+
       {error && (
         <div className="card mb-4 bg-red-50 border border-red-200">
           <div className="text-red-700 text-sm">{getErrorMessage(error)}</div>
@@ -136,7 +190,7 @@ export function ChargePoints() {
       )}
 
       {/* Summary */}
-      {!isLoading && (
+      {!isLoading && !accessLoading && (
         <>
           <div className="grid grid-cols-3 gap-3 mb-4">
             <div className="card">

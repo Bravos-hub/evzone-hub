@@ -18,6 +18,10 @@ function buildDemoAuthResponse(user: DemoAuthUser): AuthResponse {
       name: user.name,
       email: user.email,
       role: user.role,
+      orgId: user.orgId,
+      organizationId: user.organizationId,
+      assignedStations: user.assignedStations,
+      ownerCapability: user.ownerCapability,
     },
   }
 }

@@ -2,7 +2,9 @@ import { useMemo, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { useAuthStore } from '@/core/auth/authStore'
+import { useMe } from '@/core/api/hooks/useAuth'
 import { hasPermission, getPermissionsForFeature } from '@/constants/permissions'
+import { canAccessStation, capabilityAllowsCharge, capabilityAllowsSwap } from '@/core/auth/rbac'
 import { StationStatusPill, type StationStatus } from '@/ui/components/StationStatusPill'
 import { StationsHeatMap, stationPointFromSeed } from '@/ui/components/StationsHeatMap'
 import { ChargePoints } from './ChargePoints'
@@ -72,6 +74,7 @@ export function Stations() {
   const perms = getPermissionsForFeature(user?.role, 'stations')
 
   const { data: stationsData, isLoading, error } = useStations()
+  const { data: me, isLoading: meLoading } = useMe()
 
   const activeTab = useMemo<StationsTab>(() => {
     const path = location.pathname
@@ -87,23 +90,35 @@ export function Stations() {
   const [status, setStatus] = useState<StationStatus | 'All'>('All')
   const [tagFilter, setTagFilter] = useState<string>('All')
 
+  const accessContext = useMemo(() => ({
+    role: user?.role,
+    orgId: me?.orgId || me?.organizationId,
+    assignedStations: me?.assignedStations || [],
+    capability: me?.ownerCapability || user?.ownerCapability,
+    viewAll: perms.viewAll,
+  }), [user?.role, me?.orgId, me?.organizationId, me?.assignedStations, me?.ownerCapability, user?.ownerCapability, perms.viewAll])
+
+  const accessibleStationsData = useMemo(() => {
+    if (!stationsData) return []
+    return stationsData.filter((station) => canAccessStation(accessContext, station, 'ANY'))
+  }, [stationsData, accessContext])
+
   // Map API stations to Station format
   const stations = useMemo(() => {
-    if (!stationsData) return []
-    return stationsData.map(mapApiStationToStation)
-  }, [stationsData])
+    return accessibleStationsData.map(mapApiStationToStation)
+  }, [accessibleStationsData])
 
   // Get all unique tags from stations
   const allTags = useMemo(() => {
     const tags = new Set<string>()
     stations.forEach(s => {
-      const apiStation = stationsData?.find((st: any) => st.id === s.id)
+      const apiStation = accessibleStationsData.find((st: any) => st.id === s.id)
       if (apiStation?.tags) {
         apiStation.tags.forEach((tag: string) => tags.add(tag))
       }
     })
     return Array.from(tags).sort()
-  }, [stations, stationsData])
+  }, [stations, accessibleStationsData])
 
   const rows = useMemo(() => {
     return stations
@@ -111,28 +126,28 @@ export function Stations() {
       .filter(s => (status === 'All' ? true : s.status === status))
       .filter(s => (q ? (s.name + ' ' + s.id + ' ' + s.country).toLowerCase().includes(q.toLowerCase()) : true))
       .filter(s => {
-        // Enforce Org filter for Owners/Site Owners
-        if (['OWNER', 'SITE_OWNER'].includes(user?.role || '')) {
-          // We assume 'org' in station matches user's org. 
-          // In a real app we'd match IDs. Here we might need a mapping or strict check.
-          // For now, let's assume the API returns ONLY the user's stations if they are an owner.
-          // But just in case, let's filter:
-          return true // API should handle this, but if we have local data, we check s.org === user.orgId
-        }
-
         if (tagFilter === 'All') return true
-        const apiStation = stationsData?.find((st: any) => st.id === s.id)
+        const apiStation = accessibleStationsData.find((st: any) => st.id === s.id)
         return apiStation?.tags?.includes(tagFilter) || false
       })
-  }, [stations, q, region, status, tagFilter, stationsData])
+  }, [stations, q, region, status, tagFilter, accessibleStationsData])
 
   // Available tabs based on permissions
   const availableTabs = useMemo(() => {
     const tabs: Array<{ id: StationsTab; label: string }> = [{ id: 'overview', label: 'Overview' }]
-    if (hasPermission(user?.role, 'chargePoints', 'access')) tabs.push({ id: 'charge-points', label: 'Charge Points' })
-    if (hasPermission(user?.role, 'swapStations', 'access')) tabs.push({ id: 'swap-stations', label: 'Swap Stations' })
+    const capability = me?.ownerCapability || user?.ownerCapability
+    const needsScope = user?.role === 'OWNER' || user?.role === 'STATION_OPERATOR'
+    const allowCharge = !needsScope || capabilityAllowsCharge(capability)
+    const allowSwap = !needsScope || capabilityAllowsSwap(capability)
+
+    if (hasPermission(user?.role, 'chargePoints', 'access') && allowCharge) {
+      tabs.push({ id: 'charge-points', label: 'Charge Points' })
+    }
+    if (hasPermission(user?.role, 'swapStations', 'access') && allowSwap) {
+      tabs.push({ id: 'swap-stations', label: 'Swap Stations' })
+    }
     return tabs
-  }, [user?.role])
+  }, [user?.role, user?.ownerCapability, me?.ownerCapability])
 
   const mapPoints = useMemo(() => {
     return rows.map(r => stationPointFromSeed({
@@ -140,6 +155,19 @@ export function Stations() {
       status: r.status as any
     })).filter(Boolean) as any[]
   }, [rows])
+
+  const needsScope = user?.role === 'OWNER' || user?.role === 'STATION_OPERATOR'
+  const accessLoading = needsScope && meLoading
+
+  if (!perms.access) {
+    return (
+      <DashboardLayout pageTitle="Stations">
+        <div className="card">
+          <p className="text-muted">You don't have permission to view this page.</p>
+        </div>
+      </DashboardLayout>
+    )
+  }
 
   return (
     <DashboardLayout pageTitle="Stations">
@@ -169,14 +197,14 @@ export function Stations() {
       {activeTab === 'overview' && (
         <div className="space-y-4">
           {/* Loading State */}
-          {isLoading && (
+          {(isLoading || accessLoading) && (
             <div className="card">
-              <div className="text-center py-8 text-muted">Loading stations...</div>
+              <div className="text-center py-8 text-muted">{isLoading ? 'Loading stations...' : 'Loading access...'}</div>
             </div>
           )}
 
           {/* Filters - Stacked on mobile */}
-          {!isLoading && (
+          {!isLoading && !accessLoading && (
             <>
               <div className="card p-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">

@@ -6,6 +6,7 @@ import { useMe } from '@/core/api/hooks/useAuth'
 import { useStation, useStationBatteries } from '@/core/api/hooks/useStations'
 import { getPermissionsForFeature } from '@/constants/permissions'
 import { ROLE_GROUPS } from '@/constants/roles'
+import { canAccessStation } from '@/core/auth/rbac'
 import { Card } from '@/ui/components/Card'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -104,23 +105,22 @@ export function SwapStationDetail() {
   const { data: inventory = [], isLoading: inventoryLoading, isError: inventoryError } = useStationBatteries(stationId)
 
   const role = user?.role
-  const assignedStations = me?.assignedStations || []
   const ownerOrgId = me?.orgId || me?.organizationId
-  const isPlatformOps = role ? ROLE_GROUPS.PLATFORM_OPS.includes(role) : false
-  const accessLoading = !perms.viewAll && (meLoading || (role === 'OWNER' && stationLoading))
+  const capability = me?.ownerCapability || user?.ownerCapability
+  const needsScope = role === 'OWNER' || role === 'STATION_OPERATOR'
+  const accessLoading = needsScope && (meLoading || stationLoading)
 
-  const canAccessStation = (() => {
-    if (!perms.access) return false
-    if (isPlatformOps || perms.viewAll) return true
-    if (role === 'OWNER') {
-      if (assignedStations.includes(stationId) || (stationData?.code && assignedStations.includes(stationData.code))) return true
-      return !!ownerOrgId && stationData?.orgId === ownerOrgId
-    }
-    if (role === 'STATION_OPERATOR') {
-      return assignedStations.includes(stationId) || (stationData?.code && assignedStations.includes(stationData.code))
-    }
-    return false
-  })()
+  const accessContext = {
+    role,
+    orgId: ownerOrgId,
+    assignedStations: me?.assignedStations || [],
+    capability,
+    viewAll: perms.viewAll,
+  }
+
+  const hasStationAccess = stationData
+    ? canAccessStation(accessContext, stationData, 'SWAP')
+    : (perms.viewAll || (role ? ROLE_GROUPS.PLATFORM_OPS.includes(role) : false))
 
   const station = {
     id: stationId,
@@ -183,7 +183,7 @@ export function SwapStationDetail() {
     )
   }
 
-  if (!canAccessStation) {
+  if (!hasStationAccess) {
     return (
       <DashboardLayout pageTitle="Swap Station Detail">
         <Card>

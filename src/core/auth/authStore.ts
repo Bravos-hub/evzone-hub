@@ -27,15 +27,16 @@ function load(): UserProfile | null {
     // Try to load from API client's stored user first
     const apiUserRaw = localStorage.getItem(TOKEN_STORAGE_KEYS.user)
     if (apiUserRaw) {
-      const apiUser = JSON.parse(apiUserRaw) as { id: string; name: string; email?: string; role: string }
-      const user: UserProfile = {
-        id: apiUser.id,
-        name: apiUser.name,
-        role: apiUser.role as Role,
-        avatarUrl: apiUser.email 
-          ? `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(apiUser.email)}`
-          : 'https://api.dicebear.com/7.x/avataaars/svg?seed=User',
-      }
+    const apiUser = JSON.parse(apiUserRaw) as { id: string; name: string; email?: string; role: string; ownerCapability?: OwnerCapability }
+    const user: UserProfile = {
+      id: apiUser.id,
+      name: apiUser.name,
+      role: apiUser.role as Role,
+      ownerCapability: apiUser.ownerCapability,
+      avatarUrl: apiUser.email 
+        ? `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(apiUser.email)}`
+        : 'https://api.dicebear.com/7.x/avataaars/svg?seed=User',
+    }
       return user
     }
     
@@ -106,6 +107,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       id: response.user.id,
       name: response.user.name,
       role: response.user.role as Role,
+      ownerCapability: response.user.ownerCapability,
       avatarUrl: response.user.email 
         ? `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(response.user.email)}`
         : 'https://api.dicebear.com/7.x/avataaars/svg?seed=User',

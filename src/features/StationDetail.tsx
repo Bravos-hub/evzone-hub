@@ -7,17 +7,27 @@ import { PATHS } from '@/app/router/paths'
 import { StationStatusPill } from '@/ui/components/StationStatusPill'
 import { getErrorMessage } from '@/core/api/errors'
 import { useMe } from '@/core/api/hooks/useAuth'
+import { canAccessStation } from '@/core/auth/rbac'
 import { ROLE_GROUPS, isInGroup } from '@/constants/roles'
 import { useMemo } from 'react'
+import { useAuthStore } from '@/core/auth/authStore'
 
 export function StationDetail() {
   const { id } = useParams<{ id: string }>()
   const nav = useNavigate()
+  const { user: authUser } = useAuthStore()
 
   const { data: station, isLoading: stationLoading, error: stationError } = useStation(id || '')
   const { data: chargePoints, isLoading: chargePointsLoading } = useChargePointsByStation(id || '')
   const { data: sessionsData, isLoading: sessionsLoading } = useStationSessions(id || '', false)
-  const { data: user } = useMe()
+  const { data: user, isLoading: userLoading } = useMe()
+
+  const accessContext = useMemo(() => ({
+    role: user?.role || authUser?.role,
+    orgId: user?.orgId || user?.organizationId,
+    assignedStations: user?.assignedStations || [],
+    capability: user?.ownerCapability || authUser?.ownerCapability,
+  }), [user?.role, authUser?.role, user?.orgId, user?.organizationId, user?.assignedStations, user?.ownerCapability, authUser?.ownerCapability])
 
   const canManage = useMemo(() => {
     if (!user || !station) return false
@@ -44,6 +54,16 @@ export function StationDetail() {
     )
   }
 
+  if (userLoading) {
+    return (
+      <DashboardLayout pageTitle="Station Details">
+        <div className="card">
+          <div className="text-center py-8 text-muted">Loading access...</div>
+        </div>
+      </DashboardLayout>
+    )
+  }
+
   if (stationError || !station) {
     return (
       <DashboardLayout pageTitle="Station Details">
@@ -54,6 +74,19 @@ export function StationDetail() {
           <Link to={PATHS.STATIONS.ROOT} className="btn secondary mt-4">
             Back to Stations
           </Link>
+        </div>
+      </DashboardLayout>
+    )
+  }
+
+  const isPlatformOps = authUser?.role ? ROLE_GROUPS.PLATFORM_OPS.includes(authUser.role) : false
+  const canViewStation = canAccessStation(accessContext, station, 'ANY') || isPlatformOps
+
+  if (!canViewStation) {
+    return (
+      <DashboardLayout pageTitle="Station Details">
+        <div className="card">
+          <p className="text-muted">You don't have permission to view this page.</p>
         </div>
       </DashboardLayout>
     )

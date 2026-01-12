@@ -161,7 +161,22 @@ function getCurrentUser(): typeof mockUsers[0] | null {
     if (!userStr) return null
     const user = JSON.parse(userStr)
     // Find matching user from mock data
-    return mockUsers.find(u => u.id === user.id || u.email === user.email) || null
+    const matched = mockUsers.find(u => u.id === user.id || u.email === user.email)
+    if (matched) return matched
+
+    return {
+      id: user.id || `u-${Date.now()}`,
+      name: user.name || 'Demo User',
+      email: user.email,
+      organizationId: user.organizationId || user.orgId || 'ORG_DEMO',
+      role: user.role || 'EVZONE_OPERATOR',
+      status: 'Active',
+      region: 'AFRICA',
+      created: new Date(),
+      mfaEnabled: false,
+      assignedStations: user.assignedStations,
+      ownerCapability: user.ownerCapability,
+    } as typeof mockUsers[0]
   } catch {
     return null
   }
@@ -257,6 +272,7 @@ function mapUser(domainUser: typeof mockUsers[0]): ApiUser {
     organizationId: domainUser.organizationId,
     tenantId: undefined,
     assignedStations: domainUser.assignedStations,
+    ownerCapability: domainUser.ownerCapability,
     createdAt: domainUser.created.toISOString(),
     updatedAt: domainUser.lastSeen?.toISOString() || domainUser.created.toISOString(),
   }

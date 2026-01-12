@@ -4,7 +4,7 @@ import { useQueries } from '@tanstack/react-query'
 import { useAuthStore } from '@/core/auth/authStore'
 import { useMe } from '@/core/api/hooks/useAuth'
 import { getPermissionsForFeature } from '@/constants/permissions'
-import { ROLE_GROUPS } from '@/constants/roles'
+import { canAccessStation, capabilityAllowsSwap } from '@/core/auth/rbac'
 import { PATHS } from '@/app/router/paths'
 import { StationStatusPill, type StationStatus } from '@/ui/components/StationStatusPill'
 import { useStations } from '@/core/api/hooks/useStations'
@@ -44,26 +44,24 @@ export function SwapStations() {
   const [q, setQ] = useState('')
   const [statusFilter, setStatusFilter] = useState<StationStatus | 'All'>('All')
 
+  const needsScope = user?.role === 'OWNER' || user?.role === 'STATION_OPERATOR'
+  const capability = me?.ownerCapability || user?.ownerCapability
+
   const accessibleSwapStations = useMemo(() => {
     const role = user?.role
-    const isPlatformOps = role ? ROLE_GROUPS.PLATFORM_OPS.includes(role) : false
     const ownerOrgId = me?.orgId || me?.organizationId
-    const assigned = new Set(me?.assignedStations || [])
+    const assignedStations = me?.assignedStations || []
 
-    return (stations || [])
-      .filter((station) => station.type === 'SWAP' || station.type === 'BOTH')
-      .filter((station) => {
-        if (isPlatformOps || perms.viewAll) return true
-        if (role === 'OWNER') {
-          if (assigned.has(station.id) || assigned.has(station.code)) return true
-          return !!ownerOrgId && station.orgId === ownerOrgId
-        }
-        if (role === 'STATION_OPERATOR') {
-          return assigned.has(station.id) || assigned.has(station.code)
-        }
-        return false
-      })
-  }, [stations, user?.role, me?.orgId, me?.organizationId, me?.assignedStations, perms.viewAll])
+    const accessContext = {
+      role,
+      orgId: ownerOrgId,
+      assignedStations,
+      capability,
+      viewAll: perms.viewAll,
+    }
+
+    return (stations || []).filter((station) => canAccessStation(accessContext, station, 'SWAP'))
+  }, [stations, user?.role, me?.orgId, me?.organizationId, me?.assignedStations, capability, perms.viewAll])
 
   const swapStationIds = useMemo(() => {
     return accessibleSwapStations.map((station) => station.id)
@@ -115,7 +113,8 @@ export function SwapStations() {
       .filter((s) => (statusFilter === 'All' ? true : s.status === statusFilter))
   }, [swapStations, q, statusFilter])
 
-  const accessLoading = !perms.viewAll && meLoading
+  const accessLoading = needsScope && meLoading
+  const capabilityDenied = needsScope && !capabilityAllowsSwap(capability)
 
   const stats = {
     totalBays: swapStations.reduce((a, s) => a + s.bays, 0),
@@ -129,6 +128,14 @@ export function SwapStations() {
     return (
       <div className="card">
         <p className="text-muted">You don't have permission to view this page.</p>
+      </div>
+    )
+  }
+
+  if (capabilityDenied) {
+    return (
+      <div className="card">
+        <p className="text-muted">You don't have permission to view swap stations.</p>
       </div>
     )
   }

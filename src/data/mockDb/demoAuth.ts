@@ -7,6 +7,9 @@ export type DemoAuthUser = {
   phone?: string
   role: Role
   ownerCapability?: OwnerCapability
+  orgId?: string
+  organizationId?: string
+  assignedStations?: string[]
 }
 
 export const DEMO_AUTH_PASSWORD = 'demo'
@@ -15,8 +18,23 @@ export const DEMO_AUTH_USERS: DemoAuthUser[] = [
   { id: 'demo-super-001', name: 'Super Admin', email: 'super@demo.evzone', role: 'SUPER_ADMIN' },
   { id: 'demo-admin-001', name: 'Admin', email: 'admin@demo.evzone', role: 'EVZONE_ADMIN' },
   { id: 'demo-ops-001', name: 'Operator', email: 'operator@demo.evzone', phone: '+1000000001', role: 'EVZONE_OPERATOR' },
-  { id: 'demo-station-op-001', name: 'Station Operator', email: 'stationop@demo.evzone', role: 'STATION_OPERATOR' },
-  { id: 'demo-owner-001', name: 'Station Owner', email: 'owner@demo.evzone', role: 'OWNER', ownerCapability: 'CHARGE' },
+  {
+    id: 'demo-station-op-001',
+    name: 'Station Operator',
+    email: 'stationop@demo.evzone',
+    role: 'STATION_OPERATOR',
+    ownerCapability: 'BOTH',
+    orgId: 'ORG_DEMO',
+    assignedStations: ['STATION_001'],
+  },
+  {
+    id: 'demo-owner-001',
+    name: 'Station Owner',
+    email: 'owner@demo.evzone',
+    role: 'OWNER',
+    ownerCapability: 'BOTH',
+    orgId: 'ORG_ALPHA',
+  },
   { id: 'demo-site-001', name: 'Site Owner', email: 'site@demo.evzone', role: 'SITE_OWNER' },
   { id: 'demo-station-admin-001', name: 'Station Admin', email: 'stationadmin@demo.evzone', role: 'STATION_ADMIN' },
   { id: 'demo-manager-001', name: 'Manager', email: 'manager@demo.evzone', role: 'MANAGER' },

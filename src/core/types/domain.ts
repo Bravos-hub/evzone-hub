@@ -1,3 +1,5 @@
+import type { OwnerCapability } from '@/core/auth/types'
+
 // Domain types for EVzone Aggregator Platform
 
 // ==================== Core Entities ====================
@@ -268,6 +270,7 @@ export interface User {
   lastSeen?: Date
   mfaEnabled: boolean
   permissions?: string[]
+  ownerCapability?: OwnerCapability
   assignedStations?: StationId[]
 }
 

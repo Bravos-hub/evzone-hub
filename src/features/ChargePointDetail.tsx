@@ -3,6 +3,12 @@ import { useParams, Link } from 'react-router-dom'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { PATHS } from '@/app/router/paths'
 import { useChargePoint, useUpdateChargePoint } from '@/core/api/hooks/useChargePoints'
+import { useStation } from '@/core/api/hooks/useStations'
+import { useMe } from '@/core/api/hooks/useAuth'
+import { useAuthStore } from '@/core/auth/authStore'
+import { getPermissionsForFeature } from '@/constants/permissions'
+import { ROLE_GROUPS } from '@/constants/roles'
+import { canAccessStation } from '@/core/auth/rbac'
 import { StationStatusPill } from '@/ui/components/StationStatusPill'
 import { getErrorMessage } from '@/core/api/errors'
 
@@ -15,6 +21,24 @@ export function ChargePointDetail() {
     const { id } = useParams<{ id: string }>()
     const { data: cp, isLoading, error } = useChargePoint(id!)
     const updateCP = useUpdateChargePoint()
+    const { user } = useAuthStore()
+    const perms = getPermissionsForFeature(user?.role, 'chargePoints')
+    const { data: me, isLoading: meLoading } = useMe()
+    const { data: station, isLoading: stationLoading } = useStation(cp?.stationId || '')
+
+    const accessContext = {
+        role: user?.role,
+        orgId: me?.orgId || me?.organizationId,
+        assignedStations: me?.assignedStations || [],
+        capability: me?.ownerCapability || user?.ownerCapability,
+        viewAll: perms.viewAll,
+    }
+
+    const needsScope = user?.role === 'OWNER' || user?.role === 'STATION_OPERATOR'
+    const accessLoading = needsScope && (meLoading || stationLoading)
+    const hasAccess = station
+        ? canAccessStation(accessContext, station, 'CHARGE')
+        : (perms.viewAll || (user?.role ? ROLE_GROUPS.PLATFORM_OPS.includes(user.role) : false))
 
     const [isEditing, setIsEditing] = useState(false)
     const [editForm, setEditForm] = useState({
@@ -51,6 +75,16 @@ export function ChargePointDetail() {
         setIsEditing(false)
     }
 
+    if (!perms.access) {
+        return (
+            <DashboardLayout pageTitle="Charger Management">
+                <div className="card">
+                    <p className="text-muted">You don't have permission to view this page.</p>
+                </div>
+            </DashboardLayout>
+        )
+    }
+
     if (isLoading) return (
         <DashboardLayout pageTitle="Charger Management">
             <div className="flex items-center justify-center h-64">
@@ -66,6 +100,26 @@ export function ChargePointDetail() {
             </div>
         </DashboardLayout>
     )
+
+    if (accessLoading) {
+        return (
+            <DashboardLayout pageTitle="Charger Management">
+                <div className="flex items-center justify-center h-64">
+                    <div className="text-subtle">Loading access...</div>
+                </div>
+            </DashboardLayout>
+        )
+    }
+
+    if (!hasAccess) {
+        return (
+            <DashboardLayout pageTitle="Charger Management">
+                <div className="card">
+                    <p className="text-muted">You don't have permission to view this page.</p>
+                </div>
+            </DashboardLayout>
+        )
+    }
 
     return (
         <DashboardLayout pageTitle={`Manage ${cp.id}`}>

@@ -31,6 +31,10 @@ export interface AuthResponse {
     name: string
     email?: string
     role: string
+    orgId?: string
+    organizationId?: string
+    assignedStations?: string[]
+    ownerCapability?: OwnerCapability
   }
 }
 
@@ -49,6 +53,7 @@ export interface User {
   organizationId?: string
   tenantId?: string
   region?: string
+  ownerCapability?: OwnerCapability
   status?: 'Active' | 'Pending' | 'Suspended' | 'Inactive' | 'Invited'
   mfaEnabled?: boolean
   lastSeen?: string
