@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuthStore } from '@/core/auth/authStore'
+import { PATHS } from '@/app/router/paths'
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Auth Pages — Login, Register, Reset Password, Verify Email
@@ -15,7 +16,7 @@ export function Login() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
-  const returnTo = searchParams.get('returnTo') || '/dashboard'
+  const returnTo = searchParams.get('returnTo') || PATHS.DASHBOARD
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -130,7 +131,7 @@ export function Login() {
                     <input type="checkbox" className="rounded border-emerald-200" />
                     <span>Remember me</span>
                   </label>
-                  <a href="/forgot-password" className="text-emerald-700 hover:underline">Forgot password?</a>
+                  <a href={PATHS.AUTH.FORGOT_PASSWORD} className="text-emerald-700 hover:underline">Forgot password?</a>
                 </div>
 
                 <button
@@ -143,7 +144,7 @@ export function Login() {
               </form>
 
               <p className="mt-5 text-center text-sm text-[var(--evz-muted)]">
-                Don't have an account? <a href="/onboarding" className="text-emerald-700 hover:underline">Get started</a>
+                Don't have an account? <a href={PATHS.AUTH.REGISTER} className="text-emerald-700 hover:underline">Get started</a>
               </p>
             </div>
           </section>
@@ -224,7 +225,7 @@ export function Register() {
     setLoading(true)
     await new Promise(r => setTimeout(r, 500))
     // In real app, call API to register with role/capability and account profile data.
-    navigate('/verify-email?email=' + encodeURIComponent(form.email))
+    navigate(`${PATHS.AUTH.VERIFY_EMAIL}?email=${encodeURIComponent(form.email)}`)
     setLoading(false)
   }
 
@@ -495,7 +496,7 @@ export function Register() {
                 </button>
 
                 <p className="text-center text-sm text-[var(--evz-muted)]">
-                  Already have an account? <a href="/login" className="text-emerald-700 hover:underline">Sign in</a>
+                  Already have an account? <a href={PATHS.AUTH.LOGIN} className="text-emerald-700 hover:underline">Sign in</a>
                 </p>
               </form>
             </div>
@@ -530,7 +531,7 @@ export function ForgotPassword() {
           <p className="text-subtle mb-6">
             We've sent a password reset link to <strong>{email}</strong>
           </p>
-          <a href="/login" className="text-accent hover:underline">Back to sign in</a>
+          <a href={PATHS.AUTH.LOGIN} className="text-accent hover:underline">Back to sign in</a>
         </div>
       </div>
     )
@@ -566,7 +567,7 @@ export function ForgotPassword() {
         </form>
 
         <p className="text-center text-sm text-subtle mt-4">
-          <a href="/login" className="text-accent hover:underline">Back to sign in</a>
+          <a href={PATHS.AUTH.LOGIN} className="text-accent hover:underline">Back to sign in</a>
         </p>
       </div>
     </div>
@@ -591,7 +592,7 @@ export function VerifyEmail() {
           <button className="w-full px-4 py-2 rounded-lg border border-border hover:bg-muted">
             Resend verification email
           </button>
-          <a href="/login" className="block text-accent hover:underline">Back to sign in</a>
+          <a href={PATHS.AUTH.LOGIN} className="block text-accent hover:underline">Back to sign in</a>
         </div>
       </div>
     </div>

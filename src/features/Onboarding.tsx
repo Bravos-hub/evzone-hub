@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { AddSite, OwnerSteps, OperatorSteps, TechnicianSteps } from '@/features'
+import { PATHS } from '@/app/router/paths'
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Onboarding — Role selection, plan selection, and onboarding flows
@@ -77,7 +78,7 @@ export function Onboarding() {
             </span>
             <h1 className="text-lg font-bold">Get Started with EVzone</h1>
           </div>
-          <a href="/login" className="px-3 py-2 rounded-lg border border-border hover:bg-muted">Sign in</a>
+          <a href={PATHS.AUTH.LOGIN} className="px-3 py-2 rounded-lg border border-border hover:bg-muted">Sign in</a>
         </div>
       </header>
 
@@ -202,7 +203,7 @@ export function Onboarding() {
             </p>
             <div className="flex items-center justify-center gap-4">
               <a href="/" className="px-4 py-2 rounded-lg border border-border hover:bg-muted">Back to Home</a>
-              <a href="/login" className="px-4 py-2 rounded-lg bg-accent text-white hover:bg-accent-hover">Sign In</a>
+              <a href={PATHS.AUTH.LOGIN} className="px-4 py-2 rounded-lg bg-accent text-white hover:bg-accent-hover">Sign In</a>
             </div>
           </div>
         )}
