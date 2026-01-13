@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { useAuthStore } from '@/core/auth/authStore'
 import { useMe } from '@/core/api/hooks/useAuth'
-import { useStation, useStationBatteries } from '@/core/api/hooks/useStations'
+import { useStation, useStationBatteries, useSwapBays, useSwapsToday } from '@/core/api/hooks/useStations'
 import { getPermissionsForFeature } from '@/constants/permissions'
 import { ROLE_GROUPS } from '@/constants/roles'
 import { canAccessStation } from '@/core/auth/rbac'
@@ -34,6 +34,14 @@ type SwapSession = {
   end: string
   fee: number
   st: string
+}
+
+const BAY_STATUS_STYLES: Record<string, string> = {
+  Available: 'border-ok/30 bg-ok/10 text-ok',
+  Occupied: 'border-accent/30 bg-accent/10 text-accent',
+  Charging: 'border-warn/30 bg-warn/10 text-warn',
+  Faulted: 'border-danger/30 bg-danger/10 text-danger',
+  Reserved: 'border-info/30 bg-info/10 text-info',
 }
 
 const IconBolt = () => (
@@ -96,6 +104,8 @@ export function SwapStationDetail() {
   const perms = getPermissionsForFeature(user?.role, 'swapStations')
   const { data: me, isLoading: meLoading } = useMe()
   const { data: stationData, isLoading: stationLoading } = useStation(stationId)
+  const { data: swapsToday, isLoading: swapsTodayLoading } = useSwapsToday(stationId)
+  const { data: swapBays = [], isLoading: swapBaysLoading, isError: swapBaysError } = useSwapBays(stationId)
 
   const [tab, setTab] = useState('Overview')
   const [ack, setAck] = useState('')
@@ -135,6 +145,31 @@ export function SwapStationDetail() {
     swaps24: 128,
     seen: '11:42',
   }
+
+  const bayStats = useMemo(() => {
+    if (swapBaysLoading || swapBaysError) {
+      return {
+        total: station.bays.total,
+        used: station.bays.used,
+        available: Math.max(0, station.bays.total - station.bays.used),
+        charging: 0,
+        reserved: 0,
+        faulted: 0,
+      }
+    }
+
+    const total = swapBays.length
+    const available = swapBays.filter((bay) => bay.status === 'Available').length
+    const charging = swapBays.filter((bay) => bay.status === 'Charging').length
+    const reserved = swapBays.filter((bay) => bay.status === 'Reserved').length
+    const faulted = swapBays.filter((bay) => bay.status === 'Faulted').length
+    const used = Math.max(0, total - available)
+
+    return { total, used, available, charging, reserved, faulted }
+  }, [swapBays, swapBaysLoading, swapBaysError, station.bays.total, station.bays.used])
+
+  const swapsTodayValue = swapsTodayLoading ? '—' : String(swapsToday?.count ?? station.swaps24)
+  const baysUsedValue = `${Math.max(0, bayStats.used - closedBays)}/${bayStats.total}`
 
   const [queue, setQueue] = useState<QueueItem[]>([
     { ticket: 'Q-1041', vehicle: 'EV-UG-55A', requested: 'LFP 48V', priority: 2, eta: '~3m' },
@@ -231,9 +266,9 @@ export function SwapStationDetail() {
             <input
               type="number"
               min="0"
-              max={station.bays.total}
+              max={bayStats.total}
               value={closedBays}
-              onChange={(e) => setClosedBays(Math.max(0, Math.min(station.bays.total, Number(e.target.value) || 0)))}
+              onChange={(e) => setClosedBays(Math.max(0, Math.min(bayStats.total, Number(e.target.value) || 0)))}
               className="w-16 rounded border border-border px-2 py-1"
               disabled={!perms.edit}
             />
@@ -278,9 +313,9 @@ export function SwapStationDetail() {
       {/* Tab content */}
       {tab === 'Overview' && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <KpiCard label="Bays used / total" value={`${station.bays.used - closedBays}/${station.bays.total}`} icon={<IconBattery />} />
+          <KpiCard label="Bays used / total" value={baysUsedValue} icon={<IconBattery />} />
           <KpiCard label="Batteries (in/out)" value={`${station.in}/${station.out}`} />
-          <KpiCard label="Swaps (24h)" value={`${station.swaps24}`} />
+          <KpiCard label="Swaps today" value={swapsTodayValue} />
           <KpiCard label="Last seen" value={station.seen} icon={<IconClock />} />
         </div>
       )}
@@ -322,6 +357,39 @@ export function SwapStationDetail() {
 
       {tab === 'Inventory' && (
         <Card>
+          <div className="mb-5 rounded-xl border border-border bg-surface px-4 py-3 text-sm">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="font-semibold text-text">Swap bays</div>
+              <div className="text-xs text-muted">
+                Total {bayStats.total} · Available {bayStats.available} · Charging {bayStats.charging} · Faulted {bayStats.faulted}
+              </div>
+            </div>
+          </div>
+
+          <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {swapBaysLoading && (
+              <div className="rounded-xl border border-border bg-surface p-4 text-sm text-muted">Loading swap bays...</div>
+            )}
+            {swapBaysError && !swapBaysLoading && (
+              <div className="rounded-xl border border-border bg-surface p-4 text-sm text-muted">Unable to load swap bays.</div>
+            )}
+            {!swapBaysLoading && !swapBaysError && swapBays.length === 0 && (
+              <div className="rounded-xl border border-border bg-surface p-4 text-sm text-muted">No swap bays configured.</div>
+            )}
+            {!swapBaysLoading && !swapBaysError && swapBays.map((bay) => (
+              <div key={bay.id} className="rounded-xl border border-border bg-surface p-4 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted">Bay {bay.id}</span>
+                  <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold ${BAY_STATUS_STYLES[bay.status] || 'border-border bg-muted/10 text-muted'}`}>
+                    {bay.status}
+                  </span>
+                </div>
+                <div className="mt-3 text-xs text-muted">Battery</div>
+                <div className="text-sm font-semibold">{bay.batteryId || 'Empty'}</div>
+              </div>
+            ))}
+          </div>
+
           <div className="overflow-x-auto rounded-xl border border-border">
             <table className="w-full text-sm">
               <thead className="bg-surface-alt text-muted">

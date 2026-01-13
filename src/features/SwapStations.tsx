@@ -75,6 +75,14 @@ export function SwapStations() {
     })),
   })
 
+  const swapsTodayQueries = useQueries({
+    queries: swapStationIds.map((stationId) => ({
+      queryKey: queryKeys.stations.swapsToday(stationId),
+      queryFn: () => stationService.getSwapsToday(stationId),
+      enabled: !!stationId,
+    })),
+  })
+
   const batteryCounts = useMemo(() => {
     const map = new Map<string, { ready: number; charging: number }>()
     batteryQueries.forEach((query, index) => {
@@ -86,6 +94,16 @@ export function SwapStations() {
     })
     return map
   }, [batteryQueries, swapStationIds])
+
+  const swapsTodayCounts = useMemo(() => {
+    const map = new Map<string, number>()
+    swapsTodayQueries.forEach((query, index) => {
+      const stationId = swapStationIds[index]
+      const count = query.data?.count ?? 0
+      map.set(stationId, count)
+    })
+    return map
+  }, [swapsTodayQueries, swapStationIds])
 
   const swapStations = useMemo<SwapStation[]>(() => {
     const mapStatus = (status?: string): StationStatus => {
@@ -103,9 +121,9 @@ export function SwapStations() {
       bays: station.parkingBays || station.capacity || 0,
       available: batteryCounts.get(station.id)?.ready || 0,
       charging: batteryCounts.get(station.id)?.charging || 0,
-      swapsToday: 0,
+      swapsToday: swapsTodayCounts.get(station.id) || 0,
     }))
-  }, [accessibleSwapStations, batteryCounts])
+  }, [accessibleSwapStations, batteryCounts, swapsTodayCounts])
 
   const filtered = useMemo(() => {
     return swapStations
