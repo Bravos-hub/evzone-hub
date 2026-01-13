@@ -34,15 +34,17 @@ export function Login() {
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-emerald-50 via-slate-50 to-emerald-100">
+    <div className="relative h-screen overflow-x-hidden overflow-y-auto bg-gradient-to-br from-bg-subtle via-bg-secondary to-bg">
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
         .login-shell {
-          --evz-ink: #0b1512;
-          --evz-muted: #5b6b63;
-          --evz-accent: #12b06f;
-          --evz-accent-strong: #0e9f64;
-          --evz-card: rgba(255, 255, 255, 0.92);
+          --evz-ink: var(--app-text);
+          --evz-muted: var(--app-text-secondary);
+          --evz-accent: var(--app-accent);
+          --evz-accent-strong: var(--app-accent-hover);
+          --evz-card: var(--app-panel);
+          --evz-card-border: var(--app-border);
+          --evz-card-soft: var(--app-panel-2);
           font-family: 'Space Grotesk', 'Segoe UI', Tahoma, sans-serif;
           color: var(--evz-ink);
         }
@@ -52,21 +54,21 @@ export function Login() {
         }
       `}</style>
 
-      <div className="pointer-events-none absolute -top-24 right-[-120px] h-72 w-72 rounded-full bg-emerald-200/60 blur-3xl" aria-hidden="true" />
-      <div className="pointer-events-none absolute bottom-[-140px] left-[-80px] h-80 w-80 rounded-full bg-emerald-300/40 blur-3xl" aria-hidden="true" />
+      <div className="pointer-events-none absolute -top-24 right-[-120px] h-72 w-72 rounded-full bg-accent/20 blur-3xl" aria-hidden="true" />
+      <div className="pointer-events-none absolute bottom-[-140px] left-[-80px] h-80 w-80 rounded-full bg-accent/10 blur-3xl" aria-hidden="true" />
 
-      <div className="login-shell relative mx-auto flex min-h-screen w-full max-w-5xl items-center px-4 py-10 lg:py-16">
-        <div className="grid w-full gap-10 lg:grid-cols-[1.05fr_0.95fr]">
-          <section className="space-y-8 animate-in fade-in slide-in-from-left-4 duration-700">
-            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-100 bg-white/70 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-emerald-700 shadow-sm">
-              <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+      <div className="login-shell relative mx-auto flex min-h-screen w-full max-w-5xl items-start px-4 py-8 sm:py-10 lg:items-center lg:py-16">
+        <div className="grid w-full gap-8 lg:gap-10 lg:grid-cols-[1.05fr_0.95fr]">
+          <section className="order-2 space-y-8 animate-in fade-in slide-in-from-left-4 duration-700 lg:order-1">
+            <div className="inline-flex items-center gap-2 rounded-full border border-[var(--evz-card-border)] bg-[var(--evz-card)] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--evz-accent)] shadow-sm">
+              <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-accent/10 text-accent">
                 <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z" /></svg>
               </span>
               Secure sign-in
             </div>
 
             <div className="space-y-4">
-              <h1 className="login-title text-4xl font-semibold text-[var(--evz-ink)] sm:text-5xl">
+              <h1 className="login-title text-3xl font-semibold text-[var(--evz-ink)] sm:text-4xl lg:text-5xl">
                 Welcome back to EVzone
               </h1>
               <p className="max-w-xl text-sm text-[var(--evz-muted)] sm:text-base">
@@ -80,47 +82,47 @@ export function Login() {
                 { label: 'Response time', value: '24/7' },
                 { label: 'Operational uptime', value: '99.9%' },
               ].map((stat) => (
-                <div key={stat.label} className="rounded-2xl border border-emerald-100/60 bg-white/70 p-4 shadow-sm">
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.25em] text-emerald-600">{stat.label}</div>
-                  <div className="mt-4 text-2xl font-semibold text-[var(--evz-ink)]">{stat.value}</div>
+                <div key={stat.label} className="rounded-2xl border border-border bg-panel p-4 shadow-sm">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.25em] text-text-secondary">{stat.label}</div>
+                  <div className="mt-4 text-xl font-semibold text-[var(--evz-ink)] sm:text-2xl">{stat.value}</div>
                 </div>
               ))}
             </div>
 
-            <div className="rounded-2xl border border-emerald-100/70 bg-white/70 p-5 text-sm text-[var(--evz-muted)]">
+            <div className="rounded-2xl border border-border bg-panel p-5 text-sm text-[var(--evz-muted)]">
               Keep your stations synced with real-time alerts, swap analytics, and technician dispatch updates.
             </div>
           </section>
 
-          <section className="relative animate-in fade-in slide-in-from-right-4 duration-700">
-            <div className="rounded-[28px] border border-white/70 bg-[var(--evz-card)] p-6 shadow-xl shadow-emerald-200/50 backdrop-blur">
+          <section className="order-1 relative animate-in fade-in slide-in-from-right-4 duration-700 lg:order-2">
+            <div className="rounded-[28px] border border-[var(--evz-card-border)] bg-[var(--evz-card)] p-5 sm:p-6 shadow-card backdrop-blur">
               <div className="mb-6 text-center">
                 <h2 className="text-2xl font-semibold">Sign in</h2>
                 <p className="text-sm text-[var(--evz-muted)]">Use your EVzone credentials to continue.</p>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-5">
-                {error && <div className="rounded-lg bg-rose-50 text-rose-700 px-4 py-2 text-sm">{error}</div>}
+                {error && <div className="rounded-lg border border-danger/30 bg-danger/10 text-danger px-4 py-2 text-sm">{error}</div>}
 
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">Email</label>
+                  <label className="text-xs font-semibold uppercase tracking-[0.2em] text-text-secondary">Email</label>
                   <input
                     type="email"
                     value={email}
                     onChange={e => setEmail(e.target.value)}
-                    className="input mt-2 rounded-2xl border-emerald-200 bg-white/90"
+                    className="input mt-2 rounded-2xl"
                     placeholder="you@example.com"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">Password</label>
+                  <label className="text-xs font-semibold uppercase tracking-[0.2em] text-text-secondary">Password</label>
                   <input
                     type="password"
                     value={password}
                     onChange={e => setPassword(e.target.value)}
-                    className="input mt-2 rounded-2xl border-emerald-200 bg-white/90"
+                    className="input mt-2 rounded-2xl"
                     placeholder="password"
                     required
                   />
@@ -128,23 +130,23 @@ export function Login() {
 
                 <div className="flex items-center justify-between text-sm text-[var(--evz-muted)]">
                   <label className="flex items-center gap-2">
-                    <input type="checkbox" className="rounded border-emerald-200" />
+                    <input type="checkbox" className="rounded border-border" />
                     <span>Remember me</span>
                   </label>
-                  <a href={PATHS.AUTH.FORGOT_PASSWORD} className="text-emerald-700 hover:underline">Forgot password?</a>
+                  <a href={PATHS.AUTH.FORGOT_PASSWORD} className="text-accent hover:underline">Forgot password?</a>
                 </div>
 
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-200/80 transition hover:bg-emerald-700 disabled:opacity-50"
+                  className="w-full rounded-2xl bg-accent px-4 py-3 text-sm font-semibold text-white shadow-accent transition hover:bg-accent-hover disabled:opacity-50"
                 >
                   {loading ? 'Signing in...' : 'Sign in'}
                 </button>
               </form>
 
               <p className="mt-5 text-center text-sm text-[var(--evz-muted)]">
-                Don't have an account? <a href={PATHS.AUTH.REGISTER} className="text-emerald-700 hover:underline">Get started</a>
+                Don't have an account? <a href={PATHS.AUTH.REGISTER} className="text-accent hover:underline">Get started</a>
               </p>
             </div>
           </section>
@@ -230,15 +232,17 @@ export function Register() {
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-emerald-50 via-slate-50 to-emerald-100">
+    <div className="relative h-screen overflow-x-hidden overflow-y-auto bg-gradient-to-br from-bg-subtle via-bg-secondary to-bg">
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
         .register-shell {
-          --evz-ink: #0b1512;
-          --evz-muted: #5b6b63;
-          --evz-accent: #12b06f;
-          --evz-accent-strong: #0e9f64;
-          --evz-card: rgba(255, 255, 255, 0.92);
+          --evz-ink: var(--app-text);
+          --evz-muted: var(--app-text-secondary);
+          --evz-accent: var(--app-accent);
+          --evz-accent-strong: var(--app-accent-hover);
+          --evz-card: var(--app-panel);
+          --evz-card-border: var(--app-border);
+          --evz-card-soft: var(--app-panel-2);
           font-family: 'Space Grotesk', 'Segoe UI', Tahoma, sans-serif;
           color: var(--evz-ink);
         }
@@ -248,21 +252,21 @@ export function Register() {
         }
       `}</style>
 
-      <div className="pointer-events-none absolute -top-24 right-[-120px] h-72 w-72 rounded-full bg-emerald-200/60 blur-3xl" aria-hidden="true" />
-      <div className="pointer-events-none absolute bottom-[-140px] left-[-80px] h-80 w-80 rounded-full bg-emerald-300/40 blur-3xl" aria-hidden="true" />
+      <div className="pointer-events-none absolute -top-24 right-[-120px] h-72 w-72 rounded-full bg-accent/20 blur-3xl" aria-hidden="true" />
+      <div className="pointer-events-none absolute bottom-[-140px] left-[-80px] h-80 w-80 rounded-full bg-accent/10 blur-3xl" aria-hidden="true" />
 
-      <div className="register-shell relative mx-auto flex min-h-screen w-full max-w-6xl items-center px-4 py-10 lg:py-16">
-        <div className="grid w-full gap-10 lg:grid-cols-[1.05fr_1fr]">
-          <section className="space-y-8 animate-in fade-in slide-in-from-left-4 duration-700">
-            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-100 bg-white/70 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-emerald-700 shadow-sm">
-              <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+      <div className="register-shell relative mx-auto flex min-h-screen w-full max-w-6xl items-start px-4 py-8 sm:py-10 lg:items-center lg:py-16">
+        <div className="grid w-full gap-8 lg:gap-10 lg:grid-cols-[1.05fr_1fr]">
+          <section className="order-2 space-y-8 animate-in fade-in slide-in-from-left-4 duration-700 lg:order-1">
+            <div className="inline-flex items-center gap-2 rounded-full border border-[var(--evz-card-border)] bg-[var(--evz-card)] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--evz-accent)] shadow-sm">
+              <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-accent/10 text-accent">
                 <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z" /></svg>
               </span>
               Premium onboarding
             </div>
 
             <div className="space-y-4">
-              <h1 className="register-title text-4xl font-semibold text-[var(--evz-ink)] sm:text-5xl">
+              <h1 className="register-title text-3xl font-semibold text-[var(--evz-ink)] sm:text-4xl lg:text-5xl">
                 Create your EVzone account and launch in minutes
               </h1>
               <p className="max-w-xl text-sm text-[var(--evz-muted)] sm:text-base">
@@ -276,48 +280,48 @@ export function Register() {
                 { label: 'Average setup', value: '5 min' },
                 { label: 'Security ready', value: 'ISO 27001' },
               ].map((stat) => (
-                <div key={stat.label} className="rounded-2xl border border-emerald-100/60 bg-white/70 p-4 shadow-sm">
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.25em] text-emerald-600">{stat.label}</div>
-                  <div className="mt-4 text-2xl font-semibold text-[var(--evz-ink)]">{stat.value}</div>
+                <div key={stat.label} className="rounded-2xl border border-border bg-panel p-4 shadow-sm">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.25em] text-text-secondary">{stat.label}</div>
+                  <div className="mt-4 text-xl font-semibold text-[var(--evz-ink)] sm:text-2xl">{stat.value}</div>
                 </div>
               ))}
             </div>
 
-            <div className="rounded-2xl border border-emerald-100/70 bg-white/70 p-5 text-sm text-[var(--evz-muted)]">
+            <div className="rounded-2xl border border-border bg-panel p-5 text-sm text-[var(--evz-muted)]">
               Need help onboarding your fleet or sites? Our team can configure your workspace and data model in under 24 hours.
             </div>
           </section>
 
-          <section className="relative animate-in fade-in slide-in-from-right-4 duration-700">
-            <div className="rounded-[28px] border border-white/70 bg-[var(--evz-card)] p-6 shadow-xl shadow-emerald-200/50 backdrop-blur">
+          <section className="order-1 relative animate-in fade-in slide-in-from-right-4 duration-700 lg:order-2">
+            <div className="rounded-[28px] border border-[var(--evz-card-border)] bg-[var(--evz-card)] p-5 sm:p-6 shadow-card backdrop-blur">
               <form onSubmit={handleSubmit} className="space-y-5">
-                {error && <div className="rounded-lg bg-rose-50 text-rose-700 px-4 py-2 text-sm">{error}</div>}
+                {error && <div className="rounded-lg border border-danger/30 bg-danger/10 text-danger px-4 py-2 text-sm">{error}</div>}
 
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">Full name</label>
+                  <label className="text-xs font-semibold uppercase tracking-[0.2em] text-text-secondary">Full name</label>
                   <input
                     value={form.name}
                     onChange={e => update('name', e.target.value)}
-                    className="input mt-2 rounded-2xl border-emerald-200 bg-white/90"
+                    className="input mt-2 rounded-2xl"
                     placeholder="Jane Doe"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">Work email</label>
+                  <label className="text-xs font-semibold uppercase tracking-[0.2em] text-text-secondary">Work email</label>
                   <input
                     type="email"
                     value={form.email}
                     onChange={e => update('email', e.target.value)}
-                    className="input mt-2 rounded-2xl border-emerald-200 bg-white/90"
+                    className="input mt-2 rounded-2xl"
                     placeholder="you@company.com"
                     required
                   />
                 </div>
 
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="rounded-full border border-emerald-100 bg-white/80 p-1">
+                  <div className="rounded-full border border-border bg-panel p-1">
                     {(['COMPANY', 'INDIVIDUAL'] as const).map((type) => (
                       <button
                         key={type}
@@ -325,8 +329,8 @@ export function Register() {
                         onClick={() => setAccountType(type)}
                         className={`rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.15em] transition ${
                           accountType === type
-                            ? 'bg-emerald-600 text-white shadow-sm'
-                            : 'text-emerald-800 hover:text-emerald-900'
+                            ? 'bg-accent text-white shadow-sm'
+                            : 'text-text-secondary hover:text-text'
                         }`}
                       >
                         {type === 'COMPANY' ? 'Company' : 'Individual'}
@@ -335,12 +339,12 @@ export function Register() {
                   </div>
 
                   {needsCapability && (
-                    <div className="flex items-center gap-2 text-xs font-semibold text-emerald-700">
+                    <div className="flex items-center gap-2 text-xs font-semibold text-text-secondary">
                       <span className="uppercase tracking-[0.2em]">Capability</span>
                       <select
                         value={capability}
                         onChange={e => setCapability(e.target.value as typeof capability)}
-                        className="select h-9 rounded-full border-emerald-100 bg-white/90 text-xs font-semibold"
+                        className="select h-9 rounded-full text-xs font-semibold"
                       >
                         <option value="CHARGE">Charge</option>
                         <option value="SWAP">Swap</option>
@@ -351,7 +355,7 @@ export function Register() {
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">Choose your workspace roles</label>
+                  <label className="text-xs font-semibold uppercase tracking-[0.2em] text-text-secondary">Choose your workspace roles</label>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {roleOptions.map((option) => (
                       <button
@@ -360,8 +364,8 @@ export function Register() {
                         onClick={() => setRole(option.value)}
                         className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${
                           role === option.value
-                            ? 'border-emerald-500 bg-emerald-50 text-emerald-800'
-                            : 'border-slate-200 bg-white text-slate-600 hover:border-emerald-200'
+                            ? 'border-accent bg-accent/10 text-accent'
+                            : 'border-border bg-panel text-text-secondary hover:border-accent/40'
                         }`}
                       >
                         {option.label}
@@ -373,30 +377,30 @@ export function Register() {
                 {isCompany && (
                   <div className="grid gap-4 sm:grid-cols-2">
                     <label className="grid gap-2 sm:col-span-2">
-                      <span className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">Company name</span>
+                      <span className="text-xs font-semibold uppercase tracking-[0.2em] text-text-secondary">Company name</span>
                       <input
                         value={form.companyName}
                         onChange={e => update('companyName', e.target.value)}
-                        className="input rounded-2xl border-emerald-200 bg-white/90"
+                        className="input rounded-2xl"
                         placeholder="VoltOps Ltd"
                         required
                       />
                     </label>
                     <label className="grid gap-2">
-                      <span className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">Registration ID</span>
+                      <span className="text-xs font-semibold uppercase tracking-[0.2em] text-text-secondary">Registration ID</span>
                       <input
                         value={form.companyReg}
                         onChange={e => update('companyReg', e.target.value)}
-                        className="input rounded-2xl border-emerald-200 bg-white/90"
+                        className="input rounded-2xl"
                         placeholder="Optional"
                       />
                     </label>
                     <label className="grid gap-2">
-                      <span className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">Tax ID</span>
+                      <span className="text-xs font-semibold uppercase tracking-[0.2em] text-text-secondary">Tax ID</span>
                       <input
                         value={form.taxId}
                         onChange={e => update('taxId', e.target.value)}
-                        className="input rounded-2xl border-emerald-200 bg-white/90"
+                        className="input rounded-2xl"
                         placeholder="Optional"
                       />
                     </label>
@@ -405,22 +409,22 @@ export function Register() {
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <label className="grid gap-2">
-                    <span className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">Phone</span>
+                    <span className="text-xs font-semibold uppercase tracking-[0.2em] text-text-secondary">Phone</span>
                     <input
                       type="tel"
                       value={form.phone}
                       onChange={e => update('phone', e.target.value)}
-                      className="input rounded-2xl border-emerald-200 bg-white/90"
+                      className="input rounded-2xl"
                       placeholder="+256 700 000000"
                       required
                     />
                   </label>
                   <label className="grid gap-2">
-                    <span className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">Job title</span>
+                    <span className="text-xs font-semibold uppercase tracking-[0.2em] text-text-secondary">Job title</span>
                     <input
                       value={form.jobTitle}
                       onChange={e => update('jobTitle', e.target.value)}
-                      className="input rounded-2xl border-emerald-200 bg-white/90"
+                      className="input rounded-2xl"
                       placeholder="Operations lead"
                     />
                   </label>
@@ -428,19 +432,19 @@ export function Register() {
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <label className="grid gap-2">
-                    <span className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">Password</span>
+                    <span className="text-xs font-semibold uppercase tracking-[0.2em] text-text-secondary">Password</span>
                     <div className="relative">
                       <input
                         type={showPassword ? 'text' : 'password'}
                         value={form.password}
                         onChange={e => update('password', e.target.value)}
-                        className="input rounded-2xl border-emerald-200 bg-white/90 pr-12"
+                        className="input rounded-2xl pr-12"
                         required
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(v => !v)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full border border-emerald-100 bg-white/80 p-2 text-emerald-700"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full border border-border bg-panel p-2 text-accent"
                         aria-label="Toggle password visibility"
                       >
                         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
@@ -451,19 +455,19 @@ export function Register() {
                     </div>
                   </label>
                   <label className="grid gap-2">
-                    <span className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">Confirm password</span>
+                    <span className="text-xs font-semibold uppercase tracking-[0.2em] text-text-secondary">Confirm password</span>
                     <div className="relative">
                       <input
                         type={showConfirm ? 'text' : 'password'}
                         value={form.confirmPassword}
                         onChange={e => update('confirmPassword', e.target.value)}
-                        className="input rounded-2xl border-emerald-200 bg-white/90 pr-12"
+                        className="input rounded-2xl pr-12"
                         required
                       />
                       <button
                         type="button"
                         onClick={() => setShowConfirm(v => !v)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full border border-emerald-100 bg-white/80 p-2 text-emerald-700"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full border border-border bg-panel p-2 text-accent"
                         aria-label="Toggle confirm password visibility"
                       >
                         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
@@ -490,13 +494,13 @@ export function Register() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-200/80 transition hover:bg-emerald-700 disabled:opacity-50"
+                  className="w-full rounded-2xl bg-accent px-4 py-3 text-sm font-semibold text-white shadow-accent transition hover:bg-accent-hover disabled:opacity-50"
                 >
                   {loading ? 'Creating account...' : 'Create account'}
                 </button>
 
                 <p className="text-center text-sm text-[var(--evz-muted)]">
-                  Already have an account? <a href={PATHS.AUTH.LOGIN} className="text-emerald-700 hover:underline">Sign in</a>
+                  Already have an account? <a href={PATHS.AUTH.LOGIN} className="text-accent hover:underline">Sign in</a>
                 </p>
               </form>
             </div>
