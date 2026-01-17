@@ -32,7 +32,7 @@ export const DEMO_AUTH_USERS: DemoAuthUser[] = [
     name: 'Station Owner',
     email: 'owner@demo.evzone',
     role: 'OWNER',
-    ownerCapability: 'BOTH',
+    ownerCapability: 'CHARGE',
     orgId: 'ORG_ALPHA',
   },
   { id: 'demo-site-001', name: 'Site Owner', email: 'site@demo.evzone', role: 'SITE_OWNER' },

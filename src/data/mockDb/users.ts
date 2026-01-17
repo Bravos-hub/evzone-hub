@@ -53,7 +53,7 @@ export const mockUsers: User[] = [
   },
   {
     id: 'u-005',
-    name: 'Cathy Cashier',
+    name: 'Stella',
     email: 'cathy@evzone.io',
     organizationId: 'ORG_ALPHA',
     role: 'CASHIER',
