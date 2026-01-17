@@ -138,3 +138,86 @@ sequenceDiagram
     CPMS-->>OCPP: Authorization decision
     OCPP-->>Charger: Authorize.conf (Accepted/Blocked)
 ```
+
+Reservation + cancellation flows
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Driver as Driver App/Portal
+    participant CPMS as CPMS API (eMSP role)
+    participant OCPI as OCPI Gateway (eMSP sender)
+    participant CPO as External CPO OCPI
+    participant OCPP as External OCPP Gateway
+    participant Charger
+
+    Driver->>CPMS: Create reservation (location, token, expiry)
+    CPMS->>OCPI: POST /commands/RESERVE_NOW (response_url)
+    OCPI->>CPO: POST /commands/RESERVE_NOW (response_url)
+    CPO-->>OCPI: CommandResponse (ACCEPTED + timeout)
+    OCPI-->>CPMS: CommandResponse (ACCEPTED + timeout)
+    CPO->>OCPP: ReserveNow.req
+    OCPP->>Charger: ReserveNow.req
+    Charger-->>OCPP: ReserveNow.conf (Accepted/Rejected)
+    CPO->>OCPI: POST response_url (CommandResult)
+    OCPI->>CPMS: POST response_url (CommandResult)
+
+    alt Reservation accepted
+        CPO->>OCPI: PUT Session (RESERVED)
+        OCPI->>CPMS: PUT Session (RESERVED)
+    end
+
+    opt Driver cancels reservation
+        Driver->>CPMS: Cancel reservation
+        CPMS->>OCPI: POST /commands/CANCEL_RESERVATION (response_url)
+        OCPI->>CPO: POST /commands/CANCEL_RESERVATION (response_url)
+        CPO-->>OCPI: CommandResponse (ACCEPTED + timeout)
+        CPO->>OCPP: CancelReservation.req
+        OCPP->>Charger: CancelReservation.req
+        Charger-->>OCPP: CancelReservation.conf
+        CPO->>OCPI: POST response_url (CommandResult CANCELED)
+        OCPI->>CPMS: POST response_url (CommandResult CANCELED)
+        CPO->>OCPI: PUT Session (COMPLETED)
+        OCPI->>CPMS: PUT Session (COMPLETED)
+    end
+```
+
+Smart charging / charging profiles
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Driver as Driver App/Portal
+    participant CPMS as CPMS API (eMSP or SCSP)
+    participant OCPI as OCPI Gateway (sender)
+    participant CPO as CPO OCPI (receiver)
+    participant OCPP as OCPP Gateway
+    participant Charger
+
+    Driver->>CPMS: Set charging preferences
+    CPMS->>OCPI: PUT /chargingprofiles/{session_id}?response_url=...
+    OCPI->>CPO: PUT /chargingprofiles/{session_id}?response_url=...
+    CPO-->>OCPI: ChargingProfileResponse (ACCEPTED + timeout)
+    OCPI-->>CPMS: ChargingProfileResponse (ACCEPTED + timeout)
+    CPO->>OCPP: SetChargingProfile.req
+    OCPP->>Charger: SetChargingProfile.req
+    Charger-->>OCPP: SetChargingProfile.conf
+    CPO->>OCPI: POST response_url (ChargingProfileResult)
+    OCPI->>CPMS: POST response_url (ChargingProfileResult)
+
+    opt Active profile updates
+        Charger->>OCPP: Profile recalculated
+        CPO->>OCPI: PUT /chargingprofiles/{session_id} (ActiveChargingProfile)
+        OCPI->>CPMS: PUT /chargingprofiles/{session_id} (ActiveChargingProfile)
+    end
+
+    opt Driver clears profile
+        Driver->>CPMS: Clear charging profile
+        CPMS->>OCPI: DELETE /chargingprofiles/{session_id}?response_url=...
+        OCPI->>CPO: DELETE /chargingprofiles/{session_id}?response_url=...
+        CPO-->>OCPI: ChargingProfileResponse (ACCEPTED + timeout)
+        CPO->>OCPP: ClearChargingProfile.req
+        OCPP->>Charger: ClearChargingProfile.req
+        Charger-->>OCPP: ClearChargingProfile.conf
+        CPO->>OCPI: POST response_url (ClearProfileResult)
+        OCPI->>CPMS: POST response_url (ClearProfileResult)
+    end
+```
