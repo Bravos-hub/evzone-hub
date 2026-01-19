@@ -169,7 +169,7 @@ function getCurrentUser(): typeof mockUsers[0] | null {
       name: user.name || 'Demo User',
       email: user.email,
       organizationId: user.organizationId || user.orgId || 'ORG_DEMO',
-      role: user.role || 'EVZONE_OPERATOR',
+      role: (user.role === 'ADMIN' ? 'SUPER_ADMIN' : user.role) || 'SUPER_ADMIN',
       status: 'Active',
       region: 'AFRICA',
       created: new Date(),

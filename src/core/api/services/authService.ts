@@ -54,22 +54,17 @@ export const authService = {
   /**
    * Register a new user
    */
-  async register(data: RegisterRequest): Promise<AuthResponse> {
+  async register(data: RegisterRequest): Promise<AuthResponse | { success: boolean; message: string }> {
     if (DEMO_MODE) {
       throw new ApiException('Demo mode: registration is disabled.', 403)
     }
-    // Backend wraps response in { success: true, data: ... }
-    const wrappedResponse = await apiClient.post<{ success: boolean; data: AuthResponse }>('/auth/register', data, { skipAuth: true })
-    
-    // Extract the actual response from the wrapped structure
-    const response = wrappedResponse.data || wrappedResponse as unknown as AuthResponse
-    
-    // Store tokens after successful registration
-    if (response.accessToken && response.refreshToken) {
-      apiClient.setTokens(response.accessToken, response.refreshToken, response.user)
+    const response = await apiClient.post<any>('/auth/register', data, { skipAuth: true })
+    const actualResponse = response.data || response;
+
+    if (actualResponse.accessToken && actualResponse.refreshToken) {
+      apiClient.setTokens(actualResponse.accessToken, actualResponse.refreshToken, actualResponse.user)
     }
-    
-    return response
+    return actualResponse
   },
 
   /**
@@ -79,17 +74,12 @@ export const authService = {
     if (DEMO_MODE) {
       return demoLogin(data)
     }
-    // Backend wraps response in { success: true, data: ... }
     const wrappedResponse = await apiClient.post<{ success: boolean; data: AuthResponse }>('/auth/login', data, { skipAuth: true })
-    
-    // Extract the actual response from the wrapped structure
     const response = wrappedResponse.data || wrappedResponse as unknown as AuthResponse
-    
-    // Store tokens after successful login
+
     if (response.accessToken && response.refreshToken) {
       apiClient.setTokens(response.accessToken, response.refreshToken, response.user)
     }
-    
     return response
   },
 
@@ -106,15 +96,15 @@ export const authService = {
       { refreshToken } as RefreshTokenRequest,
       { skipAuth: true }
     )
-    
+
     // Extract the actual response from the wrapped structure
     const response = wrappedResponse.data || wrappedResponse as unknown as AuthResponse
-    
+
     // Update stored tokens
     if (response.accessToken && response.refreshToken) {
       apiClient.setTokens(response.accessToken, response.refreshToken, response.user)
     }
-    
+
     return response
   },
 
@@ -156,15 +146,15 @@ export const authService = {
     }
     // Backend wraps response in { success: true, data: ... }
     const wrappedResponse = await apiClient.post<{ success: boolean; data: AuthResponse }>('/auth/otp/verify', data, { skipAuth: true })
-    
+
     // Extract the actual response from the wrapped structure
     const response = wrappedResponse.data || wrappedResponse as unknown as AuthResponse
-    
+
     // Store tokens after successful OTP verification
     if (response.accessToken && response.refreshToken) {
       apiClient.setTokens(response.accessToken, response.refreshToken, response.user)
     }
-    
+
     return response
   },
 
@@ -177,14 +167,14 @@ export const authService = {
     }
     // Backend wraps response in { success: true, data: ... }
     const wrappedResponse = await apiClient.post<{ success: boolean; data: AuthResponse }>('/auth/social/google', { token }, { skipAuth: true })
-    
+
     // Extract the actual response from the wrapped structure
     const response = wrappedResponse.data || wrappedResponse as unknown as AuthResponse
-    
+
     if (response.accessToken && response.refreshToken) {
       apiClient.setTokens(response.accessToken, response.refreshToken, response.user)
     }
-    
+
     return response
   },
 
@@ -197,14 +187,14 @@ export const authService = {
     }
     // Backend wraps response in { success: true, data: ... }
     const wrappedResponse = await apiClient.post<{ success: boolean; data: AuthResponse }>('/auth/social/apple', { token }, { skipAuth: true })
-    
+
     // Extract the actual response from the wrapped structure
     const response = wrappedResponse.data || wrappedResponse as unknown as AuthResponse
-    
+
     if (response.accessToken && response.refreshToken) {
       apiClient.setTokens(response.accessToken, response.refreshToken, response.user)
     }
-    
+
     return response
   },
 

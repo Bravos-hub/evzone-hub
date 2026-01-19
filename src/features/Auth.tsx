@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuthStore } from '@/core/auth/authStore'
 import { PATHS } from '@/app/router/paths'
+import { authService } from '@/core/api/services/authService'
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Auth Pages — Login, Register, Reset Password, Verify Email
@@ -225,10 +226,23 @@ export function Register() {
     }
 
     setLoading(true)
-    await new Promise(r => setTimeout(r, 500))
-    // In real app, call API to register with role/capability and account profile data.
-    navigate(`${PATHS.AUTH.VERIFY_EMAIL}?email=${encodeURIComponent(form.email)}`)
-    setLoading(false)
+    setLoading(true)
+    try {
+      await authService.register({
+        name: form.name,
+        email: form.email,
+        phone: form.phone,
+        password: form.password,
+        role: role,
+        // capability, accountType, etc. mapped execution
+        ownerCapability: needsCapability ? capability : undefined,
+      })
+      navigate(`${PATHS.AUTH.VERIFY_EMAIL}?email=${encodeURIComponent(form.email)}`)
+    } catch (err: any) {
+      setError(err?.message || 'Registration failed. Please try again.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -327,11 +341,10 @@ export function Register() {
                         key={type}
                         type="button"
                         onClick={() => setAccountType(type)}
-                        className={`rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.15em] transition ${
-                          accountType === type
-                            ? 'bg-accent text-white shadow-sm'
-                            : 'text-text-secondary hover:text-text'
-                        }`}
+                        className={`rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.15em] transition ${accountType === type
+                          ? 'bg-accent text-white shadow-sm'
+                          : 'text-text-secondary hover:text-text'
+                          }`}
                       >
                         {type === 'COMPANY' ? 'Company' : 'Individual'}
                       </button>
@@ -362,11 +375,10 @@ export function Register() {
                         key={option.value}
                         type="button"
                         onClick={() => setRole(option.value)}
-                        className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${
-                          role === option.value
-                            ? 'border-accent bg-accent/10 text-accent'
-                            : 'border-border bg-panel text-text-secondary hover:border-accent/40'
-                        }`}
+                        className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${role === option.value
+                          ? 'border-accent bg-accent/10 text-accent'
+                          : 'border-border bg-panel text-text-secondary hover:border-accent/40'
+                          }`}
                       >
                         {option.label}
                       </button>
