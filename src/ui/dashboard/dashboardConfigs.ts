@@ -393,10 +393,10 @@ export const DASHBOARD_CONFIGS: Record<DashboardKey, DashboardConfig> = {
   OWNER: {
     title: 'Owner Dashboard',
     kpiRow: [
-      { id: 'kpi-stations', config: { total: 92, online: 88, variant: 'online' } },
-      { id: 'kpi-revenue', config: { amount: 2080, period: 'Today' } },
-      { id: 'kpi-sessions', config: { count: 529, period: 'Today' } },
-      { id: 'kpi-utilization', config: { value: 67 } },
+      { id: 'kpi-stations', config: { variant: 'online' } },
+      { id: 'kpi-revenue', config: { period: 'Today' } },
+      { id: 'kpi-sessions', config: { period: 'Today' } },
+      { id: 'kpi-utilization', config: {} },
     ],
     rows: [],
   },

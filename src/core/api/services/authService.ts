@@ -54,7 +54,7 @@ export const authService = {
   /**
    * Register a new user
    */
-  async register(data: RegisterRequest): Promise<AuthResponse | { success: boolean; message: string }> {
+  async register(data: RegisterRequest): Promise<AuthResponse> {
     if (DEMO_MODE) {
       throw new ApiException('Demo mode: registration is disabled.', 403)
     }
@@ -64,7 +64,7 @@ export const authService = {
     if (actualResponse.accessToken && actualResponse.refreshToken) {
       apiClient.setTokens(actualResponse.accessToken, actualResponse.refreshToken, actualResponse.user)
     }
-    return actualResponse
+    return actualResponse as AuthResponse
   },
 
   /**

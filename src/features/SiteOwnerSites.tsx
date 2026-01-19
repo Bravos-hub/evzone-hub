@@ -48,6 +48,7 @@ function mapSiteFormToRequest(form: SiteForm, ownerId?: string): CreateSiteReque
     address: form.address.trim(),
     powerCapacityKw: Number.isFinite(powerCapacityKw) ? powerCapacityKw : 0,
     parkingBays: Number.isFinite(parkingBays) ? parkingBays : 0,
+    purpose: form.purpose === 'Commercial' ? 'COMMERCIAL' : 'PERSONAL',
     leaseType: LEASE_TYPE_MAP[form.lease] ?? 'REVENUE_SHARE',
     expectedMonthlyPrice: Number.isFinite(expectedMonthlyPrice ?? NaN) ? expectedMonthlyPrice : undefined,
     expectedFootfall: FOOTFALL_MAP[form.footfall] ?? 'MEDIUM',
@@ -179,13 +180,12 @@ export function SiteOwnerSites() {
                       <td className="text-sm text-muted">{s.address}</td>
                       <td>
                         <span
-                          className={`pill ${
-                            s.status === 'Leased'
+                          className={`pill ${s.status === 'Leased'
                               ? 'approved'
                               : s.status === 'Listed'
-                              ? 'pending'
-                              : 'bg-muted/30 text-muted'
-                          }`}
+                                ? 'pending'
+                                : 'bg-muted/30 text-muted'
+                            }`}
                         >
                           {s.status}
                         </span>

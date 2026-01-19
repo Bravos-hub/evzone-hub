@@ -490,6 +490,23 @@ export interface UpdateSiteRequest {
   status?: SiteStatus
 }
 
+export interface SiteDocument {
+  id: string
+  siteId: string
+  title: string
+  fileName: string
+  fileSize: number
+  fileUrl: string
+  uploadedAt: string
+  uploadedBy?: string
+}
+
+export interface UploadSiteDocumentRequest {
+  siteId: string
+  title: string
+  file: File
+}
+
 // API Error Types
 export interface ApiError {
   message: string

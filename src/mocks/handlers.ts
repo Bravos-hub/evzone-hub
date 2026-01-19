@@ -760,6 +760,174 @@ export const handlers = [
     })
   }),
 
+  // Analytics endpoints
+  http.get(`${baseURL}/analytics/dashboard`, async () => {
+    const stations = mockDb.getStations()
+    const sessions = mockDb.getSessions()
+    const chargePoints = mockDb.getChargePoints()
+
+    // Calculate today's date range
+    const todayStart = new Date()
+    todayStart.setHours(0, 0, 0, 0)
+    const todayEnd = new Date(todayStart)
+    todayEnd.setDate(todayStart.getDate() + 1)
+
+    // Count online vs total stations
+    const totalStations = stations.length
+    const onlineStations = stations.filter(s => s.status === 'Online').length
+    const offlineStations = stations.filter(s => s.status === 'Offline').length
+    const maintenanceStations = stations.filter(s => s.status === 'Maintenance').length
+
+    // Count total charge points
+    const totalChargers = chargePoints.length
+    const onlineChargers = chargePoints.filter(cp => cp.status === 'Online').length
+    const offlineChargers = chargePoints.filter(cp => cp.status === 'Offline').length
+    const maintenanceChargers = chargePoints.filter(cp => cp.status === 'Maintenance').length
+
+    // Filter today's sessions
+    const todaySessions = sessions.filter(s => {
+      const start = s.start instanceof Date ? s.start : new Date(s.start)
+      return start >= todayStart && start < todayEnd
+    })
+
+    // Calculate today's metrics
+    const todaySessionCount = todaySessions.length
+    const todayEnergyDelivered = todaySessions.reduce((sum, s) => sum + (s.energyKwh || 0), 0)
+    const todayRevenue = todaySessions.reduce((sum, s) => sum + (s.amount || 0), 0)
+
+    // Calculate active sessions
+    const activeSessions = sessions.filter(s => s.status === 'Active' || !s.end).length
+
+    // Calculate total power (sum of all charge point capacities)
+    const totalPower = chargePoints.reduce((sum, cp) => {
+      const maxPower = Math.max(...(cp.connectors?.map(c => c.maxPowerKw) || [0]))
+      return sum + maxPower
+    }, 0)
+
+    // Calculate utilization (active sessions / total chargers * 100)
+    const utilization = totalChargers > 0 ? Math.round((activeSessions / totalChargers) * 100) : 0
+
+    // Generate revenue trend for last 7 days
+    const revenueTrend: RevenueTrendPoint[] = []
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(todayStart)
+      date.setDate(date.getDate() - i)
+      const nextDate = new Date(date)
+      nextDate.setDate(date.getDate() + 1)
+
+      const daySessions = sessions.filter(s => {
+        const start = s.start instanceof Date ? s.start : new Date(s.start)
+        return start >= date && start < nextDate
+      })
+
+      const dayRevenue = daySessions.reduce((sum, s) => sum + (s.amount || 0), 0)
+      // Mock cost as 30% of revenue
+      const dayCost = dayRevenue * 0.3
+
+      revenueTrend.push({
+        date: date.toISOString().split('T')[0],
+        revenue: dayRevenue,
+        cost: dayCost
+      })
+    }
+
+    // Generate utilization heatmap (sample data for past week, hourly)
+    const utilizationHeatmap: UtilizationHour[] = []
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+    for (let day = 0; day < 7; day++) {
+      for (let hour = 0; hour < 24; hour++) {
+        // Simulate higher utilization during peak hours (8am-8pm)
+        const isPeak = hour >= 8 && hour <= 20
+        const baseUtil = isPeak ? 40 : 15
+        const randomVariation = Math.random() * 30
+        utilizationHeatmap.push({
+          day: days[day],
+          hour,
+          utilization: Math.min(100, Math.round(baseUtil + randomVariation))
+        })
+      }
+    }
+
+    // Get top performing stations
+    const stationPerformance: StationPerformanceRank[] = stations.slice(0, 5).map(station => {
+      const stationSessions = sessions.filter(s => s.stationId === station.id)
+      const stationRevenue = stationSessions.reduce((sum, s) => sum + (s.amount || 0), 0)
+      const stationSessionCount = stationSessions.length
+      // Calculate uptime as percentage (mock: 95-100%)
+      const uptime = 95 + Math.random() * 5
+
+      return {
+        stationId: station.id,
+        stationName: station.name,
+        revenue: stationRevenue,
+        uptime: Math.round(uptime * 10) / 10,
+        sessions: stationSessionCount
+      }
+    }).sort((a, b) => b.revenue - a.revenue)
+
+    // Count swap sessions for today (if any)
+    const todaySwaps = mockSwapSessions.filter(s => {
+      const start = s.start instanceof Date ? s.start : new Date(s.start)
+      return start >= todayStart && start < todayEnd
+    }).length
+
+    // Count ready batteries
+    const batteries = mockDb.getSwapBatteries()
+    const readyBatteries = batteries.filter(b => b.status === 'Ready').length
+    const chargingBatteries = batteries.filter(b => b.status === 'Charging').length
+    const maintenanceBatteries = batteries.filter(b => b.status === 'Maintenance').length
+    const avgBatteryHealth = batteries.length > 0
+      ? batteries.reduce((sum, b) => sum + (b.health || 100), 0) / batteries.length
+      : 100
+    const lowHealthBatteries = batteries.filter(b => (b.health || 100) < 80).length
+
+    const dashboardMetrics: DashboardMetrics = {
+      realTime: {
+        activeSessions,
+        onlineChargers,
+        totalPower: Math.round(totalPower),
+        currentRevenue: todayRevenue
+      },
+      today: {
+        sessions: todaySessionCount,
+        energyDelivered: Math.round(todayEnergyDelivered * 100) / 100,
+        revenue: todayRevenue
+      },
+      chargers: {
+        total: totalChargers,
+        online: onlineChargers,
+        offline: offlineChargers,
+        maintenance: maintenanceChargers
+      },
+      trends: {
+        revenue: revenueTrend,
+        utilization: utilizationHeatmap,
+        topStations: stationPerformance,
+        swaps: revenueTrend.map(rt => ({
+          date: rt.date,
+          count: Math.floor(Math.random() * 20) + 5 // Mock swap count
+        }))
+      },
+      swaps: {
+        today: todaySwaps,
+        total: mockSwapSessions.length,
+        avgTime: '4.2 min'
+      },
+      inventory: {
+        ready: readyBatteries,
+        charging: chargingBatteries,
+        maintenance: maintenanceBatteries,
+        total: batteries.length
+      },
+      batteryHealth: {
+        average: Math.round(avgBatteryHealth * 10) / 10,
+        lowHealthCount: lowHealthBatteries
+      }
+    }
+
+    return HttpResponse.json(dashboardMetrics)
+  }),
+
   // Booking endpoints
   http.get(`${baseURL}/bookings`, async () => {
     return HttpResponse.json(mockBookings)

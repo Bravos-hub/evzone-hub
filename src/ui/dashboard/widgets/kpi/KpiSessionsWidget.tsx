@@ -1,5 +1,6 @@
 import type { WidgetProps } from '../../types'
 import { KpiGenericWidget, type Trend } from './KpiGenericWidget'
+import { useDashboard } from '@/core/api/hooks/useDashboard'
 
 export type KpiSessionsConfig = {
   count: number
@@ -15,7 +16,12 @@ function fmtCompact(n: number) {
 }
 
 export function KpiSessionsWidget({ config }: WidgetProps<KpiSessionsConfig>) {
-  const { count = 0, period = 'Today', trend, delta } = config ?? {}
+  const { data: dashboard } = useDashboard()
+
+  const count = config?.count ?? dashboard?.today?.sessions ?? 0
+  const period = config?.period ?? 'Today'
+  const trend = config?.trend
+  const delta = config?.delta
 
   return (
     <KpiGenericWidget

@@ -82,7 +82,7 @@ export function Sites() {
         name: site.name,
         address: site.address,
         stations: (site as any).stationsCount ?? (site.purpose === 'COMMERCIAL' ? 1 : 0),
-        revenue: Math.floor(Math.random() * 5000),
+        revenue: 0, // TODO: Calculate from station sessions when backend supports site-level revenue
         status: site.status === 'ACTIVE' ? 'Active' : site.status === 'INACTIVE' ? 'Pending' : 'Leased',
         type: isRented ? 'Rented' : 'Owned' as Tab
       }

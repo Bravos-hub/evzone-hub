@@ -1,5 +1,6 @@
 import type { WidgetProps } from '../../types'
 import { KpiGenericWidget, type Trend } from './KpiGenericWidget'
+import { useDashboard } from '@/core/api/hooks/useDashboard'
 
 export type KpiRevenueConfig = {
   amount: number
@@ -17,7 +18,13 @@ function fmtCurrency(n: number, currency = '$') {
 }
 
 export function KpiRevenueWidget({ config }: WidgetProps<KpiRevenueConfig>) {
-  const { amount = 0, currency = '$', period = 'Today', trend, delta } = config ?? {}
+  const { data: dashboard } = useDashboard()
+
+  const amount = config?.amount ?? dashboard?.today?.revenue ?? 0
+  const currency = config?.currency ?? '$'
+  const period = config?.period ?? 'Today'
+  const trend = config?.trend
+  const delta = config?.delta
 
   return (
     <KpiGenericWidget
