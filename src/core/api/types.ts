@@ -26,6 +26,16 @@ export interface RegisterRequest {
   assignedStations?: string[]
 }
 
+export interface InviteUserRequest {
+  email: string
+  role: string
+  ownerCapability?: OwnerCapability
+  assignedStations?: string[]
+  orgId?: string
+  organizationId?: string
+  password?: string
+}
+
 export interface AuthResponse {
   accessToken: string
   refreshToken: string
@@ -414,6 +424,70 @@ export interface Organization {
 export interface CreateOrganizationRequest {
   name: string
   type?: string
+}
+
+// Site Types
+export type SitePurpose = 'PERSONAL' | 'COMMERCIAL'
+export type LeaseType = 'REVENUE_SHARE' | 'FIXED_RENT' | 'HYBRID'
+export type Footfall = 'LOW' | 'MEDIUM' | 'HIGH' | 'VERY_HIGH'
+export type SiteLeaseType = 'REVENUE_SHARE' | 'FIXED_RENT' | 'HYBRID'
+export type SiteFootfall = 'LOW' | 'MEDIUM' | 'HIGH' | 'VERY_HIGH'
+export type SiteStatus = 'PENDING' | 'ACTIVE' | 'INACTIVE'
+
+export interface Site {
+  id: string
+  name: string
+  city: string
+  address: string
+  powerCapacityKw: number
+  parkingBays: number
+  purpose: SitePurpose
+  leaseType?: LeaseType
+  expectedMonthlyPrice?: number
+  expectedFootfall?: Footfall
+  latitude?: number
+  longitude?: number
+  photos: string[]
+  amenities: string[]
+  tags: string[]
+  ownerId: string
+  status: SiteStatus
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CreateSiteRequest {
+  name: string
+  city: string
+  address: string
+  powerCapacityKw: number
+  parkingBays: number
+  purpose: SitePurpose
+  leaseType?: LeaseType
+  expectedMonthlyPrice?: number
+  expectedFootfall?: Footfall
+  latitude?: number
+  longitude?: number
+  amenities?: string[]
+  tags?: string[]
+  ownerId?: string
+}
+
+export interface UpdateSiteRequest {
+  name?: string
+  city?: string
+  address?: string
+  powerCapacityKw?: number
+  parkingBays?: number
+  purpose?: SitePurpose
+  leaseType?: LeaseType
+  expectedMonthlyPrice?: number
+  expectedFootfall?: Footfall
+  latitude?: number
+  longitude?: number
+  amenities?: string[]
+  tags?: string[]
+  status?: SiteStatus
 }
 
 // API Error Types

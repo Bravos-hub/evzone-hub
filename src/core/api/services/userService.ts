@@ -6,7 +6,7 @@
 import { apiClient } from '../client'
 import { DEMO_MODE } from '../config'
 import { ApiException } from '../errors'
-import type { User, UpdateUserRequest, PaginatedResponse } from '../types'
+import type { User, UpdateUserRequest, PaginatedResponse, InviteUserRequest } from '../types'
 
 function normalizeMe(user: User): User {
   const orgId = user.orgId || user.organizationId
@@ -111,14 +111,7 @@ export const userService = {
   /**
    * Invite a new user
    */
-  async invite(data: {
-    email: string
-    role: string
-    ownerCapability?: User['ownerCapability']
-    assignedStations?: User['assignedStations']
-    orgId?: string
-    organizationId?: string
-  }): Promise<void> {
+  async invite(data: InviteUserRequest): Promise<void> {
     return apiClient.post<void>('/users/invite', data)
   },
 }

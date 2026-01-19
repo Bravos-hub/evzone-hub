@@ -1,36 +1,36 @@
 import { useState, useEffect } from 'react'
-import type { Station } from '@/core/api/types'
+import type { Site } from '@/core/api/types'
 
 type SiteEditModalProps = {
     open: boolean
-    station: Station
-    onConfirm: (data: { capacity: number; parkingBays: number }) => void
+    site: Site
+    onConfirm: (data: { powerCapacityKw: number; parkingBays: number }) => void
     onCancel: () => void
     loading?: boolean
 }
 
 export function SiteEditModal({
     open,
-    station,
+    site,
     onConfirm,
     onCancel,
     loading = false,
 }: SiteEditModalProps) {
-    const [capacity, setCapacity] = useState(station.capacity || 0)
-    const [parkingBays, setParkingBays] = useState((station as any).parkingBays || 0)
+    const [capacity, setCapacity] = useState(site.powerCapacityKw || 0)
+    const [parkingBays, setParkingBays] = useState(site.parkingBays || 0)
 
     useEffect(() => {
         if (open) {
-            setCapacity(station.capacity || 0)
-            setParkingBays((station as any).parkingBays || 0)
+            setCapacity(site.powerCapacityKw || 0)
+            setParkingBays(site.parkingBays || 0)
         }
-    }, [open, station])
+    }, [open, site])
 
     if (!open) return null
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
-        onConfirm({ capacity, parkingBays })
+        onConfirm({ powerCapacityKw: capacity, parkingBays })
     }
 
     return (

@@ -19,7 +19,8 @@ import type {
   Tenant,
   TenantApplication,
   LeaseContract,
-  ApplicationDocument
+  ApplicationDocument,
+  Site
 } from '@/core/api/types'
 import type { Battery as ApiBattery } from '@/core/api/types'
 import { mockChargingSessions } from './sessions'

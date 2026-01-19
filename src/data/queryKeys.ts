@@ -72,6 +72,12 @@ export const queryKeys = {
     detail: (id: string) => ['organizations', id] as const,
   },
 
+  // Sites
+  sites: {
+    all: (filters?: Record<string, unknown>) => ['sites', filters] as const,
+    detail: (id: string) => ['sites', id] as const,
+  },
+
   // Swap Providers
   providers: {
     all: (filters?: Record<string, unknown>) => ['providers', filters] as const,

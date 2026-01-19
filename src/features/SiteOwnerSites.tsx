@@ -5,11 +5,12 @@ import { useAuthStore } from '@/core/auth/authStore'
 import { getPermissionsForFeature } from '@/constants/permissions'
 import { regionInScope } from '@/core/scope/utils'
 import { useScopeStore } from '@/core/scope/scopeStore'
-import { useStations, useCreateStation } from '@/core/api/hooks/useStations'
+import { useSites, useCreateSite } from '@/core/api/hooks/useSites'
 import { AddSite, type SiteForm } from './AddSite'
 import { getErrorMessage } from '@/core/api/errors'
 import { auditLogger } from '@/core/utils/auditLogger'
 import { PATHS } from '@/app/router/paths'
+import type { CreateSiteRequest, SiteFootfall, SiteLeaseType } from '@/core/api/types'
 
 type SiteStatus = 'Draft' | 'Listed' | 'Leased'
 
@@ -23,14 +24,49 @@ type Site = {
   payout: number
 }
 
+const LEASE_TYPE_MAP: Record<string, SiteLeaseType> = {
+  'Revenue share': 'REVENUE_SHARE',
+  'Fixed rent': 'FIXED_RENT',
+  Hybrid: 'HYBRID',
+}
+
+const FOOTFALL_MAP: Record<string, SiteFootfall> = {
+  Low: 'LOW',
+  Medium: 'MEDIUM',
+  High: 'HIGH',
+  'Very high': 'VERY_HIGH',
+}
+
+function mapSiteFormToRequest(form: SiteForm, ownerId?: string): CreateSiteRequest {
+  const powerCapacityKw = Number(form.power)
+  const parkingBays = Number(form.bays)
+  const expectedMonthlyPrice = form.monthlyPrice ? Number(form.monthlyPrice) : undefined
+
+  return {
+    name: form.name.trim(),
+    city: form.city.trim(),
+    address: form.address.trim(),
+    powerCapacityKw: Number.isFinite(powerCapacityKw) ? powerCapacityKw : 0,
+    parkingBays: Number.isFinite(parkingBays) ? parkingBays : 0,
+    leaseType: LEASE_TYPE_MAP[form.lease] ?? 'REVENUE_SHARE',
+    expectedMonthlyPrice: Number.isFinite(expectedMonthlyPrice ?? NaN) ? expectedMonthlyPrice : undefined,
+    expectedFootfall: FOOTFALL_MAP[form.footfall] ?? 'MEDIUM',
+    latitude: form.latitude ? Number(form.latitude) : undefined,
+    longitude: form.longitude ? Number(form.longitude) : undefined,
+    amenities: Array.from(form.amenities),
+    tags: form.tags,
+    ownerId,
+  }
+}
+
 export function SiteOwnerSites() {
   const { user } = useAuthStore()
   const perms = getPermissionsForFeature(user?.role, 'sites')
   const { scope } = useScopeStore()
   const navigate = useNavigate()
 
-  const { data: sitesData, isLoading, error } = useStations()
-  const createStationMutation = useCreateStation()
+  const { data: sitesData, isLoading, error } = useSites()
+  const createSiteMutation = useCreateSite()
 
   const [status, setStatus] = useState<SiteStatus | 'All'>('All')
   const [q, setQ] = useState('')
@@ -40,14 +76,14 @@ export function SiteOwnerSites() {
   // Map stations to sites format
   const sites = useMemo(() => {
     if (!sitesData) return []
-    return sitesData.map((station) => ({
-      id: station.id,
-      name: station.name,
-      address: station.address,
-      region: 'AFRICA', // Default region, could be from station data
-      status: station.status === 'ACTIVE' ? 'Listed' : station.status === 'INACTIVE' ? 'Draft' : 'Leased' as SiteStatus,
-      slots: 5, // Default, could be calculated from charge points
-      payout: Math.floor(Math.random() * 5000), // Mock payout, would come from analytics
+    return sitesData.map((site) => ({
+      id: site.id,
+      name: site.name,
+      address: site.address,
+      region: 'AFRICA',
+      status: site.status === 'ACTIVE' ? 'Listed' : site.status === 'INACTIVE' ? 'Draft' : 'Leased' as SiteStatus,
+      slots: site.parkingBays,
+      payout: Math.floor(Math.random() * 5000),
     }))
   }, [sitesData])
 
@@ -61,16 +97,12 @@ export function SiteOwnerSites() {
   const handleAddSite = async (newSite: SiteForm) => {
     try {
       setErrorMessage('')
-      const station = await createStationMutation.mutateAsync({
-        code: `ST-${Date.now()}`,
-        name: newSite.name,
-        address: `${newSite.address}, ${newSite.city}`,
-        latitude: parseFloat(newSite.latitude) || 0,
-        longitude: parseFloat(newSite.longitude) || 0,
-        type: 'CHARGING',
-        tags: Array.from(newSite.tags),
-      })
-      auditLogger.stationCreated(station.id, station.name)
+      if (!user?.id) {
+        setErrorMessage('Missing ownerId for site creation.')
+        return
+      }
+      const site = await createSiteMutation.mutateAsync(mapSiteFormToRequest(newSite, user.id))
+      auditLogger.stationCreated(site.id, site.name)
       setIsAdding(false)
     } catch (err) {
       setErrorMessage(getErrorMessage(err))
@@ -183,4 +215,3 @@ export function SiteOwnerSites() {
     </DashboardLayout>
   )
 }
-

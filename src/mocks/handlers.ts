@@ -7,7 +7,7 @@
 import { http, HttpResponse } from 'msw'
 import { mockUsers } from '@/data/mockDb/users'
 import { mockChargingSessions, mockSwapSessions } from '@/data/mockDb/sessions'
-import type { User as ApiUser, Station, Booking, ChargingSession, WalletBalance, WalletTransaction, Organization, DashboardMetrics, RevenueTrendPoint, UtilizationHour, StationPerformanceRank, Tenant, TenantApplication, LeaseContract, NoticeRequest, Notice, PaymentMethod, CreatePaymentMethodRequest, WithdrawalRequest, WithdrawalTransaction, NotificationItem, ChargePoint, SwapProvider, SwapBay, SwapBayInput, Battery, BatteryInput } from '@/core/api/types'
+import type { User as ApiUser, Station, Booking, ChargingSession, WalletBalance, WalletTransaction, Organization, DashboardMetrics, RevenueTrendPoint, UtilizationHour, StationPerformanceRank, Tenant, TenantApplication, LeaseContract, NoticeRequest, Notice, PaymentMethod, CreatePaymentMethodRequest, WithdrawalRequest, WithdrawalTransaction, NotificationItem, ChargePoint, SwapProvider, SwapBay, SwapBayInput, Battery, BatteryInput, Site, CreateSiteRequest } from '@/core/api/types'
 import type { Role, OwnerCapability } from '@/core/auth/types'
 import type { ChargePoint as DomainChargePoint } from '@/core/types/domain'
 import { API_CONFIG } from '@/core/api/config'
@@ -146,6 +146,8 @@ let mockNotifications: NotificationItem[] = [
     targetPath: '/tenants?tab=applications',
   },
 ]
+
+let mockSites: Site[] = []
 
 // Helper to get auth token from request
 function getAuthToken(request: Request): string | null {
@@ -323,6 +325,7 @@ export const handlers = [
       organizationId: data.organizationId || data.orgId,
       ownerCapability: data.ownerCapability,
       assignedStations: data.assignedStations,
+      initialPassword: data.password,
       status: 'Invited',
       created: new Date(),
       lastSeen: new Date(),
@@ -1530,6 +1533,7 @@ export const handlers = [
       organizationId: body.organizationId || body.orgId,
       ownerCapability: body.ownerCapability,
       assignedStations: body.assignedStations,
+      initialPassword: body.password,
       status: 'Pending',
       created: new Date(),
       lastSeen: new Date(),
@@ -1599,16 +1603,54 @@ export const handlers = [
   // Site Owner - Sites endpoints
   http.get(`${baseURL}/sites`, async () => {
     const stations = mockDb.getStations()
-    const sites = stations.map(s => ({
+    const sites: Site[] = stations.map(s => ({
       id: s.id,
       name: s.name,
+      city: s.city || 'Unknown',
       address: s.address,
-      region: 'AFRICA',
-      status: s.status === 'Online' ? 'Listed' : s.status === 'Offline' ? 'Draft' : 'Leased',
-      slots: 5,
-      payout: Math.floor(Math.random() * 5000),
+      powerCapacityKw: s.capacity ?? 0,
+      parkingBays: s.parkingBays ?? 0,
+      leaseType: 'REVENUE_SHARE',
+      expectedMonthlyPrice: undefined,
+      expectedFootfall: 'MEDIUM',
+      latitude: s.latitude,
+      longitude: s.longitude,
+      photos: [],
+      amenities: [],
+      tags: s.tags ?? [],
+      ownerId: s.organizationId || 'ORG_DEMO',
+      status: s.status === 'Online' ? 'ACTIVE' : s.status === 'Offline' ? 'INACTIVE' : 'PENDING',
+      createdAt: s.created?.toISOString?.() || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     }))
-    return HttpResponse.json(sites)
+    return HttpResponse.json([...sites, ...mockSites])
+  }),
+
+  http.post(`${baseURL}/sites`, async ({ request }) => {
+    const body = await request.json() as CreateSiteRequest
+    const now = new Date().toISOString()
+    const created: Site = {
+      id: `SITE_${Date.now()}`,
+      name: body.name,
+      city: body.city,
+      address: body.address,
+      powerCapacityKw: body.powerCapacityKw,
+      parkingBays: body.parkingBays,
+      leaseType: body.leaseType,
+      expectedMonthlyPrice: body.expectedMonthlyPrice,
+      expectedFootfall: body.expectedFootfall,
+      latitude: body.latitude,
+      longitude: body.longitude,
+      photos: [],
+      amenities: body.amenities ?? [],
+      tags: body.tags ?? [],
+      ownerId: body.ownerId || 'ORG_DEMO',
+      status: 'PENDING',
+      createdAt: now,
+      updatedAt: now,
+    }
+    mockSites.push(created)
+    return HttpResponse.json(created, { status: 201 })
   }),
 
   // Applications endpoints

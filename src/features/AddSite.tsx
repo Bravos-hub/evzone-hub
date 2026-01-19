@@ -7,6 +7,7 @@ export type SiteForm = {
     city: string
     power: string
     bays: string
+    purpose: string
     lease: string
     footfall: string
     monthlyPrice: string
@@ -41,6 +42,7 @@ export function AddSite({ onSuccess, onCancel, isOnboarding = false, isFirstSite
         city: 'Kampala',
         power: '150',
         bays: '10',
+        purpose: 'Commercial',
         lease: 'Revenue share',
         footfall: 'Medium',
         monthlyPrice: '',
@@ -179,26 +181,38 @@ export function AddSite({ onSuccess, onCancel, isOnboarding = false, isFirstSite
                         <span className="text-sm font-semibold">Parking bays</span>
                         <input type="number" value={form.bays} onChange={(e) => update('bays', e.target.value)} className="input bg-background" />
                     </label>
-                    <label className="flex flex-col gap-2">
-                        <span className="text-sm font-semibold">Lease type</span>
-                        <select value={form.lease} onChange={(e) => update('lease', e.target.value)} className="select bg-background font-medium">
-                            {['Revenue share', 'Fixed rent'].map((o) => (
+                    <label className="flex flex-col gap-2 sm:col-span-2">
+                        <span className="text-sm font-semibold">Purpose</span>
+                        <select value={form.purpose} onChange={(e) => update('purpose', e.target.value)} className="select bg-background font-medium">
+                            {['Personal', 'Commercial'].map((o) => (
                                 <option key={o}>{o}</option>
                             ))}
                         </select>
                     </label>
-                    <label className="flex flex-col gap-2">
-                        <span className="text-sm font-semibold">Expected Monthly Price ($)</span>
-                        <input type="number" value={form.monthlyPrice} onChange={(e) => update('monthlyPrice', e.target.value)} className="input bg-background" placeholder="Optional" />
-                    </label>
-                    <label className="flex flex-col gap-2">
-                        <span className="text-sm font-semibold">Expected Footfall</span>
-                        <select value={form.footfall} onChange={(e) => update('footfall', e.target.value)} className="select bg-background font-medium">
-                            {['Low', 'Medium', 'High', 'Very high'].map((o) => (
-                                <option key={o}>{o}</option>
-                            ))}
-                        </select>
-                    </label>
+                    {form.purpose === 'Commercial' && (
+                        <>
+                            <label className="flex flex-col gap-2">
+                                <span className="text-sm font-semibold">Lease type</span>
+                                <select value={form.lease} onChange={(e) => update('lease', e.target.value)} className="select bg-background font-medium">
+                                    {['Revenue share', 'Fixed rent', 'Hybrid'].map((o) => (
+                                        <option key={o}>{o}</option>
+                                    ))}
+                                </select>
+                            </label>
+                            <label className="flex flex-col gap-2">
+                                <span className="text-sm font-semibold">Expected Monthly Price ($)</span>
+                                <input type="number" value={form.monthlyPrice} onChange={(e) => update('monthlyPrice', e.target.value)} className="input bg-background" placeholder="Optional" />
+                            </label>
+                            <label className="flex flex-col gap-2 sm:col-span-2">
+                                <span className="text-sm font-semibold">Expected Footfall</span>
+                                <select value={form.footfall} onChange={(e) => update('footfall', e.target.value)} className="select bg-background font-medium">
+                                    {['Low', 'Medium', 'High', 'Very high'].map((o) => (
+                                        <option key={o}>{o}</option>
+                                    ))}
+                                </select>
+                            </label>
+                        </>
+                    )}
                 </div>
 
                 <div className="grid sm:grid-cols-2 gap-5">
