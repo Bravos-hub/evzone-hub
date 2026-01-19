@@ -2,7 +2,8 @@ import { useMemo } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { PATHS } from '@/app/router/paths'
-import { useStation, useStationStats } from '@/core/api/hooks/useStations'
+import { useSite, useUpdateSite } from '@/core/api/hooks/useSites'
+import { useStationStats } from '@/core/api/hooks/useStations'
 import { useChargePointsByStation } from '@/core/api/hooks/useChargePoints'
 import { useMe } from '@/core/api/hooks/useAuth'
 import { useTenants } from '@/core/api/hooks/useTenants'
@@ -10,20 +11,19 @@ import { ROLE_GROUPS, isInGroup } from '@/constants/roles'
 import { StationStatusPill } from '@/ui/components/StationStatusPill'
 import { SiteEditModal } from '@/modals'
 import { useState } from 'react'
-import { useUpdateStation } from '@/core/api/hooks/useStations'
 
 export function SiteDetail() {
     const { id } = useParams<{ id: string }>()
     const nav = useNavigate()
 
-    const { data: station, isLoading: loadingStation, error: stationError } = useStation(id!)
+    const { data: site, isLoading: loadingSite, error: siteError } = useSite(id!)
     const { data: stats, isLoading: loadingStats } = useStationStats(id!)
     const { data: chargePoints, isLoading: loadingCP } = useChargePointsByStation(id!)
     const { data: user } = useMe()
     const { data: tenants, isLoading: loadingTenants } = useTenants({ siteId: id })
 
     const [isEditModalOpen, setIsEditModalOpen] = useState(false)
-    const updateStation = useUpdateStation()
+    const updateSite = useUpdateSite()
 
     const canManage = useMemo(() => {
         if (!user) return false
@@ -39,7 +39,7 @@ export function SiteDetail() {
         { id: 'DOC-S3', title: 'Electricity Utility Approval', date: '2024-08-20', size: '850 KB' },
     ]
 
-    if (loadingStation || loadingStats || loadingCP || loadingTenants) {
+    if (loadingSite || loadingStats || loadingCP || loadingTenants) {
         return (
             <DashboardLayout pageTitle="Site Details">
                 <div className="flex items-center justify-center h-64">
@@ -49,7 +49,7 @@ export function SiteDetail() {
         )
     }
 
-    if (stationError || !station) {
+    if (siteError || !site) {
         return (
             <DashboardLayout pageTitle="Site Details">
                 <div className="p-8 text-center text-red-500">
@@ -73,12 +73,12 @@ export function SiteDetail() {
                 <Link to={PATHS.SITE_OWNER.SITES} className="text-sm text-subtle hover:text-text mb-2 inline-block">← Back to My Sites</Link>
                 <div className="flex items-center justify-between">
                     <div>
-                        <h1 className="text-3xl font-bold">{station.name}</h1>
-                        <p className="text-muted">{station.address}</p>
+                        <h1 className="text-3xl font-bold">{site.name}</h1>
+                        <p className="text-muted">{site.address}</p>
                     </div>
                     <div className="flex items-center gap-4">
-                        <span className={`pill ${station.status === 'ACTIVE' ? 'approved' : station.status === 'MAINTENANCE' ? 'active' : 'declined'} text-lg px-4 py-1`}>
-                            {station.status}
+                        <span className={`pill ${site.status === 'ACTIVE' ? 'approved' : site.status === 'MAINTENANCE' ? 'active' : 'declined'} text-lg px-4 py-1`}>
+                            {site.status}
                         </span>
                         {user?.role === 'SITE_OWNER' && (
                             <button
@@ -103,7 +103,7 @@ export function SiteDetail() {
                 </div>
                 <div className="card">
                     <div className="text-xs text-muted mb-1">Power Capacity</div>
-                    <div className="text-2xl font-bold">{station.capacity || 0} kW</div>
+                    <div className="text-2xl font-bold">{site.powerCapacityKw || 0} kW</div>
                 </div>
                 <div className="card">
                     <div className="text-xs text-muted mb-1">Total Energy</div>
@@ -230,14 +230,14 @@ export function SiteDetail() {
                     </div>
                 </div>
             </div>
-            {station && (
+            {site && (
                 <SiteEditModal
                     open={isEditModalOpen}
-                    station={station}
-                    loading={updateStation.isPending}
+                    site={site}
+                    loading={updateSite.isPending}
                     onCancel={() => setIsEditModalOpen(false)}
                     onConfirm={(data) => {
-                        updateStation.mutate({ id: station.id, data }, {
+                        updateSite.mutate({ id: site.id, data }, {
                             onSuccess: () => setIsEditModalOpen(false)
                         })
                     }}

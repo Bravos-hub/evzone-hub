@@ -316,6 +316,7 @@ export const handlers = [
       assignedStations?: string[]
       orgId?: string
       organizationId?: string
+      password?: string
     }
     const newUser: any = {
       id: `u-${Date.now()}`,
@@ -1524,6 +1525,7 @@ export const handlers = [
       assignedStations?: string[]
       orgId?: string
       organizationId?: string
+      password?: string
     }
     const newUser = {
       id: `u-${Date.now()}`,
@@ -1610,6 +1612,7 @@ export const handlers = [
       address: s.address,
       powerCapacityKw: s.capacity ?? 0,
       parkingBays: s.parkingBays ?? 0,
+      purpose: 'COMMERCIAL',
       leaseType: 'REVENUE_SHARE',
       expectedMonthlyPrice: undefined,
       expectedFootfall: 'MEDIUM',
@@ -1636,6 +1639,7 @@ export const handlers = [
       address: body.address,
       powerCapacityKw: body.powerCapacityKw,
       parkingBays: body.parkingBays,
+      purpose: body.purpose || 'COMMERCIAL',
       leaseType: body.leaseType,
       expectedMonthlyPrice: body.expectedMonthlyPrice,
       expectedFootfall: body.expectedFootfall,
@@ -1651,6 +1655,42 @@ export const handlers = [
     }
     mockSites.push(created)
     return HttpResponse.json(created, { status: 201 })
+  }),
+
+  http.get(`${baseURL}/sites/:id`, async ({ params }) => {
+    // Check mockSites first
+    const site = mockSites.find(s => s.id === params.id)
+    if (site) return HttpResponse.json(site)
+
+    // Fallback to stations mapped as sites
+    const { mockDb } = await import('@/data/mockDb')
+    const station = mockDb.getStation(params.id as string)
+    if (station) {
+      const mappedSite: Site = {
+        id: station.id,
+        name: station.name,
+        city: station.city || 'Unknown',
+        address: station.address,
+        powerCapacityKw: station.capacity ?? 0,
+        parkingBays: station.parkingBays ?? 0,
+        purpose: 'COMMERCIAL',
+        leaseType: 'REVENUE_SHARE',
+        expectedMonthlyPrice: undefined,
+        expectedFootfall: 'MEDIUM',
+        latitude: station.latitude,
+        longitude: station.longitude,
+        photos: [],
+        amenities: [],
+        tags: station.tags ?? [],
+        ownerId: station.organizationId || 'ORG_DEMO',
+        status: station.status === 'Online' ? 'ACTIVE' : station.status === 'Offline' ? 'INACTIVE' : 'PENDING',
+        createdAt: station.created?.toISOString?.() || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }
+      return HttpResponse.json(mappedSite)
+    }
+
+    return new HttpResponse(null, { status: 404 })
   }),
 
   // Applications endpoints

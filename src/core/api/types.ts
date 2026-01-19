@@ -432,7 +432,7 @@ export type LeaseType = 'REVENUE_SHARE' | 'FIXED_RENT' | 'HYBRID'
 export type Footfall = 'LOW' | 'MEDIUM' | 'HIGH' | 'VERY_HIGH'
 export type SiteLeaseType = 'REVENUE_SHARE' | 'FIXED_RENT' | 'HYBRID'
 export type SiteFootfall = 'LOW' | 'MEDIUM' | 'HIGH' | 'VERY_HIGH'
-export type SiteStatus = 'PENDING' | 'ACTIVE' | 'INACTIVE'
+export type SiteStatus = 'PENDING' | 'ACTIVE' | 'INACTIVE' | 'MAINTENANCE'
 
 export interface Site {
   id: string

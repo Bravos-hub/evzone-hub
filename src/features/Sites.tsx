@@ -81,7 +81,7 @@ export function Sites() {
         id: site.id,
         name: site.name,
         address: site.address,
-        stations: 1,
+        stations: (site as any).stationsCount ?? (site.purpose === 'COMMERCIAL' ? 1 : 0),
         revenue: Math.floor(Math.random() * 5000),
         status: site.status === 'ACTIVE' ? 'Active' : site.status === 'INACTIVE' ? 'Pending' : 'Leased',
         type: isRented ? 'Rented' : 'Owned' as Tab
