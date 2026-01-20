@@ -107,27 +107,58 @@ export function SiteDetail() {
                 </div>
             </div>
 
+
             {/* Site Photos Gallery */}
-            {site.photos && site.photos.length > 0 && (
-                <div className="card mb-6">
-                    <h2 className="text-xl font-bold mb-4">Site Photos</h2>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="card mb-6">
+                <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-xl font-bold">Site Photos</h2>
+                    {canManage && (
+                        <button className="btn text-xs">
+                            + Add Photos
+                        </button>
+                    )}
+                </div>
+                {!site.photos || site.photos.length === 0 ? (
+                    <div className="text-center py-12 border-2 border-dashed border-border rounded-lg bg-muted/10">
+                        <svg className="w-16 h-16 mx-auto text-muted mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <p className="text-muted text-sm">No photos uploaded yet</p>
+                        {canManage && (
+                            <p className="text-subtle text-xs mt-1">Upload photos to showcase your site</p>
+                        )}
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                         {site.photos.map((photo, index) => (
-                            <div key={index} className="relative aspect-video rounded-lg overflow-hidden border border-border hover:border-accent transition-colors group cursor-pointer">
+                            <div
+                                key={index}
+                                className="relative aspect-[4/3] rounded-lg overflow-hidden border border-border hover:border-accent transition-all duration-300 group cursor-pointer shadow-sm hover:shadow-lg"
+                                onClick={() => window.open(photo, '_blank')}
+                            >
                                 <img
                                     src={photo}
                                     alt={`${site.name} - Photo ${index + 1}`}
-                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                                    onClick={() => window.open(photo, '_blank')}
+                                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                                    onError={(e) => {
+                                        const target = e.target as HTMLImageElement;
+                                        target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300"%3E%3Crect fill="%23f3f4f6" width="400" height="300"/%3E%3Ctext fill="%239ca3af" font-family="sans-serif" font-size="18" dy="10.5" font-weight="bold" x="50%25" y="50%25" text-anchor="middle"%3EImage unavailable%3C/text%3E%3C/svg%3E';
+                                    }}
                                 />
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-3">
-                                    <span className="text-white text-sm font-medium">View Full Size</span>
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/0 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                    <div className="absolute bottom-0 left-0 right-0 p-3 flex items-center justify-between">
+                                        <span className="text-white text-sm font-medium">Photo {index + 1}</span>
+                                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                                        </svg>
+                                    </div>
                                 </div>
                             </div>
                         ))}
                     </div>
-                </div>
-            )}
+                )}
+            </div>
+
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
                 <div className="card">
