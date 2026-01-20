@@ -39,6 +39,13 @@ export const tenantService = {
   },
 
   /**
+   * Get application by ID
+   */
+  async getApplicationById(id: string): Promise<TenantApplication> {
+    return apiClient.get<TenantApplication>(`/applications/${id}`)
+  },
+
+  /**
    * Update application status
    */
   async updateApplicationStatus(id: string, status: string, message?: string): Promise<TenantApplication> {

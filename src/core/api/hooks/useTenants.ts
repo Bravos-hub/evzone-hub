@@ -48,6 +48,39 @@ export function useTenant(id: string) {
   })
 }
 
+export function useApplication(id: string) {
+  return useQuery({
+    queryKey: ['applications', 'detail', id],
+    queryFn: () => tenantService.getApplicationById(id),
+    enabled: !!id,
+  })
+}
+
+export function useApproveApplication() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, message }: { id: string; message?: string }) =>
+      tenantService.updateApplicationStatus(id, 'APPROVED', message),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['applications'] })
+      queryClient.invalidateQueries({ queryKey: ['tenants'] })
+    },
+  })
+}
+
+export function useRejectApplication() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, message }: { id: string; message: string }) =>
+      tenantService.updateApplicationStatus(id, 'REJECTED', message),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['applications'] })
+    },
+  })
+}
+
 export function useTenantContract(tenantId: string) {
   return useQuery({
     queryKey: ['tenants', 'contract', tenantId],
