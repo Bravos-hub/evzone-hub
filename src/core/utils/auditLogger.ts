@@ -1,13 +1,27 @@
 /**
  * Audit Logger Utility
- * Generates client-side audit events and stores them in mock DB
+ * NOTE: This utility is currently disabled as the mockDb was removed.
+ * TODO: Implement proper audit logging with backend API
  */
 
-import { mockDb, type AuditLogEntry } from '@/data/mockDb'
+// import { mockDb, type AuditLogEntry } from '@/data/mockDb'
 import type { User } from '@/core/api/types'
 
 export type AuditCategory = 'Auth' | 'Config' | 'User' | 'Station' | 'Billing' | 'System'
 export type AuditSeverity = 'Info' | 'Warning' | 'Critical'
+
+export interface AuditLogEntry {
+  id: string
+  timestamp: string
+  actor: string
+  actorRole: string
+  category: AuditCategory
+  action: string
+  target: string
+  details: string
+  ip: string
+  severity: AuditSeverity
+}
 
 interface AuditLogOptions {
   actor?: string
@@ -48,11 +62,12 @@ function getClientIP(): string {
 
 /**
  * Log an audit event
+ * TODO: Send to backend API instead of mockDb
  */
 export function logAuditEvent(options: AuditLogOptions): void {
   const user = getCurrentUser()
   const timestamp = new Date().toISOString().replace('T', ' ').slice(0, 19)
-  
+
   const entry: AuditLogEntry = {
     id: `AUD-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
     timestamp,
@@ -66,7 +81,9 @@ export function logAuditEvent(options: AuditLogOptions): void {
     severity: options.severity || 'Info',
   }
 
-  mockDb.addAuditLog(entry)
+  // TODO: Replace with API call to backend
+  // mockDb.addAuditLog(entry)
+  console.log('[Audit Log]', entry)
 }
 
 /**

@@ -853,3 +853,28 @@ export interface MaintenanceDispatch {
   initialFindings?: string
   resolutionSummary?: string
 }
+
+// Dispatch/Work Order Types
+export type DispatchPriority = 'Critical' | 'High' | 'Normal' | 'Low'
+export type DispatchStatus = 'Pending' | 'Assigned' | 'In Progress' | 'Completed' | 'Cancelled'
+
+export interface Dispatch {
+  id: string
+  title: string
+  description: string
+  priority: DispatchPriority
+  status: DispatchStatus
+  stationId: string
+  stationName?: string
+  assignee?: string
+  assigneeContact?: string
+  dueDate: string
+  dueTime?: string
+  estimatedDuration?: string
+  incidentId?: string
+  requiredSkills?: string[]
+  createdAt: string
+  updatedAt: string
+  notes?: string
+}
+

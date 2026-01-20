@@ -4,7 +4,7 @@
  */
 
 import { apiClient } from '../client'
-import type { Dispatch } from '@/data/mockDb'
+import type { Dispatch } from '../types'
 
 export interface CreateDispatchRequest {
   title: string
@@ -36,7 +36,7 @@ export const dispatchService = {
   /**
    * Get all dispatches
    */
-  async getAll(query?: { 
+  async getAll(query?: {
     status?: string
     priority?: string
     stationId?: string
@@ -45,7 +45,7 @@ export const dispatchService = {
     if (query?.status) params.append('status', query.status)
     if (query?.priority) params.append('priority', query.priority)
     if (query?.stationId) params.append('stationId', query.stationId)
-    
+
     const queryString = params.toString()
     return apiClient.get<Dispatch[]>(`/dispatches${queryString ? `?${queryString}` : ''}`)
   },

@@ -8,55 +8,8 @@ import type { Role } from '@/core/auth/types'
 import { RolePill } from '@/ui/components/RolePill'
 import { useUser } from '@/core/api/hooks/useUsers'
 import { useUserSessions } from '@/core/api/hooks/useSessions'
-import { mockDb } from '@/data/mockDb'
 import { getErrorMessage } from '@/core/api/errors'
 import { PATHS } from '@/app/router/paths'
-
-// ═══════════════════════════════════════════════════════════════════════════
-// MOCK DATA
-// ═══════════════════════════════════════════════════════════════════════════
-
-const mockUserDetails = {
-  'USR-001': {
-    id: 'USR-001',
-    name: 'Sarah Chen',
-    email: 'sarah@evzone.com',
-    role: 'EVZONE_ADMIN' as Role,
-    status: 'Active',
-    region: 'ALL',
-    orgId: 'EVZONE',
-    lastLogin: '2m ago',
-    createdAt: '2024-01-15',
-    mfaEnabled: true,
-    phone: '+1 555-0100',
-    timezone: 'UTC',
-    sessions: 3,
-    auditLog: [
-      { when: '2m ago', event: 'Login', details: 'Chrome on MacOS' },
-      { when: '1h ago', event: 'Config changed', details: 'Updated feature flags' },
-      { when: 'Yesterday', event: 'Login', details: 'Chrome on MacOS' },
-    ],
-  },
-  'USR-003': {
-    id: 'USR-003',
-    name: 'James Owner',
-    email: 'james@voltmobility.com',
-    role: 'OWNER' as Role,
-    status: 'Active',
-    region: 'AFRICA',
-    orgId: 'Volt Mobility',
-    lastLogin: '3h ago',
-    createdAt: '2024-03-01',
-    mfaEnabled: false,
-    phone: '+256 700 000000',
-    timezone: 'Africa/Kampala',
-    sessions: 1,
-    auditLog: [
-      { when: '3h ago', event: 'Login', details: 'Safari on iPhone' },
-      { when: '1d ago', event: 'Tariff updated', details: 'Station ST-0001' },
-    ],
-  },
-}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // MAIN COMPONENT
@@ -78,16 +31,9 @@ export function UserDetail() {
   const { data: sessionsData } = useUserSessions(userId || '', false)
   const sessions = Array.isArray(sessionsData) ? sessionsData : (sessionsData as any)?.recent || []
 
-  // Get audit logs for this user
-  const auditLogs = useMemo(() => {
-    return mockDb.getAuditLogs()
-      .filter(log => log.actor === userData?.name || log.target === userId)
-      .slice(0, 20)
-      .map(log => ({
-        when: log.timestamp,
-        event: log.action,
-        details: log.details,
-      }))
+  // TODO: Implement audit logs API endpoint
+  const auditLogs = useMemo<Array<{ when: string; event: string; details: string }>>(() => {
+    return []
   }, [userData, userId])
 
   if (isLoading) {
@@ -209,9 +155,8 @@ export function UserDetail() {
         {(['profile', 'security', 'activity'] as const).map((t) => (
           <button
             key={t}
-            className={`px-4 py-2 rounded-lg text-sm font-medium ${
-              tab === t ? 'bg-accent text-white' : 'text-muted hover:text-text'
-            }`}
+            className={`px-4 py-2 rounded-lg text-sm font-medium ${tab === t ? 'bg-accent text-white' : 'text-muted hover:text-text'
+              }`}
             onClick={() => setTab(t)}
           >
             {t.charAt(0).toUpperCase() + t.slice(1)}
@@ -378,11 +323,10 @@ export function UserDetail() {
                         <td>{session.energyDelivered?.toFixed(2) || '—'}</td>
                         <td>${session.cost?.toFixed(2) || '0.00'}</td>
                         <td>
-                          <span className={`pill ${
-                            session.status === 'COMPLETED' ? 'approved' :
+                          <span className={`pill ${session.status === 'COMPLETED' ? 'approved' :
                             session.status === 'ACTIVE' ? 'active' :
-                            'rejected'
-                          }`}>
+                              'rejected'
+                            }`}>
                             {session.status}
                           </span>
                         </td>
