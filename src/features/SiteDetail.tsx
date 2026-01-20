@@ -2,8 +2,7 @@ import { useMemo, useState, useRef } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { PATHS } from '@/app/router/paths'
-import { useSite, useUpdateSite } from '@/core/api/hooks/useSites'
-import { useStationStats } from '@/core/api/hooks/useStations'
+import { useSite, useUpdateSite, useSiteStats } from '@/core/api/hooks/useSites'
 import { useChargePointsByStation } from '@/core/api/hooks/useChargePoints'
 import { useMe } from '@/core/api/hooks/useAuth'
 import { useTenants } from '@/core/api/hooks/useTenants'
@@ -17,7 +16,7 @@ export function SiteDetail() {
     const nav = useNavigate()
 
     const { data: site, isLoading: loadingSite, error: siteError } = useSite(id!)
-    const { data: stats, isLoading: loadingStats } = useStationStats(id!)
+    const { data: stats, isLoading: loadingStats } = useSiteStats(id!)
     const { data: chargePoints, isLoading: loadingCP } = useChargePointsByStation(id!)
     const { data: user } = useMe()
     const { data: tenants, isLoading: loadingTenants } = useTenants({ siteId: id })

@@ -57,3 +57,11 @@ export function useDeleteSite() {
     },
   })
 }
+
+export function useSiteStats(id: string) {
+  return useQuery({
+    queryKey: queryKeys.sites.stats(id),
+    queryFn: () => siteService.getSiteStats(id),
+    enabled: !!id,
+  })
+}

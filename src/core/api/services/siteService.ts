@@ -54,4 +54,22 @@ export const siteService = {
         const response = await apiClient.delete<{ message: string }>(`/sites/${id}`)
         return response
     },
+
+    /**
+     * Get aggregated statistics for a site
+     */
+    async getSiteStats(id: string): Promise<{
+        totalRevenue: number
+        totalSessions: number
+        totalEnergy: number
+        averageSessionDuration: number
+    }> {
+        const response = await apiClient.get<{
+            totalRevenue: number
+            totalSessions: number
+            totalEnergy: number
+            averageSessionDuration: number
+        }>(`/sites/${id}/stats`)
+        return response
+    },
 }
