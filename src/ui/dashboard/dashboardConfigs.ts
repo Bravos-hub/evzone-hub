@@ -278,7 +278,8 @@ export const DASHBOARD_CONFIGS: Record<DashboardKey, DashboardConfig> = {
       {
         sectionTitle: 'Operational Workflow',
         widgets: [
-          { id: 'panel-owner-workflow', size: 'full', config: {} },
+          { id: 'map-world', size: '2', config: { title: 'Network Map', subtitle: 'Station distribution & status', data: mockChoropleth } },
+          { id: 'panel-owner-workflow', size: '2', config: {} },
         ],
       },
       {
@@ -320,7 +321,8 @@ export const DASHBOARD_CONFIGS: Record<DashboardKey, DashboardConfig> = {
       {
         sectionTitle: 'Operational Workflow',
         widgets: [
-          { id: 'panel-owner-workflow', size: 'full', config: {} },
+          { id: 'map-world', size: '2', config: { title: 'Network Map', subtitle: 'Station distribution & status', data: mockChoropleth } },
+          { id: 'panel-owner-workflow', size: '2', config: {} },
         ],
       },
       {
@@ -362,7 +364,8 @@ export const DASHBOARD_CONFIGS: Record<DashboardKey, DashboardConfig> = {
       {
         sectionTitle: 'Operational Workflow',
         widgets: [
-          { id: 'panel-owner-workflow', size: 'full', config: {} },
+          { id: 'map-world', size: '2', config: { title: 'Network Map', subtitle: 'Station distribution & status', data: mockChoropleth } },
+          { id: 'panel-owner-workflow', size: '2', config: {} },
         ],
       },
       {
@@ -407,10 +410,10 @@ export const DASHBOARD_CONFIGS: Record<DashboardKey, DashboardConfig> = {
   SITE_OWNER: {
     title: 'Site Owner Overview',
     kpiRow: [
-      { id: 'kpi-generic', config: { title: 'Listed sites', value: '12' } },
-      { id: 'kpi-generic', config: { title: 'Leased sites', value: '7' } },
-      { id: 'kpi-generic', config: { title: 'New applications', value: '9', trend: 'up' } },
-      { id: 'kpi-generic', config: { title: 'Available Balance', value: '$1,250.50' } },
+      { id: 'kpi-site-count', config: { type: 'listed' } },
+      { id: 'kpi-site-count', config: { type: 'leased' } },
+      { id: 'kpi-generic', config: { title: 'New applications', value: '—' } },
+      { id: 'kpi-generic', config: { title: 'Available Balance', value: '—' } },
     ],
     rows: [
       {
@@ -493,18 +496,17 @@ export const DASHBOARD_CONFIGS: Record<DashboardKey, DashboardConfig> = {
     ],
     rows: [
       {
-        sectionTitle: 'Quick Actions',
+        sectionTitle: 'Quick Actions & Network',
         widgets: [
+          { id: 'map-world', size: '2', config: { title: 'Regional Map', subtitle: 'Station metrics', data: mockChoropleth } },
           {
-            id: 'panel-quick-actions', size: 'full', config: {
+            id: 'panel-quick-actions', size: '2', config: {
               title: 'Operational Control',
               actions: [
                 { label: 'Manage Stations', path: '/stations', variant: 'primary' },
                 { label: 'View Sessions', path: '/sessions', variant: 'secondary' },
-                { label: 'Create Incident', path: '/incidents', variant: 'secondary' },
+                { label: 'Report Incident', path: '/incidents', variant: 'secondary' },
                 { label: 'Manage Team', path: '/team', variant: 'secondary' },
-                { label: 'View Reports', path: '/reports', variant: 'secondary' },
-                { label: 'Withdraw Funds', path: '/billing', variant: 'secondary' },
               ]
             }
           }

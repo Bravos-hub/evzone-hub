@@ -22,11 +22,7 @@ export const siteDocumentService = {
         formData.append('title', title)
         formData.append('file', file)
 
-        return apiClient.post<SiteDocument>(`/sites/${siteId}/documents`, formData, {
-            headers: {
-                'Content-Type': 'multipart/form-data',
-            },
-        })
+        return apiClient.post<SiteDocument>(`/sites/${siteId}/documents`, formData)
     },
 
     /**

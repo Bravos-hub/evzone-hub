@@ -470,6 +470,7 @@ export interface CreateSiteRequest {
   longitude?: number
   amenities?: string[]
   tags?: string[]
+  photos?: string[]
   ownerId?: string
 }
 
@@ -488,6 +489,7 @@ export interface UpdateSiteRequest {
   amenities?: string[]
   tags?: string[]
   status?: SiteStatus
+  photos?: string[]
 }
 
 export interface SiteDocument {

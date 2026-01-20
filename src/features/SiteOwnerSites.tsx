@@ -5,11 +5,13 @@ import { useAuthStore } from '@/core/auth/authStore'
 import { getPermissionsForFeature } from '@/constants/permissions'
 import { regionInScope } from '@/core/scope/utils'
 import { useScopeStore } from '@/core/scope/scopeStore'
-import { useSites, useCreateSite } from '@/core/api/hooks/useSites'
+import { useSites, useCreateSite, useUpdateSite } from '@/core/api/hooks/useSites'
 import { AddSite, type SiteForm } from './AddSite'
+import { SiteEditModal } from '@/modals'
 import { getErrorMessage } from '@/core/api/errors'
 import { auditLogger } from '@/core/utils/auditLogger'
 import { PATHS } from '@/app/router/paths'
+import { ROLE_GROUPS, isInGroup } from '@/constants/roles'
 import type { CreateSiteRequest, SiteFootfall, SiteLeaseType } from '@/core/api/types'
 
 type SiteStatus = 'Draft' | 'Listed' | 'Leased'
@@ -42,13 +44,13 @@ function mapSiteFormToRequest(form: SiteForm, ownerId?: string): CreateSiteReque
   const parkingBays = Number(form.bays)
   const expectedMonthlyPrice = form.monthlyPrice ? Number(form.monthlyPrice) : undefined
 
-  return {
+  const requestData = {
     name: form.name.trim(),
     city: form.city.trim(),
     address: form.address.trim(),
     powerCapacityKw: Number.isFinite(powerCapacityKw) ? powerCapacityKw : 0,
     parkingBays: Number.isFinite(parkingBays) ? parkingBays : 0,
-    purpose: form.purpose === 'Commercial' ? 'COMMERCIAL' : 'PERSONAL',
+    purpose: (form.purpose === 'Commercial' ? 'COMMERCIAL' : 'PERSONAL') as 'COMMERCIAL' | 'PERSONAL',
     leaseType: LEASE_TYPE_MAP[form.lease] ?? 'REVENUE_SHARE',
     expectedMonthlyPrice: Number.isFinite(expectedMonthlyPrice ?? NaN) ? expectedMonthlyPrice : undefined,
     expectedFootfall: FOOTFALL_MAP[form.footfall] ?? 'MEDIUM',
@@ -56,8 +58,17 @@ function mapSiteFormToRequest(form: SiteForm, ownerId?: string): CreateSiteReque
     longitude: form.longitude ? Number(form.longitude) : undefined,
     amenities: Array.from(form.amenities),
     tags: form.tags,
-    ownerId,
+    photos: form.photoUrls, // Send Cloudinary URLs
+    ownerId: form.ownerId || ownerId,
   }
+
+  console.log('📤 Sending site data to backend:', {
+    ...requestData,
+    photosCount: requestData.photos?.length || 0,
+    photoUrls: requestData.photos
+  })
+
+  return requestData
 }
 
 export function SiteOwnerSites() {
@@ -72,21 +83,41 @@ export function SiteOwnerSites() {
   const [status, setStatus] = useState<SiteStatus | 'All'>('All')
   const [q, setQ] = useState('')
   const [isAdding, setIsAdding] = useState(false)
+  const [editingSiteId, setEditingSiteId] = useState<string | null>(null)
   const [errorMessage, setErrorMessage] = useState('')
+
+  const updateSiteMutation = useUpdateSite()
 
   // Map stations to sites format
   const sites = useMemo(() => {
-    if (!sitesData) return []
-    return sitesData.map((site) => ({
-      id: site.id,
-      name: site.name,
-      address: site.address,
-      region: 'AFRICA',
-      status: site.status === 'ACTIVE' ? 'Listed' : site.status === 'INACTIVE' ? 'Draft' : 'Leased' as SiteStatus,
-      slots: site.parkingBays,
-      payout: Math.floor(Math.random() * 5000),
-    }))
-  }, [sitesData])
+    if (!sitesData || !user) return []
+
+    return sitesData
+      .filter((site) => {
+        // Platform Admins see everything
+        const isAdmin = isInGroup(user.role, ROLE_GROUPS.PLATFORM_ADMINS) || user.role === 'EVZONE_OPERATOR'
+        if (isAdmin) return true
+
+        // For others, strictly filter based on ownership or some participation logic
+        const isOwned = site.ownerId === user.id
+        // Keep if owned or if it's in their list (backend usually filters, but safety first)
+        return isOwned || site.status === 'ACTIVE' || site.status === 'PENDING'
+      })
+      .map((site) => ({
+        id: site.id,
+        name: site.name,
+        address: site.address,
+        region: 'AFRICA',
+        status: site.status === 'ACTIVE' ? 'Listed' : site.status === 'INACTIVE' ? 'Draft' : 'Leased' as SiteStatus,
+        slots: site.parkingBays,
+        payout: Math.floor(Math.random() * 5000),
+        ownerId: site.ownerId
+      }))
+  }, [sitesData, user])
+
+  const siteToEdit = useMemo(() => {
+    return sitesData?.find(s => s.id === editingSiteId)
+  }, [sitesData, editingSiteId])
 
   const rows = useMemo(() => {
     return sites
@@ -169,8 +200,21 @@ export function SiteOwnerSites() {
               <tbody>
                 {rows.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="text-center py-8 text-muted">
-                      No sites found. {perms.create && <button className="btn secondary mt-2" onClick={() => setIsAdding(true)}>Add your first site</button>}
+                    <td colSpan={6} className="p-4">
+                      <div className="text-center py-12 border-2 border-dashed border-border rounded-lg bg-muted/10">
+                        <svg className="w-16 h-16 mx-auto text-muted mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                        </svg>
+                        <p className="text-muted text-sm mb-3">No sites found</p>
+                        {perms.create && (
+                          <div className="flex flex-col items-center gap-2">
+                            <p className="text-subtle text-xs">Get started by adding your first site</p>
+                            <button className="btn secondary btn-sm" onClick={() => setIsAdding(true)}>
+                              + Add Site
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ) : (
@@ -181,10 +225,10 @@ export function SiteOwnerSites() {
                       <td>
                         <span
                           className={`pill ${s.status === 'Leased'
-                              ? 'approved'
-                              : s.status === 'Listed'
-                                ? 'pending'
-                                : 'bg-muted/30 text-muted'
+                            ? 'approved'
+                            : s.status === 'Listed'
+                              ? 'pending'
+                              : 'bg-muted/30 text-muted'
                             }`}
                         >
                           {s.status}
@@ -197,8 +241,8 @@ export function SiteOwnerSites() {
                           <button className="btn secondary" onClick={() => navigate(PATHS.SITE_OWNER.SITE_DETAIL(s.id))}>
                             View
                           </button>
-                          {perms.edit && (
-                            <button className="btn secondary" onClick={() => navigate(PATHS.SITE_OWNER.SITE_DETAIL(s.id))}>
+                          {perms.edit && (isInGroup(user?.role, ROLE_GROUPS.PLATFORM_ADMINS) || s.ownerId === user?.id) && (
+                            <button className="btn secondary" onClick={() => setEditingSiteId(s.id)}>
                               Edit
                             </button>
                           )}
@@ -212,6 +256,20 @@ export function SiteOwnerSites() {
           </div>
         )}
       </div>
+
+      {siteToEdit && (
+        <SiteEditModal
+          open={!!editingSiteId}
+          site={siteToEdit}
+          loading={updateSiteMutation.isPending}
+          onCancel={() => setEditingSiteId(null)}
+          onConfirm={(data) => {
+            updateSiteMutation.mutate({ id: siteToEdit.id, data }, {
+              onSuccess: () => setEditingSiteId(null)
+            })
+          }}
+        />
+      )}
     </DashboardLayout>
   )
 }

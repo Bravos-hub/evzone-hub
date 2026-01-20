@@ -291,10 +291,10 @@ export const PERMISSIONS: Record<string, FeaturePermissions> = {
   // ═══════════════════════════════════════════════════════════════════════
 
   sites: {
-    access: ['SITE_OWNER'],
-    viewAll: ['SITE_OWNER'],
-    create: ['SITE_OWNER'],
-    edit: ['SITE_OWNER'],
+    access: ['SITE_OWNER', 'OWNER', ...ROLE_GROUPS.PLATFORM_OPS],
+    viewAll: ['SITE_OWNER', 'OWNER', ...ROLE_GROUPS.PLATFORM_OPS],
+    create: ['SITE_OWNER', 'OWNER', ...ROLE_GROUPS.PLATFORM_OPS],
+    edit: ['SITE_OWNER', 'OWNER', ...ROLE_GROUPS.PLATFORM_OPS],
   },
 
   parking: {

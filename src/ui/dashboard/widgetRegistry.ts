@@ -2,7 +2,7 @@ import type { Role } from '@/core/auth/types'
 import type { WidgetDef, WidgetId } from './types'
 
 // KPI Widgets
-import { KpiGenericWidget, KpiSimpleWidget, KpiStationsWidget, KpiRevenueWidget, KpiSessionsWidget, KpiIncidentsWidget, KpiUptimeWidget, KpiUtilizationWidget, KpiSwapsWidget, KpiReadyBatteriesWidget, KpiActiveSessionsWidget, KpiEnergyDeliveredWidget } from './widgets/kpi'
+import { KpiGenericWidget, KpiSimpleWidget, KpiStationsWidget, KpiRevenueWidget, KpiSessionsWidget, KpiIncidentsWidget, KpiUptimeWidget, KpiUtilizationWidget, KpiSwapsWidget, KpiReadyBatteriesWidget, KpiActiveSessionsWidget, KpiEnergyDeliveredWidget, KpiSiteCountWidget } from './widgets/kpi'
 
 // Chart Widgets
 import { BarChartWidget, LineChartWidget, DonutGaugeWidget } from './widgets/charts'
@@ -176,6 +176,14 @@ export const WIDGET_REGISTRY: Record<WidgetId, WidgetDef> = {
     defaultSize: '1',
     category: 'kpi',
   },
+  'kpi-site-count': {
+    id: 'kpi-site-count',
+    title: 'Site Count',
+    allowedRoles: ['SITE_OWNER', 'OWNER', ...ADMIN_OPS],
+    component: KpiSiteCountWidget as any,
+    defaultSize: '1',
+    category: 'kpi',
+  },
   // ═══════════════════════════════════════════════════════════════════════════
   // CHART WIDGETS
   // ═══════════════════════════════════════════════════════════════════════════
@@ -254,7 +262,7 @@ export const WIDGET_REGISTRY: Record<WidgetId, WidgetDef> = {
   'map-world': {
     id: 'map-world',
     title: 'World Map',
-    allowedRoles: ADMIN_OPS,
+    allowedRoles: [...ADMIN_OPS, 'OWNER', 'SITE_OWNER'],
     component: WorldMapWidget as any,
     defaultSize: '3',
     category: 'map',

@@ -24,7 +24,6 @@ export const MENU_ITEMS: MenuItem[] = [
   // ═══════════════════════════════════════════════════════════════════════
   { path: PATHS.DASHBOARD, label: 'Dashboard', icon: 'home', roles: 'ALL' },
   { path: PATHS.MARKETPLACE, label: 'Marketplace', icon: 'briefcase', roles: 'ALL' },
-  { path: PATHS.EXPLORE, label: 'Explore', icon: 'map', roles: 'ALL' },
 
   // ═══════════════════════════════════════════════════════════════════════
   // OPERATIONS
@@ -161,7 +160,6 @@ function generateMenuFromPermissions(role: Role): MenuItem[] {
   // Add common items
   permissionBasedMenu.push({ path: PATHS.DASHBOARD, label: 'Dashboard', icon: 'home', roles: 'ALL' })
   permissionBasedMenu.push({ path: PATHS.MARKETPLACE, label: 'Marketplace', icon: 'briefcase', roles: 'ALL' })
-  permissionBasedMenu.push({ path: PATHS.EXPLORE, label: 'Explore', icon: 'map', roles: 'ALL' })
 
   // Add permission-based items
   if (hasPermission(role, 'stations', 'access')) {

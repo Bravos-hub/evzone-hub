@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { PATHS } from '@/app/router/paths'
 import { useSite, useUpdateSite, useSiteStats } from '@/core/api/hooks/useSites'
+import { getOptimizedCloudinaryUrl } from '@/core/utils/cloudinary'
 import { useChargePointsByStation } from '@/core/api/hooks/useChargePoints'
 import { useMe } from '@/core/api/hooks/useAuth'
 import { useTenants } from '@/core/api/hooks/useTenants'
@@ -18,7 +19,7 @@ export function SiteDetail() {
     const { data: site, isLoading: loadingSite, error: siteError } = useSite(id!)
     const { data: stats, isLoading: loadingStats } = useSiteStats(id!)
     const { data: chargePoints, isLoading: loadingCP } = useChargePointsByStation(id!)
-    const { data: user } = useMe()
+    const { data: user, isLoading: loadingUser } = useMe()
     const { data: tenants, isLoading: loadingTenants } = useTenants({ siteId: id })
 
     const [isEditModalOpen, setIsEditModalOpen] = useState(false)
@@ -32,11 +33,30 @@ export function SiteDetail() {
     const deleteDocument = useDeleteSiteDocument()
 
     const canManage = useMemo(() => {
-        if (!user) return false
-        return isInGroup(user.role, ROLE_GROUPS.PLATFORM_ADMINS) ||
-            isInGroup(user.role, ROLE_GROUPS.STATION_MANAGERS) ||
-            user.role === 'SITE_OWNER'
-    }, [user])
+        if (!user || !site) return false
+
+        // Admins can manage everything
+        const isAdmin = isInGroup(user.role, ROLE_GROUPS.PLATFORM_ADMINS) || user.role === 'EVZONE_OPERATOR'
+        if (isAdmin) return true
+
+        // Station Managers can manage (assuming they are assigned or have broad manager rights)
+        // But per new rules, let's keep it strict: Admins OR Explicit Owner
+        const isStationManager = isInGroup(user.role, ROLE_GROUPS.STATION_MANAGERS)
+
+        // Check explicit ownership
+        const isExplicitOwner = site.ownerId === user.id
+
+        console.log('🔒 Site Permission Check:', {
+            role: user.role,
+            siteId: site.id,
+            siteOwnerId: site.ownerId,
+            userId: user.id,
+            isExplicitOwner,
+            isAdmin
+        })
+
+        return isAdmin || isExplicitOwner || (isStationManager && user.role === 'MANAGER')
+    }, [user, site])
 
     const handleFileUpload = async () => {
         const file = fileInputRef.current?.files?.[0]
@@ -53,7 +73,7 @@ export function SiteDetail() {
         if (fileInputRef.current) fileInputRef.current.value = ''
     }
 
-    if (loadingSite || loadingStats || loadingCP || loadingTenants) {
+    if (loadingSite || loadingStats || loadingCP || loadingTenants || loadingUser) {
         return (
             <DashboardLayout pageTitle="Site Details">
                 <div className="flex items-center justify-center h-64">
@@ -94,7 +114,7 @@ export function SiteDetail() {
                         <span className={`pill ${site.status === 'ACTIVE' ? 'approved' : site.status === 'MAINTENANCE' ? 'active' : 'declined'} text-lg px-4 py-1`}>
                             {site.status}
                         </span>
-                        {user?.role === 'SITE_OWNER' && (
+                        {canManage && (
                             <button
                                 className="btn secondary"
                                 onClick={() => setIsEditModalOpen(true)}
@@ -112,7 +132,7 @@ export function SiteDetail() {
                 <div className="flex items-center justify-between mb-4">
                     <h2 className="text-xl font-bold">Site Photos</h2>
                     {canManage && (
-                        <button className="btn text-xs">
+                        <button className="btn text-xs" onClick={() => setIsEditModalOpen(true)}>
                             + Add Photos
                         </button>
                     )}
@@ -122,9 +142,14 @@ export function SiteDetail() {
                         <svg className="w-16 h-16 mx-auto text-muted mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                         </svg>
-                        <p className="text-muted text-sm">No photos uploaded yet</p>
+                        <p className="text-muted text-sm mb-3">No photos uploaded yet</p>
                         {canManage && (
-                            <p className="text-subtle text-xs mt-1">Upload photos to showcase your site</p>
+                            <div className="flex flex-col items-center gap-2">
+                                <p className="text-subtle text-xs">Upload photos to showcase your site</p>
+                                <button className="btn secondary btn-sm" onClick={() => setIsEditModalOpen(true)}>
+                                    + Add Photos
+                                </button>
+                            </div>
                         )}
                     </div>
                 ) : (
@@ -136,9 +161,10 @@ export function SiteDetail() {
                                 onClick={() => window.open(photo, '_blank')}
                             >
                                 <img
-                                    src={photo}
+                                    src={getOptimizedCloudinaryUrl(photo, { width: 800, quality: 'auto', format: 'auto' })}
                                     alt={`${site.name} - Photo ${index + 1}`}
                                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                                    loading="lazy"
                                     onError={(e) => {
                                         const target = e.target as HTMLImageElement;
                                         target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300"%3E%3Crect fill="%23f3f4f6" width="400" height="300"/%3E%3Ctext fill="%239ca3af" font-family="sans-serif" font-size="18" dy="10.5" font-weight="bold" x="50%25" y="50%25" text-anchor="middle"%3EImage unavailable%3C/text%3E%3C/svg%3E';
@@ -286,9 +312,24 @@ export function SiteDetail() {
                     </div>
 
                     {loadingDocs ? (
-                        <div className="text-sm text-subtle py-4">Loading documents...</div>
+                        <div className="text-center py-8 text-subtle">
+                            <span className="animate-pulse">Loading documents...</span>
+                        </div>
                     ) : documents.length === 0 ? (
-                        <div className="text-sm text-subtle py-4">No documents uploaded yet.</div>
+                        <div className="text-center py-8 border-2 border-dashed border-border rounded-lg bg-muted/10">
+                            <svg className="w-12 h-12 mx-auto text-muted mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            <p className="text-muted text-sm mb-3">No documents uploaded yet</p>
+                            {canManage && (
+                                <button
+                                    onClick={() => setShowUploadDialog(true)}
+                                    className="btn secondary btn-sm"
+                                >
+                                    + Add Document
+                                </button>
+                            )}
+                        </div>
                     ) : (
                         <div className="space-y-2">
                             {documents.map(doc => (
@@ -327,12 +368,16 @@ export function SiteDetail() {
 
                     {/* Upload Dialog */}
                     {showUploadDialog && (
-                        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowUploadDialog(false)}>
-                            <div className="bg-surface rounded-xl p-6 max-w-md w-full m-4" onClick={(e) => e.stopPropagation()}>
-                                <h3 className="text-lg font-bold mb-4">Upload Document</h3>
-                                <div className="space-y-4">
+                        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+                            <div
+                                className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                                onClick={() => setShowUploadDialog(false)}
+                            />
+                            <div className="relative bg-panel border border-border-light rounded-xl p-6 shadow-2xl max-w-md w-full animate-in fade-in zoom-in duration-200">
+                                <h3 className="text-xl font-bold text-text mb-6">Upload Document</h3>
+                                <div className="space-y-5">
                                     <div>
-                                        <label className="block text-sm font-medium mb-2">Document Title</label>
+                                        <label className="block text-sm font-medium text-muted mb-1.5">Document Title</label>
                                         <input
                                             type="text"
                                             value={uploadTitle}
@@ -342,27 +387,38 @@ export function SiteDetail() {
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium mb-2">Select File</label>
-                                        <input
-                                            ref={fileInputRef}
-                                            type="file"
-                                            className="input w-full"
-                                            accept=".pdf,.doc,.docx"
-                                        />
+                                        <label className="block text-sm font-medium text-muted mb-1.5">Select File (PDF, DOC)</label>
+                                        <div className="relative">
+                                            <input
+                                                ref={fileInputRef}
+                                                type="file"
+                                                className="input w-full pr-10"
+                                                accept=".pdf,.doc,.docx"
+                                            />
+                                            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-muted">
+                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div className="flex gap-3">
+                                    <div className="flex gap-3 mt-8">
                                         <button
                                             onClick={() => setShowUploadDialog(false)}
                                             className="btn secondary flex-1"
+                                            disabled={uploadDocument.isPending}
                                         >
                                             Cancel
                                         </button>
                                         <button
                                             onClick={handleFileUpload}
-                                            disabled={!uploadTitle || !fileInputRef.current?.files?.[0]}
-                                            className="btn flex-1"
+                                            disabled={!uploadTitle || !fileInputRef.current?.files?.[0] || uploadDocument.isPending}
+                                            className="btn bg-accent text-white hover:bg-accent/90 flex-1 flex items-center justify-center gap-2"
                                         >
-                                            Upload
+                                            {uploadDocument.isPending ? (
+                                                <>
+                                                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                                    Uploading...
+                                                </>
+                                            ) : 'Upload'}
                                         </button>
                                     </div>
                                 </div>

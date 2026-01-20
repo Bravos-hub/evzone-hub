@@ -1,5 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { uploadImagesToCloudinary, validateImageFile } from '@/core/utils/cloudinary'
+import { useMe } from '@/core/api/hooks/useAuth'
+import { useUsers } from '@/core/api/hooks/useUsers'
+import { ROLE_GROUPS, isInGroup } from '@/constants/roles'
 
 export type SiteForm = {
     name: string
@@ -13,9 +17,11 @@ export type SiteForm = {
     monthlyPrice: string
     latitude: string
     longitude: string
-    photos: File[]
+    photoFiles: File[]
+    photoUrls: string[]
     amenities: Set<string>
     tags: string[]
+    ownerId?: string
 }
 
 const Bolt = (props: React.SVGProps<SVGSVGElement>) => (
@@ -36,25 +42,50 @@ interface AddSiteProps {
 }
 
 export function AddSite({ onSuccess, onCancel, isOnboarding = false, isFirstSite = false, fullBleed = false }: AddSiteProps) {
+    const { data: user } = useMe()
+    const { data: allUsers } = useUsers()
+
+    // Derived identity flags - these will update reactively as 'user' data arrives
+    const isAdmin = isInGroup(user?.role, ROLE_GROUPS.PLATFORM_ADMINS) || user?.role === 'EVZONE_OPERATOR'
+    const isSiteOwner = user?.role === 'SITE_OWNER'
+    const isStationOwner = user?.role === 'OWNER'
+
     const [form, setForm] = useState<SiteForm>({
         name: '',
         address: '',
         city: 'Kampala',
         power: '150',
         bays: '10',
-        purpose: 'Commercial',
+        purpose: 'Commercial', // Temporary default until user loads
         lease: 'Revenue share',
         footfall: 'Medium',
         monthlyPrice: '',
         latitude: '',
         longitude: '',
-        photos: [],
+        photoFiles: [],
+        photoUrls: [],
         amenities: new Set(['Security', 'Lighting']),
         tags: [],
+        ownerId: '',
     })
+
     const [tagInput, setTagInput] = useState('')
     const [error, setError] = useState('')
     const [ack, setAck] = useState('')
+    const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number; percent: number } | null>(null)
+    const [isUploading, setIsUploading] = useState(false)
+
+    // Sync purpose with user role once it loads
+    useEffect(() => {
+        if (!user) return
+        if (isSiteOwner) setForm(prev => ({ ...prev, purpose: 'Commercial' }))
+        else if (isStationOwner) setForm(prev => ({ ...prev, purpose: 'Personal' }))
+    }, [user, isSiteOwner, isStationOwner])
+
+    // Filter potential owners for the select (Admins, Site Owners, Station Owners)
+    const potentialOwners = allUsers?.filter(u =>
+        u.role === 'SITE_OWNER' || u.role === 'OWNER'
+    ) || []
 
     const update = <K extends keyof SiteForm>(key: K, value: SiteForm[K]) => {
         setForm((prev) => ({ ...prev, [key]: value }))
@@ -92,18 +123,63 @@ export function AddSite({ onSuccess, onCancel, isOnboarding = false, isFirstSite
         )
     }
 
-    const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files.length > 0) {
-            const newPhotos = Array.from(e.target.files)
-            setForm((prev) => ({ ...prev, photos: [...prev.photos, ...newPhotos] }))
-            setAck(`Added ${newPhotos.length} photo(s).`)
+    const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!e.target.files || e.target.files.length === 0) return
+
+        const files = Array.from(e.target.files)
+
+        // Validate all files first
+        const validationErrors: string[] = []
+        const validFiles: File[] = []
+
+        files.forEach((file, index) => {
+            const validation = validateImageFile(file)
+            if (!validation.valid) {
+                validationErrors.push(`File ${index + 1}: ${validation.error}`)
+            } else {
+                validFiles.push(file)
+            }
+        })
+
+        if (validationErrors.length > 0) {
+            setError(validationErrors.join('; '))
+            return
+        }
+
+        if (validFiles.length === 0) return
+
+        try {
+            setIsUploading(true)
+            setError('')
+            setAck('Uploading images to Cloudinary...')
+
+            const urls = await uploadImagesToCloudinary(validFiles, (current, total, percent) => {
+                setUploadProgress({ current, total, percent })
+            })
+
+            setForm((prev) => ({
+                ...prev,
+                photoFiles: [...prev.photoFiles, ...validFiles],
+                photoUrls: [...prev.photoUrls, ...urls]
+            }))
+
+            setAck(`Successfully uploaded ${urls.length} photo(s)!`)
+            setUploadProgress(null)
+
+            // Reset file input
+            e.target.value = ''
+        } catch (err) {
+            setError(`Upload failed: ${err instanceof Error ? err.message : 'Unknown error'}`)
+        } finally {
+            setIsUploading(false)
         }
     }
 
     const removePhoto = (index: number) => {
         setForm((prev) => ({
             ...prev,
-            photos: prev.photos.filter((_, i) => i !== index),
+            photoFiles: prev.photoFiles.filter((_, i) => i !== index),
+            photoUrls: prev.photoUrls.filter((_, i) => i !== index),
         }))
     }
 
@@ -125,7 +201,15 @@ export function AddSite({ onSuccess, onCancel, isOnboarding = false, isFirstSite
         }
         setError('')
         setAck('Saved successfully.')
-        if (onSuccess) onSuccess(form)
+
+        // Final mapping ensuring ownerId is correct if not assigned by admin
+        const finalForm = {
+            ...form,
+            ownerId: isAdmin ? form.ownerId : user?.id,
+            purpose: isSiteOwner ? 'Commercial' : isStationOwner ? 'Personal' : form.purpose
+        }
+
+        if (onSuccess) onSuccess(finalForm)
     }
 
     const wrapperClassName = isOnboarding
@@ -183,11 +267,20 @@ export function AddSite({ onSuccess, onCancel, isOnboarding = false, isFirstSite
                     </label>
                     <label className="flex flex-col gap-2 sm:col-span-2">
                         <span className="text-sm font-semibold">Purpose</span>
-                        <select value={form.purpose} onChange={(e) => update('purpose', e.target.value)} className="select bg-background font-medium">
-                            {['Personal', 'Commercial'].map((o) => (
-                                <option key={o}>{o}</option>
-                            ))}
-                        </select>
+                        {isSiteOwner || isStationOwner ? (
+                            <div className="input bg-muted/20 border-transparent text-muted flex items-center">
+                                {isSiteOwner ? 'Commercial' : 'Personal'}
+                                <span className="ml-2 text-[10px] bg-muted/40 px-1.5 py-0.5 rounded uppercase">Locked to Role</span>
+                            </div>
+                        ) : (
+                            <select value={form.purpose} onChange={(e) => update('purpose', e.target.value)} className="select bg-background font-medium">
+                                {['Personal', 'Commercial'].map((o) => (
+                                    <option key={o}>{o}</option>
+                                ))}
+                            </select>
+                        )}
+                        {isSiteOwner && <p className="text-[10px] text-muted mt-1">Site Owners create commercial sites for station operators.</p>}
+                        {isStationOwner && <p className="text-[10px] text-muted mt-1">Personal sites are for your own station deployment.</p>}
                     </label>
                     {form.purpose === 'Commercial' && (
                         <>
@@ -213,6 +306,26 @@ export function AddSite({ onSuccess, onCancel, isOnboarding = false, isFirstSite
                             </label>
                         </>
                     )}
+
+                    {isAdmin && (
+                        <label className="flex flex-col gap-2 sm:col-span-2">
+                            <span className="text-sm font-semibold text-accent">Assign Site Owner (Admin Only)</span>
+                            <select
+                                value={form.ownerId}
+                                onChange={(e) => update('ownerId', e.target.value)}
+                                className="select border-accent/20 bg-accent/5"
+                                required
+                            >
+                                <option value="">Select an owner...</option>
+                                {potentialOwners.map(u => (
+                                    <option key={u.id} value={u.id}>
+                                        {u.name || u.email} ({u.role})
+                                    </option>
+                                ))}
+                            </select>
+                            <p className="text-[10px] text-muted">Assign this site to a Station Owner or Site Owner.</p>
+                        </label>
+                    )}
                 </div>
 
                 <div className="grid sm:grid-cols-2 gap-5">
@@ -236,24 +349,50 @@ export function AddSite({ onSuccess, onCancel, isOnboarding = false, isFirstSite
                 <div className="space-y-3">
                     <h3 className="text-sm font-semibold">Site Photos</h3>
                     <div className="border-2 border-dashed border-border rounded-xl p-6 text-center hover:bg-muted/20 transition-colors">
-                        <input type="file" multiple accept="image/*" onChange={handlePhotoUpload} className="hidden" id="photo-upload" />
-                        <label htmlFor="photo-upload" className="cursor-pointer flex flex-col items-center gap-2">
+                        <input
+                            type="file"
+                            multiple
+                            accept="image/jpeg,image/png,image/webp"
+                            onChange={handlePhotoUpload}
+                            className="hidden"
+                            id="photo-upload"
+                            disabled={isUploading}
+                        />
+                        <label htmlFor="photo-upload" className={`cursor-pointer flex flex-col items-center gap-2 ${isUploading ? 'opacity-50' : ''}`}>
                             <svg className="w-8 h-8 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                            <span className="text-sm font-medium text-accent">Click to upload photos</span>
-                            <span className="text-xs text-muted">or drag and drop</span>
+                            <span className="text-sm font-medium text-accent">{isUploading ? 'Uploading...' : 'Click to upload photos'}</span>
+                            <span className="text-xs text-muted">JPEG, PNG, or WebP (max 10MB each)</span>
                         </label>
                     </div>
-                    {form.photos.length > 0 && (
+
+                    {uploadProgress && (
+                        <div className="space-y-2">
+                            <div className="flex justify-between text-xs text-muted">
+                                <span>Uploading photo {uploadProgress.current} of {uploadProgress.total}</span>
+                                <span>{uploadProgress.percent}%</span>
+                            </div>
+                            <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+                                <div
+                                    className="bg-accent h-full transition-all duration-300"
+                                    style={{ width: `${uploadProgress.percent}%` }}
+                                />
+                            </div>
+                        </div>
+                    )}
+
+                    {form.photoUrls.length > 0 && (
                         <div className="grid grid-cols-4 gap-2">
-                            {form.photos.map((file, i) => (
+                            {form.photoUrls.map((url, i) => (
                                 <div key={i} className="relative group aspect-square bg-muted rounded-lg overflow-hidden border border-border">
-                                    <div className="absolute inset-0 flex items-center justify-center text-xs text-muted font-medium bg-surface/50">
-                                        {file.name.slice(0, 6)}...
-                                    </div>
+                                    <img
+                                        src={url.replace('/upload/', '/upload/w_200,h_200,c_fill,f_auto,q_auto/')}
+                                        alt={`Photo ${i + 1}`}
+                                        className="w-full h-full object-cover"
+                                    />
                                     <button
                                         type="button"
                                         onClick={() => removePhoto(i)}
-                                        className="absolute top-1 right-1 bg-black/50 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                        className="absolute top-1 right-1 bg-black/70 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
                                     >
                                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
                                     </button>
