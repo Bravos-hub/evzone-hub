@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState, useRef } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { PATHS } from '@/app/router/paths'
@@ -7,10 +7,10 @@ import { useStationStats } from '@/core/api/hooks/useStations'
 import { useChargePointsByStation } from '@/core/api/hooks/useChargePoints'
 import { useMe } from '@/core/api/hooks/useAuth'
 import { useTenants } from '@/core/api/hooks/useTenants'
+import { useSiteDocuments, useUploadSiteDocument, useDeleteSiteDocument } from '@/core/api/hooks/useSiteDocuments'
 import { ROLE_GROUPS, isInGroup } from '@/constants/roles'
 import { StationStatusPill } from '@/ui/components/StationStatusPill'
 import { SiteEditModal } from '@/modals'
-import { useState } from 'react'
 
 export function SiteDetail() {
     const { id } = useParams<{ id: string }>()
@@ -23,7 +23,14 @@ export function SiteDetail() {
     const { data: tenants, isLoading: loadingTenants } = useTenants({ siteId: id })
 
     const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+    const [uploadTitle, setUploadTitle] = useState('')
+    const [showUploadDialog, setShowUploadDialog] = useState(false)
+    const fileInputRef = useRef<HTMLInputElement>(null)
+
     const updateSite = useUpdateSite()
+    const { data: documents = [], isLoading: loadingDocs } = useSiteDocuments(id!)
+    const uploadDocument = useUploadSiteDocument()
+    const deleteDocument = useDeleteSiteDocument()
 
     const canManage = useMemo(() => {
         if (!user) return false
@@ -32,12 +39,20 @@ export function SiteDetail() {
             user.role === 'SITE_OWNER'
     }, [user])
 
-    // Mock data for documentation since there's no backend endpoint yet
-    const mockSiteDocs = [
-        { id: 'DOC-S1', title: 'Site Inspection Report', date: '2025-11-01', size: '1.2 MB' },
-        { id: 'DOC-S2', title: 'Land Use Permit', date: '2024-05-15', size: '2.4 MB' },
-        { id: 'DOC-S3', title: 'Electricity Utility Approval', date: '2024-08-20', size: '850 KB' },
-    ]
+    const handleFileUpload = async () => {
+        const file = fileInputRef.current?.files?.[0]
+        if (!file || !uploadTitle) return
+
+        await uploadDocument.mutateAsync({
+            siteId: id!,
+            title: uploadTitle,
+            file
+        })
+
+        setShowUploadDialog(false)
+        setUploadTitle('')
+        if (fileInputRef.current) fileInputRef.current.value = ''
+    }
 
     if (loadingSite || loadingStats || loadingCP || loadingTenants) {
         return (
@@ -91,6 +106,28 @@ export function SiteDetail() {
                     </div>
                 </div>
             </div>
+
+            {/* Site Photos Gallery */}
+            {site.photos && site.photos.length > 0 && (
+                <div className="card mb-6">
+                    <h2 className="text-xl font-bold mb-4">Site Photos</h2>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {site.photos.map((photo, index) => (
+                            <div key={index} className="relative aspect-video rounded-lg overflow-hidden border border-border hover:border-accent transition-colors group cursor-pointer">
+                                <img
+                                    src={photo}
+                                    alt={`${site.name} - Photo ${index + 1}`}
+                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                    onClick={() => window.open(photo, '_blank')}
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-3">
+                                    <span className="text-white text-sm font-medium">View Full Size</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
                 <div className="card">
@@ -206,28 +243,102 @@ export function SiteDetail() {
 
                 {/* Site Documentation Section */}
                 <div className="card">
-                    <h2 className="text-xl font-bold mb-4">Site Documentation</h2>
-                    <div className="space-y-2">
-                        {mockSiteDocs.map(doc => (
-                            <div key={doc.id} className="flex items-center justify-between p-3 border border-border rounded-lg hover:bg-muted/30 transition-colors group">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-2 bg-accent/10 text-accent rounded">
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-xl font-bold">Site Documentation</h2>
+                        {canManage && (
+                            <button
+                                onClick={() => setShowUploadDialog(true)}
+                                className="btn text-xs"
+                            >
+                                + Upload Document
+                            </button>
+                        )}
+                    </div>
+
+                    {loadingDocs ? (
+                        <div className="text-sm text-subtle py-4">Loading documents...</div>
+                    ) : documents.length === 0 ? (
+                        <div className="text-sm text-subtle py-4">No documents uploaded yet.</div>
+                    ) : (
+                        <div className="space-y-2">
+                            {documents.map(doc => (
+                                <div key={doc.id} className="flex items-center justify-between p-3 border border-border rounded-lg hover:bg-muted/30 transition-colors group">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 bg-accent/10 text-accent rounded">
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                        </div>
+                                        <div>
+                                            <div className="text-sm font-medium">{doc.title}</div>
+                                            <div className="text-xs text-muted">
+                                                {new Date(doc.uploadedAt).toLocaleDateString()} • {(doc.fileSize / 1024).toFixed(0)} KB
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <div className="text-sm font-medium">{doc.title}</div>
-                                        <div className="text-xs text-muted">{doc.date} • {doc.size}</div>
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => window.open(doc.fileUrl, '_blank')}
+                                            className="text-accent opacity-0 group-hover:opacity-100 transition-opacity p-2 hover:bg-accent/10 rounded-full"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                                        </button>
+                                        {canManage && (
+                                            <button
+                                                onClick={() => deleteDocument.mutate({ siteId: id!, documentId: doc.id })}
+                                                className="text-danger opacity-0 group-hover:opacity-100 transition-opacity p-2 hover:bg-danger/10 rounded-full"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
-                                <button className="text-accent opacity-0 group-hover:opacity-100 transition-opacity p-2 hover:bg-accent/10 rounded-full">
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                                </button>
-                            </div>
-                        ))}
-                        <div className="pt-2">
-                            <button className="text-xs text-accent font-bold hover:underline">View All Documents →</button>
+                            ))}
                         </div>
-                    </div>
+                    )}
+
+                    {/* Upload Dialog */}
+                    {showUploadDialog && (
+                        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowUploadDialog(false)}>
+                            <div className="bg-surface rounded-xl p-6 max-w-md w-full m-4" onClick={(e) => e.stopPropagation()}>
+                                <h3 className="text-lg font-bold mb-4">Upload Document</h3>
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-medium mb-2">Document Title</label>
+                                        <input
+                                            type="text"
+                                            value={uploadTitle}
+                                            onChange={(e) => setUploadTitle(e.target.value)}
+                                            className="input w-full"
+                                            placeholder="e.g., Site Inspection Report"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-2">Select File</label>
+                                        <input
+                                            ref={fileInputRef}
+                                            type="file"
+                                            className="input w-full"
+                                            accept=".pdf,.doc,.docx"
+                                        />
+                                    </div>
+                                    <div className="flex gap-3">
+                                        <button
+                                            onClick={() => setShowUploadDialog(false)}
+                                            className="btn secondary flex-1"
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            onClick={handleFileUpload}
+                                            disabled={!uploadTitle || !fileInputRef.current?.files?.[0]}
+                                            className="btn flex-1"
+                                        >
+                                            Upload
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
             {site && (

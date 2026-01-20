@@ -507,6 +507,13 @@ export interface UploadSiteDocumentRequest {
   file: File
 }
 
+export interface StationStats {
+  totalRevenue: number
+  totalSessions: number
+  totalEnergy: number
+  averageSessionDuration: number
+}
+
 // API Error Types
 export interface ApiError {
   message: string

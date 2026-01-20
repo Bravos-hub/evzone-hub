@@ -4,7 +4,7 @@
  */
 
 import { apiClient } from '../client'
-import type { Station, CreateStationRequest, UpdateStationRequest, SwapBay, SwapBayInput, Battery, BatteryInput, SwapsTodayMetric } from '../types'
+import type { Station, CreateStationRequest, UpdateStationRequest, SwapBay, SwapBayInput, Battery, BatteryInput, SwapsTodayMetric, StationStats } from '../types'
 
 export const stationService = {
   /**
@@ -16,7 +16,7 @@ export const stationService = {
     if (query?.orgId) params.append('orgId', query.orgId)
     if (query?.limit) params.append('limit', query.limit.toString())
     if (query?.offset) params.append('offset', query.offset.toString())
-    
+
     const queryString = params.toString()
     return apiClient.get<Station[]>(`/stations${queryString ? `?${queryString}` : ''}`)
   },
@@ -44,15 +44,15 @@ export const stationService = {
     params.append('lng', lng.toString())
     if (radius) params.append('radius', radius.toString())
     if (limit) params.append('limit', limit.toString())
-    
+
     return apiClient.get<Station[]>(`/stations/nearby?${params.toString()}`)
   },
 
   /**
    * Get station statistics
    */
-  async getStats(id: string): Promise<unknown> {
-    return apiClient.get<unknown>(`/stations/${id}/stats`)
+  async getStats(id: string): Promise<StationStats> {
+    return apiClient.get<StationStats>(`/stations/${id}/stats`)
   },
 
   /**
@@ -118,4 +118,3 @@ export const stationService = {
     return apiClient.put<Battery[]>(`/stations/${id}/batteries`, { batteries })
   },
 }
-

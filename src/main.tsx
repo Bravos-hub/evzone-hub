@@ -10,25 +10,28 @@ import { DEMO_MODE } from '@/core/api/config'
 const qc = new QueryClient()
 
 // Initialize MSW in demo mode (non-blocking)
-async function enableMocking() {
-  if (!DEMO_MODE) {
-    return
-  }
+// MSW DISABLED - ALL MOCK DATA REMOVED
+// async function enableMocking() {
+//   if (!DEMO_MODE) {
+//     return
+//   }
+// 
+//   try {
+//     const { worker } = await import('./mocks/browser')
+//     await worker.start({
+//       onUnhandledRequest: 'bypass', // Don't warn about unhandled requests
+//     })
+//     console.log('MSW worker started successfully')
+//   } catch (error) {
+//     console.warn('Failed to start MSW worker:', error)
+//     // Continue anyway - app should work without MSW in demo mode
+//   }
+// }
+// 
+// // Start MSW in background (non-blocking)
+// enableMocking().catch(console.error)
 
-  try {
-    const { worker } = await import('./mocks/browser')
-    await worker.start({
-      onUnhandledRequest: 'bypass', // Don't warn about unhandled requests
-    })
-    console.log('MSW worker started successfully')
-  } catch (error) {
-    console.warn('Failed to start MSW worker:', error)
-    // Continue anyway - app should work without MSW in demo mode
-  }
-}
-
-// Start MSW in background (non-blocking)
-enableMocking().catch(console.error)
+console.log('✅ Using real backend API - No mock data')
 
 // Render app immediately (don't wait for MSW)
 const rootElement = document.getElementById('root')

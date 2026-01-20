@@ -9,8 +9,8 @@ export const API_CONFIG = {
   retryAttempts: 1,
 } as const
 
-// Default to demo mode in development if not explicitly set
-export const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === 'true'
+// DEMO_MODE disabled - using real backend only
+export const DEMO_MODE = false
 
 export const TOKEN_STORAGE_KEYS = {
   accessToken: 'evzone:accessToken',
