@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { useAuthStore } from '@/core/auth/authStore'
 import { getPermissionsForFeature } from '@/constants/permissions'
-import { useWebhooks, useCreateWebhook, useUpdateWebhook, useDeleteWebhook, useTestWebhook } from '@/core/api/hooks/useWebhooks'
+import { useWebhooks, useCreateWebhook, useUpdateWebhook, useDeleteWebhook, useTestWebhook } from '@/modules/integrations/useWebhooks'
 import { getErrorMessage } from '@/core/api/errors'
 import { auditLogger } from '@/core/utils/auditLogger'
 

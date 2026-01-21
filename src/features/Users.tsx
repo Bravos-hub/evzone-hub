@@ -7,7 +7,7 @@ import { ROLE_LABELS, ALL_ROLES } from '@/constants/roles'
 import type { Role } from '@/core/auth/types'
 import { RolePill } from '@/ui/components/RolePill'
 import { InviteUserModal } from '@/modals/InviteUserModal'
-import { useUsers, useUpdateUser, useDeleteUser } from '@/core/api/hooks/useUsers'
+import { useUsers, useUpdateUser, useDeleteUser } from '@/modules/auth/hooks/useUsers'
 import { getErrorMessage } from '@/core/api/errors'
 
 // ═══════════════════════════════════════════════════════════════════════════

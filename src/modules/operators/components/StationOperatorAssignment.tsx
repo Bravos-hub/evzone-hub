@@ -1,8 +1,8 @@
 import { useState, useMemo } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
-import { useStation, useUpdateStation } from '@/core/api/hooks/useStations'
-import { useUsers } from '@/core/api/hooks/useUsers'
+import { useStation, useUpdateStation } from '@/modules/stations/hooks/useStations'
+import { useUsers } from '@/modules/auth/hooks/useUsers'
 import { PATHS } from '@/app/router/paths'
 import { getErrorMessage } from '@/core/api/errors'
 

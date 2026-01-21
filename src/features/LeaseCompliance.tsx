@@ -1,6 +1,6 @@
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { Card } from '@/ui/components/Card'
-import { useLeases } from '@/core/api/hooks/useTenants'
+import { useLeases } from '@/modules/applications/hooks/useApplications'
 import { EVChargingAnimation } from '@/ui/components/EVChargingAnimation'
 import clsx from 'clsx'
 

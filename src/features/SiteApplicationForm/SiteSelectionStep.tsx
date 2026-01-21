@@ -1,4 +1,4 @@
-import { useStations } from '@/core/api/hooks/useStations'
+import { useStations } from '@/modules/stations/hooks/useStations'
 
 interface SiteSelectionStepProps {
     data: any

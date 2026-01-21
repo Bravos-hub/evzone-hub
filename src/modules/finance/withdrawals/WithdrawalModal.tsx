@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useRequestWithdrawal, usePaymentMethods } from '@/core/api/hooks/useWithdrawals'
+import { useRequestWithdrawal, usePaymentMethods } from '@/modules/finance/withdrawals/useWithdrawals'
 import { getErrorMessage } from '@/core/api/errors'
 import type { PaymentMethod, PaymentMethodType } from '@/core/api/types'
 import { PaymentMethodModal } from './PaymentMethodModal'

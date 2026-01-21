@@ -1,5 +1,5 @@
 import { UtilizationHeatmap } from '@/ui/charts/UtilizationHeatmap'
-import { useDashboard } from '@/core/api/hooks/useDashboard'
+import { useDashboard } from '@/modules/analytics/hooks/useDashboard'
 import type { WidgetProps } from '../../types'
 
 export function UtilizationHeatmapWidget({ config }: WidgetProps<{ title?: string }>) {

@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { Card } from '@/ui/components/Card'
-import { useApplications } from '@/core/api/hooks/useTenants'
+import { useApplications } from '@/modules/applications/hooks/useApplications'
 import type { TenantApplication } from '@/core/api/types'
 import clsx from 'clsx'
 import { EVChargingAnimation } from '@/ui/components/EVChargingAnimation'

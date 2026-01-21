@@ -123,3 +123,27 @@ export function useActivateTenant() {
         },
     })
 }
+
+// ============================================================================
+// Backward Compatibility Exports
+// ============================================================================
+// These aliases maintain compatibility with code expecting old API
+
+/** @deprecated Use useApplications instead */
+export const useLeases = useApplications
+
+/** @deprecated Use useApplications instead */
+export const useTenant = useApplication
+
+/** @deprecated Use useApplications instead */
+export const useTenantContract = useApplication
+
+/** @deprecated Use useApplications instead */
+export const useTenants = useApplications
+
+/** @deprecated Use useCreateApplication instead */
+export const useSubmitApplication = useCreateApplication
+
+/** @deprecated Use useApplications instead */
+export const useUpdateApplicationTerms = useApproveApplication
+

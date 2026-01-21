@@ -1,5 +1,5 @@
 import { Card } from '@/ui/components/Card'
-import { useLeases } from '@/core/api/hooks/useTenants'
+import { useLeases } from '@/modules/applications/hooks/useApplications'
 
 export type ActiveLeasesConfig = {
     title?: string

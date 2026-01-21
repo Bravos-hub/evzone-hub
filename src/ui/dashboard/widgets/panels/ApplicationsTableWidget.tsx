@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { Card } from '@/ui/components/Card'
-import { useApplications, useUpdateApplicationStatus } from '@/core/api/hooks/useTenants'
+import { useApplications, useUpdateApplicationStatus } from '@/modules/applications/hooks/useApplications'
 
 export function ApplicationsTableWidget({ config }: { config: any }) {
     const navigate = useNavigate()

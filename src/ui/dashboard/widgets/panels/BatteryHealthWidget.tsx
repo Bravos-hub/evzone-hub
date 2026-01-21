@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { Card } from '@/ui/components/Card'
-import { useDashboard } from '@/core/api/hooks/useDashboard'
+import { useDashboard } from '@/modules/analytics/hooks/useDashboard'
 
 export function BatteryHealthWidget() {
     const { data } = useDashboard()

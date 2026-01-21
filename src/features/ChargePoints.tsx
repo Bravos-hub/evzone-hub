@@ -1,12 +1,12 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/core/auth/authStore'
-import { useMe } from '@/core/api/hooks/useAuth'
+import { useMe } from '@/modules/auth/hooks/useAuth'
 import { getPermissionsForFeature } from '@/constants/permissions'
 import { canAccessStation, capabilityAllowsCharge } from '@/core/auth/rbac'
 import { StationStatusPill, type StationStatus } from '@/ui/components/StationStatusPill'
-import { useChargePoints, useRebootChargePoint } from '@/core/api/hooks/useChargePoints'
-import { useStations } from '@/core/api/hooks/useStations'
+import { useChargePoints, useRebootChargePoint } from '@/modules/charge-points/hooks/useChargePoints'
+import { useStations } from '@/modules/stations/hooks/useStations'
 import { getErrorMessage } from '@/core/api/errors'
 
 // ═══════════════════════════════════════════════════════════════════════════

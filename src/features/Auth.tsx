@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuthStore } from '@/core/auth/authStore'
 import { PATHS } from '@/app/router/paths'
-import { authService } from '@/core/api/services/authService'
+import { authService } from '@/modules/auth/services/authService'
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Auth Pages — Login, Register, Reset Password, Verify Email

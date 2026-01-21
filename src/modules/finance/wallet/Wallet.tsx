@@ -2,8 +2,8 @@ import { useState, useMemo } from 'react'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { useAuthStore } from '@/core/auth/authStore'
 import { ROLE_GROUPS } from '@/constants/roles'
-import { useWalletBalance, useWalletTransactions, useTopUp } from '@/core/api/hooks/useWallet'
-import { useStations } from '@/core/api/hooks/useStations'
+import { useWalletBalance, useWalletTransactions, useTopUp } from '@/modules/finance/wallet/useWallet'
+import { useStations } from '@/modules/stations/hooks/useStations'
 import { getErrorMessage } from '@/core/api/errors'
 
 /* ─────────────────────────────────────────────────────────────────────────────

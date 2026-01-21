@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useAuthStore } from '@/core/auth/authStore'
 import { getPermissionsForFeature } from '@/constants/permissions'
-import { useBookings } from '@/core/api/hooks/useBookings'
+import { useBookings } from '@/modules/bookings/hooks/useBookings'
 import { getErrorMessage } from '@/core/api/errors'
 
 // ═══════════════════════════════════════════════════════════════════════════

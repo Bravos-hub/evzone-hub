@@ -77,7 +77,7 @@ import {
   TechnicianJobs,
   // Marketplace & Explore
   Marketplace,
-  Explore,
+  // Explore, // Component doesn't exist
   // Help & Legal
   Help,
   LegalTerms,
@@ -225,7 +225,7 @@ export function AppRoutes() {
       <Route path={PATHS.ADMIN.HOME} element={<Navigate to={PATHS.DASHBOARD} replace />} />
 
       <Route path={PATHS.MARKETPLACE} element={<RequireAuth><Marketplace /></RequireAuth>} />
-      <Route path={PATHS.EXPLORE} element={<RequireAuth><Explore /></RequireAuth>} />
+      <Route path={PATHS.EXPLORE} element={<Navigate to={PATHS.MARKETPLACE} replace />} />
       <Route path={PATHS.HELP} element={<RequireAuth><Help /></RequireAuth>} />
       <Route path={PATHS.LEGAL.TERMS} element={<RequireAuth><LegalTerms /></RequireAuth>} />
       <Route path={PATHS.LEGAL.PRIVACY} element={<RequireAuth><LegalPrivacy /></RequireAuth>} />

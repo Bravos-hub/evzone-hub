@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { useTenant, useTenantContract } from '@/core/api/hooks/useTenants'
-import { useSendNotice } from '@/core/api/hooks/useNotices'
+import { useTenant, useTenantContract } from '@/modules/applications/hooks/useApplications'
+import { useSendNotice } from '@/modules/notifications/hooks/useNotices'
 import { SendNoticeModal } from './SendNoticeModal'
 import { FinancialStatusCard } from '@/ui/components/FinancialStatusCard'
 import { getErrorMessage } from '@/core/api/errors'

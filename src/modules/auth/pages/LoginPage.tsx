@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { useLogin } from '@/core/api/hooks/useAuth'
+import { useLogin } from '@/modules/auth/hooks/useAuth'
 import { getErrorMessage } from '@/core/api/errors'
 import { EVChargingAnimation } from '@/ui/components/EVChargingAnimation'
 import { PATHS } from '@/app/router/paths'

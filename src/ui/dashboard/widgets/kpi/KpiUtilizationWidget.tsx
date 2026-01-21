@@ -1,6 +1,6 @@
 import type { WidgetProps } from '../../types'
 import { KpiGenericWidget, type Trend } from './KpiGenericWidget'
-import { useDashboard } from '@/core/api/hooks/useDashboard'
+import { useDashboard } from '@/modules/analytics/hooks/useDashboard'
 
 export type KpiUtilizationConfig = {
   value: number

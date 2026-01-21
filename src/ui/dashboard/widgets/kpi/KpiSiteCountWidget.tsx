@@ -1,4 +1,4 @@
-import { useSites } from '@/core/api/hooks/useSites'
+import { useSites } from '@/modules/sites/hooks/useSites'
 import { useAuthStore } from '@/core/auth/authStore'
 
 export function KpiSiteCountWidget({ config }: { config?: { type?: 'total' | 'listed' | 'leased' } }) {

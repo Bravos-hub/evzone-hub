@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
-import { useSubmitApplication } from '@/core/api/hooks/useTenants'
+import { useSubmitApplication } from '@/modules/applications/hooks/useApplications'
 import { ApplicantInfoStep } from './SiteApplicationForm/ApplicantInfoStep'
 import { SiteSelectionStep } from './SiteApplicationForm/SiteSelectionStep'
 import { DocumentUploadStep } from './SiteApplicationForm/DocumentUploadStep'

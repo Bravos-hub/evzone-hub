@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useSendNotice } from '@/core/api/hooks/useNotices'
+import { useSendNotice } from '@/modules/notifications/hooks/useNotices'
 import { getErrorMessage } from '@/core/api/errors'
 import type { NoticeType, NoticeChannel } from '@/core/api/types'
 

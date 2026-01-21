@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
-import { useStations, useCreateStation } from '@/core/api/hooks/useStations'
+import { useStations, useCreateStation } from '@/modules/stations/hooks/useStations'
 import { getErrorMessage } from '@/core/api/errors'
 import { auditLogger } from '@/core/utils/auditLogger'
 import { PATHS } from '@/app/router/paths'

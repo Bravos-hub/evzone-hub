@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { ALL_ROLES, ROLE_LABELS, CAPABILITY_LABELS } from '@/constants/roles'
 import type { OwnerCapability, Role } from '@/core/auth/types'
 import { Card } from '@/ui/components/Card'
-import { useInviteUser } from '@/core/api/hooks/useUsers'
+import { useInviteUser } from '@/modules/auth/hooks/useUsers'
 import { getErrorMessage } from '@/core/api/errors'
 
 type InviteUserModalProps = {

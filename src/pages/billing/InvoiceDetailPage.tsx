@@ -1,6 +1,6 @@
 import { useParams, Link } from 'react-router-dom'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
-import { billingService } from '@/core/api/services/billingService'
+import { billingService } from '@/modules/finance/billing/billingService'
 import { useQuery } from '@tanstack/react-query'
 import { PATHS } from '@/app/router/paths'
 import { getErrorMessage } from '@/core/api/errors'

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useSendOtp, useVerifyOtp } from '@/core/api/hooks/useAuth'
+import { useSendOtp, useVerifyOtp } from '@/modules/auth/hooks/useAuth'
 import { getErrorMessage } from '@/core/api/errors'
 import { PATHS } from '@/app/router/paths'
 

@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { Card } from '@/ui/components/Card'
-import { useProviders } from '@/core/api/hooks/useProviders'
+import { useProviders } from '@/modules/integrations/useProviders'
 import { getErrorMessage } from '@/core/api/errors'
 import { useAuthStore } from '@/core/auth/authStore'
 import { hasPermission } from '@/constants/permissions'

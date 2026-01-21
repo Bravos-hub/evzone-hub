@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { uploadImagesToCloudinary, validateImageFile } from '@/core/utils/cloudinary'
-import { useMe } from '@/core/api/hooks/useAuth'
-import { useUsers } from '@/core/api/hooks/useUsers'
+import { useMe } from '@/modules/auth/hooks/useAuth'
+import { useUsers } from '@/modules/auth/hooks/useUsers'
 import { ROLE_GROUPS, isInGroup } from '@/constants/roles'
 
 export type SiteForm = {

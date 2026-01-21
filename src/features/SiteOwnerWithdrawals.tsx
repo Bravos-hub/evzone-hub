@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
-import { useWalletBalance, usePaymentMethods, useWithdrawalHistory, useDeletePaymentMethod, useSetDefaultPaymentMethod } from '@/core/api/hooks/useWithdrawals'
+import { useWalletBalance, usePaymentMethods, useWithdrawalHistory, useDeletePaymentMethod, useSetDefaultPaymentMethod } from '@/modules/finance/withdrawals/useWithdrawals'
 import { WithdrawalModal } from '@/modals/WithdrawalModal'
 import { PaymentMethodModal } from '@/modals/PaymentMethodModal'
 import { PaymentMethodCard } from '@/ui/components/PaymentMethodCard'

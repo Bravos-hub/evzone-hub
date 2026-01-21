@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useUploadDocument } from '@/core/api/hooks/useTenants'
+import { useUploadDocument } from '@/modules/applications/hooks'
 
 interface DocumentUploadStepProps {
     documents: any[]
@@ -106,8 +106,8 @@ export function DocumentUploadStep({ documents, onDocumentsChange, onNext, onBac
                     <div key={category.category} className="space-y-3">
                         <h3 className="font-semibold text-sm text-muted uppercase tracking-wide flex items-center gap-2">
                             <span className={`w-2 h-2 rounded-full ${category.types.filter(t => t.required).every(t => getDocumentForType(category.category, t.name))
-                                    ? 'bg-emerald-500'
-                                    : 'bg-amber-500'
+                                ? 'bg-emerald-500'
+                                : 'bg-amber-500'
                                 }`} />
                             {category.category} Documents
                         </h3>

@@ -1,5 +1,5 @@
 import { StatusDonut } from '@/ui/charts/StatusDonut'
-import { useDashboard } from '@/core/api/hooks/useDashboard'
+import { useDashboard } from '@/modules/analytics/hooks/useDashboard'
 import type { WidgetProps } from '../../types'
 
 export function StatusDonutWidget({ config }: WidgetProps<{ title?: string }>) {

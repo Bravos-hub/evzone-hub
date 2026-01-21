@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Card } from '@/ui/components/Card'
 import type { Tariff, TariffElement } from '@/core/types/domain'
-import { CreateTariffRequest, UpdateTariffRequest } from '@/core/api/services/tariffService'
+import { CreateTariffRequest, UpdateTariffRequest } from '@/modules/finance/billing/tariffService'
 
 type TariffEditorProps = {
     tariff?: Tariff

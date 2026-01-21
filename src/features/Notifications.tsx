@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
-import { useNotifications } from '@/core/api/hooks/useNotifications'
+import { useNotifications } from '@/modules/notifications/hooks/useNotifications'
 import { getErrorMessage } from '@/core/api/errors'
 import { PATHS } from '@/app/router/paths'
 import type { NotificationItem, NotificationKind, NoticeChannel } from '@/core/api/types'

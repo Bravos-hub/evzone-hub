@@ -1,4 +1,4 @@
-import { useDashboard } from '@/core/api/hooks/useDashboard'
+import { useDashboard } from '@/modules/analytics/hooks/useDashboard'
 import { KpiGenericWidget } from './KpiGenericWidget'
 
 export function KpiSwapsWidget() {

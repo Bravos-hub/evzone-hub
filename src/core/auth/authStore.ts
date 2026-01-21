@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import type { OwnerCapability, Role, UserProfile } from './types'
 import { TOKEN_STORAGE_KEYS } from '@/core/api/config'
 import { ROLE_GROUPS } from '@/constants/roles'
-import { authService } from '@/core/api/services/authService'
+import { authService } from '@/modules/auth/services/authService'
 import type { AuthResponse } from '@/core/api/types'
 
 const LS_KEY = 'evzone:session'

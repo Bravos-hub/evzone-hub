@@ -1,5 +1,5 @@
 import { Card } from '@/ui/components/Card'
-import { useSites } from '@/core/api/hooks/useSites'
+import { useSites } from '@/modules/sites/hooks/useSites'
 import { useAuthStore } from '@/core/auth/authStore'
 
 export function SitesTableWidget({ config }: { config: any }) {

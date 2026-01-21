@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { useResetPassword } from '@/core/api/hooks/useAuth'
+import { useResetPassword } from '@/modules/auth/hooks/useAuth'
 import { getErrorMessage } from '@/core/api/errors'
 import { PATHS } from '@/app/router/paths'
 

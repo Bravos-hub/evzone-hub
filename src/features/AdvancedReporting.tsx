@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { Card } from '@/ui/components/Card'
 import { exportToCSV } from '@/core/utils/exportUtility'
-import { useSessionHistory } from '@/core/api/hooks/useSessions'
+import { useSessionHistory } from '@/modules/sessions/hooks/useSessions'
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     LineChart, Line, AreaChart, Area, ComposedChart
