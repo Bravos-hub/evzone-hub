@@ -7,10 +7,7 @@ import { hasPermission, getPermissionsForFeature } from '@/constants/permissions
 import { canAccessStation, capabilityAllowsCharge, capabilityAllowsSwap } from '@/core/auth/rbac'
 import { StationStatusPill, type StationStatus } from '@/ui/components/StationStatusPill'
 import { StationsHeatMap, stationPointFromSeed } from '@/ui/components/StationsHeatMap'
-import { ChargePoints } from './ChargePoints'
 import { SwapStations } from './SwapStations'
-import { SmartCharging } from './SmartCharging'
-import { Bookings } from './Bookings'
 import { useStations } from '@/core/api/hooks/useStations'
 import { getErrorMessage } from '@/core/api/errors'
 
@@ -335,7 +332,11 @@ export function Stations() {
         </div>
       )}
 
-      {activeTab === 'charge-points' && <ChargePoints />}
+      {activeTab === 'charge-points' && (
+        <div className="card">
+          <p className="text-muted">Charge Points view - Component not yet implemented</p>
+        </div>
+      )}
       {activeTab === 'swap-stations' && <SwapStations />}
     </DashboardLayout>
   )

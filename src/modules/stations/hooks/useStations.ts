@@ -6,7 +6,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { stationService } from '../services/stationService'
 import { queryKeys } from '@/data/queryKeys'
-import type { CreateStationRequest, UpdateStationRequest, SwapBayInput, BatteryInput } from '../types'
+import type { CreateStationRequest, UpdateStationRequest, SwapBayInput, BatteryInput } from '@/core/api/types'
 
 export function useStations(filters?: { status?: string; orgId?: string; limit?: number; offset?: number }) {
   return useQuery({

@@ -6,8 +6,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { userService } from '../services/userService'
 import { queryKeys } from '@/data/queryKeys'
-import { getErrorMessage } from '../errors'
-import type { UpdateUserRequest, InviteUserRequest } from '../types'
+import { getErrorMessage } from '@/core/api/errors'
+import type { UpdateUserRequest, InviteUserRequest } from '@/core/api/types'
 
 export function useUsers() {
   return useQuery({
@@ -86,4 +86,3 @@ export function useInviteUser() {
     },
   })
 }
-

@@ -3,8 +3,8 @@
  * Handles notice-related API calls
  */
 
-import { apiClient } from '../client'
-import type { NoticeRequest, Notice } from '../types'
+import { apiClient } from '@/core/api/client'
+import type { NoticeRequest, Notice } from '@/core/api/types'
 
 export const noticeService = {
   /**

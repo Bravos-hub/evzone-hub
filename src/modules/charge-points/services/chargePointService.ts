@@ -3,9 +3,9 @@
  * Handles charge point-related API calls
  */
 
-import { apiClient } from '../client'
+import { apiClient } from '@/core/api/client'
 import type { ChargePoint } from '@/core/types/domain'
-import type { CreateChargePointRequest, UpdateChargePointRequest } from '../types'
+import type { CreateChargePointRequest, UpdateChargePointRequest } from '@/core/api/types'
 
 export const chargePointService = {
   /**

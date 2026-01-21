@@ -3,14 +3,14 @@
  * Handles withdrawal and payment method related API calls
  */
 
-import { apiClient } from '../client'
+import { apiClient } from '@/core/api/client'
 import type {
   WalletBalance,
   PaymentMethod,
   CreatePaymentMethodRequest,
   WithdrawalRequest,
   WithdrawalTransaction,
-} from '../types'
+} from '@/core/api/types'
 
 export const withdrawalService = {
   /**

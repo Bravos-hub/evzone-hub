@@ -8,8 +8,8 @@ import { useAuthStore } from '@/core/auth/authStore'
 import { authService } from '../services/authService'
 import { userService } from '../services/userService'
 import { queryKeys } from '@/data/queryKeys'
-import { getErrorMessage } from '../errors'
-import type { LoginRequest, RegisterRequest } from '../types'
+import { getErrorMessage } from '@/core/api/errors'
+import type { LoginRequest, RegisterRequest } from '@/core/api/types'
 
 export function useLogin() {
   const queryClient = useQueryClient()

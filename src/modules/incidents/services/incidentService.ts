@@ -1,5 +1,5 @@
-import { API_CONFIG } from '../config'
-import type { Incident, MaintenanceNote, IncidentStatus } from '../types'
+import { API_CONFIG } from '@/core/api/config'
+import type { Incident, MaintenanceNote, IncidentStatus } from '@/core/api/types'
 
 const baseURL = API_CONFIG.baseURL
 

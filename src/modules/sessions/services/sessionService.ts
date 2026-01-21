@@ -3,8 +3,8 @@
  * Handles charging session-related API calls
  */
 
-import { apiClient } from '../client'
-import type { ChargingSession } from '../types'
+import { apiClient } from '@/core/api/client'
+import type { ChargingSession } from '@/core/api/types'
 
 export const sessionService = {
   /**
@@ -61,7 +61,7 @@ export const sessionService = {
     if (query?.limit) params.append('limit', query.limit.toString())
     if (query?.status) params.append('status', query.status)
     if (query?.stationId) params.append('stationId', query.stationId)
-    
+
     const queryString = params.toString()
     return apiClient.get(`/sessions/history/all${queryString ? `?${queryString}` : ''}`)
   },

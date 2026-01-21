@@ -4,8 +4,8 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { withdrawalService } from '../services/withdrawalService'
-import type { CreatePaymentMethodRequest, WithdrawalRequest } from '../types'
+import { withdrawalService } from './withdrawalService'
+import type { CreatePaymentMethodRequest, WithdrawalRequest } from '@/core/api/types'
 
 export function useWalletBalance() {
   return useQuery({

@@ -4,7 +4,7 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { webhookService, type CreateWebhookRequest, type UpdateWebhookRequest } from '../services/webhookService'
+import { webhookService, type CreateWebhookRequest, type UpdateWebhookRequest } from './webhookService'
 
 export function useWebhooks() {
   return useQuery({

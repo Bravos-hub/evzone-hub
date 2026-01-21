@@ -3,7 +3,7 @@
  * Handles webhook-related API calls
  */
 
-import { apiClient } from '../client'
+import { apiClient } from '@/core/api/client'
 import type { Webhook } from '@/core/types/domain'
 
 export interface CreateWebhookRequest {

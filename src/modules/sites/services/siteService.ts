@@ -3,8 +3,8 @@
  * Handles site-related API calls
  */
 
-import { apiClient } from '../client'
-import type { Site, CreateSiteRequest, UpdateSiteRequest } from '../types'
+import { apiClient } from '@/core/api/client'
+import type { Site, CreateSiteRequest, UpdateSiteRequest } from '@/core/api/types'
 
 export const siteService = {
     /**

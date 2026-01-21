@@ -5,7 +5,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { noticeService } from '../services/noticeService'
-import type { NoticeRequest } from '../types'
+import type { NoticeRequest } from '@/core/api/types'
 
 export function useNotices(tenantId?: string) {
   return useQuery({

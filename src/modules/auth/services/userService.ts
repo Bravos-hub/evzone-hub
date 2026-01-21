@@ -3,10 +3,10 @@
  * Handles user-related API calls
  */
 
-import { apiClient } from '../client'
-import { DEMO_MODE } from '../config'
-import { ApiException } from '../errors'
-import type { User, UpdateUserRequest, PaginatedResponse, InviteUserRequest } from '../types'
+import { apiClient } from '@/core/api/client'
+import { DEMO_MODE } from '@/core/api/config'
+import { ApiException } from '@/core/api/errors'
+import type { User, UpdateUserRequest, PaginatedResponse, InviteUserRequest } from '@/core/api/types'
 
 function normalizeMe(user: User): User {
   const orgId = user.orgId || user.organizationId

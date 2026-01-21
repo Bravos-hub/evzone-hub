@@ -3,8 +3,8 @@
  * Handles organization-related API calls
  */
 
-import { apiClient } from '../client'
-import type { Organization, CreateOrganizationRequest } from '../types'
+import { apiClient } from '@/core/api/client'
+import type { Organization, CreateOrganizationRequest } from '@/core/api/types'
 
 export const organizationService = {
   /**

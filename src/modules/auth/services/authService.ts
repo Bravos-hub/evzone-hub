@@ -3,8 +3,8 @@
  * Handles authentication-related API calls
  */
 
-import { apiClient } from '../client'
-import type { LoginRequest, RegisterRequest, AuthResponse, RefreshTokenRequest } from '../types'
+import { apiClient } from '@/core/api/client'
+import type { LoginRequest, RegisterRequest, AuthResponse, RefreshTokenRequest } from '@/core/api/types'
 
 export const authService = {
   /**

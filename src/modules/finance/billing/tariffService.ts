@@ -3,7 +3,7 @@
  * Handles tariff-related API calls
  */
 
-import { apiClient } from '../client'
+import { apiClient } from '@/core/api/client'
 import type { Tariff } from '@/core/types/domain'
 
 export interface CreateTariffRequest {

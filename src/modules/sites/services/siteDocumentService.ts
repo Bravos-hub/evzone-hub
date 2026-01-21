@@ -3,8 +3,8 @@
  * Handles site document-related API calls
  */
 
-import { apiClient } from '../client'
-import type { SiteDocument } from '../types'
+import { apiClient } from '@/core/api/client'
+import type { SiteDocument } from '@/core/api/types'
 
 export const siteDocumentService = {
     /**

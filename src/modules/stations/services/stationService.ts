@@ -3,8 +3,8 @@
  * Handles station-related API calls
  */
 
-import { apiClient } from '../client'
-import type { Station, CreateStationRequest, UpdateStationRequest, SwapBay, SwapBayInput, Battery, BatteryInput, SwapsTodayMetric, StationStats } from '../types'
+import { apiClient } from '@/core/api/client'
+import type { Station, CreateStationRequest, UpdateStationRequest, SwapBay, SwapBayInput, Battery, BatteryInput, SwapsTodayMetric, StationStats } from '@/core/api/types'
 
 export const stationService = {
   /**

@@ -3,8 +3,8 @@
  * Handles battery swapping provider-related API calls
  */
 
-import { apiClient } from '../client'
-import type { SwapProvider } from '../types'
+import { apiClient } from '@/core/api/client'
+import type { SwapProvider } from '@/core/api/types'
 
 export const providerService = {
     /**

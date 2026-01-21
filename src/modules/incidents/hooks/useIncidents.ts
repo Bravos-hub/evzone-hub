@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { incidentService } from '../services/incidentService'
 import { queryKeys } from '@/data/queryKeys'
-import type { IncidentStatus } from '../types'
+import type { IncidentStatus } from '@/core/api/types'
 
 export function useIncidents(filters?: { status?: string; severity?: string }) {
   return useQuery({

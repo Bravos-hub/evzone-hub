@@ -3,8 +3,8 @@
  * Handles dispatch-related API calls
  */
 
-import { apiClient } from '../client'
-import type { Dispatch } from '../types'
+import { apiClient } from '@/core/api/client'
+import type { Dispatch } from '@/core/api/types'
 
 export interface CreateDispatchRequest {
   title: string

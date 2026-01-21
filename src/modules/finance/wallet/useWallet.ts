@@ -4,9 +4,9 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { walletService } from '../services/walletService'
+import { walletService } from './walletService'
 import { queryKeys } from '@/data/queryKeys'
-import type { TopUpRequest } from '../types'
+import type { TopUpRequest } from '@/core/api/types'
 
 export function useWalletBalance() {
   return useQuery({

@@ -3,8 +3,8 @@
  * Handles wallet-related API calls
  */
 
-import { apiClient } from '../client'
-import type { WalletBalance, WalletTransaction, TopUpRequest } from '../types'
+import { apiClient } from '@/core/api/client'
+import type { WalletBalance, WalletTransaction, TopUpRequest } from '@/core/api/types'
 
 export const walletService = {
   /**

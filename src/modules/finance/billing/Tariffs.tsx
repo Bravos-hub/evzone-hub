@@ -6,7 +6,7 @@ import { useTariffs, useCreateTariff, useUpdateTariff, useDeleteTariff } from '@
 import { useStations } from '@/core/api/hooks/useStations'
 import { getErrorMessage } from '@/core/api/errors'
 import type { Tariff, TariffType } from '@/core/types/domain'
-import { TariffEditor } from './tariffs/TariffEditor'
+import { TariffEditor } from '@/features/tariffs/TariffEditor'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES & MOCK DATA

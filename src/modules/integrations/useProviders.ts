@@ -4,7 +4,7 @@
  */
 
 import { useQuery } from '@tanstack/react-query'
-import { providerService } from '../services/providerService'
+import { providerService } from './providerService'
 import { queryKeys } from '@/data/queryKeys'
 
 export function useProviders(filters?: { region?: string; standard?: string; status?: string }) {

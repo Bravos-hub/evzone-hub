@@ -3,8 +3,8 @@
  * Handles booking-related API calls
  */
 
-import { apiClient } from '../client'
-import type { Booking, CreateBookingRequest, UpdateBookingStatusRequest } from '../types'
+import { apiClient } from '@/core/api/client'
+import type { Booking, CreateBookingRequest, UpdateBookingStatusRequest } from '@/core/api/types'
 
 export const bookingService = {
   /**
