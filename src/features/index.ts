@@ -76,7 +76,7 @@ export { WebhooksLog } from './WebhooksLog'
 
 // Marketplace & Explore
 export { Marketplace } from './Marketplace'
-export { Explore } from './Explore'
+// export { Explore } from './Explore' // File doesn't exist
 
 // Help & Legal
 export { Help, LegalTerms, LegalPrivacy, LegalCookies } from './HelpLegal'

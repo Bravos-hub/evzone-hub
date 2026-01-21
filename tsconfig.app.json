@@ -2,7 +2,11 @@
   "compilerOptions": {
     "target": "ES2022",
     "useDefineForClassFields": true,
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
     "module": "ESNext",
     "skipLibCheck": true,
     "moduleResolution": "Bundler",
@@ -12,11 +16,71 @@
     "jsx": "react-jsx",
     "strict": true,
     "noImplicitAny": false,
-    "types": ["vite/client"],
+    "types": [
+      "vite/client"
+    ],
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": [
+        "src/*"
+      ],
+      "@/modules/*": [
+        "src/modules/*"
+      ],
+      "@/modules/applications": [
+        "src/modules/applications"
+      ],
+      "@/modules/sites": [
+        "src/modules/sites"
+      ],
+      "@/modules/stations": [
+        "src/modules/stations"
+      ],
+      "@/modules/charge-points": [
+        "src/modules/charge-points"
+      ],
+      "@/modules/sessions": [
+        "src/modules/sessions"
+      ],
+      "@/modules/bookings": [
+        "src/modules/bookings"
+      ],
+      "@/modules/auth": [
+        "src/modules/auth"
+      ],
+      "@/modules/users": [
+        "src/modules/users"
+      ],
+      "@/modules/finance": [
+        "src/modules/finance"
+      ],
+      "@/modules/operators": [
+        "src/modules/operators"
+      ],
+      "@/modules/dispatch": [
+        "src/modules/dispatch"
+      ],
+      "@/modules/incidents": [
+        "src/modules/incidents"
+      ],
+      "@/modules/organizations": [
+        "src/modules/organizations"
+      ],
+      "@/modules/notifications": [
+        "src/modules/notifications"
+      ],
+      "@/modules/analytics": [
+        "src/modules/analytics"
+      ],
+      "@/modules/admin": [
+        "src/modules/admin"
+      ],
+      "@/modules/integrations": [
+        "src/modules/integrations"
+      ]
     }
   },
-  "include": ["src"]
+  "include": [
+    "src"
+  ]
 }
