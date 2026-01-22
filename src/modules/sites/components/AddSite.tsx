@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { uploadImagesToCloudinary, validateImageFile } from '@/core/utils/cloudinary'
-import { useMe } from '@/modules/auth/hooks/useAuth'
+import { useAuthStore } from '@/core/auth/authStore'
 import { useUsers } from '@/modules/auth/hooks/useUsers'
 import { ROLE_GROUPS, isInGroup } from '@/constants/roles'
 
@@ -42,7 +42,7 @@ interface AddSiteProps {
 }
 
 export function AddSite({ onSuccess, onCancel, isOnboarding = false, isFirstSite = false, fullBleed = false }: AddSiteProps) {
-    const { data: user } = useMe()
+    const { user } = useAuthStore()
     const { data: allUsers } = useUsers()
 
     // Derived identity flags - these will update reactively as 'user' data arrives

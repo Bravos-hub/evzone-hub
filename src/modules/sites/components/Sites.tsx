@@ -99,8 +99,13 @@ export function Sites() {
       tabs.push('Applications')
       tabs.push('Tenants')
     }
-    // Station owners might also own sites, so 'Owned' is valid if they have any, 
-    // but primarily they have 'Rented' sites.
+
+    // Station owners can now manage their own "Personal" sites
+    if (isStationOwner) {
+      tabs.push('Owned')
+    }
+
+    // Station owners might also rent sites, so 'Rented' is valid if they have any
     if (isStationOwner || (!isSiteOwner && leasedSitesData?.length > 0)) {
       tabs.push('Rented')
     }
