@@ -19,4 +19,5 @@ export interface GeneratedReport {
     generatedAt: string
     size: string
     generatedBy: string
+    url?: string
 }

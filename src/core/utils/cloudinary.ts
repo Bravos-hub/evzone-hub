@@ -83,7 +83,7 @@ export async function uploadImageToCloudinary(
             reject(new Error('Network error during upload'))
         })
 
-        xhr.open('POST', `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`)
+        xhr.open('POST', `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/auto/upload`)
         xhr.send(formData)
     })
 }
@@ -141,7 +141,7 @@ export function getOptimizedCloudinaryUrl(
  * Validate image file
  */
 export function validateImageFile(file: File): { valid: boolean; error?: string } {
-    const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg']
+    const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg', 'text/plain', 'application/pdf']
     const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
 
     if (!ALLOWED_TYPES.includes(file.type)) {
