@@ -623,6 +623,17 @@ export interface TenantApplication {
   respondedAt?: string
   responseMessage?: string
 
+  // Review & Approval
+  reviewedBy?: string
+  reviewedAt?: string
+  approvalNotes?: string
+
+  // Lease Agreement
+  leaseAgreementUrl?: string
+  leaseSignedAt?: string
+  leaseStartDate?: string
+  leaseEndDate?: string
+
   // Documents
   documents?: ApplicationDocument[]
 }

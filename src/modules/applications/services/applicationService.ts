@@ -81,11 +81,7 @@ export const applicationService = {
     async uploadLease(id: string, file: File): Promise<Application> {
         const formData = new FormData()
         formData.append('file', file)
-        return apiClient.post<Application>(`/applications/${id}/lease/upload`, formData, {
-            headers: {
-                'Content-Type': 'multipart/form-data',
-            },
-        })
+        return apiClient.post<Application>(`/applications/${id}/lease/upload`, formData)
     },
 
     /**

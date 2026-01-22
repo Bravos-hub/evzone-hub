@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { TenantApplication } from '@/core/api/types'
+import { useGenerateLease } from '@/modules/applications/hooks/useApplications'
 
 type ApplicationDetailModalProps = {
     open: boolean
@@ -19,6 +20,7 @@ export function ApplicationDetailModal({
     loading = false,
 }: ApplicationDetailModalProps) {
     const [activeTab, setActiveTab] = useState<Tab>('applicant')
+    const generateLease = useGenerateLease()
     const [terms, setTerms] = useState({
         proposedRent: application.proposedRent || 0,
         proposedTerm: application.proposedTerm || 12,
@@ -126,28 +128,74 @@ export function ApplicationDetailModal({
 
     const renderDocumentsTab = () => (
         <div className="space-y-4">
-            {(!application.documents || application.documents.length === 0) ? (
-                <div className="text-center py-8 text-muted italic">No documents uploaded.</div>
-            ) : (
-                <div className="grid gap-3">
-                    {application.documents.map((doc: any) => (
-                        <div key={doc.id} className="flex items-center justify-between p-3 border border-border-light rounded-lg hover:bg-muted/5 transition-colors">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-accent/10 text-accent rounded">
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                    </svg>
-                                </div>
-                                <div>
-                                    <div className="font-medium text-sm text-text">{doc.documentType}</div>
-                                    <div className="text-xs text-muted">{doc.fileName} • {(doc.fileSize / 1024).toFixed(0)} KB</div>
-                                </div>
+            {/* Lease Agreement Section */}
+            <div>
+                <h4 className="text-sm font-semibold text-text mb-3">Lease Agreement</h4>
+                {!application.leaseAgreementUrl ? (
+                    <div className="text-center py-8 border-2 border-dashed border-white/10 rounded-lg bg-white/5">
+                        <div className="text-4xl mb-3">📄</div>
+                        <h4 className="font-bold mb-2">No Lease Generated</h4>
+                        <p className="text-muted text-sm mb-4">Generate a standard lease based on the agreed terms.</p>
+                        <button
+                            className="px-4 py-2 bg-accent hover:bg-accent/90 text-white rounded-lg font-medium text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            onClick={() => generateLease.mutate(application.id)}
+                            disabled={generateLease.isPending}
+                        >
+                            {generateLease.isPending ? 'Generating...' : 'Generate New Lease'}
+                        </button>
+                    </div>
+                ) : (
+                    <div className="p-4 rounded-lg bg-blue-50/5 border border-blue-500/20">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm text-blue-200 mb-1">
+                                    {application.leaseSignedAt
+                                        ? `Lease signed on ${new Date(application.leaseSignedAt).toLocaleDateString()}`
+                                        : 'Lease agreement generated and ready for signature'}
+                                </p>
+                                <a
+                                    href={application.leaseAgreementUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-accent hover:underline text-sm font-medium"
+                                >
+                                    View Lease Document →
+                                </a>
                             </div>
-                            <button className="text-xs text-accent hover:underline">Download</button>
+                            {application.leaseSignedAt && (
+                                <div className="text-2xl">✓</div>
+                            )}
                         </div>
-                    ))}
-                </div>
-            )}
+                    </div>
+                )}
+            </div>
+
+            {/* Application Documents Section */}
+            <div>
+                <h4 className="text-sm font-semibold text-text mb-3">Application Documents</h4>
+                {(!application.documents || application.documents.length === 0) ? (
+                    <div className="text-center py-6 text-muted italic text-sm">No documents uploaded.</div>
+                ) : (
+                    <div className="grid gap-3">
+                        {application.documents.map((doc: any) => (
+                            <div key={doc.id} className="flex items-center justify-between p-3 border border-border-light rounded-lg hover:bg-muted/5 transition-colors">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-accent/10 text-accent rounded">
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <div className="font-medium text-sm text-text">{doc.documentType}</div>
+                                        <div className="text-xs text-muted">{doc.fileName} • {(doc.fileSize / 1024).toFixed(0)} KB</div>
+                                    </div>
+                                </div>
+                                <button className="text-xs text-accent hover:underline">Download</button>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
         </div>
     )
 
