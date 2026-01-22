@@ -245,7 +245,7 @@ export function DealConstructor({ initialTerms, onSave, isSubmitting }: DealCons
             </div>
 
             {/* Action Bar */}
-            <div className="card p-6 sticky bottom-4 z-10 border-t-2 border-accent shadow-xl bg-bg-secondary">
+            <div className="card p-6 border-t-2 border-accent shadow-xl bg-bg-secondary">
                 <div className="flex flex-col md:flex-row gap-4 items-center">
                     <div className="flex-1 w-full">
                         <label className="label">Note to Applicant (Optional)</label>
