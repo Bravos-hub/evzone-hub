@@ -47,7 +47,7 @@ const documentCategories = [
 
 export function DocumentUploadStep({ documents, onDocumentsChange, onNext, onBack }: DocumentUploadStepProps) {
     const [dragActive, setDragActive] = useState(false)
-    const uploadDocument = useUploadDocument()
+    // const uploadDocument = useUploadDocument() // Unused and requires args
 
     const handleFileSelect = (file: File, category: string, documentType: string, required: boolean) => {
         const newDoc = {

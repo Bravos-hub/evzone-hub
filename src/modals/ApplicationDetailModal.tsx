@@ -1,11 +1,11 @@
 import { useState } from 'react'
-import { TenantApplication } from '@/core/api/types'
+import type { Application } from '@/modules/applications/types'
 import { useGenerateLease } from '@/modules/applications/hooks/useApplications'
 
 type ApplicationDetailModalProps = {
     open: boolean
-    application: TenantApplication
-    onConfirm: (id: string, status: 'Approved' | 'Rejected', terms?: any) => void
+    application: Application
+    onConfirm: (id: string, status: 'APPROVED' | 'REJECTED', terms?: any) => void
     onCancel: () => void
     loading?: boolean
 }
@@ -296,8 +296,8 @@ export function ApplicationDetailModal({
                         <h3 className="text-xl font-bold text-text">Application Details</h3>
                         <p className="text-sm text-muted">ID: {application.id}</p>
                     </div>
-                    <span className={`pill ${application.status === 'Approved' ? 'approved' : application.status === 'Rejected' ? 'rejected' : 'pending'}`}>
-                        {application.status}
+                    <span className={`pill ${application.status === 'APPROVED' ? 'approved' : application.status === 'REJECTED' ? 'rejected' : 'pending'}`}>
+                        {application.status.replace('_', ' ')}
                     </span>
                 </div>
 
@@ -335,12 +335,12 @@ export function ApplicationDetailModal({
                     >
                         Close
                     </button>
-                    {application.status === 'Pending' && (
+                    {application.status === 'PENDING_REVIEW' && (
                         <div className="flex gap-3">
                             <button
                                 type="button"
                                 className="btn bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/20"
-                                onClick={() => onConfirm(application.id, 'Rejected')}
+                                onClick={() => onConfirm(application.id, 'REJECTED')}
                                 disabled={loading}
                             >
                                 Reject
@@ -348,7 +348,7 @@ export function ApplicationDetailModal({
                             <button
                                 type="button"
                                 className="btn bg-ok text-white hover:bg-ok/90"
-                                onClick={() => onConfirm(application.id, 'Approved', terms)}
+                                onClick={() => onConfirm(application.id, 'APPROVED', terms)}
                                 disabled={loading}
                             >
                                 Approve & Set Terms

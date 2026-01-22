@@ -100,24 +100,7 @@ The emergency red-button cutoff must be tested monthly and logged in the digital
     },
   ])
 
-  const { data: appData, isLoading, error } = useTenant(id || '')
-
-  // Transform Application to Tenant shape
-  const tenant: Tenant | undefined = appData ? {
-    id: appData.id,
-    name: appData.operator?.name || 'Unknown Operator',
-    type: 'Operator', // Default
-    siteName: appData.siteName || 'Unknown Site',
-    status: appData.status === 'APPROVED' ? 'Active' : appData.status === 'PENDING_REVIEW' ? 'Pending' : 'Suspended',
-    model: appData.preferredLeaseModel || 'Standard',
-    terms: appData.proposedTerm ? `${appData.proposedTerm} months` : 'Standard Terms',
-    startDate: appData.leaseStartDate || new Date().toISOString(),
-    email: appData.operator?.email || 'N/A',
-    phone: appData.operator?.phone || 'N/A',
-    earnings: 0,
-    outstandingDebt: 0,
-    paymentHistory: []
-  } as unknown as Tenant : undefined
+  const { data: tenant, isLoading, error } = useTenant(id || '')
 
   const { data: contract, isLoading: contractLoading } = useTenantContract(id || '')
   const { data: notices, isLoading: noticesLoading } = useNotices(id)

@@ -18,20 +18,20 @@ export function useNegotiationHistory(applicationId: string) {
     })
 }
 
-/**
- * Propose or counter-propose lease terms
- */
-export function useProposeTerms() {
-    const queryClient = useQueryClient()
-
-    return useMutation({
-        mutationFn: (data: ProposeTermsRequest) => negotiationService.propose(data),
-        onSuccess: (_, variables) => {
-            queryClient.invalidateQueries({ queryKey: ['negotiations', variables.applicationId] })
-            queryClient.invalidateQueries({ queryKey: ['applications', variables.applicationId] })
-        },
-    })
-}
+// /**
+//  * Propose or counter-propose lease terms
+//  */
+// export function useProposeTerms() {
+//     const queryClient = useQueryClient()
+//
+//     return useMutation({
+//         mutationFn: (data: ProposeTermsRequest) => negotiationService.propose(data),
+//         onSuccess: (_, variables) => {
+//             queryClient.invalidateQueries({ queryKey: ['negotiations', variables.applicationId] })
+//             queryClient.invalidateQueries({ queryKey: ['applications', variables.applicationId] })
+//         },
+//     })
+// }
 
 /**
  * Accept proposed terms

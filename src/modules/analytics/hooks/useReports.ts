@@ -27,6 +27,6 @@ export function useGenerateReport() {
 
 export function useDownloadReport() {
     return useMutation({
-        mutationFn: reportService.downloadReport
+        mutationFn: ({ id, name }: { id: string; name?: string }) => reportService.downloadReport(id, name)
     })
 }

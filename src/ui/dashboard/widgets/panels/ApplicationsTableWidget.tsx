@@ -10,7 +10,7 @@ export function ApplicationsTableWidget({ config }: { config: any }) {
 
     const handleUpdateStatus = (id: string, status: 'APPROVED' | 'REJECTED') => {
         if (confirm(`Are you sure you want to ${status.toLowerCase()} this application?`)) {
-            updateStatus.mutate({ id, status })
+            updateStatus.mutate({ id, data: { status } })
         }
     }
 

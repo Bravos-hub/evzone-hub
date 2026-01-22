@@ -31,7 +31,7 @@ export function Tariffs() {
   const [showEditor, setShowEditor] = useState(false)
   const [editingTariff, setEditingTariff] = useState<Tariff | undefined>(undefined)
 
-  const { data: tariffsData, isLoading, error } = useTariffs({ active: showInactive ? undefined : true })
+  const { data: tariffsData, isLoading, error } = useTariffs({ status: showInactive ? undefined : 'active' })
   const createTariffMutation = useCreateTariff()
   const updateTariffMutation = useUpdateTariff()
   const deleteTariffMutation = useDeleteTariff()

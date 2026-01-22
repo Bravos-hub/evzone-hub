@@ -2,13 +2,13 @@ import { useState, useMemo } from 'react'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { Card } from '@/ui/components/Card'
 import { useApplications } from '@/modules/applications/hooks/useApplications'
-import type { TenantApplication } from '@/core/api/types'
+import type { Application } from '@/modules/applications/types'
 import clsx from 'clsx'
 import { EVChargingAnimation } from '@/ui/components/EVChargingAnimation'
 
 export function ApplicationTracker() {
     const { data: applications, isLoading } = useApplications()
-    const [selectedApp, setSelectedApp] = useState<TenantApplication | null>(null)
+    const [selectedApp, setSelectedApp] = useState<Application | null>(null)
 
     if (isLoading) {
         return (

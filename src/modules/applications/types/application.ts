@@ -47,6 +47,21 @@ export interface Application {
     proposedRent?: number
     proposedTerm?: number
     totalPowerRequirement?: number
+    chargingTechnology?: string[]
+    targetCustomerSegment?: string[]
+    organizationName?: string
+    businessRegistrationNumber?: string
+    contactPersonName?: string
+    contactEmail?: string
+    contactPhone?: string
+    physicalAddress?: string
+    companyWebsite?: string
+    yearsInEVBusiness?: number
+    existingStationsOperated?: number
+    businessPlanSummary?: string
+    sustainabilityCommitments?: string
+    additionalServices?: string[]
+    documents?: any[]
 }
 
 export type ApplicationStatus =

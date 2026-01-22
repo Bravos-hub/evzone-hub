@@ -7,19 +7,19 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { leaseService } from '../services'
 import type { GenerateLeaseRequest, UploadSignedLeaseRequest, VerifyLeaseRequest } from '../types'
 
-/**
- * Generate lease PDF
- */
-export function useGenerateLease() {
-    const queryClient = useQueryClient()
-
-    return useMutation({
-        mutationFn: (data: GenerateLeaseRequest) => leaseService.generate(data),
-        onSuccess: (_, variables) => {
-            queryClient.invalidateQueries({ queryKey: ['applications', variables.applicationId] })
-        },
-    })
-}
+// /**
+//  * Generate lease PDF
+//  */
+// export function useGenerateLease() {
+//     const queryClient = useQueryClient()
+//
+//     return useMutation({
+//         mutationFn: (data: GenerateLeaseRequest) => leaseService.generate(data),
+//         onSuccess: (_, variables) => {
+//             queryClient.invalidateQueries({ queryKey: ['applications', variables.applicationId] })
+//         },
+//     })
+// }
 
 /**
  * Download lease PDF
