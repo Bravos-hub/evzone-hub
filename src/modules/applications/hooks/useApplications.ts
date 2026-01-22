@@ -187,6 +187,21 @@ export function useUploadLease() {
 }
 
 /**
+ * Digitally sign lease
+ */
+export function useSignLease() {
+    const queryClient = useQueryClient()
+
+    return useMutation({
+        mutationFn: ({ id, signatureData }: { id: string; signatureData: string }) =>
+            applicationService.signLease(id, signatureData),
+        onSuccess: (_, { id }) => {
+            queryClient.invalidateQueries({ queryKey: ['applications', id] })
+        },
+    })
+}
+
+/**
  * Propose new terms (Negotiation)
  */
 export function useProposeTerms() {

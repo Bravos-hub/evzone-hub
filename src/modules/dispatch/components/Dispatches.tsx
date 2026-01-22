@@ -3,7 +3,7 @@ import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { useAuthStore } from '@/core/auth/authStore'
 import { getPermissionsForFeature } from '@/constants/permissions'
 import { DispatchModal, type DispatchFormData } from '@/modals/DispatchModal'
-import { DispatchDetailModal } from '@/modals/DispatchDetailModal'
+import { DispatchDetailModal } from '../modals/DispatchDetailModal'
 import { useDispatches, useCreateDispatch, useAssignDispatch, useUpdateDispatch } from '@/modules/dispatch/hooks/useDispatches'
 import { useStations } from '@/modules/stations/hooks/useStations'
 import { getErrorMessage } from '@/core/api/errors'
@@ -13,31 +13,12 @@ import { auditLogger } from '@/core/utils/auditLogger'
 // TYPES
 // ═══════════════════════════════════════════════════════════════════════════
 
-type DispatchStatus = 'Pending' | 'Assigned' | 'In Progress' | 'Completed' | 'Cancelled'
-type Priority = 'Critical' | 'High' | 'Normal' | 'Low'
+import { Dispatch, DispatchStatus, DispatchPriority } from '@/core/api/types'
 
-type Dispatch = {
-  id: string
-  title: string
-  description: string
-  status: DispatchStatus
-  priority: Priority
-  stationId: string
-  stationName: string
-  stationAddress: string
-  stationChargers: number
-  ownerName: string
-  ownerContact: string
-  assignee: string
-  assigneeContact: string
-  createdAt: string
-  createdBy: string
-  dueAt: string
-  estimatedDuration: string
-  incidentId?: string
-  requiredSkills: string[]
-  notes?: string
-}
+// Local type for UI state if needed, or just use Dispatch
+// If we need to enforce required fields for the UI that are optional in API, we can use a utility type
+// But for now, let's try to use the core Dispatch type directly.
+
 
 // ═══════════════════════════════════════════════════════════════════════════
 // MOCK DATA
@@ -49,7 +30,7 @@ const mockDispatches: Dispatch[] = [
     title: 'Connector replacement - Bay 3',
     description: 'The connector on Bay 3 is damaged and needs immediate replacement. Customer reported difficulty connecting vehicle. Replacement connector is available in stock.',
     status: 'Assigned',
-    priority: 'High',
+    priority: 'High' as DispatchPriority,
     stationId: 'ST-0001',
     stationName: 'Kampala CBD Hub',
     stationAddress: 'Plot 12, Kampala Road, Kampala',
@@ -60,7 +41,8 @@ const mockDispatches: Dispatch[] = [
     assigneeContact: '+256 701 111 111',
     createdAt: '2024-12-24 08:00',
     createdBy: 'Manager James',
-    dueAt: '2024-12-24 14:00',
+    dueDate: '2024-12-24 14:00',
+    updatedAt: '2024-12-24 09:00',
     estimatedDuration: '2h',
     incidentId: 'INC-2392',
     requiredSkills: ['OCPP', 'Electrical'],
@@ -81,7 +63,8 @@ const mockDispatches: Dispatch[] = [
     assigneeContact: '',
     createdAt: '2024-12-23 16:00',
     createdBy: 'Operator David',
-    dueAt: '2024-12-26 18:00',
+    dueDate: '2024-12-26 18:00',
+    updatedAt: '2024-12-23 17:00',
     estimatedDuration: '4h',
     requiredSkills: ['Firmware', 'OCPP'],
   },
@@ -101,7 +84,8 @@ const mockDispatches: Dispatch[] = [
     assigneeContact: '+256 701 222 222',
     createdAt: '2024-12-22 10:00',
     createdBy: 'Admin Mary',
-    dueAt: '2024-12-24 12:00',
+    dueDate: '2024-12-24 12:00',
+    updatedAt: '2024-12-22 11:00',
     estimatedDuration: '4h',
     incidentId: 'INC-2384',
     requiredSkills: ['Mechanical', 'Swap Station'],
@@ -122,7 +106,8 @@ const mockDispatches: Dispatch[] = [
     assigneeContact: '+49 30 98765432',
     createdAt: '2024-12-20 09:00',
     createdBy: 'Manager Anna',
-    dueAt: '2024-12-20 17:00',
+    dueDate: '2024-12-20 17:00',
+    updatedAt: '2024-12-20 17:00',
     estimatedDuration: '2h',
     requiredSkills: ['Maintenance', 'Electrical'],
     notes: 'All systems checked and functioning properly. Next maintenance due in 3 months.',
@@ -148,7 +133,7 @@ export function Dispatches() {
 
   const [q, setQ] = useState('')
   const [status, setStatus] = useState<DispatchStatus | 'All'>('All')
-  const [priority, setPriority] = useState<Priority | 'All'>('All')
+  const [priority, setPriority] = useState<DispatchPriority | 'All'>('All')
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [selectedDispatch, setSelectedDispatch] = useState<Dispatch | null>(null)
@@ -172,18 +157,20 @@ export function Dispatches() {
       title: d.title,
       description: d.description,
       status: d.status as DispatchStatus,
-      priority: d.priority as Priority,
+      priority: d.priority as DispatchPriority,
       stationId: d.stationId,
-      stationName: d.stationName,
-      stationAddress: d.stationAddress,
-      stationChargers: d.stationChargers,
-      ownerName: d.ownerName,
-      ownerContact: d.ownerContact,
-      assignee: d.assignee,
-      assigneeContact: d.assigneeContact,
+      stationName: d.stationName || 'Unknown Station',
+      stationAddress: d.stationAddress || 'Unknown Address',
+      stationChargers: d.stationChargers || 0,
+      ownerName: d.ownerName || 'Unknown Owner',
+      ownerContact: d.ownerContact || '',
+      assignee: d.assignee || 'Unassigned',
+      assigneeContact: d.assigneeContact || '',
+      created: d.createdAt, // Maintain compatibility if used
       createdAt: d.createdAt,
-      createdBy: d.createdBy,
-      dueAt: d.dueAt,
+      createdBy: d.createdBy || 'System',
+      dueDate: d.dueDate || d.dueAt || '',
+      updatedAt: d.updatedAt || new Date().toISOString(),
       estimatedDuration: d.estimatedDuration,
       incidentId: d.incidentId,
       requiredSkills: d.requiredSkills,
@@ -217,7 +204,7 @@ export function Dispatches() {
     }
   }
 
-  function priorityColor(p: Priority) {
+  function priorityColor(p: DispatchPriority) {
     switch (p) {
       case 'Critical': return 'bg-danger text-white'
       case 'High': return 'bg-warn text-white'
@@ -240,7 +227,7 @@ export function Dispatches() {
         requiredSkills: formData.requiredSkills,
       })
       auditLogger.dispatchCreated(newDispatch.id, newDispatch.title)
-      
+
       // Assign dispatch if technician is selected
       if (formData.technicianId) {
         try {
@@ -257,7 +244,7 @@ export function Dispatches() {
           console.error('Failed to assign dispatch:', err)
         }
       }
-      
+
       alert(`Dispatch ${newDispatch.id} created${formData.technicianId ? ' and assigned' : ''} successfully`)
       setShowCreateModal(false)
     } catch (err) {
@@ -286,7 +273,7 @@ export function Dispatches() {
   return (
     <DashboardLayout pageTitle="Dispatches">
       {ack && <div className="mb-4 rounded-lg bg-accent/10 text-accent px-4 py-3 text-sm font-medium">{ack}</div>}
-      
+
       {/* Summary Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
         <div className="card">
@@ -324,7 +311,7 @@ export function Dispatches() {
             <option value="Completed">Completed</option>
             <option value="Cancelled">Cancelled</option>
           </select>
-          <select value={priority} onChange={(e) => setPriority(e.target.value as Priority | 'All')} className="select">
+          <select value={priority} onChange={(e) => setPriority(e.target.value as DispatchPriority | 'All')} className="select">
             <option value="All">All Priority</option>
             <option value="Critical">Critical</option>
             <option value="High">High</option>
@@ -347,53 +334,53 @@ export function Dispatches() {
       {!isLoading && (
         <div className="table-wrap">
           <table className="table">
-          <thead>
-            <tr>
-              <th className="w-32">Dispatch</th>
-              <th className="w-24">Priority</th>
-              <th className="w-32">Station</th>
-              <th className="w-24">Assignee</th>
-              <th className="w-24">Status</th>
-              <th className="w-24">Due</th>
-              <th className="w-24 !text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((r) => (
-              <tr key={r.id}>
-                <td className="truncate max-w-[128px]">
-                  <div className="font-semibold text-text">{r.id}</div>
-                  <div className="text-xs text-muted truncate" title={r.title}>{r.title}</div>
-                </td>
-                <td className="whitespace-nowrap">
-                  <span className={`pill ${priorityColor(r.priority)}`}>{r.priority}</span>
-                </td>
-                <td className="truncate max-w-[128px]">
-                  <div className="truncate" title={r.stationName}>{r.stationName}</div>
-                  <div className="text-xs text-muted truncate">{r.stationId}</div>
-                </td>
-                <td className="truncate max-w-[96px]" title={r.assignee}>{r.assignee}</td>
-                <td className="whitespace-nowrap">
-                  <span className={`pill ${statusColor(r.status)}`}>{r.status}</span>
-                </td>
-                <td className="text-sm whitespace-nowrap">{r.dueAt}</td>
-                <td className="text-right">
-                  <div className="inline-flex items-center gap-2">
-                    <button className="btn secondary" onClick={() => handleViewDispatch(r)}>
-                      View
-                    </button>
-                    {perms.assign && r.status === 'Pending' && (
-                      <button className="btn secondary" onClick={() => handleViewDispatch(r)}>
-                        Assign
-                      </button>
-                    )}
-                  </div>
-                </td>
+            <thead>
+              <tr>
+                <th className="w-32">Dispatch</th>
+                <th className="w-24">Priority</th>
+                <th className="w-32">Station</th>
+                <th className="w-24">Assignee</th>
+                <th className="w-24">Status</th>
+                <th className="w-24">Due</th>
+                <th className="w-24 !text-right">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {filtered.map((r) => (
+                <tr key={r.id}>
+                  <td className="truncate max-w-[128px]">
+                    <div className="font-semibold text-text">{r.id}</div>
+                    <div className="text-xs text-muted truncate" title={r.title}>{r.title}</div>
+                  </td>
+                  <td className="whitespace-nowrap">
+                    <span className={`pill ${priorityColor(r.priority)}`}>{r.priority}</span>
+                  </td>
+                  <td className="truncate max-w-[128px]">
+                    <div className="truncate" title={r.stationName}>{r.stationName}</div>
+                    <div className="text-xs text-muted truncate">{r.stationId}</div>
+                  </td>
+                  <td className="truncate max-w-[96px]" title={r.assignee}>{r.assignee}</td>
+                  <td className="whitespace-nowrap">
+                    <span className={`pill ${statusColor(r.status)}`}>{r.status}</span>
+                  </td>
+                  <td className="text-sm whitespace-nowrap">{r.dueDate}</td>
+                  <td className="text-right">
+                    <div className="inline-flex items-center gap-2">
+                      <button className="btn secondary" onClick={() => handleViewDispatch(r)}>
+                        View
+                      </button>
+                      {perms.assign && r.status === 'Pending' && (
+                        <button className="btn secondary" onClick={() => handleViewDispatch(r)}>
+                          Assign
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
 
       {/* Modals */}

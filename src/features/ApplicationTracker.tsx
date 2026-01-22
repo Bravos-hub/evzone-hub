@@ -58,25 +58,25 @@ export function ApplicationTracker() {
                                             <div className="flex items-center gap-4">
                                                 <div className={clsx(
                                                     'w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xs',
-                                                    app.status === 'Approved' ? 'bg-ok/10 text-ok' :
-                                                        app.status === 'Rejected' ? 'bg-red-500/10 text-red-500' :
+                                                    app.status === 'APPROVED' ? 'bg-ok/10 text-ok' :
+                                                        app.status === 'REJECTED' ? 'bg-red-500/10 text-red-500' :
                                                             'bg-accent/10 text-accent'
                                                 )}>
-                                                    {app.siteName[0]}
+                                                    {(app.siteName || 'U')[0]}
                                                 </div>
                                                 <div>
-                                                    <h4 className="font-bold text-text group-hover:text-accent transition-colors">{app.siteName}</h4>
-                                                    <p className="text-xs text-text-secondary">{app.preferredLeaseModel} • Applied {new Date(app.createdAt).toLocaleDateString()}</p>
+                                                    <h4 className="font-bold text-text group-hover:text-accent transition-colors">{app.siteName || 'Unknown Site'}</h4>
+                                                    <p className="text-xs text-text-secondary">{app.preferredLeaseModel || 'Standard'} • Applied {new Date(app.submittedAt).toLocaleDateString()}</p>
                                                 </div>
                                             </div>
                                             <div className="text-right">
                                                 <span className={clsx(
                                                     'px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest',
-                                                    app.status === 'Approved' ? 'bg-ok/20 text-ok' :
-                                                        app.status === 'Rejected' ? 'bg-red-500/20 text-red-500' :
+                                                    app.status === 'APPROVED' ? 'bg-ok/20 text-ok' :
+                                                        app.status === 'REJECTED' ? 'bg-red-500/20 text-red-500' :
                                                             'bg-accent/20 text-accent'
                                                 )}>
-                                                    {app.status}
+                                                    {app.status.replace('_', ' ')}
                                                 </span>
                                             </div>
                                         </div>

@@ -67,18 +67,18 @@ export function Tenants() {
   const filtered = useMemo(() => {
     const data = viewMode === 'applications' ? apps : tnts
     return data
-      .filter(r => site === 'All' || (viewMode === 'applications' ? (r as TenantApplication).siteName === site : (r as Tenant).siteName === site))
+      .filter(r => site === 'All' || (viewMode === 'applications' ? (r as any).siteName === site : (r as Tenant).siteName === site))
       .filter(r => {
         if (viewMode === 'tenants') return type === 'All' || (r as Tenant).type === type
         return true
       })
       .filter(r => {
         if (viewMode === 'tenants') return status === 'All' || r.status === status
-        if (viewMode === 'applications') return status === 'All' || (r as TenantApplication).status === status
+        if (viewMode === 'applications') return status === 'All' || (r as any).status === status
         return true
       })
       .filter(r => {
-        const searchStr = (r.id + ' ' + (viewMode === 'applications' ? (r as TenantApplication).applicantName : (r as Tenant).name) + ' ' + (viewMode === 'applications' ? (r as TenantApplication).siteName : (r as Tenant).siteName)).toLowerCase()
+        const searchStr = (r.id + ' ' + (viewMode === 'applications' ? (r as any).applicantName : (r as Tenant).name) + ' ' + (viewMode === 'applications' ? (r as any).siteName : (r as Tenant).siteName)).toLowerCase()
         return !q || searchStr.includes(q.toLowerCase())
       })
   }, [viewMode, site, type, status, q, tnts, apps])
@@ -87,7 +87,7 @@ export function Tenants() {
     if (viewMode === 'applications') {
       return {
         total: filtered.length,
-        pending: filtered.filter(a => (a as TenantApplication).status === 'Pending').length,
+        pending: filtered.filter(a => (a as any).status === 'PENDING_REVIEW').length,
       }
     }
     return {

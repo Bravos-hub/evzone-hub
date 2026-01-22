@@ -57,9 +57,11 @@ export const tariffService = {
   /**
    * Get all tariffs
    */
-  async getAll(query?: { active?: boolean }): Promise<Tariff[]> {
+  async getAll(query?: { active?: boolean; orgId?: string; status?: string }): Promise<Tariff[]> {
     const params = new URLSearchParams()
     if (query?.active !== undefined) params.append('active', query.active.toString())
+    if (query?.orgId) params.append('orgId', query.orgId)
+    if (query?.status) params.append('status', query.status)
 
     const queryString = params.toString()
     return apiClient.get<Tariff[]>(`/tariffs${queryString ? `?${queryString}` : ''}`)
@@ -91,5 +93,12 @@ export const tariffService = {
    */
   async delete(id: string): Promise<void> {
     return apiClient.delete<void>(`/tariffs/${id}`)
+  },
+
+  /**
+   * Activate tariff
+   */
+  async activate(id: string): Promise<Tariff> {
+    return apiClient.patch<Tariff>(`/tariffs/${id}`, { active: true })
   },
 }

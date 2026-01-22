@@ -71,9 +71,10 @@ export function LineChartWidget({ config }: WidgetProps<LineChartConfig>) {
                 borderRadius: '8px',
                 color: '#fff'
               }}
-              formatter={(value: number) => {
-                if (value >= 1000) return [`$${(value / 1000).toFixed(1)}k`, 'Value']
-                return [`$${value.toFixed(0)}`, 'Value']
+              formatter={(value: number | undefined) => {
+                if (value === undefined) return ['N/A', 'Value'] as [string, string]
+                if (value >= 1000) return [`$${(value / 1000).toFixed(1)}k`, 'Value'] as [string, string]
+                return [`$${value.toFixed(0)}`, 'Value'] as [string, string]
               }}
             />
             <Area

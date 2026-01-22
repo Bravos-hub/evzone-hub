@@ -8,7 +8,7 @@ export function ApplicationsTableWidget({ config }: { config: any }) {
     const updateStatus = useUpdateApplicationStatus()
     const apps = applications || []
 
-    const handleUpdateStatus = (id: string, status: 'Approved' | 'Rejected') => {
+    const handleUpdateStatus = (id: string, status: 'APPROVED' | 'REJECTED') => {
         if (confirm(`Are you sure you want to ${status.toLowerCase()} this application?`)) {
             updateStatus.mutate({ id, status })
         }
@@ -60,23 +60,23 @@ export function ApplicationsTableWidget({ config }: { config: any }) {
                                     <td>${a.proposedRent?.toLocaleString()}</td>
                                     <td>{a.proposedTerm} mos</td>
                                     <td>
-                                        <span className={`pill ${a.status === 'Approved' ? 'approved' : a.status === 'Rejected' ? 'rejected' : 'pending'}`}>
-                                            {a.status}
+                                        <span className={`pill ${a.status === 'APPROVED' ? 'approved' : a.status === 'REJECTED' ? 'rejected' : 'pending'}`}>
+                                            {a.status.replace('_', ' ')}
                                         </span>
                                     </td>
                                     <td className="text-right">
-                                        {a.status === 'Pending' ? (
+                                        {a.status === 'PENDING_REVIEW' ? (
                                             <div className="flex justify-end gap-2">
                                                 <button
                                                     className="btn text-xs px-2 py-1 bg-ok/10 text-ok hover:bg-ok/20 border border-ok/20"
-                                                    onClick={() => handleUpdateStatus(a.id, 'Approved')}
+                                                    onClick={() => handleUpdateStatus(a.id, 'APPROVED')}
                                                     disabled={updateStatus.isPending}
                                                 >
                                                     Approve
                                                 </button>
                                                 <button
                                                     className="btn text-xs px-2 py-1 bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/20"
-                                                    onClick={() => handleUpdateStatus(a.id, 'Rejected')}
+                                                    onClick={() => handleUpdateStatus(a.id, 'REJECTED')}
                                                     disabled={updateStatus.isPending}
                                                 >
                                                     Reject

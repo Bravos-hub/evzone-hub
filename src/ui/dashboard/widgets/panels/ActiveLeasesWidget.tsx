@@ -42,9 +42,9 @@ export function ActiveLeasesWidget({ config }: { config: ActiveLeasesConfig }) {
                         ) : (
                             items.map((l) => (
                                 <tr key={l.id}>
-                                    <td className="font-semibold">{l.name}</td>
-                                    <td className="text-xs">{l.siteName}</td>
-                                    <td>{l.model === 'Fixed Rent' ? l.terms : `${l.earnings?.toLocaleString()} (Share)`}</td>
+                                    <td className="font-semibold">{l.operator?.name || 'Unknown'}</td>
+                                    <td className="text-xs">{l.siteName || 'Unknown Site'}</td>
+                                    <td>{l.preferredLeaseModel === 'Fixed Rent' ? (l.proposedTerm + ' mo') : `Revenue Share`}</td>
                                     <td>
                                         <span className="pill approved">{l.status}</span>
                                     </td>

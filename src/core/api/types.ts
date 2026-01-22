@@ -877,6 +877,13 @@ export interface Dispatch {
   requiredSkills?: string[]
   createdAt: string
   updatedAt: string
+  assignedTo?: string // Add compatibility
+  stationAddress?: string
+  stationChargers?: number
+  ownerName?: string
+  ownerContact?: string
+  createdBy?: string
+  dueAt?: string
   notes?: string
 }
 

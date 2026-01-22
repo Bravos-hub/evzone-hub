@@ -1,36 +1,12 @@
 import { useState } from 'react'
 import { useAuthStore } from '@/core/auth/authStore'
 
-type DispatchStatus = 'Pending' | 'Assigned' | 'In Progress' | 'Completed' | 'Cancelled'
-type Priority = 'Critical' | 'High' | 'Normal' | 'Low'
-
-interface DispatchDetail {
-  id: string
-  title: string
-  description: string
-  status: DispatchStatus
-  priority: Priority
-  stationId: string
-  stationName: string
-  stationAddress: string
-  stationChargers: number
-  ownerName: string
-  ownerContact: string
-  assignee: string
-  assigneeContact: string
-  createdAt: string
-  createdBy: string
-  dueAt: string
-  estimatedDuration: string
-  incidentId?: string
-  requiredSkills: string[]
-  notes?: string
-}
+import { Dispatch, DispatchStatus, DispatchPriority } from '@/core/api/types'
 
 interface DispatchDetailModalProps {
   isOpen: boolean
   onClose: () => void
-  dispatch: DispatchDetail | null
+  dispatch: Dispatch | null
   onStatusChange?: (dispatchId: string, newStatus: DispatchStatus, notes?: string) => void
   onContactOwner?: (dispatchId: string) => void
 }
@@ -103,7 +79,7 @@ export function DispatchDetailModal({ isOpen, onClose, dispatch, onStatusChange,
     setMessage('')
   }
 
-  const priorityColor = (p: Priority) => {
+  const priorityColor = (p: DispatchPriority) => {
     switch (p) {
       case 'Critical': return 'bg-danger text-white'
       case 'High': return 'bg-warn text-white'
@@ -176,7 +152,7 @@ export function DispatchDetailModal({ isOpen, onClose, dispatch, onStatusChange,
                   <div className="text-sm font-semibold text-text">{dispatch.stationChargers} units</div>
                 </div>
               </div>
-              
+
               <div className="flex items-center gap-2 text-sm">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" />
@@ -208,7 +184,7 @@ export function DispatchDetailModal({ isOpen, onClose, dispatch, onStatusChange,
           </div>
 
           {/* Required Skills */}
-          {dispatch.requiredSkills.length > 0 && (
+          {dispatch.requiredSkills && dispatch.requiredSkills.length > 0 && (
             <div>
               <div className="text-sm font-semibold text-text mb-2">Required Skills</div>
               <div className="flex flex-wrap gap-2">
@@ -321,9 +297,9 @@ export function DispatchDetailModal({ isOpen, onClose, dispatch, onStatusChange,
             </button>
           )}
           {canCancel && (
-            <button 
-              onClick={() => onStatusChange && onStatusChange(dispatch.id, 'Cancelled', 'Cancelled by administrator')} 
-              className="btn" 
+            <button
+              onClick={() => onStatusChange && onStatusChange(dispatch.id, 'Cancelled', 'Cancelled by administrator')}
+              className="btn"
               style={{ background: '#dc3545', color: 'white' }}
             >
               Cancel Dispatch

@@ -68,14 +68,14 @@ export function LeaseCompliance() {
                                 <Card key={lease.id} className="p-5 border-white/5 hover:bg-white/[0.02] transition-all">
                                     <div className="flex items-start justify-between">
                                         <div>
-                                            <h4 className="font-bold text-text mb-1">{lease.siteName}</h4>
+                                            <h4 className="font-bold text-text mb-1">{lease.siteName || 'Unknown Site'}</h4>
                                             <div className="flex flex-wrap gap-2">
-                                                <span className="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-[9px] font-black uppercase text-text-secondary">Model: {lease.model}</span>
-                                                <span className="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-[9px] font-black uppercase text-text-secondary">Start: {new Date(lease.startDate).toLocaleDateString()}</span>
+                                                <span className="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-[9px] font-black uppercase text-text-secondary">Model: {lease.preferredLeaseModel || 'Standard'}</span>
+                                                <span className="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-[9px] font-black uppercase text-text-secondary">Start: {lease.leaseStartDate ? new Date(lease.leaseStartDate).toLocaleDateString() : 'Pending'}</span>
                                             </div>
                                         </div>
                                         <div className="text-right">
-                                            <p className="text-sm font-black text-text">${lease.earnings.toLocaleString()}</p>
+                                            <p className="text-sm font-black text-text">${(0).toLocaleString()} {/* TODO: earnings */}</p>
                                             <p className="text-[9px] font-bold text-text-secondary uppercase">Site Earnings Share</p>
                                         </div>
                                     </div>

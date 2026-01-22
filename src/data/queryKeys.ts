@@ -85,5 +85,11 @@ export const queryKeys = {
     all: (filters?: Record<string, unknown>) => ['providers', filters] as const,
     detail: (id: string) => ['providers', id] as const,
   },
+
+  // Tariffs
+  tariffs: {
+    all: (filters?: Record<string, unknown>) => ['tariffs', filters] as const,
+    detail: (id: string) => ['tariffs', id] as const,
+  },
 } as const
 

@@ -26,7 +26,7 @@ export function useCreateTariff() {
     const queryClient = useQueryClient()
 
     return useMutation({
-        mutationFn: (data: any) => tariffService.create(data),
+        mutationFn: (data: import('./tariffService').CreateTariffRequest) => tariffService.create(data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.tariffs.all() })
         },
@@ -37,7 +37,7 @@ export function useUpdateTariff() {
     const queryClient = useQueryClient()
 
     return useMutation({
-        mutationFn: ({ id, data }: { id: string; data: any }) => tariffService.update(id, data),
+        mutationFn: ({ id, data }: { id: string; data: import('./tariffService').UpdateTariffRequest }) => tariffService.update(id, data),
         onSuccess: (_, variables) => {
             queryClient.invalidateQueries({ queryKey: queryKeys.tariffs.detail(variables.id) })
             queryClient.invalidateQueries({ queryKey: queryKeys.tariffs.all() })

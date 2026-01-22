@@ -35,9 +35,17 @@ export interface Application {
     leaseStartDate?: string
     leaseEndDate?: string
 
-    // Completion
     completedAt?: string
     tenantId?: string
+
+    // Derived/Display Fields (populated by backend or mapper)
+    siteName?: string
+    createdAt?: string // Alias for submittedAt
+    preferredLeaseModel?: string
+    numberOfChargingPoints?: number
+    responseMessage?: string
+    proposedRent?: number
+    proposedTerm?: number
 }
 
 export type ApplicationStatus =

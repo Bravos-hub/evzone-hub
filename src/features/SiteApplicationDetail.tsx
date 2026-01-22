@@ -8,12 +8,14 @@ import {
     useSendLeaseForSignature,
     useUploadLease,
     useActivateTenant,
-    useProposeTerms
+    useProposeTerms,
+    useSignLease
 } from '@/modules/applications/hooks/useApplications'
 import { getErrorMessage } from '@/core/api/errors'
 import clsx from 'clsx'
 import { RevenueCalculator } from './RevenueCalculator'
 import { DealConstructor } from './DealConstructor'
+import { DigitalSignaturePad } from './DigitalSignaturePad'
 
 type Tab = 'overview' | 'negotiation' | 'documents'
 
@@ -25,6 +27,8 @@ export function SiteApplicationDetail() {
 
     // Negotiation State
     const proposeTerms = useProposeTerms()
+    const signLease = useSignLease()
+    const [showSignaturePad, setShowSignaturePad] = useState(false)
 
     const updateStatus = useUpdateApplicationStatus()
     const generateLease = useGenerateLease()
@@ -402,6 +406,26 @@ export function SiteApplicationDetail() {
                     </div>
                 )}
             </div>
+
+
+
+            {/* Digital Signature Pad Modal */}
+            {
+                showSignaturePad && (
+                    <DigitalSignaturePad
+                        signeeName="Site Owner" // In real app, get from user profile
+                        onSign={(signatureData) => {
+                            if (app.id) {
+                                signLease.mutate({ id: app.id, signatureData }, {
+                                    onSuccess: () => setShowSignaturePad(false)
+                                })
+                            }
+                        }}
+                        onCancel={() => setShowSignaturePad(false)}
+                        isSubmitting={signLease.isPending}
+                    />
+                )
+            }
 
         </DashboardLayout >
     )

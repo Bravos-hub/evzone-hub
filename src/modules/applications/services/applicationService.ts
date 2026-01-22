@@ -87,4 +87,11 @@ export const applicationService = {
             },
         })
     },
+
+    /**
+     * Digitally sign lease
+     */
+    async signLease(id: string, signatureData: string): Promise<Application> {
+        return apiClient.post<Application>(`/applications/${id}/lease/sign`, { signatureData })
+    },
 }
