@@ -2,63 +2,9 @@ import { useState } from 'react'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { useAuthStore } from '@/core/auth/authStore'
 import { getPermissionsForFeature } from '@/constants/permissions'
+import { useReportTemplates, useGeneratedReports, useGenerateReport, useDownloadReport } from '@/modules/analytics/hooks/useReports'
+import { ReportType } from '@/modules/analytics/types/reports'
 
-// ═══════════════════════════════════════════════════════════════════════════
-// TYPES
-// ═══════════════════════════════════════════════════════════════════════════
-
-type ReportType = 'Revenue' | 'Sessions' | 'Utilization' | 'Incidents' | 'Compliance'
-type ReportFormat = 'PDF' | 'CSV' | 'Excel'
-
-type ReportTemplate = {
-  id: string
-  name: string
-  type: ReportType
-  description: string
-  lastGenerated: string
-  frequency: 'Daily' | 'Weekly' | 'Monthly' | 'On-demand'
-}
-
-type GeneratedReport = {
-  id: string
-  name: string
-  type: ReportType
-  format: ReportFormat
-  generatedAt: string
-  size: string
-  generatedBy: string
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// MOCK DATA
-// ═══════════════════════════════════════════════════════════════════════════
-
-const mockTemplates: ReportTemplate[] = [
-  { id: 'TPL-001', name: 'Monthly Revenue Summary', type: 'Revenue', description: 'Revenue breakdown by station and region', lastGenerated: '2024-12-01', frequency: 'Monthly' },
-  { id: 'TPL-002', name: 'Session Analytics', type: 'Sessions', description: 'Session counts, durations, and completion rates', lastGenerated: '2024-12-24', frequency: 'Weekly' },
-  { id: 'TPL-003', name: 'Station Utilization', type: 'Utilization', description: 'Utilization percentages and peak hours', lastGenerated: '2024-12-23', frequency: 'Daily' },
-  { id: 'TPL-004', name: 'Incident Report', type: 'Incidents', description: 'All incidents with resolution times', lastGenerated: '2024-12-24', frequency: 'On-demand' },
-  { id: 'TPL-005', name: 'Compliance Audit', type: 'Compliance', description: 'Regulatory compliance status', lastGenerated: '2024-11-30', frequency: 'Monthly' },
-]
-
-const mockReports: GeneratedReport[] = [
-  { id: 'RPT-001', name: 'November Revenue Summary', type: 'Revenue', format: 'PDF', generatedAt: '2024-12-01 09:00', size: '2.4 MB', generatedBy: 'System' },
-  { id: 'RPT-002', name: 'Week 51 Sessions', type: 'Sessions', format: 'Excel', generatedAt: '2024-12-24 06:00', size: '1.1 MB', generatedBy: 'System' },
-  { id: 'RPT-003', name: 'Daily Utilization Dec 23', type: 'Utilization', format: 'CSV', generatedAt: '2024-12-24 00:05', size: '450 KB', generatedBy: 'System' },
-]
-
-// ═══════════════════════════════════════════════════════════════════════════
-// MAIN COMPONENT
-// ═══════════════════════════════════════════════════════════════════════════
-
-/**
- * Reports Page - Unified for all roles
- * 
- * RBAC Controls:
- * - viewAll: ADMIN, OPERATOR see all reports
- * - export: ADMIN, OPERATOR, OWNER can export
- * - schedule: ADMIN, OPERATOR can schedule
- */
 export function Reports() {
   const { user } = useAuthStore()
   const perms = getPermissionsForFeature(user?.role, 'reports')
@@ -66,8 +12,33 @@ export function Reports() {
   const [tab, setTab] = useState<'templates' | 'generated'>('templates')
   const [typeFilter, setTypeFilter] = useState<ReportType | 'All'>('All')
 
-  const filteredTemplates = mockTemplates.filter((t) => (typeFilter === 'All' ? true : t.type === typeFilter))
-  const filteredReports = mockReports.filter((r) => (typeFilter === 'All' ? true : r.type === typeFilter))
+  // Queries
+  const { data: templates = [], isLoading: loadingTemplates } = useReportTemplates()
+  const { data: reports = [], isLoading: loadingReports } = useGeneratedReports()
+
+  // Mutations
+  const generateReport = useGenerateReport()
+  const downloadReport = useDownloadReport()
+
+  const filteredTemplates = templates.filter((t) => (typeFilter === 'All' ? true : t.type === typeFilter))
+  const filteredReports = reports.filter((r) => (typeFilter === 'All' ? true : r.type === typeFilter))
+
+  const handleGenerate = (templateId: string, name: string) => {
+    generateReport.mutate(templateId, {
+      onSuccess: () => {
+        setTab('generated')
+      }
+    })
+  }
+
+  const handleDownload = (reportId: string, name: string) => {
+    downloadReport.mutate(reportId, {
+      onSuccess: () => {
+        // In a real app, this would handle the blob
+        // alert(`Downloaded ${name}`)
+      }
+    })
+  }
 
   return (
     <DashboardLayout pageTitle="Reports & Exports">
@@ -88,8 +59,8 @@ export function Reports() {
       </div>
 
       {/* Filter */}
-      <div className="card mb-4">
-        <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value as ReportType | 'All')} className="select w-48">
+      <div className="card mb-4 flex justify-between items-center">
+        <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value as ReportType | 'All')} className="select w-48 bg-white/5">
           <option value="All">All Types</option>
           <option value="Revenue">Revenue</option>
           <option value="Sessions">Sessions</option>
@@ -97,6 +68,8 @@ export function Reports() {
           <option value="Incidents">Incidents</option>
           <option value="Compliance">Compliance</option>
         </select>
+
+        {(loadingTemplates || loadingReports) && <span className="text-muted text-sm animate-pulse">Syncing...</span>}
       </div>
 
       {tab === 'templates' && (
@@ -124,8 +97,12 @@ export function Reports() {
                   <td className="text-right">
                     <div className="inline-flex items-center gap-2">
                       {perms.export && (
-                        <button className="btn secondary" onClick={() => alert(`Generate ${t.name} (demo)`)}>
-                          Generate
+                        <button
+                          className="btn secondary"
+                          disabled={generateReport.isPending}
+                          onClick={() => handleGenerate(t.id, t.name)}
+                        >
+                          {generateReport.isPending ? 'Generating...' : 'Generate'}
                         </button>
                       )}
                       {perms.schedule && (
@@ -137,6 +114,9 @@ export function Reports() {
                   </td>
                 </tr>
               ))}
+              {filteredTemplates.length === 0 && !loadingTemplates && (
+                <tr><td colSpan={5} className="text-center py-8 text-muted">No templates found</td></tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -164,12 +144,19 @@ export function Reports() {
                   <td>{r.size}</td>
                   <td className="text-sm">{r.generatedAt}</td>
                   <td className="text-right">
-                    <button className="btn secondary" onClick={() => alert(`Download ${r.name} (demo)`)}>
-                      Download
+                    <button
+                      className="btn secondary"
+                      disabled={downloadReport.isPending}
+                      onClick={() => handleDownload(r.id, r.name)}
+                    >
+                      {downloadReport.isPending ? 'Downloading...' : 'Download'}
                     </button>
                   </td>
                 </tr>
               ))}
+              {filteredReports.length === 0 && !loadingReports && (
+                <tr><td colSpan={6} className="text-center py-8 text-muted">No generated reports yet</td></tr>
+              )}
             </tbody>
           </table>
         </div>
