@@ -101,6 +101,7 @@ export interface Station {
   capacity?: number
   parkingBays?: number
   orgId?: string
+  ownerId?: string // Link to Station Owner (Tenant)
   operatorId?: string
   contractType?: 'FIXED' | 'REVENUE_SHARE' | 'HYBRID'
   revenueShare?: number // Percentage

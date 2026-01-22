@@ -7,7 +7,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { tariffService } from './tariffService'
 import { queryKeys } from '@/data/queryKeys'
 
-export function useTariffs(filters?: { orgId?: string; status?: string }) {
+export function useTariffs(filters?: { orgId?: string; status?: string; active?: boolean }) {
     return useQuery({
         queryKey: queryKeys.tariffs.all(filters),
         queryFn: () => tariffService.getAll(filters),

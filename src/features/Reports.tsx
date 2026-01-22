@@ -32,7 +32,7 @@ export function Reports() {
   }
 
   const handleDownload = (reportId: string, name: string) => {
-    downloadReport.mutate(reportId, {
+    downloadReport.mutate({ id: reportId, name }, {
       onSuccess: () => {
         // In a real app, this would handle the blob
         // alert(`Downloaded ${name}`)

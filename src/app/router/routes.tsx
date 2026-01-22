@@ -136,6 +136,7 @@ import {
   StationOperatorAssignment,
   OperatorRoleManagement,
 } from '@/features'
+import { StationOwnerDashboard } from '@/modules/tenants/dashboard/StationOwnerDashboard'
 
 /**
  * Application Routes - Unified flat structure
@@ -248,6 +249,9 @@ export function AppRoutes() {
       <Route path={PATHS.OWNER.BOOKING_LEDGER} element={<RequireAuth><BookingLedger /></RequireAuth>} />
       <Route path={PATHS.OWNER.PRICING_RECIPES} element={<RequireAuth><PricingRecipes /></RequireAuth>} />
       <Route path={PATHS.OWNER.LOAD_POLICY} element={<RequireAuth><LoadPolicy /></RequireAuth>} />
+
+      {/* Station Owner (Tenant) Dashboard */}
+      <Route path={PATHS.TENANT.DASHBOARD} element={<RequireAuth><StationOwnerDashboard /></RequireAuth>} />
 
       {/* ═══════════════════════════════════════════════════════════════════════
           SITE OWNER FEATURES

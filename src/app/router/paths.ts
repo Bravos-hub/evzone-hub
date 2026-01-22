@@ -85,6 +85,11 @@ export const PATHS = {
     LEASE_COMPLIANCE: '/expansion/compliance',
   },
 
+  // Tenant (Station Owner)
+  TENANT: {
+    DASHBOARD: '/tenant/dashboard',
+  },
+
   // Site Owner
   SITE_OWNER: {
     SITES: '/sites',

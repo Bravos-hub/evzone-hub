@@ -216,6 +216,7 @@ export function useTenantContract(id: string) {
         queryFn: async (): Promise<LeaseContract> => {
             return {
                 id: 'c-1',
+                siteId: 's-1',
                 tenantId: id,
                 tenantName: 'SuperCharge Ops',
                 status: 'Active',
@@ -227,7 +228,8 @@ export function useTenantContract(id: string) {
                 autoRenew: true,
                 terms: 'Standard Commercial Lease',
                 model: 'Revenue Share', // LeaseContract has model?
-                violations: []
+                violations: [],
+                stationIds: ['st-1', 'st-2'],
             } as any as LeaseContract
         }
     })
