@@ -82,7 +82,7 @@ export const PERMISSIONS: Record<string, FeaturePermissions> = {
   reports: {
     access: [...ROLE_GROUPS.PLATFORM_OPS, 'OWNER', 'STATION_OPERATOR', 'SITE_OWNER'],
     viewAll: ROLE_GROUPS.PLATFORM_OPS,
-    export: [...ROLE_GROUPS.PLATFORM_OPS, 'OWNER', 'STATION_OPERATOR'],
+    export: [...ROLE_GROUPS.PLATFORM_OPS, 'OWNER', 'STATION_OPERATOR', 'SITE_OWNER'],
     schedule: ROLE_GROUPS.PLATFORM_OPS,
   },
 

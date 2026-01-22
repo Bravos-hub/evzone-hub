@@ -56,10 +56,28 @@ export const reportService = {
             reportContent += `Error fetching stats: ${error}\n`
         }
 
-        reportContent += `\n[End of Report]`
+        // Generate PDF using jsPDF
+        const { jsPDF } = await import('jspdf')
+        const doc = new jsPDF()
 
-        const blob = new Blob([reportContent], { type: 'text/plain' })
-        const file = new File([blob], `${template.name.replace(/\s+/g, '_')}_${Date.now()}.txt`, { type: 'text/plain' })
+        doc.setFontSize(20)
+        doc.text(`Report: ${template.name}`, 20, 20)
+        doc.setFontSize(10)
+        doc.text(`Generated: ${new Date().toISOString()}`, 20, 30)
+        doc.line(20, 35, 190, 35)
+
+        doc.setFontSize(12)
+        const lines = reportContent.split('\n')
+        let y = 45
+
+        lines.forEach(line => {
+            if (line.includes('Report:') || line.includes('Generated:') || line.includes('-----')) return
+            doc.text(line, 20, y)
+            y += 10
+        })
+
+        const blob = doc.output('blob')
+        const file = new File([blob], `${template.name.replace(/\s+/g, '_')}_${Date.now()}.pdf`, { type: 'application/pdf' })
 
         let secureUrl = ''
         try {
@@ -67,15 +85,15 @@ export const reportService = {
             secureUrl = await uploadImageToCloudinary(file)
         } catch (error) {
             console.warn('Cloudinary upload failed (likely config missing or file type), using mock URL', error)
-            // Fallback to a data URI if cloud upload fails, so download still 'works' locally for small text
-            secureUrl = `data:text/plain;charset=utf-8,${encodeURIComponent(reportContent)}`
+            // Fallback to local data URI
+            secureUrl = doc.output('datauristring')
         }
 
         const newReport: GeneratedReport = {
             id: `RPT-${Date.now()}`,
             name: `${template.name} - ${new Date().toLocaleDateString()}`,
             type: template.type,
-            format: 'PDF', // Keeping PDF as UI label for now
+            format: 'PDF',
             generatedAt: new Date().toISOString().replace('T', ' ').substring(0, 16),
             size: `${(blob.size / 1024).toFixed(1)} KB`,
             generatedBy: 'User',
@@ -103,7 +121,7 @@ export const reportService = {
 
             // If it's a data URI, we can force download name
             if (report.url.startsWith('data:')) {
-                link.download = `${name || 'report'}.txt`
+                link.download = `${name || 'report'}.pdf`
             }
 
             document.body.appendChild(link)
