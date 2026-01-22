@@ -1,6 +1,7 @@
 import { GeneratedReport, ReportTemplate, ReportType } from '../types/reports'
 import { applicationService, leaseService } from '@/modules/applications/services'
 import { stationService } from '@/modules/stations/services/stationService'
+import { jsPDF } from 'jspdf'
 
 // Initial Mock Data
 const INITIAL_TEMPLATES: ReportTemplate[] = [
@@ -21,7 +22,7 @@ export const reportService = {
     getGeneratedReports: async (): Promise<GeneratedReport[]> => {
         await new Promise(resolve => setTimeout(resolve, 500))
         // Retrieve from local storage if available to "persist" across reloads in demo
-        const stored = localStorage.getItem('evzone_generated_reports')
+        const stored = localStorage.getItem('evzone_generated_reports_v3')
         if (stored) {
             return JSON.parse(stored)
         }
@@ -57,7 +58,7 @@ export const reportService = {
         }
 
         // Generate PDF using jsPDF
-        const { jsPDF } = await import('jspdf')
+        // Note: jsPDF imported statically at top of file
         const doc = new jsPDF()
 
         doc.setFontSize(20)
@@ -82,7 +83,8 @@ export const reportService = {
         let secureUrl = ''
         try {
             const { uploadImageToCloudinary } = await import('@/core/utils/cloudinary')
-            secureUrl = await uploadImageToCloudinary(file)
+            // Upload as 'raw' to avoid image processing/delivery issues with PDFs
+            secureUrl = await uploadImageToCloudinary(file, undefined, 'raw')
         } catch (error) {
             console.warn('Cloudinary upload failed (likely config missing or file type), using mock URL', error)
             // Fallback to local data URI
@@ -103,7 +105,7 @@ export const reportService = {
         // Persist
         const existing = await reportService.getGeneratedReports()
         const updated = [newReport, ...existing]
-        localStorage.setItem('evzone_generated_reports', JSON.stringify(updated))
+        localStorage.setItem('evzone_generated_reports_v3', JSON.stringify(updated))
         // Also ensure url is stored in the object itself as done above
 
         return newReport

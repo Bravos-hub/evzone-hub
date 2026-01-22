@@ -29,7 +29,8 @@ export interface CloudinaryUploadResult {
  */
 export async function uploadImageToCloudinary(
     file: File,
-    onProgress?: (progress: number) => void
+    onProgress?: (progress: number) => void,
+    resourceType: 'image' | 'video' | 'raw' | 'auto' = 'auto'
 ): Promise<string> {
     if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
         console.error('❌ Cloudinary config missing:', {
@@ -43,9 +44,6 @@ export async function uploadImageToCloudinary(
     formData.append('file', file)
     formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET)
     formData.append('folder', 'evzone/sites')
-
-    // Let Cloudinary handle optimization automatically
-    // We'll apply transformations when displaying the image via URL
 
     const xhr = new XMLHttpRequest()
 
@@ -62,18 +60,9 @@ export async function uploadImageToCloudinary(
                 const response: CloudinaryUploadResult = JSON.parse(xhr.responseText)
                 resolve(response.secure_url)
             } else {
-                // Log the full error response from Cloudinary
                 console.error('❌ Cloudinary upload failed:', {
                     status: xhr.status,
-                    statusText: xhr.statusText,
-                    response: xhr.responseText,
-                    parsedError: (() => {
-                        try {
-                            return JSON.parse(xhr.responseText)
-                        } catch {
-                            return xhr.responseText
-                        }
-                    })()
+                    response: xhr.responseText
                 })
                 reject(new Error(`Upload failed with status ${xhr.status}: ${xhr.responseText}`))
             }
@@ -83,7 +72,7 @@ export async function uploadImageToCloudinary(
             reject(new Error('Network error during upload'))
         })
 
-        xhr.open('POST', `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/auto/upload`)
+        xhr.open('POST', `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`)
         xhr.send(formData)
     })
 }
