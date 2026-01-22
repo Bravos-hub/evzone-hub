@@ -7,11 +7,13 @@ import {
     useGenerateLease,
     useSendLeaseForSignature,
     useUploadLease,
-    useActivateTenant
+    useActivateTenant,
+    useProposeTerms
 } from '@/modules/applications/hooks/useApplications'
 import { getErrorMessage } from '@/core/api/errors'
 import clsx from 'clsx'
 import { RevenueCalculator } from './RevenueCalculator'
+import { DealConstructor } from './DealConstructor'
 
 type Tab = 'overview' | 'negotiation' | 'documents'
 
@@ -22,8 +24,7 @@ export function SiteApplicationDetail() {
     const [activeTab, setActiveTab] = useState<Tab>('overview')
 
     // Negotiation State
-    const [counterRent, setCounterRent] = useState('')
-    const [negotiationNote, setNegotiationNote] = useState('')
+    const proposeTerms = useProposeTerms()
 
     const updateStatus = useUpdateApplicationStatus()
     const generateLease = useGenerateLease()
@@ -219,64 +220,33 @@ export function SiteApplicationDetail() {
 
                 {activeTab === 'negotiation' && (
                     <div className="space-y-6">
-                        <div className="card p-8 text-center border-2 border-dashed border-white/10 bg-white/5">
-                            <div className="max-w-md mx-auto">
-                                <div className="mb-6">
-                                    <div className="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-4 text-accent">
-                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" /></svg>
-                                    </div>
-                                    <h3 className="text-lg font-bold mb-2">Term Negotiation</h3>
-                                    <p className="text-muted">This feature allows you to send a counter-offer directly to the applicant. They will be notified immediately.</p>
+                        <div className="card border-2 border-dashed border-white/10 bg-white/5">
+                            <div className="p-6 border-b border-white/10 text-center">
+                                <div className="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-4 text-accent">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" /></svg>
                                 </div>
+                                <h3 className="text-lg font-bold mb-2">Deal Constructor</h3>
+                                <p className="text-muted max-w-lg mx-auto">
+                                    Use the tools below to structure a counter-offer. You can modify the rent, duration, responsibilities, and add custom clauses.
+                                </p>
+                            </div>
 
-                                <div className="bg-bg-secondary rounded-xl p-6 mb-6 text-left border border-white/5 shadow-inner">
-                                    <div className="grid grid-cols-2 gap-4 mb-4">
-                                        <div>
-                                            <label className="text-xs text-muted block mb-1">Current Offer</label>
-                                            <div className="text-xl font-bold">${app.proposedTerms?.monthlyRent || 0}</div>
-                                        </div>
-                                        <div>
-                                            <label className="text-xs text-muted block mb-1">Counter Rent ($)</label>
-                                            <input
-                                                type="number"
-                                                className="input w-full bg-white/5"
-                                                placeholder="e.g. 2500"
-                                                value={counterRent}
-                                                onChange={(e) => setCounterRent(e.target.value)}
-                                            />
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label className="text-xs text-muted block mb-1">Message (Optional)</label>
-                                        <textarea
-                                            className="input w-full bg-white/5 min-h-[80px]"
-                                            placeholder="Reason for counter offer..."
-                                            value={negotiationNote}
-                                            onChange={(e) => setNegotiationNote(e.target.value)}
-                                        />
-                                    </div>
-                                </div>
-
-                                <button
-                                    className="btn primary w-full py-3"
-                                    disabled={!counterRent || updateStatus.isPending}
-                                    onClick={() => {
-                                        handleStatusChange('NEGOTIATING', `Counter offer: $${counterRent}. ${negotiationNote}`)
-                                        setCounterRent('')
-                                        setNegotiationNote('')
+                            <div className="p-6">
+                                <DealConstructor
+                                    initialTerms={app.proposedTerms}
+                                    onSave={(terms, message) => {
+                                        if (app.id) {
+                                            proposeTerms.mutate({
+                                                applicationId: app.id,
+                                                terms,
+                                                message: message || 'Counter offer proposed by site owner'
+                                            })
+                                        }
                                     }}
-                                >
-                                    {updateStatus.isPending ? 'Sending...' : 'Send Counter Offer'}
-                                </button>
+                                    isSubmitting={proposeTerms.isPending}
+                                />
                             </div>
                         </div>
-
-                        <RevenueCalculator
-                            totalSlots={app.site?.parkingBays || 10}
-                            powerKw={app.site?.powerCapacityKw ? (app.site.powerCapacityKw / (app.site.parkingBays || 1)) : 22}
-                            proposedRent={app.proposedTerms?.monthlyRent}
-                            proposedRevShare={app.proposedTerms?.revenueSharePercent}
-                        />
                     </div>
                 )}
 

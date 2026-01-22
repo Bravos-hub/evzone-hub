@@ -186,6 +186,21 @@ export function useUploadLease() {
     })
 }
 
+/**
+ * Propose new terms (Negotiation)
+ */
+export function useProposeTerms() {
+    const queryClient = useQueryClient()
+
+    return useMutation({
+        mutationFn: ({ applicationId, terms, message }: { applicationId: string; terms: any; message?: string }) =>
+            import('../services/negotiationService').then(m => m.negotiationService.propose({ applicationId, terms, message })),
+        onSuccess: (_, { applicationId }) => {
+            queryClient.invalidateQueries({ queryKey: ['applications', applicationId] })
+        },
+    })
+}
+
 /** @deprecated Use useApplications instead */
 export const useUpdateApplicationTerms = useApproveApplication
 
