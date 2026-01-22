@@ -46,6 +46,7 @@ export interface Application {
     responseMessage?: string
     proposedRent?: number
     proposedTerm?: number
+    totalPowerRequirement?: number
 }
 
 export type ApplicationStatus =

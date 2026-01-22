@@ -194,6 +194,15 @@ export function SiteApplicationDetail() {
 
                         {/* Sidebar Info */}
                         <div className="space-y-6">
+                            <RevenueCalculator
+                                totalSlots={app.numberOfChargingPoints || app.site?.parkingBays || 4}
+                                powerKw={(app.totalPowerRequirement && app.numberOfChargingPoints)
+                                    ? (app.totalPowerRequirement / app.numberOfChargingPoints)
+                                    : 22}
+                                proposedRent={app.negotiatedTerms?.monthlyRent ?? app.proposedTerms?.monthlyRent ?? 0}
+                                proposedRevShare={app.negotiatedTerms?.revenueSharePercent ?? app.proposedTerms?.revenueSharePercent ?? 0}
+                            />
+
                             <div className="card p-6">
                                 <h3 className="font-bold text-sm mb-4 text-muted uppercase tracking-wider">Applicant</h3>
                                 <div className="flex items-center gap-3 mb-4">
