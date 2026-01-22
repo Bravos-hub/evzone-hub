@@ -46,7 +46,7 @@ export { LeaseCompliance } from './LeaseCompliance'
 export { AdvancedReporting } from './AdvancedReporting'
 
 // Site Owner Features
-export { Sites } from './Sites'
+
 export { SiteDetail } from './SiteDetail'
 export { AddSite } from './AddSite'
 export { OwnerSteps } from './onboarding/OwnerSteps'
@@ -131,6 +131,7 @@ export { Parking } from './Parking'
 export { Tenants } from './Tenants'
 export { TenantDetail } from './TenantDetail'
 export { SiteOwnerWithdrawals } from './SiteOwnerWithdrawals'
+export { SiteApplicationDetail } from './SiteApplicationDetail'
 export { SiteApplicationForm } from './SiteApplicationForm'
 
 // Owner Features (additional)

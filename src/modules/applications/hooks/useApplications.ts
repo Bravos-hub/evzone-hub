@@ -144,6 +144,48 @@ export const useTenants = useApplications
 /** @deprecated Use useCreateApplication instead */
 export const useSubmitApplication = useCreateApplication
 
+/**
+ * Generate lease agreement
+ */
+export function useGenerateLease() {
+    const queryClient = useQueryClient()
+
+    return useMutation({
+        mutationFn: (id: string) => applicationService.generateLease(id),
+        onSuccess: (_, id) => {
+            queryClient.invalidateQueries({ queryKey: ['applications', id] })
+        },
+    })
+}
+
+/**
+ * Send lease for signature
+ */
+export function useSendLeaseForSignature() {
+    const queryClient = useQueryClient()
+
+    return useMutation({
+        mutationFn: (id: string) => applicationService.sendForSignature(id),
+        onSuccess: (_, id) => {
+            queryClient.invalidateQueries({ queryKey: ['applications', id] })
+        },
+    })
+}
+
+/**
+ * Upload signed lease
+ */
+export function useUploadLease() {
+    const queryClient = useQueryClient()
+
+    return useMutation({
+        mutationFn: ({ id, file }: { id: string; file: File }) => applicationService.uploadLease(id, file),
+        onSuccess: (_, { id }) => {
+            queryClient.invalidateQueries({ queryKey: ['applications', id] })
+        },
+    })
+}
+
 /** @deprecated Use useApplications instead */
 export const useUpdateApplicationTerms = useApproveApplication
 

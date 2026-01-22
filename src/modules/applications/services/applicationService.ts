@@ -60,4 +60,31 @@ export const applicationService = {
     async activate(id: string): Promise<{ tenant: any; application: Application }> {
         return apiClient.post(`/applications/${id}/activate`)
     },
+
+    /**
+     * Generate lease agreement draft
+     */
+    async generateLease(id: string): Promise<Application> {
+        return apiClient.post<Application>(`/applications/${id}/lease/generate`)
+    },
+
+    /**
+     * Send lease for e-signature
+     */
+    async sendForSignature(id: string): Promise<Application> {
+        return apiClient.post<Application>(`/applications/${id}/lease/send-signature`)
+    },
+
+    /**
+     * Upload signed lease document
+     */
+    async uploadLease(id: string, file: File): Promise<Application> {
+        const formData = new FormData()
+        formData.append('file', file)
+        return apiClient.post<Application>(`/applications/${id}/lease/upload`, formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+        })
+    },
 }

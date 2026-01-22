@@ -1,5 +1,6 @@
 import type { WidgetProps } from '../../types'
 import { Card } from '@/ui/components/Card'
+import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
 
 export type DonutGaugeConfig = {
   title?: string
@@ -25,12 +26,10 @@ export function DonutGaugeWidget({ config }: WidgetProps<DonutGaugeConfig>) {
   } = config ?? {}
 
   const pct = Math.max(0, Math.min(100, value))
-  const r = 56
-  const strokeWidth = 16
-  const c = 2 * Math.PI * r
-  const dash = (pct / 100) * c
-  const rest = c - dash
-  const gradientId = `donutGrad-${color.replace(/[^a-zA-Z0-9]/g, '')}`
+  const data = [
+    { name: 'Value', value: pct },
+    { name: 'Remaining', value: 100 - pct },
+  ]
 
   return (
     <Card>
@@ -41,74 +40,37 @@ export function DonutGaugeWidget({ config }: WidgetProps<DonutGaugeConfig>) {
         </div>
       )}
       <div className="flex items-center justify-center gap-6 flex-wrap">
-        <div className="relative">
-          <svg width={160} height={160} viewBox="0 0 160 160" aria-hidden="true">
-            <defs>
-              {/* Modern gradient for donut */}
-              <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor={color} stopOpacity="1" />
-                <stop offset="100%" stopColor={color} stopOpacity="0.7" />
-              </linearGradient>
-              {/* Glow filter */}
-              <filter id={`donutGlow-${gradientId}`} x="-50%" y="-50%" width="200%" height="200%">
-                <feGaussianBlur stdDeviation="3" result="coloredBlur" />
-                <feMerge>
-                  <feMergeNode in="coloredBlur" />
-                  <feMergeNode in="SourceGraphic" />
-                </feMerge>
-              </filter>
-            </defs>
-            
-            {/* Background circle - more subtle */}
-            <circle 
-              cx="80" 
-              cy="80" 
-              r={r} 
-              stroke="rgba(255,255,255,.06)" 
-              strokeWidth={strokeWidth} 
-              fill="none" 
-            />
-            
-            {/* Progress circle with gradient and glow */}
-            <circle
-              cx="80"
-              cy="80"
-              r={r}
-              stroke={`url(#${gradientId})`}
-              strokeWidth={strokeWidth}
-              fill="none"
-              strokeDasharray={`${dash} ${rest}`}
-              strokeLinecap="round"
-              transform="rotate(-90 80 80)"
-              filter={`url(#donutGlow-${gradientId})`}
-            />
-            
-            {/* Center text - more prominent */}
-            <text 
-              x="80" 
-              y="78" 
-              textAnchor="middle" 
-              fontSize="28" 
-              fill="white" 
-              fontWeight="800"
-              fontFamily="system-ui, -apple-system, sans-serif"
-            >
+        <div className="relative h-[160px] w-[160px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={data}
+                cx="50%"
+                cy="50%"
+                innerRadius={60}
+                outerRadius={76}
+                startAngle={90}
+                endAngle={-270}
+                dataKey="value"
+                stroke="none"
+              >
+                <Cell fill={color} />
+                <Cell fill="rgba(255,255,255,0.06)" />
+              </Pie>
+            </PieChart>
+          </ResponsiveContainer>
+
+          {/* Centered Text Overlay */}
+          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+            <span className="text-2xl font-extrabold text-text">
               {pct.toFixed(1)}%
-            </text>
-            <text 
-              x="80" 
-              y="98" 
-              textAnchor="middle" 
-              fontSize="12" 
-              fill="rgba(255,255,255,.65)" 
-              fontWeight="600"
-              fontFamily="system-ui, -apple-system, sans-serif"
-            >
+            </span>
+            <span className="text-xs font-semibold text-muted mt-1 uppercase tracking-wide">
               {label}
-            </text>
-          </svg>
+            </span>
+          </div>
         </div>
-        
+
         <div className="grid gap-3">
           {target !== undefined && (
             <div className="rounded-xl border border-border-light bg-panel-2/50 px-4 py-3 min-w-[100px]">
@@ -127,4 +89,3 @@ export function DonutGaugeWidget({ config }: WidgetProps<DonutGaugeConfig>) {
     </Card>
   )
 }
-

@@ -62,7 +62,7 @@ export const MENU_ITEMS: MenuItem[] = [
   // ═══════════════════════════════════════════════════════════════════════
   // FINANCIAL
   // ═══════════════════════════════════════════════════════════════════════
-  { path: PATHS.BILLING, label: 'Billing', icon: 'credit-card', roles: [...ROLE_GROUPS.FINANCIAL_VIEWERS, 'STATION_OPERATOR'] },
+  { path: PATHS.BILLING, label: 'Billing', icon: 'credit-card', roles: [...ROLE_GROUPS.FINANCIAL_VIEWERS, 'STATION_OPERATOR', 'SITE_OWNER'] },
   { path: PATHS.OWNER.EARNINGS, label: 'Earnings', icon: 'trending-up', roles: ['OWNER', 'STATION_OPERATOR', 'SITE_OWNER'] },
   { path: PATHS.ADMIN.DISPUTES, label: 'Disputes', icon: 'alert-circle', roles: [...ROLE_GROUPS.PLATFORM_OPS, 'OWNER', 'STATION_OPERATOR'] },
   { path: PATHS.REPORTS, label: 'Reports', icon: 'file-text', roles: [...ROLE_GROUPS.PLATFORM_OPS, 'OWNER', 'STATION_OPERATOR', 'SITE_OWNER'] },
@@ -106,7 +106,7 @@ export const MENU_ITEMS: MenuItem[] = [
   { path: PATHS.ROAMING, label: 'Roaming', icon: 'globe', roles: ROLE_GROUPS.PLATFORM_ADMINS },
   { path: PATHS.REGULATORY, label: 'Regulatory', icon: 'shield', roles: ROLE_GROUPS.PLATFORM_ADMINS },
   { path: PATHS.UTILITY, label: 'Utility', icon: 'grid', roles: ROLE_GROUPS.PLATFORM_ADMINS },
-  { path: PATHS.OWNER.PROVIDERS, label: 'Swapping Providers', icon: 'share-2', roles: [...ROLE_GROUPS.PLATFORM_ADMINS, 'OWNER', 'SITE_OWNER'] },
+  { path: PATHS.OWNER.PROVIDERS, label: 'Swapping Providers', icon: 'share-2', roles: [...ROLE_GROUPS.PLATFORM_ADMINS, 'OWNER'] },
   { path: PATHS.OWNER.PARTNERS, label: 'Partners', icon: 'users', roles: ROLE_GROUPS.PLATFORM_ADMINS },
 
   // ═══════════════════════════════════════════════════════════════════════

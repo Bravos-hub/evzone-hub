@@ -57,9 +57,10 @@ import {
   Earnings,
   Bookings,
   // Site Owner Features
-  Sites,
+
   TenantDetail,
   SiteOwnerWithdrawals,
+  SiteApplicationDetail,
   // Technician Features
   Jobs,
   // New Ported Features
@@ -251,7 +252,7 @@ export function AppRoutes() {
       {/* ═══════════════════════════════════════════════════════════════════════
           SITE OWNER FEATURES
           ═══════════════════════════════════════════════════════════════════════ */}
-      <Route path={PATHS.SITE_OWNER.SITES} element={<RequireAuth><Sites /></RequireAuth>} />
+      <Route path={PATHS.SITE_OWNER.SITES} element={<RequireAuth><SiteOwnerSites /></RequireAuth>} />
       <Route path={PATHS.SITE_OWNER.SITE_DETAIL(':id')} element={<RequireAuth><SiteDetail /></RequireAuth>} />
 
       {/* ═══════════════════════════════════════════════════════════════════════
@@ -305,6 +306,7 @@ export function AppRoutes() {
       <Route path={PATHS.SITE_OWNER.TENANT_DETAIL(':id')} element={<RequireAuth><TenantDetail /></RequireAuth>} />
       <Route path={PATHS.SITE_OWNER.WITHDRAWALS} element={<RequireAuth><SiteOwnerWithdrawals /></RequireAuth>} />
       <Route path={PATHS.SITE_OWNER.APPLY_FOR_SITE} element={<RequireAuth><SiteApplicationForm /></RequireAuth>} />
+      <Route path={PATHS.SITE_OWNER.APPLICATION_DETAIL(':id')} element={<RequireAuth><SiteApplicationDetail /></RequireAuth>} />
 
       {/* Operator Tools */}
       <Route path={PATHS.OPERATOR.DASHBOARD} element={<Navigate to={PATHS.DASHBOARD} replace />} />
