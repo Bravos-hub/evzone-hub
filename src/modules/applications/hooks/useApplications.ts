@@ -216,6 +216,20 @@ export function useProposeTerms() {
     })
 }
 
+/**
+ * Verify security deposit
+ */
+export function useVerifyDeposit() {
+    const queryClient = useQueryClient()
+
+    return useMutation({
+        mutationFn: (id: string) => applicationService.verifySecurityDeposit(id),
+        onSuccess: (_, id) => {
+            queryClient.invalidateQueries({ queryKey: ['applications', id] })
+        },
+    })
+}
+
 /** @deprecated Use useApplications instead */
 export const useUpdateApplicationTerms = useApproveApplication
 

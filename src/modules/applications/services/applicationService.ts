@@ -90,4 +90,11 @@ export const applicationService = {
     async signLease(id: string, signatureData: string): Promise<Application> {
         return apiClient.post<Application>(`/applications/${id}/lease/sign`, { signatureData })
     },
+
+    /**
+     * Verify security deposit payment
+     */
+    async verifySecurityDeposit(id: string): Promise<Application> {
+        return apiClient.post<Application>(`/applications/${id}/deposit/verify`)
+    },
 }

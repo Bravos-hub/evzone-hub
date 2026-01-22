@@ -9,7 +9,8 @@ import {
     useUploadLease,
     useActivateTenant,
     useProposeTerms,
-    useSignLease
+    useSignLease,
+    useVerifyDeposit
 } from '@/modules/applications/hooks/useApplications'
 import { getErrorMessage } from '@/core/api/errors'
 import clsx from 'clsx'
@@ -28,6 +29,7 @@ export function SiteApplicationDetail() {
     // Negotiation State
     const proposeTerms = useProposeTerms()
     const signLease = useSignLease()
+    const verifyDeposit = useVerifyDeposit()
     const [showSignaturePad, setShowSignaturePad] = useState(false)
 
     const updateStatus = useUpdateApplicationStatus()
@@ -357,10 +359,10 @@ export function SiteApplicationDetail() {
                                             <p className="text-sm text-muted">Please verify that you have received the security deposit from the operator.</p>
                                             <button
                                                 className="btn primary w-full"
-                                                onClick={() => handleStatusChange('DEPOSIT_PAID', 'Security deposit verified by owner')}
-                                                disabled={updateStatus.isPending}
+                                                onClick={() => verifyDeposit.mutate(app.id)}
+                                                disabled={verifyDeposit.isPending}
                                             >
-                                                {updateStatus.isPending ? 'Verifying...' : 'Confirm Deposit Received'}
+                                                {verifyDeposit.isPending ? 'Verifying...' : 'Confirm Deposit Received'}
                                             </button>
                                         </div>
                                     ) : (
