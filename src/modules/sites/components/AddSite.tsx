@@ -268,9 +268,11 @@ export function AddSite({ onSuccess, onCancel, isOnboarding = false, isFirstSite
                     <label className="flex flex-col gap-2 sm:col-span-2">
                         <span className="text-sm font-semibold">Purpose</span>
                         {isSiteOwner || isStationOwner ? (
-                            <div className="input bg-muted/20 border-transparent text-muted flex items-center">
-                                {isSiteOwner ? 'Commercial' : 'Personal'}
-                                <span className="ml-2 text-[10px] bg-muted/40 px-1.5 py-0.5 rounded uppercase">Locked to Role</span>
+                            <div className="input bg-muted/20 border-transparent text-muted flex items-center justify-between px-3">
+                                <span>{isSiteOwner ? 'Commercial' : 'Personal'}</span>
+                                <span className="text-[10px] bg-muted/50 px-2 py-0.5 rounded uppercase font-bold tracking-wider opacity-70">
+                                    {isSiteOwner ? 'For Leasing' : 'Private Use'}
+                                </span>
                             </div>
                         ) : (
                             <select value={form.purpose} onChange={(e) => update('purpose', e.target.value)} className="select bg-background font-medium">
@@ -279,8 +281,8 @@ export function AddSite({ onSuccess, onCancel, isOnboarding = false, isFirstSite
                                 ))}
                             </select>
                         )}
-                        {isSiteOwner && <p className="text-[10px] text-muted mt-1">Site Owners create commercial sites for station operators.</p>}
-                        {isStationOwner && <p className="text-[10px] text-muted mt-1">Personal sites are for your own station deployment.</p>}
+                        {isSiteOwner && <p className="text-[10px] text-muted mt-1">As a Site Owner, you create commercial sites to lease to operators.</p>}
+                        {isStationOwner && <p className="text-[10px] text-muted mt-1">As a Station Owner, you create personal sites for your own infrastructure.</p>}
                     </label>
                     {form.purpose === 'Commercial' && (
                         <>

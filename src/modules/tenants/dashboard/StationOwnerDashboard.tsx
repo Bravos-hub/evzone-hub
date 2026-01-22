@@ -135,7 +135,6 @@ export function StationOwnerDashboard() {
                 value={`$${statsSnapshot.totalRevenue.toLocaleString()}`}
                 subValue="This Month"
                 icon={<RevenueIcon />}
-                trend="+12%"
               />
               <KpiCard
                 label="Uptime"

@@ -134,104 +134,28 @@ export const useLeases = useApplications
 
 // MOCK TENANT HOOKS (Temporary until backend endpoint exists)
 import type { Tenant, LeaseContract } from '@/core/api/types'
+import { tenantService } from '@/modules/tenants/services/tenantService'
 
 export function useTenants(filters?: { siteId?: string }) {
     return useQuery({
         queryKey: ['tenants', filters],
-        queryFn: async (): Promise<Tenant[]> => {
-            // Mock data - in real app, filter by filters.siteId
-            const allTenants = [
-                {
-                    id: 't-1',
-                    name: 'SuperCharge Ops',
-                    type: 'Operator',
-                    status: 'Active',
-                    siteId: 's-1',
-                    siteName: 'Downtown Plaza',
-                    model: 'Revenue Share', // Tenant type has model? Check type definition
-                    terms: '5yr / 15%',
-                    startDate: '2024-01-01',
-                    earnings: 5400,
-                    outstandingDebt: 0,
-                    contactPerson: 'Alice',
-                    email: 'alice@supercharge.com',
-                    phone: '555-0101',
-                    paymentHistory: []
-                },
-                {
-                    id: 't-2',
-                    name: 'GreenFleet',
-                    type: 'Fleet',
-                    status: 'Active',
-                    siteId: 's-2',
-                    siteName: 'Logistics Hub',
-                    model: 'Fixed Rent',
-                    terms: '$2,500/mo',
-                    startDate: '2023-11-15',
-                    earnings: 12000,
-                    outstandingDebt: 2500,
-                    contactPerson: 'Bob',
-                    email: 'bob@greenfleet.com',
-                    phone: '555-0102',
-                    paymentHistory: []
-                }
-            ] as any[] as Tenant[]
-
-            if (filters?.siteId) {
-                return allTenants.filter(t => t.siteId === filters.siteId)
-            }
-            return allTenants
-        }
+        queryFn: () => tenantService.getAll(filters),
     })
 }
 
 export function useTenant(id: string) {
     return useQuery({
         queryKey: ['tenants', id],
-        queryFn: async (): Promise<Tenant> => {
-            return {
-                id,
-                name: 'SuperCharge Ops',
-                type: 'Operator',
-                status: 'Active',
-                siteId: 's-1',
-                siteName: 'Downtown Plaza',
-                model: 'Revenue Share',
-                terms: '5yr / 15%',
-                startDate: '2024-01-01',
-                earnings: 5400,
-                outstandingDebt: 0,
-                contactPerson: 'Alice',
-                email: 'alice@supercharge.com',
-                phone: '555-0101',
-                paymentHistory: []
-            } as any as Tenant
-        }
+        queryFn: () => tenantService.getById(id),
+        enabled: !!id,
     })
 }
 
 export function useTenantContract(id: string) {
     return useQuery({
         queryKey: ['tenants', id, 'contract'],
-        queryFn: async (): Promise<LeaseContract> => {
-            return {
-                id: 'c-1',
-                siteId: 's-1',
-                tenantId: id,
-                tenantName: 'SuperCharge Ops',
-                status: 'Active',
-                startDate: '2024-01-01',
-                endDate: '2029-01-01',
-                rent: 1500,
-                currency: 'USD',
-                paymentSchedule: 'Monthly',
-                autoRenew: true,
-                terms: 'Standard Commercial Lease',
-                model: 'Revenue Share', // LeaseContract has model?
-                violations: [],
-                stationIds: ['st-1', 'st-2'],
-            } as any as LeaseContract
-        }
+        queryFn: () => tenantService.getContract(id),
+        enabled: !!id,
     })
 }
 

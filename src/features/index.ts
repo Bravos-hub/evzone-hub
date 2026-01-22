@@ -113,7 +113,7 @@ export { Login, Register, ForgotPassword, VerifyEmail } from './Auth'
 // Role-specific Ops Pages
 
 export { TechnicianAvailability } from './TechnicianAvailability'
-export { SiteOwnerSites } from './SiteOwnerSites'
+// export { SiteOwnerSites } from './SiteOwnerSites' // Deleted
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ADDITIONAL PORTED FEATURES (from legacy batch 2)

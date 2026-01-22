@@ -73,7 +73,7 @@ export function SiteOwnerTenantView() {
   }
 
   const expectedRevenue = tenant.earnings ?? 0
-  const reportedRevenue = Math.round(expectedRevenue * 0.95)
+  const reportedRevenue = tenant.totalPaid ?? expectedRevenue
   const revenueVariance = expectedRevenue - reportedRevenue
 
   return (

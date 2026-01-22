@@ -9,7 +9,7 @@ type DelegatedViewProps = {
 
 export function DelegatedView({ site, operator }: DelegatedViewProps) {
   const expectedRevenue = site.revenue
-  const reportedRevenue = Math.round(expectedRevenue * 0.94)
+  const reportedRevenue = site.revenue
   const variance = expectedRevenue - reportedRevenue
   const varianceLabel = variance >= 0 ? `+$${variance.toLocaleString()}` : `-$${Math.abs(variance).toLocaleString()}`
   const revenueProgress = expectedRevenue > 0 ? Math.min(100, (reportedRevenue / expectedRevenue) * 100) : 0

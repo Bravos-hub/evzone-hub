@@ -1,11 +1,14 @@
+import { useMemo } from 'react'
 import { useLeases } from '@/modules/applications/hooks/useApplications'
 import type { ApplicationStatus } from '@/modules/applications/types'
 import { useStations } from '@/modules/stations/hooks/useStations'
 import { useSites } from '@/modules/sites/hooks/useSites'
 import { useUsers } from '@/modules/auth/hooks/useUsers'
 import { useAuthStore } from '@/core/auth/authStore'
-import type { LeaseContract, User } from '@/core/api/types'
+import type { LeaseContract, Station, StationStats, User } from '@/core/api/types'
 import type { TenantKPI, TenantSiteSummary } from '../types/tenant'
+import { useQuery } from '@tanstack/react-query'
+import { stationService } from '@/modules/stations/services/stationService'
 
 const ACTIVE_LEASE_STATUSES: ApplicationStatus[] = ['LEASE_SIGNED', 'COMPLETED']
 const PENDING_LEASE_STATUSES: ApplicationStatus[] = [
@@ -29,6 +32,7 @@ export function useStationOwnerStats() {
     // 2. Get stations where I am the Owner
     const { data: allStations = [], isLoading: isLoadingStations } = useStations()
     const myStations = allStations.filter(s => s.ownerId === user?.id)
+    const { data: statsByStation = {}, isLoading: isLoadingStats } = useStationStatsMap(myStations)
 
     const activeLeasesCount = leases.filter(lease => ACTIVE_LEASE_STATUSES.includes(lease.status)).length
     const pendingLeasesCount = leases.filter(lease => PENDING_LEASE_STATUSES.includes(lease.status)).length
@@ -36,23 +40,24 @@ export function useStationOwnerStats() {
     const stats: TenantKPI = {
         totalStations: myStations.length,
         activeStations: myStations.filter(s => s.status === 'ACTIVE').length,
-        totalRevenue: myStations.length * 1250,
-        uptime: myStations.length > 0 ? 98.5 : 0,
+        totalRevenue: sumStationStats(statsByStation, 'totalRevenue'),
+        uptime: myStations.length > 0 ? Math.round((myStations.filter(s => s.status === 'ACTIVE').length / myStations.length) * 1000) / 10 : 0,
         activeLeases: activeLeasesCount,
         pendingApplications: pendingLeasesCount
     }
 
     return {
         data: stats,
-        isLoading: isLoadingLeases || isLoadingStations
+        isLoading: isLoadingLeases || isLoadingStations || isLoadingStats
     }
 }
 
 export function useTenantSites() {
     const { user } = useAuthStore()
-    const { data: leases = [] } = useLeases()
-    const { data: allStations = [] } = useStations()
-    const { data: sites = [] } = useSites()
+    const { data: leases = [], isLoading: isLoadingLeases } = useLeases()
+    const { data: allStations = [], isLoading: isLoadingStations } = useStations()
+    const { data: sites = [], isLoading: isLoadingSites } = useSites()
+    const { data: statsByStation = {}, isLoading: isLoadingStats } = useStationStatsMap(allStations)
 
     if (!user) {
         return { data: [], isLoading: false }
@@ -65,6 +70,7 @@ export function useTenantSites() {
         }
     })
 
+    const ownedStationIds = new Set(allStations.map(station => station.id))
     const ownedStations = allStations.filter(station => station.ownerId === user.id)
     const stationSiteIds = ownedStations
         .map(station => station.orgId)
@@ -80,6 +86,11 @@ export function useTenantSites() {
         const siteStations = leaseStationIds.length
             ? allStations.filter(station => leaseStationIds.includes(station.id))
             : allStations.filter(station => station.orgId === siteId || station.ownerId === user.id)
+        const siteStationIds = siteStations.map(station => station.id)
+        const statsForSite = siteStationIds
+            .filter(id => ownedStationIds.has(id))
+            .map(id => statsByStation[id])
+            .filter(Boolean)
 
         const delegatedStation = siteStations.find(
             station => station.operatorId && station.operatorId !== station.ownerId
@@ -105,8 +116,9 @@ export function useTenantSites() {
 
         const activeStations = siteStations.filter(station => station.status === 'ACTIVE').length
         const uptime = siteStations.length > 0 ? Math.round((activeStations / siteStations.length) * 1000) / 10 : 0
-        const revenue = siteStations.length * 1250
-        const energy = siteStations.length * 450
+        const revenue = statsForSite.reduce((sum, stats) => sum + stats.totalRevenue, 0)
+        const energy = statsForSite.reduce((sum, stats) => sum + stats.totalEnergy, 0)
+        const sessions = statsForSite.reduce((sum, stats) => sum + stats.totalSessions, 0)
 
         return {
             siteId,
@@ -121,14 +133,14 @@ export function useTenantSites() {
             operatorName: undefined,
             revenue,
             energy,
-            sessions: siteStations.length * 15,
+            sessions,
             uptime,
         }
     })
 
     return {
         data: tenantSites,
-        isLoading: false
+        isLoading: isLoadingLeases || isLoadingStations || isLoadingSites || isLoadingStats
     }
 }
 
@@ -148,4 +160,24 @@ export function useAssignedOperator(siteId?: string) {
         operatorId,
         isLoading: stationsLoading || usersLoading,
     }
+}
+
+function useStationStatsMap(stations: Station[]) {
+    const stationIds = useMemo(() => stations.map(station => station.id).sort(), [stations])
+
+    return useQuery({
+        queryKey: ['stations', 'stats-map', stationIds],
+        queryFn: async () => {
+            if (stationIds.length === 0) return {} as Record<string, StationStats>
+            const entries = await Promise.all(
+                stationIds.map(async id => [id, await stationService.getStats(id)] as const)
+            )
+            return Object.fromEntries(entries) as Record<string, StationStats>
+        },
+        enabled: stationIds.length > 0,
+    })
+}
+
+function sumStationStats(statsByStation: Record<string, StationStats>, key: keyof StationStats) {
+    return Object.values(statsByStation).reduce((sum, stats) => sum + (stats?.[key] ?? 0), 0)
 }

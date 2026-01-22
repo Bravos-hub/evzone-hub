@@ -97,7 +97,6 @@ import {
   // Role-specific Ops
 
   TechnicianAvailability,
-  SiteOwnerSites,
   // Additional Ported Features
   Alerts,
   Payments,
@@ -136,7 +135,7 @@ import {
   StationOperatorAssignment,
   OperatorRoleManagement,
 } from '@/features'
-import { StationOwnerDashboard } from '@/modules/tenants/dashboard/StationOwnerDashboard'
+import { Sites } from '@/modules/sites/components/Sites'
 
 /**
  * Application Routes - Unified flat structure
@@ -251,12 +250,12 @@ export function AppRoutes() {
       <Route path={PATHS.OWNER.LOAD_POLICY} element={<RequireAuth><LoadPolicy /></RequireAuth>} />
 
       {/* Station Owner (Tenant) Dashboard */}
-      <Route path={PATHS.TENANT.DASHBOARD} element={<RequireAuth><StationOwnerDashboard /></RequireAuth>} />
+      <Route path={PATHS.TENANT.DASHBOARD} element={<RequireAuth><Sites /></RequireAuth>} />
 
       {/* ═══════════════════════════════════════════════════════════════════════
           SITE OWNER FEATURES
           ═══════════════════════════════════════════════════════════════════════ */}
-      <Route path={PATHS.SITE_OWNER.SITES} element={<RequireAuth><SiteOwnerSites /></RequireAuth>} />
+      <Route path={PATHS.SITE_OWNER.SITES} element={<RequireAuth><Sites /></RequireAuth>} />
       <Route path={PATHS.SITE_OWNER.SITE_DETAIL(':id')} element={<RequireAuth><SiteDetail /></RequireAuth>} />
 
       {/* ═══════════════════════════════════════════════════════════════════════
@@ -303,7 +302,7 @@ export function AppRoutes() {
       <Route path={PATHS.OPERATOR.CUSTOM_ROLES} element={<RequireAuth><OperatorRoleManagement /></RequireAuth>} />
 
       {/* Site Owner Tools */}
-      <Route path={PATHS.SITE_OWNER.MY_SITES} element={<RequireAuth><SiteOwnerSites /></RequireAuth>} />
+      <Route path={PATHS.SITE_OWNER.MY_SITES} element={<RequireAuth><Sites /></RequireAuth>} />
       <Route path={PATHS.SITE_OWNER.DASHBOARD} element={<Navigate to={PATHS.DASHBOARD} replace />} />
       <Route path={PATHS.SITE_OWNER.PARKING} element={<RequireAuth><Parking /></RequireAuth>} />
       <Route path={PATHS.SITE_OWNER.TENANTS} element={<RequireAuth><Tenants /></RequireAuth>} />
