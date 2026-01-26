@@ -6,6 +6,7 @@ import { AddSite, type SiteForm } from './AddSite'
 import { useSites, useCreateSite, useUpdateSite } from '@/modules/sites/hooks/useSites'
 import { useApplications, useUpdateApplicationStatus } from '@/modules/applications/hooks/useApplications'
 import { useTenantSites } from '@/modules/tenants/hooks/useTenantDashboard'
+import { useUploadSiteDocument } from '@/modules/sites/hooks/useSiteDocuments'
 import { SiteEditModal, ApplicationDetailModal } from '@/modals'
 import { getErrorMessage } from '@/core/api/errors'
 import { ROLE_GROUPS, isInGroup } from '@/constants/roles'
@@ -56,6 +57,7 @@ function mapSiteFormToRequest(form: SiteForm, ownerId?: string): CreateSiteReque
     longitude: form.longitude ? Number(form.longitude) : undefined,
     amenities: Array.from(form.amenities),
     tags: form.tags,
+    photos: form.photoUrls,
     ownerId: form.ownerId || ownerId,
   }
 }
@@ -78,6 +80,7 @@ export function Sites() {
   const createSiteMutation = useCreateSite()
   const updateSiteMutation = useUpdateSite()
   const updateAppStatus = useUpdateApplicationStatus()
+  const uploadSiteDocument = useUploadSiteDocument()
 
   // STATE
   const [activeTab, setActiveTab] = useState<Tab>('Owned')
@@ -170,10 +173,40 @@ export function Sites() {
         setErrorMessage('Missing ownerId for site creation.')
         return
       }
+      setAck('Creating site...')
+
+      // 1. Create the site
       const site = await createSiteMutation.mutateAsync(mapSiteFormToRequest(newSite, user.id))
+
       const { auditLogger } = await import('@/core/utils/auditLogger')
       auditLogger.stationCreated(site.id, site.name)
-      setIsAdding(false)
+
+      // 2. Upload Documents if any
+      if (newSite.documentFiles.length > 0) {
+        setAck(`Creating site... Uploading ${newSite.documentFiles.length} documents...`)
+        try {
+          // Upload sequentially to avoid overwhelming client/server
+          for (const doc of newSite.documentFiles) {
+            await uploadSiteDocument.mutateAsync({
+              siteId: site.id,
+              title: doc.title,
+              file: doc.file
+            })
+          }
+        } catch (docErr) {
+          console.error('Failed to upload some documents', docErr)
+          // Don't fail the whole process, but warn user
+          setErrorMessage('Site created, but some documents failed to upload.')
+          // Wait a bit to let them see the error before closing
+          await new Promise(r => setTimeout(r, 2000))
+        }
+      }
+
+      setAck('Site created successfully!')
+      setTimeout(() => {
+        setIsAdding(false)
+        setAck('')
+      }, 1000)
     } catch (err) {
       setErrorMessage(getErrorMessage(err))
     }
