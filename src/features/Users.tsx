@@ -9,6 +9,7 @@ import { RolePill } from '@/ui/components/RolePill'
 import { InviteUserModal } from '@/modals/InviteUserModal'
 import { useUsers, useUpdateUser, useDeleteUser } from '@/modules/auth/hooks/useUsers'
 import { getErrorMessage } from '@/core/api/errors'
+import { StatGridSkeleton, TableSkeleton } from '@/ui/components/SkeletonCards'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -129,24 +130,28 @@ export function Users() {
   return (
     <DashboardLayout pageTitle="Users & Roles">
       {/* Summary Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-        <div className="card">
-          <div className="text-xs text-muted">Total Users</div>
-          <div className="text-xl font-bold text-text">{stats.total}</div>
+      {isLoading ? (
+        <StatGridSkeleton className="mb-4" />
+      ) : (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+          <div className="card">
+            <div className="text-xs text-muted">Total Users</div>
+            <div className="text-xl font-bold text-text">{stats.total}</div>
+          </div>
+          <div className="card">
+            <div className="text-xs text-muted">Active</div>
+            <div className="text-xl font-bold text-ok">{stats.active}</div>
+          </div>
+          <div className="card">
+            <div className="text-xs text-muted">Pending</div>
+            <div className="text-xl font-bold text-warn">{stats.pending}</div>
+          </div>
+          <div className="card">
+            <div className="text-xs text-muted">Suspended</div>
+            <div className="text-xl font-bold text-danger">{stats.suspended}</div>
+          </div>
         </div>
-        <div className="card">
-          <div className="text-xs text-muted">Active</div>
-          <div className="text-xl font-bold text-ok">{stats.active}</div>
-        </div>
-        <div className="card">
-          <div className="text-xs text-muted">Pending</div>
-          <div className="text-xl font-bold text-warn">{stats.pending}</div>
-        </div>
-        <div className="card">
-          <div className="text-xs text-muted">Suspended</div>
-          <div className="text-xl font-bold text-danger">{stats.suspended}</div>
-        </div>
-      </div>
+      )}
 
       {/* Filters */}
       <div className="card mb-4">
@@ -204,8 +209,8 @@ export function Users() {
 
       {/* Loading State */}
       {isLoading && (
-        <div className="card mb-4">
-          <div className="text-center py-8 text-muted">Loading users...</div>
+        <div className="table-wrap">
+          <TableSkeleton rows={8} cols={9} />
         </div>
       )}
 

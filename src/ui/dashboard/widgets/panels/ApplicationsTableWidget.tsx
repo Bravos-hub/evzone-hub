@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { Card } from '@/ui/components/Card'
 import { useApplications, useUpdateApplicationStatus } from '@/modules/applications/hooks/useApplications'
+import { TableSkeleton } from '@/ui/components/SkeletonCards'
 
 export function ApplicationsTableWidget({ config }: { config: any }) {
     const navigate = useNavigate()
@@ -16,8 +17,8 @@ export function ApplicationsTableWidget({ config }: { config: any }) {
 
     if (isLoading) {
         return (
-            <Card className="flex items-center justify-center p-8">
-                <div className="text-muted animate-pulse">Loading applications...</div>
+            <Card className="p-4">
+                <TableSkeleton rows={4} cols={6} />
             </Card>
         )
     }

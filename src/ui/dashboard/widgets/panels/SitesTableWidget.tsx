@@ -1,6 +1,7 @@
 import { Card } from '@/ui/components/Card'
 import { useSites } from '@/modules/sites/hooks/useSites'
 import { useAuthStore } from '@/core/auth/authStore'
+import { TableSkeleton } from '@/ui/components/SkeletonCards'
 
 export function SitesTableWidget({ config }: { config: any }) {
     const { data: sitesData, isLoading: sitesLoading } = useSites()
@@ -10,8 +11,8 @@ export function SitesTableWidget({ config }: { config: any }) {
 
     if (sitesLoading) {
         return (
-            <Card className="flex items-center justify-center p-8">
-                <div className="text-muted animate-pulse">Loading sites...</div>
+            <Card className="p-4">
+                <TableSkeleton rows={4} cols={6} />
             </Card>
         )
     }

@@ -13,6 +13,8 @@ import { SmartCharging } from './SmartCharging'
 import { Bookings } from './Bookings'
 import { useStations } from '@/modules/stations/hooks/useStations'
 import { getErrorMessage } from '@/core/api/errors'
+import Skeleton from 'react-loading-skeleton'
+import { TableSkeleton } from '@/ui/components/SkeletonCards'
 
 // ... types and mock data omitted for brevity ...
 type StationType = 'Charge' | 'Swap' | 'Both'
@@ -198,8 +200,17 @@ export function Stations() {
         <div className="space-y-4">
           {/* Loading State */}
           {(isLoading || accessLoading) && (
-            <div className="card">
-              <div className="text-center py-8 text-muted">{isLoading ? 'Loading stations...' : 'Loading access...'}</div>
+            <div className="space-y-4">
+              <div className="card p-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <Skeleton key={i} height={36} />
+                  ))}
+                </div>
+              </div>
+              <div className="table-wrap">
+                <TableSkeleton rows={8} cols={10} />
+              </div>
             </div>
           )}
 

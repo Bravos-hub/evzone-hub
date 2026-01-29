@@ -79,3 +79,35 @@ export function TableSkeleton({ rows = 5, cols = 5 }: { rows?: number; cols?: nu
         </div>
     )
 }
+
+export function StatGridSkeleton({ count = 4, className = '' }: { count?: number; className?: string }) {
+    return (
+        <div className={`grid grid-cols-2 lg:grid-cols-4 gap-3 ${className}`}>
+            {Array.from({ length: count }).map((_, i) => (
+                <KpiCardSkeleton key={i} />
+            ))}
+        </div>
+    )
+}
+
+export function ListCardSkeleton({ items = 3 }: { items?: number }) {
+    return (
+        <div className="space-y-2">
+            {Array.from({ length: items }).map((_, i) => (
+                <Card key={i} className="p-4">
+                    <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 space-y-2">
+                            <div className="flex items-center gap-2">
+                                <Skeleton width={64} height={18} borderRadius={999} />
+                                <Skeleton width={180} height={14} />
+                            </div>
+                            <Skeleton height={12} width="90%" />
+                            <Skeleton height={10} width="60%" />
+                        </div>
+                        <Skeleton width={48} height={12} />
+                    </div>
+                </Card>
+            ))}
+        </div>
+    )
+}

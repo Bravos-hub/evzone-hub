@@ -8,6 +8,7 @@ import { StationStatusPill, type StationStatus } from '@/ui/components/StationSt
 import { useChargePoints, useRebootChargePoint } from '@/modules/charge-points/hooks/useChargePoints'
 import { useStations } from '@/modules/stations/hooks/useStations'
 import { getErrorMessage } from '@/core/api/errors'
+import { StatGridSkeleton, TableSkeleton } from '@/ui/components/SkeletonCards'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES & MOCK DATA
@@ -150,6 +151,7 @@ export function ChargePoints() {
   }
 
   const accessLoading = needsScope && (meLoading || stationsLoading)
+  const showSkeleton = isLoading || accessLoading
   const capabilityDenied = needsScope && !capabilityAllowsCharge(capability)
 
   // Remove DashboardLayout wrapper - this is now rendered within Stations tabs
@@ -171,26 +173,23 @@ export function ChargePoints() {
 
   return (
     <>
-      {accessLoading && (
-        <div className="card mb-4">
-          <div className="text-center py-8 text-muted">Loading access...</div>
-        </div>
-      )}
-
       {error && (
         <div className="card mb-4 bg-red-50 border border-red-200">
           <div className="text-red-700 text-sm">{getErrorMessage(error)}</div>
         </div>
       )}
 
-      {isLoading && (
-        <div className="card mb-4">
-          <div className="text-center py-8 text-muted">Loading charge points...</div>
+      {showSkeleton && (
+        <div className="space-y-4 mb-4">
+          <StatGridSkeleton count={3} />
+          <div className="table-wrap">
+            <TableSkeleton rows={6} cols={8} />
+          </div>
         </div>
       )}
 
       {/* Summary */}
-      {!isLoading && !accessLoading && (
+      {!showSkeleton && (
         <>
           <div className="grid grid-cols-3 gap-3 mb-4">
             <div className="card">

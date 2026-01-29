@@ -5,6 +5,7 @@ import { getPermissionsForFeature } from '@/constants/permissions'
 import { useWebhooks, useCreateWebhook, useUpdateWebhook, useDeleteWebhook, useTestWebhook } from '@/modules/integrations/useWebhooks'
 import { getErrorMessage } from '@/core/api/errors'
 import { auditLogger } from '@/core/utils/auditLogger'
+import { TableSkeleton } from '@/ui/components/SkeletonCards'
 
 /**
  * Webhooks Page - Admin feature
@@ -43,8 +44,8 @@ export function Webhooks() {
 
       {/* Loading State */}
       {isLoading && (
-        <div className="card mb-4">
-          <div className="text-center py-8 text-muted">Loading webhooks...</div>
+        <div className="table-wrap mb-4">
+          <TableSkeleton rows={6} cols={6} />
         </div>
       )}
 

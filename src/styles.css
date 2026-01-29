@@ -89,6 +89,17 @@ html.light-theme {
   --app-input-border: rgba(0, 0, 0, 0.1);
 }
 
+/* Skeleton theme tuning */
+:root .react-loading-skeleton {
+  --base-color: rgba(255, 255, 255, 0.08);
+  --highlight-color: rgba(255, 255, 255, 0.16);
+}
+
+html.light-theme .react-loading-skeleton {
+  --base-color: rgba(15, 23, 42, 0.08);
+  --highlight-color: rgba(15, 23, 42, 0.16);
+}
+
 @layer base {
   * {
     box-sizing: border-box;

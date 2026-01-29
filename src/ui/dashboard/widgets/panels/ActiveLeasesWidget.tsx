@@ -1,5 +1,6 @@
 import { Card } from '@/ui/components/Card'
 import { useLeases } from '@/modules/applications/hooks/useApplications'
+import { TableSkeleton } from '@/ui/components/SkeletonCards'
 
 export type ActiveLeasesConfig = {
     title?: string
@@ -12,8 +13,8 @@ export function ActiveLeasesWidget({ config }: { config: ActiveLeasesConfig }) {
 
     if (isLoading) {
         return (
-            <Card className="flex items-center justify-center p-8">
-                <div className="text-muted animate-pulse">Loading leases...</div>
+            <Card className="p-4">
+                <TableSkeleton rows={4} cols={4} />
             </Card>
         )
     }

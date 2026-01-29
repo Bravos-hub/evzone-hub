@@ -7,6 +7,7 @@ import { useStations } from '@/modules/stations/hooks/useStations'
 import { getErrorMessage } from '@/core/api/errors'
 import type { Tariff, TariffType } from '@/core/types/domain'
 import { TariffEditor } from './tariffs/TariffEditor'
+import { StatGridSkeleton, TableSkeleton } from '@/ui/components/SkeletonCards'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES & MOCK DATA
@@ -80,13 +81,15 @@ export function Tariffs() {
 
       {/* Loading State */}
       {isLoading && (
-        <div className="card mb-4">
-          <div className="text-center py-8 text-muted">Loading tariffs...</div>
+        <div className="table-wrap mb-4">
+          <TableSkeleton rows={6} cols={7} />
         </div>
       )}
 
       {/* Summary */}
-      {!isLoading && (
+      {isLoading ? (
+        <StatGridSkeleton count={3} className="mb-4" />
+      ) : (
         <div className="grid grid-cols-3 gap-3 mb-4">
           <div className="card">
             <div className="text-xs text-muted">Total Tariffs</div>
@@ -133,44 +136,46 @@ export function Tariffs() {
       )}
 
       {/* Tariffs Table */}
-      <div className="table-wrap">
-        <table className="table">
-          <thead>
-            <tr>
-              <th>Tariff</th>
-              <th>Type</th>
-              <th>Model</th>
-              <th>Base Rate</th>
-              <th>Stations</th>
-              <th>Status</th>
-              <th className="text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((t) => (
-              <tr key={t.id}>
-                <td className="font-semibold text-text">{t.name}</td>
-                <td><span className="chip">{t.type}</span></td>
-                <td><span className="chip">{t.paymentModel}</span></td>
-                <td>${(t.elements[0]?.pricePerKwh || t.elements[0]?.pricePerMinute || 0).toFixed(2)}</td>
-                <td>{t.applicableStations?.length || 0}</td>
-                <td>
-                  <span className={`pill ${t.active ? 'approved' : 'rejected'}`}>
-                    {t.active ? 'Active' : 'Inactive'}
-                  </span>
-                </td>
-                <td className="text-right">
-                  {perms.edit && (
-                    <button className="btn secondary" onClick={() => handleEditClick(t)}>
-                      Edit
-                    </button>
-                  )}
-                </td>
+      {!isLoading && (
+        <div className="table-wrap">
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Tariff</th>
+                <th>Type</th>
+                <th>Model</th>
+                <th>Base Rate</th>
+                <th>Stations</th>
+                <th>Status</th>
+                <th className="text-right">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {filtered.map((t) => (
+                <tr key={t.id}>
+                  <td className="font-semibold text-text">{t.name}</td>
+                  <td><span className="chip">{t.type}</span></td>
+                  <td><span className="chip">{t.paymentModel}</span></td>
+                  <td>${(t.elements[0]?.pricePerKwh || t.elements[0]?.pricePerMinute || 0).toFixed(2)}</td>
+                  <td>{t.applicableStations?.length || 0}</td>
+                  <td>
+                    <span className={`pill ${t.active ? 'approved' : 'rejected'}`}>
+                      {t.active ? 'Active' : 'Inactive'}
+                    </span>
+                  </td>
+                  <td className="text-right">
+                    {perms.edit && (
+                      <button className="btn secondary" onClick={() => handleEditClick(t)}>
+                        Edit
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {showEditor && (
         <TariffEditor

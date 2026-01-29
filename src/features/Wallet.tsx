@@ -5,6 +5,7 @@ import { ROLE_GROUPS } from '@/constants/roles'
 import { useWalletBalance, useWalletTransactions, useTopUp } from '@/modules/finance/wallet/useWallet'
 import { useStations } from '@/modules/stations/hooks/useStations'
 import { getErrorMessage } from '@/core/api/errors'
+import { StatGridSkeleton, TableSkeleton } from '@/ui/components/SkeletonCards'
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Wallet — Balance, transactions, payouts
@@ -156,24 +157,25 @@ export function Wallet() {
           </div>
         )}
 
-        {/* Loading State */}
-        {isLoading && (
-          <div className="card">
-            <div className="text-center py-8 text-muted">Loading wallet data...</div>
-          </div>
-        )}
+        {isLoading ? (
+          <>
+            <StatGridSkeleton />
+            <div className="table-wrap">
+              <TableSkeleton rows={8} cols={8} />
+            </div>
+          </>
+        ) : (
+          <>
+            {/* KPIs */}
+            <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {walletKpis.map(k => (
+                <div key={k.label} className={`rounded-xl border p-5 shadow-sm ${k.highlight ? 'bg-accent text-white border-accent' : 'bg-surface border-border'}`}>
+                  <div className={`text-sm ${k.highlight ? 'text-white/80' : 'text-subtle'}`}>{k.label}</div>
+                  <div className="mt-2 text-2xl font-bold">{k.value}</div>
+                </div>
+              ))}
+            </section>
 
-        {/* KPIs */}
-        {!isLoading && (
-          <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {walletKpis.map(k => (
-              <div key={k.label} className={`rounded-xl border p-5 shadow-sm ${k.highlight ? 'bg-accent text-white border-accent' : 'bg-surface border-border'}`}>
-                <div className={`text-sm ${k.highlight ? 'text-white/80' : 'text-subtle'}`}>{k.label}</div>
-                <div className="mt-2 text-2xl font-bold">{k.value}</div>
-              </div>
-            ))}
-          </section>
-        )}
 
         {/* Revenue Breakdown */}
         {revenueByStation.length > 0 && (
@@ -274,6 +276,8 @@ export function Wallet() {
           </table>
           {filtered.length === 0 && <div className="p-8 text-center text-subtle">No transactions found.</div>}
         </section>
+          </>
+        )}
 
         {/* Withdraw modal */}
         {showWithdraw && (

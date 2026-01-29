@@ -7,6 +7,7 @@ import { billingService } from '@/modules/finance/billing/billingService'
 import { useQuery } from '@tanstack/react-query'
 import { getErrorMessage } from '@/core/api/errors'
 import { PATHS } from '@/app/router/paths'
+import { StatGridSkeleton, TableSkeleton } from '@/ui/components/SkeletonCards'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -181,30 +182,32 @@ export function Billing() {
 
       {/* Loading State */}
       {isLoading && (
-        <div className="card mb-4">
-          <div className="text-center py-8 text-muted">Loading invoices...</div>
+        <div className="table-wrap mb-4">
+          <TableSkeleton rows={8} cols={perms.viewAll ? 9 : 8} />
         </div>
       )}
 
       {/* Summary Stats */}
-      {!isLoading && (
+      {isLoading ? (
+        <StatGridSkeleton className="mb-4" />
+      ) : (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-        <div className="card">
-          <div className="text-xs text-muted">Total Volume</div>
-          <div className="text-xl font-bold text-text">${stats.total.toLocaleString()}</div>
-        </div>
-        <div className="card">
-          <div className="text-xs text-muted">Paid</div>
-          <div className="text-xl font-bold text-ok">${stats.paid.toLocaleString()}</div>
-        </div>
-        <div className="card">
-          <div className="text-xs text-muted">Pending</div>
-          <div className="text-xl font-bold text-warn">${stats.pending.toLocaleString()}</div>
-        </div>
-        <div className="card">
-          <div className="text-xs text-muted">Overdue</div>
-          <div className="text-xl font-bold text-danger">${stats.overdue.toLocaleString()}</div>
-        </div>
+          <div className="card">
+            <div className="text-xs text-muted">Total Volume</div>
+            <div className="text-xl font-bold text-text">${stats.total.toLocaleString()}</div>
+          </div>
+          <div className="card">
+            <div className="text-xs text-muted">Paid</div>
+            <div className="text-xl font-bold text-ok">${stats.paid.toLocaleString()}</div>
+          </div>
+          <div className="card">
+            <div className="text-xs text-muted">Pending</div>
+            <div className="text-xl font-bold text-warn">${stats.pending.toLocaleString()}</div>
+          </div>
+          <div className="card">
+            <div className="text-xs text-muted">Overdue</div>
+            <div className="text-xl font-bold text-danger">${stats.overdue.toLocaleString()}</div>
+          </div>
         </div>
       )}
 
@@ -256,57 +259,59 @@ export function Billing() {
       </div>
 
       {/* Invoices Table */}
-      <div className="table-wrap">
-        <table className="table">
-          <thead>
-            <tr>
-              <th className="w-24">Invoice</th>
-              <th className="w-24">Type</th>
-              {perms.viewAll && <th className="w-32">Organization</th>}
-              <th className="w-48">Description</th>
-              <th className="w-20 !text-right">Amount</th>
-              <th className="w-20">Status</th>
-              <th className="w-24">Issued</th>
-              <th className="w-24">Due</th>
-              <th className="w-24 !text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((r) => (
-              <tr key={r.id}>
-                <td className="font-semibold truncate max-w-[96px]" title={r.id}>{r.id}</td>
-                <td>
-                  <span className="chip text-xs">{r.type}</span>
-                </td>
-                {perms.viewAll && <td className="truncate max-w-[128px]" title={r.org}>{r.org}</td>}
-                <td className="text-sm text-muted max-w-[192px] truncate" title={r.description}>{r.description}</td>
-                <td className="text-right font-semibold whitespace-nowrap">
-                  <span className={r.amount < 0 ? 'text-danger' : ''}>
-                    {r.amount < 0 ? '-' : ''}${Math.abs(r.amount).toLocaleString()}
-                  </span>
-                </td>
-                <td>
-                  <span className={`pill whitespace-nowrap ${statusColor(r.status)}`}>{r.status}</span>
-                </td>
-                <td className="text-sm whitespace-nowrap">{r.issuedAt}</td>
-                <td className="text-sm whitespace-nowrap">{r.dueAt}</td>
-                <td className="text-right">
-                  <div className="inline-flex items-center gap-2">
-                    <Link to={`/billing/invoices/${r.id}`} className="btn secondary">
-                      View
-                    </Link>
-                    {perms.refund && r.status === 'Paid' && (
-                      <button className="btn secondary" onClick={() => alert(`Refund ${r.id} (demo)`)}>
-                        Refund
-                      </button>
-                    )}
-                  </div>
-                </td>
+      {!isLoading && (
+        <div className="table-wrap">
+          <table className="table">
+            <thead>
+              <tr>
+                <th className="w-24">Invoice</th>
+                <th className="w-24">Type</th>
+                {perms.viewAll && <th className="w-32">Organization</th>}
+                <th className="w-48">Description</th>
+                <th className="w-20 !text-right">Amount</th>
+                <th className="w-20">Status</th>
+                <th className="w-24">Issued</th>
+                <th className="w-24">Due</th>
+                <th className="w-24 !text-right">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {filtered.map((r) => (
+                <tr key={r.id}>
+                  <td className="font-semibold truncate max-w-[96px]" title={r.id}>{r.id}</td>
+                  <td>
+                    <span className="chip text-xs">{r.type}</span>
+                  </td>
+                  {perms.viewAll && <td className="truncate max-w-[128px]" title={r.org}>{r.org}</td>}
+                  <td className="text-sm text-muted max-w-[192px] truncate" title={r.description}>{r.description}</td>
+                  <td className="text-right font-semibold whitespace-nowrap">
+                    <span className={r.amount < 0 ? 'text-danger' : ''}>
+                      {r.amount < 0 ? '-' : ''}${Math.abs(r.amount).toLocaleString()}
+                    </span>
+                  </td>
+                  <td>
+                    <span className={`pill whitespace-nowrap ${statusColor(r.status)}`}>{r.status}</span>
+                  </td>
+                  <td className="text-sm whitespace-nowrap">{r.issuedAt}</td>
+                  <td className="text-sm whitespace-nowrap">{r.dueAt}</td>
+                  <td className="text-right">
+                    <div className="inline-flex items-center gap-2">
+                      <Link to={`/billing/invoices/${r.id}`} className="btn secondary">
+                        View
+                      </Link>
+                      {perms.refund && r.status === 'Paid' && (
+                        <button className="btn secondary" onClick={() => alert(`Refund ${r.id} (demo)`)}>
+                          Refund
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </DashboardLayout>
   )
 }
