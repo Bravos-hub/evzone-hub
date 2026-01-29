@@ -8,7 +8,7 @@ import type { User } from '@/core/api/types'
 import { RolePill } from '@/ui/components/RolePill'
 import { useUsers, useUpdateUser, useDeleteUser, useInviteUser } from '@/modules/auth/hooks/useUsers'
 import { InviteMemberModal } from '@/ui/components/InviteMemberModal'
-import { EVChargingAnimation } from '@/ui/components/EVChargingAnimation'
+import { KpiCardSkeleton, TableSkeleton } from '@/ui/components/SkeletonCards'
 import clsx from 'clsx'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -53,11 +53,24 @@ export function Team() {
   if (isLoading) {
     return (
       <DashboardLayout pageTitle="Team">
-        <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
-          <div className="w-24 h-24">
-            <EVChargingAnimation />
+        <div className="space-y-8">
+          {/* Stats Skeletons */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <KpiCardSkeleton />
+            <KpiCardSkeleton />
+            <KpiCardSkeleton />
           </div>
-          <p className="text-text-secondary animate-pulse font-medium">Loading team directory...</p>
+
+          {/* Search/Filter Skeleton */}
+          <div className="flex flex-col lg:flex-row items-center justify-between gap-4 h-11">
+            <div className="w-full lg:w-80"><TableSkeleton rows={1} cols={1} /></div>
+            <div className="w-full lg:w-48"><TableSkeleton rows={1} cols={1} /></div>
+          </div>
+
+          {/* Table Skeleton */}
+          <div className="table-wrap">
+            <TableSkeleton rows={8} cols={4} />
+          </div>
         </div>
       </DashboardLayout>
     )

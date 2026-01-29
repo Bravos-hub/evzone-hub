@@ -6,16 +6,7 @@
 const CLOUDINARY_CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME
 const CLOUDINARY_UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET
 
-// Debug logging
-console.log('🔍 Cloudinary Debug:', {
-    cloudName: CLOUDINARY_CLOUD_NAME,
-    uploadPreset: CLOUDINARY_UPLOAD_PRESET,
-    fromEnv: {
-        cloudName: import.meta.env.VITE_CLOUDINARY_CLOUD_NAME,
-        uploadPreset: import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET
-    },
-    allEnvVars: import.meta.env
-})
+// Cloudinary constants
 
 export interface CloudinaryUploadResult {
     secure_url: string

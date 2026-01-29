@@ -6,7 +6,7 @@ import { useUsers } from '@/modules/auth/hooks/useUsers'
 import type { Incident, IncidentSeverity, IncidentStatus } from '@/core/api/types'
 import { ROLE_LABELS } from '@/constants/roles'
 import clsx from 'clsx'
-import { EVChargingAnimation } from '@/ui/components/EVChargingAnimation'
+import { KpiCardSkeleton, TableSkeleton } from '@/ui/components/SkeletonCards'
 
 export function OwnerIncidentCenter() {
     const { data: incidents, isLoading } = useIncidents()
@@ -30,11 +30,21 @@ export function OwnerIncidentCenter() {
     if (isLoading) {
         return (
             <DashboardLayout pageTitle="Incident Center">
-                <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
-                    <div className="w-24 h-24 overflow-hidden flex items-center justify-center">
-                        <EVChargingAnimation />
+                <div className="flex flex-col gap-8 pb-10">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <KpiCardSkeleton />
+                        <KpiCardSkeleton />
+                        <KpiCardSkeleton />
+                        <KpiCardSkeleton />
                     </div>
-                    <p className="text-text-secondary animate-pulse">Scanning network for alerts...</p>
+                    <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                        <div className="xl:col-span-2 space-y-4">
+                            <TableSkeleton rows={6} cols={3} />
+                        </div>
+                        <div className="space-y-6">
+                            <KpiCardSkeleton />
+                        </div>
+                    </div>
                 </div>
             </DashboardLayout>
         )

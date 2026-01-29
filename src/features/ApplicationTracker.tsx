@@ -4,7 +4,7 @@ import { Card } from '@/ui/components/Card'
 import { useApplications } from '@/modules/applications/hooks/useApplications'
 import type { Application } from '@/modules/applications/types'
 import clsx from 'clsx'
-import { EVChargingAnimation } from '@/ui/components/EVChargingAnimation'
+import { KpiCardSkeleton, SiteCardSkeleton } from '@/ui/components/SkeletonCards'
 
 export function ApplicationTracker() {
     const { data: applications, isLoading } = useApplications()
@@ -13,11 +13,17 @@ export function ApplicationTracker() {
     if (isLoading) {
         return (
             <DashboardLayout pageTitle="Expansion Tracker">
-                <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
-                    <div className="w-24 h-24 overflow-hidden flex items-center justify-center">
-                        <EVChargingAnimation />
+                <div className="flex flex-col gap-8 pb-10">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <div className="lg:col-span-2 space-y-4">
+                            <SiteCardSkeleton />
+                            <SiteCardSkeleton />
+                            <SiteCardSkeleton />
+                        </div>
+                        <div className="space-y-6">
+                            <KpiCardSkeleton />
+                        </div>
                     </div>
-                    <p className="text-text-secondary animate-pulse">Tracking site applications...</p>
                 </div>
             </DashboardLayout>
         )

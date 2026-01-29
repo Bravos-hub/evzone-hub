@@ -1,7 +1,7 @@
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { Card } from '@/ui/components/Card'
 import { useLeases } from '@/modules/applications/hooks/useApplications'
-import { EVChargingAnimation } from '@/ui/components/EVChargingAnimation'
+import { KpiCardSkeleton, SiteCardSkeleton } from '@/ui/components/SkeletonCards'
 import clsx from 'clsx'
 
 export function LeaseCompliance() {
@@ -10,11 +10,21 @@ export function LeaseCompliance() {
     if (isLoading) {
         return (
             <DashboardLayout pageTitle="Lease & Compliance">
-                <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
-                    <div className="w-24 h-24 overflow-hidden flex items-center justify-center">
-                        <EVChargingAnimation />
+                <div className="flex flex-col gap-6 lg:gap-8 pb-10">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <KpiCardSkeleton />
+                        <KpiCardSkeleton />
+                        <KpiCardSkeleton />
                     </div>
-                    <p className="text-text-secondary animate-pulse">Analyzing lease agreements...</p>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <div className="space-y-4">
+                            <SiteCardSkeleton />
+                            <SiteCardSkeleton />
+                        </div>
+                        <div className="space-y-4">
+                            <SiteCardSkeleton />
+                        </div>
+                    </div>
                 </div>
             </DashboardLayout>
         )
