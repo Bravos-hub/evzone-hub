@@ -17,7 +17,12 @@ export interface RegisterRequest {
   email?: string
   phone?: string
   password: string
-  role: string
+  role?: string
+  country?: string
+  region?: string
+  subscribedPackage?: string
+  accountType?: 'COMPANY' | 'INDIVIDUAL'
+  companyName?: string
   tenantId?: string
   orgId?: string
   organizationId?: string
@@ -417,7 +422,16 @@ export interface DashboardMetrics {
 export interface Organization {
   id: string
   name: string
-  type: string
+  description?: string
+  logoUrl?: string
+  type: 'COMPANY' | 'INDIVIDUAL'
+  paymentProvider?: string
+  walletNumber?: string
+  taxId?: string
+  regId?: string
+  address?: string
+  city?: string
+  users?: User[]
   createdAt: string
   updatedAt?: string
 }

@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuthStore } from '@/core/auth/authStore'
 import { PATHS } from '@/app/router/paths'
 import { authService } from '@/modules/auth/services/authService'
+import { onboardingService } from '@/modules/auth/services/onboardingService'
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Auth Pages — Login, Register, Reset Password, Verify Email
@@ -157,364 +158,415 @@ export function Login() {
   )
 }
 
+const PLANS = [
+  {
+    id: 'Starter',
+    name: 'Starter',
+    price: 'UGX 0',
+    description: 'Kick-off with a single site',
+    features: ['Billing (Time)', 'Basic Reports', 'Email support']
+  },
+  {
+    id: 'Growth',
+    name: 'Growth',
+    price: 'UGX 120,000',
+    description: 'Scale with smart billing',
+    features: ['Billing (Time & kWh)', 'TOU Bands', 'Other Taxes/Fees', 'Priority support'],
+    popular: true
+  },
+  {
+    id: 'Pro',
+    name: 'Pro',
+    price: 'UGX 265,000',
+    description: 'Roaming & advanced analytics',
+    features: ['OCPI Roaming', '4-way Settlement', 'Advanced Analytics', 'Phone support']
+  },
+  {
+    id: 'Enterprise',
+    name: 'Enterprise',
+    price: 'Custom',
+    description: 'Custom SLA & dedicated success',
+    features: ['Custom SLA', 'Dedicated Success', 'Private APIs', 'Contact sales']
+  }
+]
+
 export function Register() {
   const navigate = useNavigate()
+  const [step, setStep] = useState(1)
   const [accountType, setAccountType] = useState<'COMPANY' | 'INDIVIDUAL'>('COMPANY')
   const [role, setRole] = useState<'OWNER' | 'STATION_OPERATOR' | 'SITE_OWNER' | 'TECHNICIAN_ORG'>('OWNER')
   const [capability, setCapability] = useState<'CHARGE' | 'SWAP' | 'BOTH'>('BOTH')
-  const [showPassword, setShowPassword] = useState(false)
-  const [showConfirm, setShowConfirm] = useState(false)
+  const [plan, setPlan] = useState('Starter')
+  const [orgId, setOrgId] = useState<string | null>(null)
   const [form, setForm] = useState({
-    companyName: '',
-    companyReg: '',
-    taxId: '',
     name: '',
-    jobTitle: '',
     email: '',
     phone: '',
     password: '',
     confirmPassword: '',
+    companyName: '',
+    taxId: '',
+    country: 'Uganda', // Pre-filled (Geo-detection mock)
+    region: 'Central Region',
+    payoutProvider: 'MTN',
+    walletNumber: '',
     terms: false,
   })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
-  const update = (k: keyof typeof form, v: string | boolean) => {
-    setForm(f => ({ ...f, [k]: v }))
-  }
+  const update = (k: keyof typeof form, v: string | boolean) => setForm(f => ({ ...f, [k]: v }))
 
-  const needsCapability = role === 'OWNER' || role === 'STATION_OPERATOR'
-  const isCompany = accountType === 'COMPANY'
-
-  const roleOptions = [
-    { label: 'Station Owner', value: 'OWNER' as const },
-    { label: 'Operator', value: 'STATION_OPERATOR' as const },
-    { label: 'Technician', value: 'TECHNICIAN_ORG' as const },
-    { label: 'Site Owner', value: 'SITE_OWNER' as const },
-  ]
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError('')
-
-    const missing: string[] = []
-    if (isCompany && !form.companyName.trim()) missing.push('Company name')
-    if (!form.name.trim()) missing.push('Full name')
-    if (!form.email.trim()) missing.push('Email')
-    if (!form.phone.trim()) missing.push('Phone')
-    if (!form.password) missing.push('Password')
-    if (!form.confirmPassword) missing.push('Confirm password')
-
-    if (missing.length > 0) {
-      setError(`Please complete: ${missing.join(', ')}.`)
-      return
-    }
-
-    if (form.password.length < 8) {
-      setError('Password must be at least 8 characters')
-      return
-    }
-
+  const handleRegister = async () => {
     if (form.password !== form.confirmPassword) {
       setError('Passwords do not match')
       return
     }
-
-    if (!form.terms) {
-      setError('Please accept the terms to continue')
-      return
-    }
-
     setLoading(true)
-    setLoading(true)
+    setError('')
     try {
-      await authService.register({
+      const response = await authService.register({
         name: form.name,
         email: form.email,
         phone: form.phone,
         password: form.password,
-        role: role,
-        // capability, accountType, etc. mapped execution
-        ownerCapability: needsCapability ? capability : undefined,
+        role: role === 'OWNER' ? 'STATION_OWNER' : role,
+        country: form.country,
+        region: form.region,
+        subscribedPackage: plan,
+        accountType: accountType,
+        companyName: accountType === 'COMPANY' ? form.companyName : (form.companyName || form.name),
+        ownerCapability: (role === 'OWNER' || role === 'STATION_OPERATOR') ? capability : undefined,
       })
+
+      const resData = (response as any).user || response;
+      if (resData.organizationId) {
+        setOrgId(resData.organizationId)
+      }
+
+      setStep(2)
+      // We could store the organizationId from response here if needed
+    } catch (err: any) {
+      setError(err?.message || 'Registration failed')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleCompleteOnboarding = async () => {
+    if (!orgId) {
+      setStep(1)
+      return
+    }
+
+    setLoading(true)
+    try {
+      // Step 2: Update Business Profile
+      await onboardingService.setupPayouts(orgId, {
+        provider: form.payoutProvider,
+        walletNumber: form.walletNumber,
+        taxId: form.taxId
+      })
+
+      if (role === 'SITE_OWNER' || plan === 'Starter') {
+        navigate(`${PATHS.AUTH.VERIFY_EMAIL}?email=${encodeURIComponent(form.email)}`)
+      } else {
+        setStep(3)
+      }
+    } catch (err: any) {
+      setError(err?.message || 'Failed to update business profile')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleActivate = async () => {
+    setLoading(true)
+    try {
+      // Step 3: Activation (Mock payment for now)
+      await onboardingService.activate(orgId!, { method: 'MOMO', plan })
       navigate(`${PATHS.AUTH.VERIFY_EMAIL}?email=${encodeURIComponent(form.email)}`)
     } catch (err: any) {
-      setError(err?.message || 'Registration failed. Please try again.')
+      setError(err?.message || 'Activation failed')
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="relative h-screen overflow-x-hidden overflow-y-auto bg-gradient-to-br from-bg-subtle via-bg-secondary to-bg">
+    <div className="relative min-h-screen overflow-x-hidden bg-gradient-to-br from-bg-subtle via-bg-secondary to-bg selection:bg-accent/30">
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
         .register-shell {
           --evz-ink: var(--app-text);
           --evz-muted: var(--app-text-secondary);
           --evz-accent: var(--app-accent);
-          --evz-accent-strong: var(--app-accent-hover);
           --evz-card: var(--app-panel);
           --evz-card-border: var(--app-border);
-          --evz-card-soft: var(--app-panel-2);
-          font-family: 'Space Grotesk', 'Segoe UI', Tahoma, sans-serif;
+          font-family: 'Space Grotesk', sans-serif;
           color: var(--evz-ink);
         }
-        .register-title {
-          font-family: 'Fraunces', 'Times New Roman', serif;
-          letter-spacing: -0.02em;
-        }
+        .step-title { font-family: 'Fraunces', serif; letter-spacing: -0.01em; }
       `}</style>
 
-      <div className="pointer-events-none absolute -top-24 right-[-120px] h-72 w-72 rounded-full bg-accent/20 blur-3xl" aria-hidden="true" />
-      <div className="pointer-events-none absolute bottom-[-140px] left-[-80px] h-80 w-80 rounded-full bg-accent/10 blur-3xl" aria-hidden="true" />
+      <div className="register-shell relative mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 py-8">
+        {/* Progress Stepper */}
+        <div className="mb-12 flex items-center justify-center gap-4">
+          {[1, 2, 3].map(s => (
+            <div key={s} className="flex items-center gap-2">
+              <div className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition-all ${step === s ? 'bg-accent text-white ring-4 ring-accent/20' :
+                step > s ? 'bg-emerald-500 text-white' : 'bg-panel-2 text-text-secondary border border-border'
+                }`}>
+                {step > s ? '✓' : s}
+              </div>
+              <div className={`h-1 w-12 rounded-full hidden sm:block ${step > s ? 'bg-emerald-500' : 'bg-panel-2'}`} />
+            </div>
+          ))}
+        </div>
 
-      <div className="register-shell relative mx-auto flex min-h-screen w-full max-w-6xl items-start px-4 py-8 sm:py-10 lg:items-center lg:py-16">
-        <div className="grid w-full gap-8 lg:gap-10 lg:grid-cols-[1.05fr_1fr]">
-          <section className="order-2 space-y-8 animate-in fade-in slide-in-from-left-4 duration-700 lg:order-1">
-            <div className="inline-flex items-center gap-2 rounded-full border border-[var(--evz-card-border)] bg-[var(--evz-card)] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--evz-accent)] shadow-sm">
-              <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-accent/10 text-accent">
-                <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z" /></svg>
-              </span>
-              Premium onboarding
+        <div className="grid gap-12 lg:grid-cols-[1fr_1.2fr]">
+          <section className="space-y-6">
+            <div className="inline-flex items-center gap-2 rounded-full border border-border bg-panel px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-accent">
+              Phase {step}: {step === 1 ? 'Identity' : step === 2 ? 'Business Profile' : 'Activation'}
             </div>
 
-            <div className="space-y-4">
-              <h1 className="register-title text-3xl font-semibold text-[var(--evz-ink)] sm:text-4xl lg:text-5xl">
-                Create your EVzone account and launch in minutes
-              </h1>
-              <p className="max-w-xl text-sm text-[var(--evz-muted)] sm:text-base">
-                Bring owners, operators, technicians, and site teams together on one reliable platform designed for full-width EV ecosystems.
-              </p>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-3">
-              {[
-                { label: 'Account, all roles', value: '1' },
-                { label: 'Average setup', value: '5 min' },
-                { label: 'Security ready', value: 'ISO 27001' },
-              ].map((stat) => (
-                <div key={stat.label} className="rounded-2xl border border-border bg-panel p-4 shadow-sm">
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.25em] text-text-secondary">{stat.label}</div>
-                  <div className="mt-4 text-xl font-semibold text-[var(--evz-ink)] sm:text-2xl">{stat.value}</div>
+            {step === 1 && (
+              <div className="space-y-4 animate-in fade-in slide-in-from-left-4">
+                <h1 className="step-title text-4xl font-semibold lg:text-5xl">Launch your <span className="text-accent underline decoration-accent/30">EV Business</span> today.</h1>
+                <p className="text-text-secondary">Join Africa's leading charging network. Set up in minutes, scale to thousands of stations.</p>
+                <div className="grid gap-4 sm:grid-cols-2 mt-8">
+                  <div className="p-4 rounded-2xl bg-panel border border-border shadow-sm">
+                    <div className="text-accent font-bold mb-1">99.9% Uptime</div>
+                    <div className="text-xs text-text-secondary">Enterprise-grade reliability for your site.</div>
+                  </div>
+                  <div className="p-4 rounded-2xl bg-panel border border-border shadow-sm">
+                    <div className="text-accent font-bold mb-1">Smart Payouts</div>
+                    <div className="text-xs text-text-secondary">Instant settlement via MTN & Airtel.</div>
+                  </div>
                 </div>
-              ))}
-            </div>
+              </div>
+            )}
 
-            <div className="rounded-2xl border border-border bg-panel p-5 text-sm text-[var(--evz-muted)]">
-              Need help onboarding your fleet or sites? Our team can configure your workspace and data model in under 24 hours.
-            </div>
+            {step === 2 && (
+              <div className="space-y-4 animate-in fade-in slide-in-from-left-4">
+                <h1 className="step-title text-4xl font-semibold lg:text-5xl">Verify your <span className="text-emerald-500 underline decoration-emerald-500/30">Business</span>.</h1>
+                <p className="text-text-secondary">Provide your KYC details to enable smart payouts and billing compliance.</p>
+                <div className="bg-emerald-500/5 border border-emerald-500/20 p-5 rounded-2xl text-sm text-emerald-700">
+                  <strong>Did you know?</strong> Verified organizations on EVzone get priority OCPI roaming visibility.
+                </div>
+              </div>
+            )}
+
+            {step === 3 && (
+              <div className="space-y-4 animate-in fade-in slide-in-from-left-4">
+                <h1 className="step-title text-4xl font-semibold lg:text-5xl">Finalize & <span className="text-amber-500 underline decoration-amber-500/30">Activate</span>.</h1>
+                <p className="text-text-secondary">Complete your first subscription payment to unlock the full dashboard.</p>
+                <div className="p-6 rounded-2xl bg-panel border border-border">
+                  <div className="text-xs font-bold uppercase tracking-[0.2em] text-text-secondary mb-4">Your Selected Plan</div>
+                  <div className="flex justify-between items-end mb-2">
+                    <div className="text-2xl font-bold">{plan}</div>
+                    <div className="text-accent font-bold">{PLANS.find(p => p.id === plan)?.price}/mo</div>
+                  </div>
+                  <div className="h-px bg-border my-4" />
+                  <div className="space-y-2">
+                    {PLANS.find(p => p.id === plan)?.features.map(f => (
+                      <div key={f} className="flex items-center gap-2 text-sm text-text-secondary">
+                        <span className="text-accent">●</span> {f}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
           </section>
 
-          <section className="order-1 relative animate-in fade-in slide-in-from-right-4 duration-700 lg:order-2">
-            <div className="rounded-[28px] border border-[var(--evz-card-border)] bg-[var(--evz-card)] p-5 sm:p-6 shadow-card backdrop-blur">
-              <form onSubmit={handleSubmit} className="space-y-5">
-                {error && <div className="rounded-lg border border-danger/30 bg-danger/10 text-danger px-4 py-2 text-sm">{error}</div>}
+          <section className="relative">
+            <div className="rounded-[32px] border border-border bg-panel p-6 sm:p-8 shadow-card-xl backdrop-blur-sm">
+              {error && <div className="mb-6 rounded-xl border border-danger/30 bg-danger/10 p-4 text-sm text-danger">{error}</div>}
 
-                <div>
-                  <label className="text-xs font-semibold uppercase tracking-[0.2em] text-text-secondary">Full name</label>
-                  <input
-                    value={form.name}
-                    onChange={e => update('name', e.target.value)}
-                    className="input mt-2 rounded-2xl"
-                    placeholder="Jane Doe"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-semibold uppercase tracking-[0.2em] text-text-secondary">Work email</label>
-                  <input
-                    type="email"
-                    value={form.email}
-                    onChange={e => update('email', e.target.value)}
-                    className="input mt-2 rounded-2xl"
-                    placeholder="you@company.com"
-                    required
-                  />
-                </div>
-
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="rounded-full border border-border bg-panel p-1">
-                    {(['COMPANY', 'INDIVIDUAL'] as const).map((type) => (
-                      <button
-                        key={type}
-                        type="button"
-                        onClick={() => setAccountType(type)}
-                        className={`rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.15em] transition ${accountType === type
-                          ? 'bg-accent text-white shadow-sm'
-                          : 'text-text-secondary hover:text-text'
-                          }`}
-                      >
-                        {type === 'COMPANY' ? 'Company' : 'Individual'}
-                      </button>
-                    ))}
-                  </div>
-
-                  {needsCapability && (
-                    <div className="flex items-center gap-2 text-xs font-semibold text-text-secondary">
-                      <span className="uppercase tracking-[0.2em]">Capability</span>
-                      <select
-                        value={capability}
-                        onChange={e => setCapability(e.target.value as typeof capability)}
-                        className="select h-9 rounded-full text-xs font-semibold"
-                      >
-                        <option value="CHARGE">Charge</option>
-                        <option value="SWAP">Swap</option>
-                        <option value="BOTH">Both</option>
-                      </select>
-                    </div>
-                  )}
-                </div>
-
-                <div>
-                  <label className="text-xs font-semibold uppercase tracking-[0.2em] text-text-secondary">Choose your workspace roles</label>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {roleOptions.map((option) => (
-                      <button
-                        key={option.value}
-                        type="button"
-                        onClick={() => setRole(option.value)}
-                        className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${role === option.value
-                          ? 'border-accent bg-accent/10 text-accent'
-                          : 'border-border bg-panel text-text-secondary hover:border-accent/40'
-                          }`}
-                      >
-                        {option.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {isCompany && (
+              {/* STEP 1: IDENTITY */}
+              {step === 1 && (
+                <div className="space-y-6">
                   <div className="grid gap-4 sm:grid-cols-2">
-                    <label className="grid gap-2 sm:col-span-2">
-                      <span className="text-xs font-semibold uppercase tracking-[0.2em] text-text-secondary">Company name</span>
+                    <label className="space-y-2">
+                      <span className="text-xs font-bold uppercase tracking-widest text-text-secondary">Full Name</span>
+                      <input value={form.name} onChange={e => update('name', e.target.value)} className="input rounded-2xl" placeholder="John Doe" />
+                    </label>
+                    <label className="space-y-2">
+                      <span className="text-xs font-bold uppercase tracking-widest text-text-secondary">Work Email</span>
+                      <input type="email" value={form.email} onChange={e => update('email', e.target.value)} className="input rounded-2xl" placeholder="john@evco.com" />
+                    </label>
+                  </div>
+
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <label className="space-y-2">
+                      <span className="text-xs font-bold uppercase tracking-widest text-text-secondary">Phone</span>
+                      <input value={form.phone} onChange={e => update('phone', e.target.value)} className="input rounded-2xl" placeholder="+256..." />
+                    </label>
+                    <label className="space-y-2">
+                      <span className="text-xs font-bold uppercase tracking-widest text-text-secondary">Account Type</span>
+                      <div className="flex rounded-xl bg-panel-2 p-1 border border-border">
+                        {(['COMPANY', 'INDIVIDUAL'] as const).map(t => (
+                          <button key={t} onClick={() => setAccountType(t)} className={`flex-1 rounded-lg py-2 text-[10px] font-bold uppercase tracking-widest transition ${accountType === t ? 'bg-accent text-white shadow-sm' : 'text-text-secondary'}`}>
+                            {t}
+                          </button>
+                        ))}
+                      </div>
+                    </label>
+                  </div>
+
+                  <div className="space-y-2">
+                    <span className="text-xs font-bold uppercase tracking-widest text-text-secondary">Select Your Role</span>
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                      {roleOptions.map(r => (
+                        <button key={r.value} onClick={() => setRole(r.value)} className={`rounded-xl border p-3 text-[10px] font-bold uppercase tracking-widest transition ${role === r.value ? 'border-accent bg-accent/5 text-accent ring-1 ring-accent' : 'border-border text-text-secondary hover:border-accent/30'}`}>
+                          {r.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <span className="text-xs font-bold uppercase tracking-widest text-text-secondary">Choose a Subscription Plan</span>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {PLANS.map(p => (
+                        <button key={p.id} onClick={() => setPlan(p.id)} className={`relative overflow-hidden rounded-2xl border p-4 text-left transition ${plan === p.id ? 'border-accent bg-accent/5 ring-1 ring-accent' : 'border-border hover:border-accent/40'}`}>
+                          {p.popular && <div className="absolute top-0 right-0 bg-accent text-[8px] font-bold text-white px-2 py-1 rounded-bl-lg uppercase tracking-widest">Popular</div>}
+                          <div className="font-bold text-sm">{p.name}</div>
+                          <div className="text-xs text-text-secondary mt-1">{p.price}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <label className="space-y-2">
+                      <span className="text-xs font-bold uppercase tracking-widest text-text-secondary">Password</span>
+                      <input type="password" value={form.password} onChange={e => update('password', e.target.value)} className="input rounded-2xl" />
+                    </label>
+                    <label className="space-y-2">
+                      <span className="text-xs font-bold uppercase tracking-widest text-text-secondary">Confirm</span>
+                      <input type="password" value={form.confirmPassword} onChange={e => update('confirmPassword', e.target.value)} className="input rounded-2xl" />
+                    </label>
+                  </div>
+
+                  <button
+                    onClick={handleRegister}
+                    disabled={loading}
+                    className="w-full rounded-2x bg-accent py-4 font-bold text-white shadow-lg transition hover:bg-accent-hover disabled:opacity-50"
+                  >
+                    {loading ? 'Processing...' : 'Next: Business details'}
+                  </button>
+                </div>
+              )}
+
+              {/* STEP 2: BUSINESS PROFILE */}
+              {step === 2 && (
+                <div className="space-y-6">
+                  <div className="flex items-center gap-6 mb-4">
+                    <div className="h-20 w-20 rounded-2xl border-2 border-dashed border-border flex flex-col items-center justify-center text-text-secondary hover:border-accent transition group cursor-pointer bg-panel-2">
+                      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" /></svg>
+                      <span className="text-[10px] mt-1 font-bold">LOGO</span>
+                    </div>
+                    <div className="flex-1 space-y-2">
+                      <label className="text-xs font-bold uppercase tracking-widest text-text-secondary">
+                        {accountType === 'COMPANY' ? 'Company Name' : 'Business Name (Optional)'}
+                      </label>
                       <input
                         value={form.companyName}
                         onChange={e => update('companyName', e.target.value)}
-                        className="input rounded-2xl"
-                        placeholder="VoltOps Ltd"
-                        required
+                        className="input rounded-xl"
+                        placeholder={accountType === 'COMPANY' ? 'Volt Charging Ltd' : form.name}
                       />
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <label className="space-y-2">
+                      <span className="text-xs font-bold uppercase tracking-widest text-text-secondary">Country</span>
+                      <input value={form.country} onChange={e => update('country', e.target.value)} className="input rounded-xl bg-panel-2" />
                     </label>
-                    <label className="grid gap-2">
-                      <span className="text-xs font-semibold uppercase tracking-[0.2em] text-text-secondary">Registration ID</span>
-                      <input
-                        value={form.companyReg}
-                        onChange={e => update('companyReg', e.target.value)}
-                        className="input rounded-2xl"
-                        placeholder="Optional"
-                      />
-                    </label>
-                    <label className="grid gap-2">
-                      <span className="text-xs font-semibold uppercase tracking-[0.2em] text-text-secondary">Tax ID</span>
-                      <input
-                        value={form.taxId}
-                        onChange={e => update('taxId', e.target.value)}
-                        className="input rounded-2xl"
-                        placeholder="Optional"
-                      />
+                    <label className="space-y-2">
+                      <span className="text-xs font-bold uppercase tracking-widest text-text-secondary">Region/City</span>
+                      <input value={form.region} onChange={e => update('region', e.target.value)} className="input rounded-xl" />
                     </label>
                   </div>
-                )}
 
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <label className="grid gap-2">
-                    <span className="text-xs font-semibold uppercase tracking-[0.2em] text-text-secondary">Phone</span>
-                    <input
-                      type="tel"
-                      value={form.phone}
-                      onChange={e => update('phone', e.target.value)}
-                      className="input rounded-2xl"
-                      placeholder="+256 700 000000"
-                      required
-                    />
-                  </label>
-                  <label className="grid gap-2">
-                    <span className="text-xs font-semibold uppercase tracking-[0.2em] text-text-secondary">Job title</span>
-                    <input
-                      value={form.jobTitle}
-                      onChange={e => update('jobTitle', e.target.value)}
-                      className="input rounded-2xl"
-                      placeholder="Operations lead"
-                    />
-                  </label>
-                </div>
-
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <label className="grid gap-2">
-                    <span className="text-xs font-semibold uppercase tracking-[0.2em] text-text-secondary">Password</span>
-                    <div className="relative">
-                      <input
-                        type={showPassword ? 'text' : 'password'}
-                        value={form.password}
-                        onChange={e => update('password', e.target.value)}
-                        className="input rounded-2xl pr-12"
-                        required
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(v => !v)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full border border-border bg-panel p-2 text-accent"
-                        aria-label="Toggle password visibility"
-                      >
-                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" />
-                          <circle cx="12" cy="12" r="3" />
-                        </svg>
-                      </button>
+                  <div className="space-y-4">
+                    <span className="text-xs font-bold uppercase tracking-widest text-text-secondary">Payout Settings (Receive Revenue)</span>
+                    <div className="grid gap-4 border border-border p-4 rounded-2xl bg-panel-2">
+                      <div className="flex gap-2">
+                        {['MTN', 'Airtel', 'Bank'].map(p => (
+                          <button key={p} onClick={() => update('payoutProvider', p)} className={`flex-1 rounded-lg py-2 text-[10px] font-bold transition ${form.payoutProvider === p ? 'bg-white shadow-sm ring-1 ring-border text-accent' : 'text-text-secondary'}`}>
+                            {p}
+                          </button>
+                        ))}
+                      </div>
+                      <label className="space-y-2">
+                        <span className="text-[10px] font-bold uppercase text-text-secondary">Mobile Money / Bank Account Number</span>
+                        <input value={form.walletNumber} onChange={e => update('walletNumber', e.target.value)} className="input rounded-xl bg-white" placeholder="+256..." />
+                      </label>
                     </div>
-                  </label>
-                  <label className="grid gap-2">
-                    <span className="text-xs font-semibold uppercase tracking-[0.2em] text-text-secondary">Confirm password</span>
-                    <div className="relative">
-                      <input
-                        type={showConfirm ? 'text' : 'password'}
-                        value={form.confirmPassword}
-                        onChange={e => update('confirmPassword', e.target.value)}
-                        className="input rounded-2xl pr-12"
-                        required
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowConfirm(v => !v)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full border border-border bg-panel p-2 text-accent"
-                        aria-label="Toggle confirm password visibility"
-                      >
-                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" />
-                          <circle cx="12" cy="12" r="3" />
-                        </svg>
-                      </button>
+                  </div>
+
+                  <div className="space-y-2">
+                    <span className="text-xs font-bold uppercase tracking-widest text-text-secondary">KYC Documents</span>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="p-3 border border-border border-dashed rounded-xl text-center text-[10px] font-bold text-text-secondary cursor-pointer hover:border-accent">
+                        ID / Passport
+                      </div>
+                      <div className="p-3 border border-border border-dashed rounded-xl text-center text-[10px] font-bold text-text-secondary cursor-pointer hover:border-accent">
+                        Cert. of Inc / Trade License
+                      </div>
                     </div>
-                  </label>
+                  </div>
+
+                  <div className="flex gap-4">
+                    <button onClick={() => setStep(1)} className="flex-1 rounded-xl border border-border py-4 font-bold text-text-secondary hover:bg-panel-2 transition">Back</button>
+                    <button onClick={handleCompleteOnboarding} className="flex-[2] rounded-xl bg-accent py-4 font-bold text-white shadow-lg shadow-accent/20 hover:bg-accent-hover transition">
+                      {role === 'SITE_OWNER' ? 'Complete Setup' : 'Next: Activation'}
+                    </button>
+                  </div>
                 </div>
+              )}
 
-                <div className="text-xs text-[var(--evz-muted)]">Use 8 or more characters with a mix of letters and numbers.</div>
+              {/* STEP 3: BILLING */}
+              {step === 3 && (
+                <div className="space-y-6">
+                  <div className="p-6 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-center">
+                    <div className="text-emerald-600 font-bold mb-1">Invoice Generated</div>
+                    <div className="text-xs text-emerald-800/70">Ref: INV-{Math.random().toString(36).substring(7).toUpperCase()}</div>
+                    <div className="mt-4 text-3xl font-bold">{PLANS.find(p => p.id === plan)?.price}</div>
+                    <div className="text-xs font-bold text-text-secondary uppercase mt-1 tracking-widest">Initial Subscription</div>
+                  </div>
 
-                <label className="flex items-start gap-3 text-sm text-[var(--evz-muted)]">
-                  <input
-                    type="checkbox"
-                    checked={form.terms}
-                    onChange={e => update('terms', e.target.checked)}
-                    className="checkbox mt-1"
-                  />
-                  I agree to the Terms of Service and Privacy Policy.
-                </label>
+                  <div className="space-y-4">
+                    <span className="text-xs font-bold uppercase tracking-widest text-text-secondary">Select Payment Method</span>
+                    <div className="space-y-2">
+                      {['Mobile Money (Recommended)', 'Visa / MasterCard', 'Wallet Balance'].map((m, i) => (
+                        <div key={m} className={`flex items-center justify-between p-4 rounded-xl border cursor-pointer transition ${i === 0 ? 'border-accent bg-accent/5 ring-1 ring-accent' : 'border-border hover:bg-panel-2'}`}>
+                          <div className="flex items-center gap-3">
+                            <div className={`h-4 w-4 rounded-full border-4 ${i === 0 ? 'border-accent' : 'border-border'}`} />
+                            <span className="text-sm font-bold">{m}</span>
+                          </div>
+                          {i === 0 && <span className="text-[10px] font-bold text-accent uppercase">Fast</span>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
 
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full rounded-2xl bg-accent px-4 py-3 text-sm font-semibold text-white shadow-accent transition hover:bg-accent-hover disabled:opacity-50"
-                >
-                  {loading ? 'Creating account...' : 'Create account'}
-                </button>
+                  <div className="p-4 rounded-2xl bg-panel-2 border border-border text-[11px] text-text-secondary">
+                    By clicking "Activate", a payment prompt will be sent to your registered phone number.
+                  </div>
 
-                <p className="text-center text-sm text-[var(--evz-muted)]">
-                  Already have an account? <a href={PATHS.AUTH.LOGIN} className="text-accent hover:underline">Sign in</a>
-                </p>
-              </form>
+                  <div className="flex gap-4">
+                    <button onClick={() => setStep(2)} className="flex-1 rounded-xl border border-border py-4 font-bold text-text-secondary hover:bg-panel-2 transition">Back</button>
+                    <button onClick={handleActivate} className="flex-[2] rounded-xl bg-accent py-4 font-bold text-white shadow-lg shadow-accent/20 hover:bg-accent-hover transition">
+                      Confirm & Activate
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </section>
         </div>
