@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { OwnerCapability, Role, UserProfile } from './types';
+import type { AuthResponse } from '@/core/api/types';
 import { ROLE_GROUPS } from '@/constants/roles';
 import { authService } from '@/modules/auth/services/authService';
 
@@ -13,7 +14,8 @@ type AuthState = {
   impersonationReturnTo: string | null;
   isLoading: boolean;
   login: (opts: { email?: string; phone?: string; password: string }) => Promise<void>;
-  loginWithUser: (user: UserProfile) => void;
+  loginWithUser: (user: AuthResponse['user']) => void;
+  loginWithResponse: (response: AuthResponse) => void;
   logout: () => Promise<void>;
   startImpersonation: (
     target: { id: string; name: string; role: Role; ownerCapability?: OwnerCapability },
@@ -84,7 +86,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       // API returns only user data, cookies are set automatically
       const response = await authService.login({ email, phone, password });
-      get().loginWithUser(response.user);
+      get().loginWithResponse(response);
     } catch (error) {
       set({ isLoading: false });
       throw error;
@@ -105,6 +107,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     saveImpersonator(null);
     saveReturnTo(null);
     set({ user: userProfile, impersonator: null, impersonationReturnTo: null, isLoading: false });
+  },
+
+  loginWithResponse: (response) => {
+    get().loginWithUser(response.user);
   },
 
   logout: async () => {

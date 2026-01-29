@@ -15,9 +15,28 @@ type RequestOptions = RequestInit & {
 class ApiClient {
   private baseURL: string;
   private refreshPromise: Promise<AuthResponse | null> | null = null;
+  private accessToken: string | null = null;
+  private refreshToken: string | null = null;
 
   constructor() {
     this.baseURL = API_CONFIG.baseURL;
+  }
+
+  /**
+   * Store tokens if the backend provides them.
+   * Cookie-based auth remains the primary mechanism.
+   */
+  setTokens(accessToken: string, refreshToken: string, _user?: unknown) {
+    this.accessToken = accessToken;
+    this.refreshToken = refreshToken;
+  }
+
+  /**
+   * Clear any locally stored auth state.
+   */
+  clearAuth() {
+    this.accessToken = null;
+    this.refreshToken = null;
   }
 
   /**
