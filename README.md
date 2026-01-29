@@ -68,25 +68,39 @@ styles.css              Tailwind layers + component primitives (.btn, .card, .ta
 
 ## Auth & Data (Reference Diagrams)
 
-### Auth & RBAC Flow
+### Auth & RBAC Flow (Cookie-Based)
+
+Authentication is handled via **httpOnly cookies** for maximum security (XSS protection).
+
 ```mermaid
 sequenceDiagram
   participant UI as UI
   participant Auth as authStore
-  participant Guard as RequireRole
+  participant API as Backend (Auth)
   participant Router as Router
 
-  UI->>Auth: login(role,name,capability)
-  Auth-->>UI: user set
+  UI->>Auth: login(email, password)
+  Auth->>API: POST /auth/login
+  API-->>Auth: 200 OK (Set-Cookie: access_token, refresh_token)
+  Auth-->>UI: user set (in state/localStorage)
   UI->>Router: navigate(/)
+  
+  Note over UI, API: Tokens are NOT accessible to JS.
+  
   Router->>Guard: check user + role
   alt allowed
     Guard-->>Router: allow
-    Router-->>UI: render DashboardLayout + page
   else denied
     Guard-->>Router: redirect /errors/unauthorized
-    Router-->>UI: UnauthorizedPage
   end
+```
+
+### Environment Variables
+
+Create `.env` or `.env.local`:
+
+```
+VITE_API_BASE_URL=http://localhost:3000/api/v1
 ```
 
 ### Data Layer (Mock Today, API Tomorrow)

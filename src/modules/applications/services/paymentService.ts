@@ -4,7 +4,7 @@
  */
 
 import { apiClient } from '@/core/api/client'
-import { API_CONFIG, TOKEN_STORAGE_KEYS } from '@/core/api/config'
+import { API_CONFIG } from '@/core/api/config'
 import type {
     Payment,
     InitiatePaymentRequest,
@@ -52,9 +52,7 @@ export const paymentService = {
      */
     async getReceipt(paymentId: string): Promise<Blob> {
         const response = await fetch(`${API_CONFIG.baseURL}/payments/${paymentId}/receipt`, {
-            headers: {
-                'Authorization': `Bearer ${localStorage.getItem(TOKEN_STORAGE_KEYS.accessToken)}`,
-            },
+            credentials: 'include',
         })
         if (!response.ok) {
             throw new Error(`Failed to download receipt: ${response.statusText}`)

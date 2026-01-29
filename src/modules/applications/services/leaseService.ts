@@ -4,7 +4,7 @@
  */
 
 import { apiClient } from '@/core/api/client'
-import { API_CONFIG, TOKEN_STORAGE_KEYS } from '@/core/api/config'
+import { API_CONFIG } from '@/core/api/config'
 import type {
     LeaseDocument,
     GenerateLeaseRequest,
@@ -27,9 +27,7 @@ export const leaseService = {
      */
     async download(applicationId: string): Promise<Blob> {
         const response = await fetch(`${API_CONFIG.baseURL}/applications/${applicationId}/lease`, {
-            headers: {
-                'Authorization': `Bearer ${localStorage.getItem(TOKEN_STORAGE_KEYS.accessToken)}`,
-            },
+            credentials: 'include',
         })
         if (!response.ok) {
             throw new Error(`Failed to download lease: ${response.statusText}`)

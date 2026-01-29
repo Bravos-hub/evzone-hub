@@ -9,6 +9,7 @@ import { StationOwnerLayout, type StationOwnerTab } from '../components/StationO
 import { SelfManagedView } from '../components/SelfManagedView'
 import { DelegatedView } from '../components/DelegatedView'
 import { OperatorAssignmentModal } from '../components/OperatorAssignmentModal'
+import { KpiCardSkeleton, SiteCardSkeleton } from '@/ui/components/SkeletonCards'
 import type { TenantSiteSummary } from '../types/tenant'
 
 export function StationOwnerDashboard() {
@@ -114,8 +115,21 @@ export function StationOwnerDashboard() {
       )}
 
       {isLoading && (
-        <div className="flex items-center justify-center h-64">
-          <div className="text-subtle animate-pulse">Loading dashboard...</div>
+        <div className="space-y-8">
+          <section>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <KpiCardSkeleton />
+              <KpiCardSkeleton />
+              <KpiCardSkeleton />
+              <KpiCardSkeleton />
+            </div>
+          </section>
+          <section>
+            <div className="grid grid-cols-1 gap-6">
+              <SiteCardSkeleton />
+              <SiteCardSkeleton />
+            </div>
+          </section>
         </div>
       )}
 

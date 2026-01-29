@@ -8,6 +8,7 @@ import { useApplications, useUpdateApplicationStatus } from '@/modules/applicati
 import { useTenantSites } from '@/modules/tenants/hooks/useTenantDashboard'
 import { useUploadSiteDocument } from '@/modules/sites/hooks/useSiteDocuments'
 import { SiteEditModal, ApplicationDetailModal } from '@/modals'
+import { TableSkeleton } from '@/ui/components/SkeletonCards'
 import { getErrorMessage } from '@/core/api/errors'
 import { ROLE_GROUPS, isInGroup } from '@/constants/roles'
 
@@ -225,7 +226,23 @@ export function Sites() {
 
   // Handle Loading
   if (loadingSites || (isStationOwner && loadingLeased) || (isSiteOwner && loadingApps)) {
-    return <DashboardLayout pageTitle="Property Management"><div className="text-center py-12">Loading...</div></DashboardLayout>
+    return (
+      <DashboardLayout pageTitle="Property Management">
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <TableSkeleton rows={1} cols={1} />
+            <TableSkeleton rows={1} cols={1} />
+            <TableSkeleton rows={1} cols={1} />
+          </div>
+          <div className="flex justify-between items-center bg-surface border border-border rounded-lg p-2 h-14">
+            <TableSkeleton rows={1} cols={3} />
+          </div>
+          <div className="table-wrap">
+            <TableSkeleton rows={8} cols={5} />
+          </div>
+        </div>
+      </DashboardLayout>
+    )
   }
 
   if (isAdding) {
