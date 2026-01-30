@@ -44,7 +44,7 @@ export function SwapStations() {
   const [q, setQ] = useState('')
   const [statusFilter, setStatusFilter] = useState<StationStatus | 'All'>('All')
 
-  const needsScope = user?.role === 'OWNER' || user?.role === 'STATION_OPERATOR'
+  const needsScope = user?.role === 'STATION_OWNER' || user?.role === 'STATION_OPERATOR'
   const capability = me?.ownerCapability || user?.ownerCapability
 
   const accessibleSwapStations = useMemo(() => {
@@ -261,4 +261,5 @@ export function SwapStations() {
     </>
   )
 }
+
 

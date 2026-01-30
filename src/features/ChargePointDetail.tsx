@@ -34,7 +34,7 @@ export function ChargePointDetail() {
         viewAll: perms.viewAll,
     }
 
-    const needsScope = user?.role === 'OWNER' || user?.role === 'STATION_OPERATOR'
+    const needsScope = user?.role === 'STATION_OWNER' || user?.role === 'STATION_OPERATOR'
     const accessLoading = needsScope && (meLoading || stationLoading)
     const hasAccess = station
         ? canAccessStation(accessContext, station, 'CHARGE')
@@ -358,3 +358,4 @@ export function ChargePointDetail() {
         </DashboardLayout>
     )
 }
+

@@ -197,7 +197,7 @@ export function SiteOwnerTenants() {
           </select>
           {viewMode === 'tenants' && (
             <select value={type} onChange={e => setType(e.target.value)} className="select">
-              {['All', 'Operator', 'Owner', 'Fleet'].map(o => <option key={o}>{o}</option>)}
+              {['All', 'Operator', 'STATION_OWNER', 'Fleet'].map(o => <option key={o}>{o}</option>)}
             </select>
           )}
           <select value={status} onChange={e => setStatus(e.target.value)} className="select">
@@ -361,3 +361,4 @@ function StatusPill({ status }: { status: string }) {
 }
 
 export default SiteOwnerTenants
+

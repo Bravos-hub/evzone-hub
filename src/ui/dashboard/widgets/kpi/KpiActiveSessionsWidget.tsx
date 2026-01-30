@@ -5,11 +5,13 @@ export function KpiActiveSessionsWidget() {
     const { data } = useDashboard()
     if (!data) return null
 
+    if (!data?.realTime) return null
+
     return (
         <KpiGenericWidget
             config={{
                 title: 'Active Sessions',
-                value: String(data.realTime.activeSessions),
+                value: String(data.realTime.activeSessions || 0),
                 delta: 'Vehicles charging now',
             }}
         />

@@ -31,7 +31,7 @@ const MOCK_PLANS: Plan[] = [
 
 export function OwnerPlans() {
   const { user } = useAuthStore()
-  const role = user?.role ?? 'OWNER'
+  const role = user?.role ?? 'STATION_OWNER'
   const canView = hasPermission(role, 'tariffs', 'view')
   const canEdit = hasPermission(role, 'tariffs', 'edit')
 
@@ -170,4 +170,5 @@ function StatusPill({ status }: { status: PlanStatus }) {
 }
 
 export default OwnerPlans
+
 

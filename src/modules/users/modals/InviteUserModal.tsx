@@ -12,7 +12,7 @@ type InviteUserModalProps = {
 
 export function InviteUserModal({ isOpen, onClose }: InviteUserModalProps) {
   const [email, setEmail] = useState('')
-  const [role, setRole] = useState<Role>('OWNER')
+  const [role, setRole] = useState<Role>('STATION_OWNER')
   const [ownerCapability, setOwnerCapability] = useState<OwnerCapability>('BOTH')
   const [error, setError] = useState('')
   const [ack, setAck] = useState('')
@@ -23,7 +23,7 @@ export function InviteUserModal({ isOpen, onClose }: InviteUserModalProps) {
 
   if (!isOpen) return null
 
-  const showCapability = role === 'OWNER' || role === 'STATION_OPERATOR'
+  const showCapability = role === 'STATION_OWNER' || role === 'STATION_OPERATOR'
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -65,7 +65,7 @@ export function InviteUserModal({ isOpen, onClose }: InviteUserModalProps) {
         setAck('Invitation sent successfully!')
         setTimeout(() => {
           setEmail('')
-          setRole('OWNER')
+          setRole('STATION_OWNER')
           setOwnerCapability('BOTH')
           setPassword('')
           setConfirmPassword('')
@@ -81,7 +81,7 @@ export function InviteUserModal({ isOpen, onClose }: InviteUserModalProps) {
 
   function handleCancel() {
     setEmail('')
-    setRole('OWNER')
+    setRole('STATION_OWNER')
     setOwnerCapability('BOTH')
     setError('')
     setAck('')
@@ -200,4 +200,5 @@ export function InviteUserModal({ isOpen, onClose }: InviteUserModalProps) {
     </div>
   )
 }
+
 

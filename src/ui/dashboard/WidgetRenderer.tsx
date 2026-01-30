@@ -67,7 +67,7 @@ export function Widget({ widgetId, config, size, className, scope }: WidgetProps
 
   // Check owner capability if specified
   if (def.ownerCapabilities && def.ownerCapabilities.length > 0) {
-    if (user.role === 'OWNER' && user.ownerCapability) {
+    if (user.role === 'STATION_OWNER' && user.ownerCapability) {
       if (!def.ownerCapabilities.includes(user.ownerCapability)) {
         return null
       }
@@ -110,4 +110,5 @@ export function WidgetRow({
     </div>
   )
 }
+
 

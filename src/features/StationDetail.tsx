@@ -36,7 +36,7 @@ export function StationDetail() {
     if (isInGroup(user.role, ROLE_GROUPS.PLATFORM_ADMINS)) return true
 
     // If station has an operator, Owner loses management rights
-    if (station.operatorId && user.role === 'OWNER') return false
+    if (station.operatorId && user.role === 'STATION_OWNER') return false
 
     // Station Operators can manage their assigned stations
     if (user.role === 'STATION_OPERATOR') return true
@@ -161,11 +161,11 @@ export function StationDetail() {
       </div>
 
       {/* Operator Info (Visible to Owners & Admins) */}
-      {(station.operatorId || user?.role === 'OWNER') && (
+      {(station.operatorId || user?.role === 'STATION_OWNER') && (
         <div className="card mb-4 border-l-4 border-accent">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-bold">Operator & Contract</h2>
-            {!station.operatorId && user?.role === 'OWNER' && (
+            {!station.operatorId && user?.role === 'STATION_OWNER' && (
               <button className="btn secondary text-xs" onClick={() => nav(`/stations/${station.id}/assign-operator`)}>
                 Assign Operator
               </button>
@@ -300,3 +300,4 @@ export function StationDetail() {
     </DashboardLayout>
   )
 }
+

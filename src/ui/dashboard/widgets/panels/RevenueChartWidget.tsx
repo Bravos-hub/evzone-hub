@@ -4,7 +4,6 @@ import type { WidgetProps } from '../../types'
 
 export function RevenueChartWidget({ config }: WidgetProps<{ title?: string }>) {
     const { data } = useDashboard()
-    if (!data) return null
-
+    if (!data?.trends?.revenue) return null
     return <RevenueChart data={data.trends.revenue} title={config?.title} />
 }

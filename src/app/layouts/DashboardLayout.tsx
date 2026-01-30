@@ -19,7 +19,7 @@ export function DashboardLayout({ children, pageTitle, contentClassName }: Dashb
       'SUPER_ADMIN',
       'EVZONE_OPERATOR',
       'SITE_OWNER',
-      'OWNER',
+      'STATION_OWNER',
       'MANAGER',
       'TECHNICIAN_ORG',
       'TECHNICIAN_PUBLIC',
@@ -69,4 +69,5 @@ export function DashboardLayout({ children, pageTitle, contentClassName }: Dashb
     </div>
   )
 }
+
 

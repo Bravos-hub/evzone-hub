@@ -32,7 +32,7 @@ const MOCK_DISCOUNTS: Discount[] = [
 
 export function Discounts() {
   const { user } = useAuthStore()
-  const role = user?.role ?? 'OWNER'
+  const role = user?.role ?? 'STATION_OWNER'
   const canView = hasPermission(role, 'tariffs', 'view')
   const canEdit = hasPermission(role, 'tariffs', 'edit')
 
@@ -181,4 +181,5 @@ function StatusPill({ status }: { status: DiscountStatus }) {
 }
 
 export default Discounts
+
 

@@ -28,7 +28,7 @@ export const MENU_ITEMS: MenuItem[] = [
   // ═══════════════════════════════════════════════════════════════════════
   // OPERATIONS
   // ═══════════════════════════════════════════════════════════════════════
-  { path: PATHS.STATIONS.ROOT, label: 'Stations', icon: 'zap', roles: [...ROLE_GROUPS.PLATFORM_OPS, 'OWNER', 'STATION_OPERATOR', 'STATION_ADMIN', 'MANAGER'] },
+  { path: PATHS.STATIONS.ROOT, label: 'Stations', icon: 'zap', roles: [...ROLE_GROUPS.PLATFORM_OPS, ...ROLE_GROUPS.STATION_MANAGERS] },
   { path: PATHS.SESSIONS, label: 'Sessions', icon: 'activity', roles: [...ROLE_GROUPS.PLATFORM_OPS, ...ROLE_GROUPS.STATION_STAFF] },
   { path: PATHS.INCIDENTS, label: 'Incidents', icon: 'alert-triangle', roles: [...ROLE_GROUPS.PLATFORM_OPS, ...ROLE_GROUPS.STATION_MANAGERS, ...ROLE_GROUPS.TECHNICIANS] },
   { path: PATHS.DISPATCHES, label: 'Dispatches', icon: 'truck', roles: [...ROLE_GROUPS.PLATFORM_OPS, 'MANAGER', ...ROLE_GROUPS.TECHNICIANS] },
@@ -36,12 +36,12 @@ export const MENU_ITEMS: MenuItem[] = [
   // ═══════════════════════════════════════════════════════════════════════
   // OWNER-SPECIFIC
   // ═══════════════════════════════════════════════════════════════════════
-  { path: PATHS.OWNER.TARIFFS, label: 'Tariffs & Pricing', icon: 'dollar-sign', roles: ['OWNER', 'STATION_OPERATOR', 'STATION_ADMIN'] },
+  { path: PATHS.OWNER.TARIFFS, label: 'Tariffs & Pricing', icon: 'dollar-sign', roles: ['STATION_OPERATOR', 'STATION_ADMIN', 'STATION_OWNER'] },
 
   // ═══════════════════════════════════════════════════════════════════════
   // SITE OWNER
   // ═══════════════════════════════════════════════════════════════════════
-  { path: PATHS.SITE_OWNER.SITES, label: 'My Sites', icon: 'map-pin', roles: ['SITE_OWNER', 'OWNER'] },
+  { path: PATHS.SITE_OWNER.SITES, label: 'My Sites', icon: 'map-pin', roles: ['SITE_OWNER', 'STATION_OWNER'] },
   { path: PATHS.SITE_OWNER.PARKING, label: 'Parking', icon: 'truck', roles: ['SITE_OWNER'] },
   { path: PATHS.SITE_OWNER.TENANTS, label: 'Tenants', icon: 'users', roles: ['SITE_OWNER'] },
 
@@ -55,7 +55,7 @@ export const MENU_ITEMS: MenuItem[] = [
   // ═══════════════════════════════════════════════════════════════════════
   // TEAM & USERS
   // ═══════════════════════════════════════════════════════════════════════
-  { path: PATHS.TEAM, label: 'Team', icon: 'users', roles: ['STATION_ADMIN', 'STATION_OPERATOR', 'OWNER'] },
+  { path: PATHS.TEAM, label: 'Team', icon: 'users', roles: ['STATION_ADMIN', 'STATION_OPERATOR', 'STATION_OWNER'] },
   { path: PATHS.ADMIN.USERS, label: 'Users & Roles', icon: 'user-check', roles: ROLE_GROUPS.PLATFORM_ADMINS },
   { path: PATHS.ADMIN.APPROVALS, label: 'Approvals', icon: 'check-circle', roles: ROLE_GROUPS.PLATFORM_OPS },
 
@@ -63,9 +63,9 @@ export const MENU_ITEMS: MenuItem[] = [
   // FINANCIAL
   // ═══════════════════════════════════════════════════════════════════════
   { path: PATHS.BILLING, label: 'Billing', icon: 'credit-card', roles: [...ROLE_GROUPS.FINANCIAL_VIEWERS, 'STATION_OPERATOR', 'SITE_OWNER'] },
-  { path: PATHS.OWNER.EARNINGS, label: 'Earnings', icon: 'trending-up', roles: ['OWNER', 'STATION_OPERATOR', 'SITE_OWNER'] },
-  { path: PATHS.ADMIN.DISPUTES, label: 'Disputes', icon: 'alert-circle', roles: [...ROLE_GROUPS.PLATFORM_OPS, 'OWNER', 'STATION_OPERATOR'] },
-  { path: PATHS.REPORTS, label: 'Reports', icon: 'file-text', roles: [...ROLE_GROUPS.PLATFORM_OPS, 'OWNER', 'STATION_OPERATOR', 'SITE_OWNER'] },
+  { path: PATHS.OWNER.EARNINGS, label: 'Earnings', icon: 'trending-up', roles: ['STATION_OPERATOR', 'SITE_OWNER', 'STATION_OWNER'] },
+  { path: PATHS.ADMIN.DISPUTES, label: 'Disputes', icon: 'alert-circle', roles: [...ROLE_GROUPS.PLATFORM_OPS, 'STATION_OPERATOR', 'STATION_OWNER'] },
+  { path: PATHS.REPORTS, label: 'Reports', icon: 'file-text', roles: [...ROLE_GROUPS.PLATFORM_OPS, 'STATION_OPERATOR', 'SITE_OWNER', 'STATION_OWNER'] },
 
   // ═══════════════════════════════════════════════════════════════════════
   // COMMUNICATIONS
@@ -106,27 +106,27 @@ export const MENU_ITEMS: MenuItem[] = [
   { path: PATHS.ROAMING, label: 'Roaming', icon: 'globe', roles: ROLE_GROUPS.PLATFORM_ADMINS },
   { path: PATHS.REGULATORY, label: 'Regulatory', icon: 'shield', roles: ROLE_GROUPS.PLATFORM_ADMINS },
   { path: PATHS.UTILITY, label: 'Utility', icon: 'grid', roles: ROLE_GROUPS.PLATFORM_ADMINS },
-  { path: PATHS.OWNER.PROVIDERS, label: 'Swapping Providers', icon: 'share-2', roles: [...ROLE_GROUPS.PLATFORM_ADMINS, 'OWNER'] },
+  { path: PATHS.OWNER.PROVIDERS, label: 'Swapping Providers', icon: 'share-2', roles: [...ROLE_GROUPS.PLATFORM_ADMINS, 'STATION_OWNER'] },
   { path: PATHS.OWNER.PARTNERS, label: 'Partners', icon: 'users', roles: ROLE_GROUPS.PLATFORM_ADMINS },
 
   // ═══════════════════════════════════════════════════════════════════════
   // USER TOOLS (All authenticated users)
   // ═══════════════════════════════════════════════════════════════════════
-  { path: PATHS.WALLET, label: 'Wallet', icon: 'credit-card', roles: ['OWNER', 'STATION_OPERATOR', 'SITE_OWNER', 'TECHNICIAN_ORG', 'TECHNICIAN_PUBLIC'] },
+  { path: PATHS.WALLET, label: 'Wallet', icon: 'credit-card', roles: ['STATION_OPERATOR', 'SITE_OWNER', 'TECHNICIAN_ORG', 'TECHNICIAN_PUBLIC', 'STATION_OWNER'] },
   { path: PATHS.SETTING, label: 'Settings', icon: 'settings', roles: 'ALL' },
 
   // ═══════════════════════════════════════════════════════════════════════
   // OWNER TOOLS
   // ═══════════════════════════════════════════════════════════════════════
-  { path: PATHS.OWNER.TECH_REQUESTS, label: 'Tech Requests', icon: 'tool', roles: ['OWNER', 'STATION_OPERATOR', 'STATION_ADMIN'] },
+  { path: PATHS.OWNER.TECH_REQUESTS, label: 'Tech Requests', icon: 'tool', roles: ['STATION_OPERATOR', 'STATION_ADMIN', 'STATION_OWNER'] },
   {
     path: '#expansion',
     label: 'Expansion',
     icon: 'trending-up',
-    roles: ['OWNER'],
+    roles: ['STATION_OWNER'],
     children: [
-      { path: PATHS.OWNER.EXPANSION_TRACKER, label: 'Tracker', roles: ['OWNER'] },
-      { path: PATHS.OWNER.LEASE_COMPLIANCE, label: 'Lease & Compliance', roles: ['OWNER'] },
+      { path: PATHS.OWNER.EXPANSION_TRACKER, label: 'Tracker', roles: ['STATION_OWNER'] },
+      { path: PATHS.OWNER.LEASE_COMPLIANCE, label: 'Lease & Compliance', roles: ['STATION_OWNER'] },
     ]
   },
 ]

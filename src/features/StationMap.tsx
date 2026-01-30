@@ -39,7 +39,7 @@ const MOCK_STATIONS: Station[] = [
 
 export function StationMap() {
   const { user } = useAuthStore()
-  const role = user?.role ?? 'OWNER'
+  const role = user?.role ?? 'STATION_OWNER'
   const canView = hasPermission(role, 'stations', 'view')
 
   const [q, setQ] = useState('')
@@ -267,3 +267,4 @@ function StatusPill({ status }: { status: StationStatus }) {
 }
 
 export default StationMap
+

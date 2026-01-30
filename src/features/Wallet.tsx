@@ -44,7 +44,7 @@ function mapApiTransactionToTransaction(apiTxn: any): Transaction {
 
 export function Wallet() {
   const { user } = useAuthStore()
-  const role = user?.role ?? 'OWNER'
+  const role = user?.role ?? 'STATION_OWNER'
 
   // Anyone authenticated can view wallet
   const canView = ROLE_GROUPS.ALL_AUTHENTICATED.includes(role as any)
@@ -347,4 +347,5 @@ function StatusPill({ status }: { status: TransactionStatus }) {
 }
 
 export default Wallet
+
 

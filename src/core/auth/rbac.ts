@@ -71,7 +71,7 @@ export function canAccessStation(ctx: StationAccessContext, station?: StationAcc
 
   if (ctx.viewAll || ROLE_GROUPS.PLATFORM_OPS.includes(ctx.role)) return true
 
-  if (ctx.role === 'OWNER') {
+  if (ctx.role === 'STATION_OWNER') {
     if (!ctx.orgId || !station.orgId) return false
     return ctx.orgId === station.orgId
   }
@@ -86,3 +86,4 @@ export function canAccessStation(ctx: StationAccessContext, station?: StationAcc
 
   return true
 }
+

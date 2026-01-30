@@ -32,7 +32,7 @@ const MOCK_OPERATORS: Operator[] = [
 
 export function Operators() {
   const { user } = useAuthStore()
-  const role = user?.role ?? 'OWNER'
+  const role = user?.role ?? 'STATION_OWNER'
   const canView = hasPermission(role, 'team', 'view')
   const canManage = hasPermission(role, 'team', 'edit')
 
@@ -184,4 +184,5 @@ function StatusPill({ status }: { status: OperatorStatus }) {
 }
 
 export default Operators
+
 

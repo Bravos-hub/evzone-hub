@@ -137,7 +137,7 @@ export function Marketplace() {
                   <button className="btn secondary flex-1" onClick={() => handleView(l.id)}>
                     Details
                   </button>
-                  {l.kind === 'Sites' && (user?.role === 'OWNER' || user?.role === 'EVZONE_OPERATOR') && (
+                  {l.kind === 'Sites' && (user?.role === 'STATION_OWNER' || user?.role === 'EVZONE_OPERATOR') && (
                     <button className="btn primary flex-1" onClick={() => handleApply(l.id)}>
                       Apply
                     </button>
@@ -151,3 +151,4 @@ export function Marketplace() {
     </DashboardLayout>
   )
 }
+

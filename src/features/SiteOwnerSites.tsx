@@ -46,23 +46,31 @@ function mapSiteFormToRequest(form: SiteForm, ownerId?: string): CreateSiteReque
   const powerCapacityKw = Number(form.power)
   const parkingBays = Number(form.bays)
   const expectedMonthlyPrice = form.monthlyPrice ? Number(form.monthlyPrice) : undefined
+  const purpose = (form.purpose === 'Commercial' ? 'COMMERCIAL' : 'PERSONAL') as 'COMMERCIAL' | 'PERSONAL'
+  const isCommercial = purpose === 'COMMERCIAL'
 
-  const requestData = {
+  const requestData: CreateSiteRequest = {
     name: form.name.trim(),
     city: form.city.trim(),
     address: form.address.trim(),
     powerCapacityKw: Number.isFinite(powerCapacityKw) ? powerCapacityKw : 0,
     parkingBays: Number.isFinite(parkingBays) ? parkingBays : 0,
-    purpose: (form.purpose === 'Commercial' ? 'COMMERCIAL' : 'PERSONAL') as 'COMMERCIAL' | 'PERSONAL',
-    leaseType: LEASE_TYPE_MAP[form.lease] ?? 'REVENUE_SHARE',
-    expectedMonthlyPrice: Number.isFinite(expectedMonthlyPrice ?? NaN) ? expectedMonthlyPrice : undefined,
-    expectedFootfall: FOOTFALL_MAP[form.footfall] ?? 'MEDIUM',
+    purpose,
     latitude: form.latitude ? Number(form.latitude) : undefined,
     longitude: form.longitude ? Number(form.longitude) : undefined,
     amenities: Array.from(form.amenities),
     tags: form.tags,
     photos: form.photoUrls,
-    ownerId: form.ownerId || ownerId,
+    ownerId: form.ownerId || ownerId || '',
+  }
+
+  // Add leaseDetails if commercial purpose
+  if (isCommercial) {
+    requestData.leaseDetails = {
+      leaseType: LEASE_TYPE_MAP[form.lease] ?? 'REVENUE_SHARE',
+      expectedMonthlyPrice: Number.isFinite(expectedMonthlyPrice ?? NaN) ? expectedMonthlyPrice : undefined,
+      expectedFootfall: FOOTFALL_MAP[form.footfall] ?? 'MEDIUM',
+    }
   }
 
   return requestData

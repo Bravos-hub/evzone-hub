@@ -36,7 +36,7 @@ export interface GenerateLeaseRequest {
 export interface UploadSignedLeaseRequest {
     applicationId: string
     file: File
-    signedBy: 'OWNER' | 'OPERATOR' | 'BOTH'
+    signedBy: 'STATION_OWNER' | 'OPERATOR' | 'BOTH'
 }
 
 export interface VerifyLeaseRequest {
@@ -44,3 +44,4 @@ export interface VerifyLeaseRequest {
     approved: boolean
     notes?: string
 }
+

@@ -166,7 +166,7 @@ const STEPS = [
 
 export function AddCharger() {
   const { user } = useAuthStore()
-  const role = user?.role ?? 'OWNER'
+  const role = user?.role ?? 'STATION_OWNER'
   const canAdd = hasPermission(role, 'charge-points', 'create') || hasPermission(role, 'stations', 'create')
 
   const [step, setStep] = useState(0)
@@ -607,4 +607,5 @@ export function AddCharger() {
 }
 
 export default AddCharger
+
 

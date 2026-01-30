@@ -1,5 +1,6 @@
-import { useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
+import { useMutation } from '@tanstack/react-query'
 import { useAuthStore } from '@/core/auth/authStore'
 import { PATHS } from '@/app/router/paths'
 import { authService } from '@/modules/auth/services/authService'
@@ -192,9 +193,10 @@ const PLANS = [
 
 export function Register() {
   const navigate = useNavigate()
+  const location = useLocation()
   const [step, setStep] = useState(1)
   const [accountType, setAccountType] = useState<'COMPANY' | 'INDIVIDUAL'>('COMPANY')
-  const [role, setRole] = useState<'OWNER' | 'STATION_OPERATOR' | 'SITE_OWNER' | 'TECHNICIAN_ORG'>('OWNER')
+  const [role, setRole] = useState<'STATION_OWNER' | 'STATION_OPERATOR' | 'SITE_OWNER' | 'TECHNICIAN_ORG'>('STATION_OWNER')
   const [capability, setCapability] = useState<'CHARGE' | 'SWAP' | 'BOTH'>('BOTH')
   const [plan, setPlan] = useState('Starter')
   const [orgId, setOrgId] = useState<string | null>(null)
@@ -215,6 +217,14 @@ export function Register() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
+  // Check if returning from email verification
+  useEffect(() => {
+    const state = location.state as any
+    if (state?.fromVerification && state?.nextStep) {
+      setStep(state.nextStep)
+    }
+  }, [location.state])
+
   const update = (k: keyof typeof form, v: string | boolean) => setForm(f => ({ ...f, [k]: v }))
 
   const handleRegister = async () => {
@@ -230,13 +240,13 @@ export function Register() {
         email: form.email,
         phone: form.phone,
         password: form.password,
-        role: role === 'OWNER' ? 'STATION_OWNER' : role,
+        role: role === 'STATION_OWNER' ? 'STATION_OWNER' : role,
         country: form.country,
         region: form.region,
         subscribedPackage: plan,
         accountType: accountType,
         companyName: accountType === 'COMPANY' ? form.companyName : (form.companyName || form.name),
-        ownerCapability: (role === 'OWNER' || role === 'STATION_OPERATOR') ? capability : undefined,
+        ownerCapability: (role === 'STATION_OWNER' || role === 'STATION_OPERATOR') ? capability : undefined,
       })
 
       const resData = (response as any).user || response;
@@ -269,7 +279,15 @@ export function Register() {
       })
 
       if (role === 'SITE_OWNER' || plan === 'Starter') {
-        navigate(`${PATHS.AUTH.VERIFY_EMAIL}?email=${encodeURIComponent(form.email)}`)
+        // Save registration state before navigating to verification
+        const needsCapability = (role === 'STATION_OWNER' || role === 'STATION_OPERATOR');
+        localStorage.setItem('registrationState', JSON.stringify({
+          email: form.email,
+          role: role,
+          capability: needsCapability ? capability : undefined,
+        }))
+        localStorage.setItem('registrationNextStep', '2')
+        navigate(`${PATHS.AUTH.VERIFY_EMAIL}?token=pending`)
       } else {
         setStep(3)
       }
@@ -285,7 +303,10 @@ export function Register() {
     try {
       // Step 3: Activation (Mock payment for now)
       await onboardingService.activate(orgId!, { method: 'MOMO', plan })
-      navigate(`${PATHS.AUTH.VERIFY_EMAIL}?email=${encodeURIComponent(form.email)}`)
+      // Save registration state before navigating to verification
+      localStorage.setItem('registrationState', JSON.stringify({ form, orgId, role, plan }))
+      localStorage.setItem('registrationNextStep', '3')
+      navigate(`${PATHS.AUTH.VERIFY_EMAIL}?token=pending`)
     } catch (err: any) {
       setError(err?.message || 'Activation failed')
     } finally {
@@ -418,13 +439,39 @@ export function Register() {
                   <div className="space-y-2">
                     <span className="text-xs font-bold uppercase tracking-widest text-text-secondary">Select Your Role</span>
                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                      {roleOptions.map(r => (
+                      {[
+                        { label: 'Station Owner', value: 'STATION_OWNER' as const },
+                        { label: 'Operator', value: 'STATION_OPERATOR' as const },
+                        { label: 'Technician', value: 'TECHNICIAN_ORG' as const },
+                        { label: 'Site Owner', value: 'SITE_OWNER' as const },
+                      ].map(r => (
                         <button key={r.value} onClick={() => setRole(r.value)} className={`rounded-xl border p-3 text-[10px] font-bold uppercase tracking-widest transition ${role === r.value ? 'border-accent bg-accent/5 text-accent ring-1 ring-accent' : 'border-border text-text-secondary hover:border-accent/30'}`}>
                           {r.label}
                         </button>
                       ))}
                     </div>
                   </div>
+
+                  {(role === 'STATION_OWNER' || role === 'STATION_OPERATOR') && (
+                    <div className="space-y-2">
+                      <span className="text-xs font-bold uppercase tracking-widest text-text-secondary">Operational Scope</span>
+                      <div className="flex rounded-xl bg-panel-2 p-1 border border-border">
+                        {[
+                          { label: 'Charge Stations', value: 'CHARGE' },
+                          { label: 'Swap Stations', value: 'SWAP' },
+                          { label: 'Hybrid (Both)', value: 'BOTH' },
+                        ].map((c) => (
+                          <button
+                            key={c.value}
+                            onClick={() => setCapability(c.value as any)}
+                            className={`flex-1 rounded-lg py-2 text-[10px] font-bold uppercase tracking-widest transition ${capability === c.value ? 'bg-accent text-white shadow-sm' : 'text-text-secondary hover:text-text'}`}
+                          >
+                            {c.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   <div className="space-y-4">
                     <span className="text-xs font-bold uppercase tracking-widest text-text-secondary">Choose a Subscription Plan</span>
@@ -464,10 +511,22 @@ export function Register() {
               {step === 2 && (
                 <div className="space-y-6">
                   <div className="flex items-center gap-6 mb-4">
-                    <div className="h-20 w-20 rounded-2xl border-2 border-dashed border-border flex flex-col items-center justify-center text-text-secondary hover:border-accent transition group cursor-pointer bg-panel-2">
+                    <label className="h-20 w-20 rounded-2xl border-2 border-dashed border-border flex flex-col items-center justify-center text-text-secondary hover:border-accent transition group cursor-pointer bg-panel-2">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0]
+                          if (file) {
+                            // TODO: Upload file to server
+                            console.log('Logo file selected:', file.name)
+                          }
+                        }}
+                      />
                       <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" /></svg>
                       <span className="text-[10px] mt-1 font-bold">LOGO</span>
-                    </div>
+                    </label>
                     <div className="flex-1 space-y-2">
                       <label className="text-xs font-bold uppercase tracking-widest text-text-secondary">
                         {accountType === 'COMPANY' ? 'Company Name' : 'Business Name (Optional)'}
@@ -512,12 +571,34 @@ export function Register() {
                   <div className="space-y-2">
                     <span className="text-xs font-bold uppercase tracking-widest text-text-secondary">KYC Documents</span>
                     <div className="grid grid-cols-2 gap-3">
-                      <div className="p-3 border border-border border-dashed rounded-xl text-center text-[10px] font-bold text-text-secondary cursor-pointer hover:border-accent">
+                      <label className="p-3 border border-border border-dashed rounded-xl text-center text-[10px] font-bold text-text-secondary cursor-pointer hover:border-accent">
+                        <input
+                          type="file"
+                          accept=".pdf,.jpg,.jpeg,.png"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0]
+                            if (file) {
+                              console.log('ID/Passport file selected:', file.name)
+                            }
+                          }}
+                        />
                         ID / Passport
-                      </div>
-                      <div className="p-3 border border-border border-dashed rounded-xl text-center text-[10px] font-bold text-text-secondary cursor-pointer hover:border-accent">
+                      </label>
+                      <label className="p-3 border border-border border-dashed rounded-xl text-center text-[10px] font-bold text-text-secondary cursor-pointer hover:border-accent">
+                        <input
+                          type="file"
+                          accept=".pdf,.jpg,.jpeg,.png"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0]
+                            if (file) {
+                              console.log('Certificate file selected:', file.name)
+                            }
+                          }}
+                        />
                         Cert. of Inc / Trade License
-                      </div>
+                      </label>
                     </div>
                   </div>
 
@@ -644,7 +725,107 @@ export function ForgotPassword() {
 
 export function VerifyEmail() {
   const [searchParams] = useSearchParams()
-  const email = searchParams.get('email') || ''
+  const navigate = useNavigate()
+  const [isVerifying, setIsVerifying] = useState(false)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState(false)
+  const [email, setEmail] = useState('')
+  const [resending, setResending] = useState(false)
+
+  const token = searchParams.get('token')
+
+  const verifyMutation = useMutation({
+    mutationFn: authService.verifyEmail,
+    onSuccess: () => {
+      setSuccess(true)
+    },
+    onError: (err: any) => {
+      setError(err?.message || 'Verification failed')
+      setIsVerifying(false)
+    }
+  })
+
+  useEffect(() => {
+    if (token) {
+      verifyMutation.mutate({ token })
+    }
+  }, [token])
+
+  // Process redirection after success
+  useEffect(() => {
+    if (verifyMutation.isSuccess) {
+      const registrationState = localStorage.getItem('registrationState')
+      const nextStep = localStorage.getItem('registrationNextStep')
+
+      if (registrationState && nextStep) {
+        localStorage.removeItem('registrationState')
+        localStorage.removeItem('registrationNextStep')
+        setTimeout(() => {
+          navigate(PATHS.AUTH.REGISTER, {
+            state: {
+              fromVerification: true,
+              nextStep: parseInt(nextStep)
+            }
+          })
+        }, 2000)
+      } else {
+        setTimeout(() => navigate(PATHS.AUTH.LOGIN), 2000)
+      }
+    }
+  }, [verifyMutation.isSuccess, navigate])
+
+  const handleResendEmail = async () => {
+    if (!email.trim()) {
+      setError('Please enter your email address')
+      return
+    }
+
+    setResending(true)
+    setError('')
+
+    try {
+      await authService.resendVerificationEmail({ email })
+      setSuccess(true)
+      setTimeout(() => navigate(PATHS.AUTH.LOGIN), 3000)
+    } catch (err: any) {
+      setError(err?.message || 'Failed to resend verification email')
+    } finally {
+      setResending(false)
+    }
+  }
+
+  if (success) {
+    return (
+      <div className="min-h-screen bg-bg flex items-center justify-center p-4">
+        <div className="w-full max-w-md text-center">
+          <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-green-500/10 text-green-500 mb-4">
+            <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-semibold mb-2">Email Verified!</h2>
+          <p className="text-subtle mb-6">Your email has been verified successfully. Continuing...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (isVerifying && !error) {
+    return (
+      <div className="min-h-screen bg-bg flex items-center justify-center p-4">
+        <div className="w-full max-w-md text-center">
+          <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-accent/10 text-accent mb-4">
+            <svg className="animate-spin h-8 w-8" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-semibold mb-2">Verifying email...</h2>
+          <p className="text-subtle">Please wait while we verify your email address.</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-bg flex items-center justify-center p-4">
@@ -653,14 +834,38 @@ export function VerifyEmail() {
           <svg className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
         </div>
         <h2 className="text-xl font-semibold mb-2">Verify your email</h2>
+
+        {error && (
+          <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 text-red-500 rounded-lg text-sm">
+            {error}
+          </div>
+        )}
+
         <p className="text-subtle mb-6">
-          We've sent a verification email to <strong>{email}</strong>. Please click the link in the email to verify your account.
+          We've sent a verification email to your inbox. Click the link in the email to verify your account.
         </p>
+
         <div className="space-y-3">
-          <button className="w-full px-4 py-2 rounded-lg border border-border hover:bg-muted">
-            Resend verification email
+          <div>
+            <label className="text-sm text-text-secondary mb-2 block">Or enter your email to resend:</label>
+            <input
+              type="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              placeholder="your@email.com"
+              className="input w-full"
+            />
+          </div>
+          <button
+            onClick={handleResendEmail}
+            disabled={resending || !email.trim()}
+            className="w-full px-4 py-2 rounded-lg bg-accent text-white hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {resending ? 'Sending...' : 'Resend verification email'}
           </button>
-          <a href={PATHS.AUTH.LOGIN} className="block text-accent hover:underline">Back to sign in</a>
+          <a href={PATHS.AUTH.LOGIN} className="block text-accent hover:underline text-sm">
+            Back to sign in
+          </a>
         </div>
       </div>
     </div>
@@ -668,5 +873,6 @@ export function VerifyEmail() {
 }
 
 export default Login
+
 
 

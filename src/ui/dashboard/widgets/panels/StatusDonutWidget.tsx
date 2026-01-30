@@ -4,7 +4,7 @@ import type { WidgetProps } from '../../types'
 
 export function StatusDonutWidget({ config }: WidgetProps<{ title?: string }>) {
     const { data } = useDashboard()
-    if (!data) return null
+    if (!data?.chargers) return null
 
     return <StatusDonut data={data.chargers} title={config?.title} />
 }

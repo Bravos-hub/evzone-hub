@@ -9,7 +9,7 @@ import { hasPermission } from '@/constants/permissions'
 
 export function OwnerSettlement() {
   const { user } = useAuthStore()
-  const role = user?.role ?? 'OWNER'
+  const role = user?.role ?? 'STATION_OWNER'
   const canView = hasPermission(role, 'settlement', 'view')
   const canEdit = hasPermission(role, 'settlement', 'edit')
 
@@ -44,9 +44,9 @@ export function OwnerSettlement() {
   }
 
   const auditLog = [
-    { ts: '2025-10-15 14:22', who: 'Owner', msg: 'Adjusted Operator from 20%→25%' },
+    { ts: '2025-10-15 14:22', who: 'STATION_OWNER', msg: 'Adjusted Operator from 20%→25%' },
     { ts: '2025-09-01 09:05', who: 'Admin', msg: 'Platform set to 10%' },
-    { ts: '2025-08-20 11:30', who: 'Owner', msg: 'Initial split configured' },
+    { ts: '2025-08-20 11:30', who: 'STATION_OWNER', msg: 'Initial split configured' },
   ]
 
   if (!canView) {
@@ -88,7 +88,7 @@ export function OwnerSettlement() {
                 <input
                   type="number"
                   value={split.owner}
-                  onChange={updateSplit('owner')}
+                  onChange={updateSplit('STATION_OWNER')}
                   disabled={!canEdit}
                   className="w-full rounded-lg border border-border px-3 py-2 disabled:bg-muted disabled:cursor-not-allowed"
                 />
@@ -210,4 +210,5 @@ export function OwnerSettlement() {
 }
 
 export default OwnerSettlement
+
 

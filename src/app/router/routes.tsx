@@ -94,6 +94,7 @@ import {
   Register,
   ForgotPassword,
   VerifyEmail,
+  AccountPending,
   // Role-specific Ops
 
   TechnicianAvailability,
@@ -146,13 +147,13 @@ import { Sites } from '@/modules/sites/components/Sites'
  */
 export function IncidentsRouter() {
   const { user } = useAuthStore()
-  if (user?.role === 'OWNER') return <OwnerIncidentCenter />
+  if (user?.role === 'STATION_OWNER') return <OwnerIncidentCenter />
   return <Incidents />
 }
 
 export function ReportsRouter() {
   const { user } = useAuthStore()
-  if (user?.role === 'OWNER') return <AdvancedReporting />
+  if (user?.role === 'STATION_OWNER') return <AdvancedReporting />
   return <Reports />
 }
 
@@ -162,6 +163,7 @@ export function AppRoutes() {
       {/* Public routes */}
       <Route path={PATHS.HOME} element={<HomeRouter />} />
       <Route path={PATHS.AUTH.LOGIN} element={<Login />} />
+      <Route path={PATHS.AUTH.PENDING_APPROVAL} element={<AccountPending />} />
       <Route path="/login" element={<Navigate to={PATHS.AUTH.LOGIN} replace />} />
       <Route path={PATHS.ERRORS.UNAUTHORIZED} element={<UnauthorizedPage />} />
 
@@ -378,3 +380,4 @@ export function AppRoutes() {
     </Routes>
   )
 }
+

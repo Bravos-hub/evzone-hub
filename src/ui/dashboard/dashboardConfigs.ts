@@ -263,146 +263,7 @@ export const DASHBOARD_CONFIGS: Record<DashboardKey, DashboardConfig> = {
     ],
   },
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // OWNER DASHBOARD (CHARGE)
-  // ─────────────────────────────────────────────────────────────────────────
-  OWNER_CHARGE: {
-    title: 'Charge Owner Dashboard',
-    kpiRow: [
-      { id: 'kpi-revenue', config: { period: 'Today', trend: 'up', delta: '+8% vs avg' } },
-      { id: 'kpi-active-sessions', config: {} },
-      { id: 'kpi-energy-delivered', config: {} },
-      { id: 'kpi-uptime', config: { value: 99.1, trend: 'up', delta: '+0.5% vs last week' } },
-    ],
-    rows: [
-      {
-        sectionTitle: 'Operational Workflow',
-        widgets: [
-          { id: 'map-world', size: '2', config: { title: 'Network Map', subtitle: 'Station distribution & status', data: mockChoropleth } },
-          { id: 'panel-owner-workflow', size: '2', config: {} },
-        ],
-      },
-      {
-        sectionTitle: 'Analytics & Hardware',
-        widgets: [
-          { id: 'panel-revenue-chart', size: '2', config: { title: 'Charging Revenue' } },
-          { id: 'panel-status-donut', size: '1', config: { title: 'Hardware Status' } },
-        ],
-      },
-      {
-        sectionTitle: 'Operations & Health',
-        widgets: [
-          { id: 'panel-utilization-heatmap', size: '2', config: {} },
-          { id: 'panel-placeholder', size: '2', config: { title: 'Maintenance Queue', subtitle: 'Technical requests and tickets' } },
-        ],
-      },
-      {
-        sectionTitle: 'Team & Quick Links',
-        widgets: [
-          { id: 'panel-team-activity', size: '2', config: {} },
-          { id: 'panel-quick-nav', size: '2', config: {} },
-        ],
-      },
-    ],
-  },
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // OWNER DASHBOARD (SWAP)
-  // ─────────────────────────────────────────────────────────────────────────
-  OWNER_SWAP: {
-    title: 'Swap Owner Dashboard',
-    kpiRow: [
-      { id: 'kpi-revenue', config: { period: 'Today', trend: 'up', delta: '+5% vs avg' } },
-      { id: 'kpi-swaps', config: {} },
-      { id: 'kpi-ready-batteries', config: {} },
-      { id: 'kpi-uptime', config: { value: 98.5, trend: 'up', delta: '+0.5% vs last week' } },
-    ],
-    rows: [
-      {
-        sectionTitle: 'Operational Workflow',
-        widgets: [
-          { id: 'map-world', size: '2', config: { title: 'Network Map', subtitle: 'Station distribution & status', data: mockChoropleth } },
-          { id: 'panel-owner-workflow', size: '2', config: {} },
-        ],
-      },
-      {
-        sectionTitle: 'Analytics & Hardware',
-        widgets: [
-          { id: 'panel-revenue-chart', size: '2', config: { title: 'Combined Swap Revenue' } },
-          { id: 'panel-status-donut', size: '1', config: { title: 'Hardware Status' } },
-        ],
-      },
-      {
-        sectionTitle: 'Operations & Health',
-        widgets: [
-          { id: 'panel-utilization-heatmap', size: '2', config: {} },
-          { id: 'panel-battery-health', size: '2', config: {} },
-        ],
-      },
-      {
-        sectionTitle: 'Team & Quick Links',
-        widgets: [
-          { id: 'panel-team-activity', size: '2', config: {} },
-          { id: 'panel-quick-nav', size: '2', config: {} },
-        ],
-      },
-    ],
-  },
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // OWNER DASHBOARD (BOTH)
-  // ─────────────────────────────────────────────────────────────────────────
-  OWNER_BOTH: {
-    title: 'Owner Dashboard',
-    kpiRow: [
-      { id: 'kpi-revenue', config: { period: 'Today', trend: 'up', delta: '+6% combined' } },
-      { id: 'kpi-swaps', config: {} },
-      { id: 'kpi-active-sessions', config: {} },
-      { id: 'kpi-uptime', config: { value: 98.8, trend: 'up' } },
-    ],
-    rows: [
-      {
-        sectionTitle: 'Operational Workflow',
-        widgets: [
-          { id: 'map-world', size: '2', config: { title: 'Network Map', subtitle: 'Station distribution & status', data: mockChoropleth } },
-          { id: 'panel-owner-workflow', size: '2', config: {} },
-        ],
-      },
-      {
-        sectionTitle: 'Analytics & Hardware',
-        widgets: [
-          { id: 'panel-revenue-chart', size: '2', config: { title: 'Combined Revenue' } },
-          { id: 'panel-status-donut', size: '1', config: { title: 'Hardware Status' } },
-        ],
-      },
-      {
-        sectionTitle: 'Operations & Health',
-        widgets: [
-          { id: 'panel-utilization-heatmap', size: '2', config: {} },
-          { id: 'panel-battery-health', size: '2', config: {} },
-        ],
-      },
-      {
-        sectionTitle: 'Team & Quick Links',
-        widgets: [
-          { id: 'panel-team-activity', size: '2', config: {} },
-          { id: 'panel-quick-nav', size: '2', config: {} },
-        ],
-      },
-    ],
-  },
-
-  // Alias OWNER to OWNER_CHARGE (will be resolved in GenericDashboard based on capability)
-  OWNER: {
-    title: 'Owner Dashboard',
-    kpiRow: [
-      { id: 'kpi-stations', config: { variant: 'online' } },
-      { id: 'kpi-revenue', config: { period: 'Today' } },
-      { id: 'kpi-sessions', config: { period: 'Today' } },
-      { id: 'kpi-utilization', config: {} },
-    ],
-    rows: [],
-  },
 
   // ─────────────────────────────────────────────────────────────────────────
   // SITE OWNER DASHBOARD
@@ -449,6 +310,40 @@ export const DASHBOARD_CONFIGS: Record<DashboardKey, DashboardConfig> = {
         widgets: [
           { id: 'panel-leases-table', size: '2', config: { title: 'Active leases', subtitle: 'Rent, term, contacts' } },
           { id: 'chart-line', size: '2', config: { title: 'Earnings trend', values: [5200, 5400, 5800, 6100, 6240], stroke: '#03cd8c' } },
+        ],
+      },
+    ],
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // STATION OWNER DASHBOARD (Maps to OWNER / CPO)
+  // ─────────────────────────────────────────────────────────────────────────
+  STATION_OWNER: {
+    title: 'Owner Dashboard',
+    kpiRow: [
+      { id: 'kpi-revenue', config: { period: 'Today', trend: 'up' } },
+      { id: 'kpi-swaps', config: {} },
+      { id: 'kpi-sessions', config: { period: 'Today' } },
+      { id: 'kpi-uptime', config: { value: 98.8, trend: 'up' } },
+    ],
+    rows: [
+      {
+        sectionTitle: 'Operational Workflow',
+        widgets: [
+          { id: 'panel-owner-workflow', size: 'full', config: {} },
+        ],
+      },
+      {
+        sectionTitle: 'Analytics & Hardware',
+        widgets: [
+          { id: 'panel-revenue-chart', size: '2', config: { title: 'Combined Revenue' } },
+          { id: 'panel-status-donut', size: '2', config: { title: 'Hardware Status' } },
+        ],
+      },
+      {
+        sectionTitle: 'Operations & Health',
+        widgets: [
+          { id: 'panel-utilization-heatmap', size: 'full', config: {} },
         ],
       },
     ],
@@ -694,13 +589,27 @@ export function getDashboardConfig(
   role: DashboardKey,
   ownerCapability?: 'CHARGE' | 'SWAP' | 'BOTH'
 ): DashboardConfig | null {
-  // Handle OWNER with capability
-  if (role === 'OWNER' && ownerCapability) {
-    const key = `OWNER_${ownerCapability}` as DashboardKey
-    return DASHBOARD_CONFIGS[key] ?? DASHBOARD_CONFIGS.OWNER
+
+  // Dynamic Station Owner Logic
+  if (role === 'STATION_OWNER') {
+    const baseConfig = DASHBOARD_CONFIGS.STATION_OWNER
+    if (!ownerCapability || ownerCapability === 'BOTH') return baseConfig
+
+    // Shallow clone to modify for capabilities
+    const config = { ...baseConfig, kpiRow: [...baseConfig.kpiRow], rows: [...baseConfig.rows] }
+
+    if (ownerCapability === 'CHARGE') {
+      config.title = 'Charge Station Dashboard'
+      // Remove Swap KPIs
+      config.kpiRow = config.kpiRow.filter(k => k.id !== 'kpi-swaps')
+    } else if (ownerCapability === 'SWAP') {
+      config.title = 'Swap Station Dashboard'
+      // Remove Charge KPIs if necessary (Sessions is generic, but usually Charge usually uses kpi-active-sessions)
+      // Keeping generic sessions for now
+    }
+    return config
   }
 
-  // Use static config if available
   if (DASHBOARD_CONFIGS[role]) {
     return DASHBOARD_CONFIGS[role]
   }

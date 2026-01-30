@@ -89,7 +89,7 @@ export function ChargePoints() {
   const { mutate: reboot } = useRebootChargePoint()
   const { data: stations, isLoading: stationsLoading } = useStations()
 
-  const needsScope = user?.role === 'OWNER' || user?.role === 'STATION_OPERATOR'
+  const needsScope = user?.role === 'STATION_OWNER' || user?.role === 'STATION_OPERATOR'
   const capability = me?.ownerCapability || user?.ownerCapability
 
   const accessContext = useMemo(() => ({
@@ -300,4 +300,5 @@ export function ChargePoints() {
     </>
   )
 }
+
 

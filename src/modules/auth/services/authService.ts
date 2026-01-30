@@ -143,5 +143,19 @@ export const authService = {
   }): Promise<{ message: string }> {
     return apiClient.post('/auth/password/reset', data, { skipAuth: true })
   },
+
+  /**
+   * Verify email with token
+   */
+  async verifyEmail(data: { token: string }): Promise<{ userId: string; email: string }> {
+    return apiClient.post('/auth/verify-email', data, { skipAuth: true })
+  },
+
+  /**
+   * Resend verification email
+   */
+  async resendVerificationEmail(data: { email: string }): Promise<{ success: boolean; message: string }> {
+    return apiClient.post('/auth/resend-verification-email', data, { skipAuth: true })
+  },
 }
 

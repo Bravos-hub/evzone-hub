@@ -83,6 +83,7 @@ export { Help, LegalTerms, LegalPrivacy, LegalCookies } from './HelpLegal'
 
 // Onboarding
 export { Onboarding } from './Onboarding'
+export { AccountPending } from './AccountPending'
 
 // Settings
 export { Settings } from './Settings'
@@ -108,7 +109,7 @@ export { TechnicianJobs } from './TechnicianJobs'
 export { NotFound, ServerError, Offline, BrowserUnsupported } from './ErrorPages'
 
 // Auth Pages
-export { Login, Register, ForgotPassword, VerifyEmail } from './Auth'
+export { Login, Register, ForgotPassword, VerifyEmail } from '@/modules/auth/components/Auth'
 
 // Role-specific Ops Pages
 

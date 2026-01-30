@@ -22,12 +22,12 @@ function normalizeMe(user: User): User {
 }
 
 function assertScopedFields(user: User): void {
-  if (user.role !== 'OWNER' && user.role !== 'STATION_OPERATOR') return
+  if (user.role !== 'STATION_OWNER' && user.role !== 'STATION_OPERATOR') return
 
   const missing: string[] = []
   const orgId = user.orgId || user.organizationId
 
-  if (user.role === 'OWNER' && !orgId) {
+  if (user.role === 'STATION_OWNER' && !orgId) {
     missing.push('orgId/organizationId')
   }
 
@@ -115,4 +115,5 @@ export const userService = {
     return apiClient.post<void>('/users/invite', data)
   },
 }
+
 

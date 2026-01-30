@@ -47,7 +47,7 @@ export function DispatchDetailModal({ isOpen, onClose, dispatch, onStatusChange,
   const isTechnician = ['TECHNICIAN_ORG', 'TECHNICIAN_PUBLIC'].includes(user?.role ?? '')
   const isSuperAdmin = user?.role === 'SUPER_ADMIN'
   const isAdmin = ['EVZONE_ADMIN', 'EVZONE_OPERATOR'].includes(user?.role ?? '')
-  const isOwner = ['OWNER', 'STATION_ADMIN', 'MANAGER'].includes(user?.role ?? '')
+  const isOwner = ['STATION_OWNER', 'STATION_ADMIN', 'MANAGER'].includes(user?.role ?? '')
 
   const canAccept = isTechnician && dispatch.status === 'Assigned'
   const canReject = isTechnician && dispatch.status === 'Assigned'
@@ -337,4 +337,5 @@ export function DispatchDetailModal({ isOpen, onClose, dispatch, onStatusChange,
     </div>
   )
 }
+
 

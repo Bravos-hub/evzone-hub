@@ -4,7 +4,7 @@ import type { WidgetProps } from '../../types'
 
 export function UtilizationHeatmapWidget({ config }: WidgetProps<{ title?: string }>) {
     const { data } = useDashboard()
-    if (!data) return null
+    if (!data?.trends?.utilization) return null
 
     return <UtilizationHeatmap data={data.trends.utilization} />
 }

@@ -52,7 +52,7 @@ export type DashboardConfig = {
 }
 
 /** Role-specific dashboard key (handles OWNER sub-types) */
-export type DashboardKey = Role | 'OWNER_CHARGE' | 'OWNER_SWAP' | 'OWNER_BOTH'
+export type DashboardKey = Role
 
 /** Scope passed to widgets for filtering */
 export type WidgetScope = Scope

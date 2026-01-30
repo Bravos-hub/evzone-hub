@@ -5,7 +5,6 @@ export type Role =
   | 'EVZONE_ADMIN'
   | 'EVZONE_OPERATOR'
   | 'SITE_OWNER'
-  | 'OWNER'
   | 'STATION_OPERATOR'
   | 'STATION_ADMIN'
   | 'MANAGER'
@@ -13,6 +12,7 @@ export type Role =
   | 'CASHIER'
   | 'TECHNICIAN_ORG'
   | 'TECHNICIAN_PUBLIC'
+  | 'STATION_OWNER'
 
 export type OwnerCapability = 'CHARGE' | 'SWAP' | 'BOTH'
 
@@ -32,5 +32,6 @@ export type UserProfile = {
   role: Role
   ownerCapability?: OwnerCapability
   avatarUrl?: string
+  status?: 'Active' | 'Pending' | 'Suspended' | 'Inactive' | 'Invited'
 }
 

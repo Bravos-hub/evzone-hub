@@ -10,7 +10,7 @@ export function HomeRouter() {
     case 'EVZONE_ADMIN': return <Navigate to="/admin" replace />
     case 'EVZONE_OPERATOR': return <Navigate to="/operator" replace />
     case 'SITE_OWNER': return <Navigate to="/site-owner" replace />
-    case 'OWNER':
+    case 'STATION_OWNER':
       return user.ownerCapability === 'SWAP'
         ? <Navigate to="/owner/swap" replace />
         : user.ownerCapability === 'BOTH'
@@ -24,4 +24,5 @@ export function HomeRouter() {
     default: return <Navigate to="/auth/login" replace />
   }
 }
+
 

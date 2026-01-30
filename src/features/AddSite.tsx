@@ -48,7 +48,7 @@ export function AddSite({ onSuccess, onCancel, isOnboarding = false, isFirstSite
     // Derived identity flags - these will update reactively as 'user' data arrives
     const isAdmin = isInGroup(user?.role, ROLE_GROUPS.PLATFORM_ADMINS) || user?.role === 'EVZONE_OPERATOR'
     const isSiteOwner = user?.role === 'SITE_OWNER'
-    const isStationOwner = user?.role === 'OWNER'
+    const isStationOwner = user?.role === 'STATION_OWNER'
 
     const [form, setForm] = useState<SiteForm>({
         name: '',
@@ -84,7 +84,7 @@ export function AddSite({ onSuccess, onCancel, isOnboarding = false, isFirstSite
 
     // Filter potential owners for the select (Admins, Site Owners, Station Owners)
     const potentialOwners = allUsers?.filter(u =>
-        u.role === 'SITE_OWNER' || u.role === 'OWNER'
+        u.role === 'SITE_OWNER' || u.role === 'STATION_OWNER'
     ) || []
 
     const update = <K extends keyof SiteForm>(key: K, value: SiteForm[K]) => {
@@ -495,3 +495,4 @@ export function AddSite({ onSuccess, onCancel, isOnboarding = false, isFirstSite
         </div>
     )
 }
+

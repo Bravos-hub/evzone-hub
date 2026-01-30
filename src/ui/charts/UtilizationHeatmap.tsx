@@ -10,6 +10,8 @@ const HOURS = Array.from({ length: 24 }, (_, i) => i)
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
 export function UtilizationHeatmap({ data }: UtilizationHeatmapProps) {
+    if (!data || !Array.isArray(data)) return null
+
     const getIntensityColor = (utilization: number) => {
         if (utilization === 0) return 'bg-white/5'
         if (utilization < 30) return 'bg-accent/20'

@@ -23,7 +23,7 @@ export function RolePill({ role }: { role: Role | string }) {
   // Determine color class (simplified logic)
   const isAdmin = role === 'SUPER_ADMIN' || role === 'EVZONE_ADMIN'
   const isOps = role === 'EVZONE_OPERATOR' || role === 'STATION_OPERATOR'
-  const isOwner = role === 'OWNER' || role === 'SITE_OWNER'
+  const isOwner = role === 'STATION_OWNER' || role === 'SITE_OWNER'
   const isCustom = !ROLE_LABELS[role as Role]
 
   const colorClass =
@@ -43,4 +43,5 @@ export function RolePill({ role }: { role: Role | string }) {
     </span>
   )
 }
+
 

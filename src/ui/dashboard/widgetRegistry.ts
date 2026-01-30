@@ -50,22 +50,23 @@ const ALL_ROLES: Role[] = [
   'EVZONE_OPERATOR',
   'STATION_OPERATOR',
   'SITE_OWNER',
-  'OWNER',
   'STATION_ADMIN',
   'MANAGER',
   'ATTENDANT',
   'TECHNICIAN_ORG',
+  'TECHNICIAN_ORG',
   'TECHNICIAN_PUBLIC',
+  'STATION_OWNER',
 ]
 
 /** Admin + Operator roles */
 const ADMIN_OPS: Role[] = ['SUPER_ADMIN', 'EVZONE_ADMIN', 'EVZONE_OPERATOR', 'STATION_OPERATOR']
 
 /** Roles that manage stations */
-const STATION_MANAGERS: Role[] = ['SUPER_ADMIN', 'EVZONE_ADMIN', 'EVZONE_OPERATOR', 'STATION_OPERATOR', 'OWNER', 'STATION_ADMIN', 'MANAGER']
+const STATION_MANAGERS: Role[] = ['SUPER_ADMIN', 'EVZONE_ADMIN', 'EVZONE_OPERATOR', 'STATION_OPERATOR', 'STATION_ADMIN', 'MANAGER', 'STATION_OWNER']
 
 /** Roles that see incidents */
-const INCIDENT_VIEWERS: Role[] = ['SUPER_ADMIN', 'EVZONE_ADMIN', 'EVZONE_OPERATOR', 'STATION_OPERATOR', 'OWNER', 'STATION_ADMIN', 'MANAGER', 'TECHNICIAN_ORG']
+const INCIDENT_VIEWERS: Role[] = ['SUPER_ADMIN', 'EVZONE_ADMIN', 'EVZONE_OPERATOR', 'STATION_OPERATOR', 'STATION_ADMIN', 'MANAGER', 'TECHNICIAN_ORG', 'STATION_OWNER']
 
 /** Widget registry - all available widgets with RBAC */
 export const WIDGET_REGISTRY: Record<WidgetId, WidgetDef> = {
@@ -103,7 +104,7 @@ export const WIDGET_REGISTRY: Record<WidgetId, WidgetDef> = {
   'kpi-revenue': {
     id: 'kpi-revenue',
     title: 'Revenue',
-    allowedRoles: ['EVZONE_ADMIN', 'EVZONE_OPERATOR', 'STATION_OPERATOR', 'OWNER', 'SITE_OWNER'],
+    allowedRoles: ['EVZONE_ADMIN', 'EVZONE_OPERATOR', 'STATION_OPERATOR', 'SITE_OWNER', 'STATION_OWNER'],
     component: KpiRevenueWidget as any,
     defaultSize: '1',
     category: 'kpi',
@@ -179,7 +180,7 @@ export const WIDGET_REGISTRY: Record<WidgetId, WidgetDef> = {
   'kpi-site-count': {
     id: 'kpi-site-count',
     title: 'Site Count',
-    allowedRoles: ['SITE_OWNER', 'OWNER', ...ADMIN_OPS],
+    allowedRoles: ['SITE_OWNER', 'STATION_OWNER', ...ADMIN_OPS],
     component: KpiSiteCountWidget as any,
     defaultSize: '1',
     category: 'kpi',
@@ -262,7 +263,7 @@ export const WIDGET_REGISTRY: Record<WidgetId, WidgetDef> = {
   'map-world': {
     id: 'map-world',
     title: 'World Map',
-    allowedRoles: [...ADMIN_OPS, 'OWNER', 'SITE_OWNER'],
+    allowedRoles: [...ADMIN_OPS, 'SITE_OWNER', 'STATION_OWNER'],
     component: WorldMapWidget as any,
     defaultSize: '3',
     category: 'map',
@@ -293,7 +294,7 @@ export const WIDGET_REGISTRY: Record<WidgetId, WidgetDef> = {
   'panel-settlement': {
     id: 'panel-settlement',
     title: 'Settlement Panel',
-    allowedRoles: ['EVZONE_ADMIN', 'EVZONE_OPERATOR', 'STATION_OPERATOR', 'OWNER', 'SITE_OWNER'],
+    allowedRoles: ['EVZONE_ADMIN', 'EVZONE_OPERATOR', 'STATION_OPERATOR', 'SITE_OWNER', 'STATION_OWNER'],
     component: SettlementPanelWidget as any,
     defaultSize: '2',
     category: 'panel',
@@ -392,7 +393,7 @@ export const WIDGET_REGISTRY: Record<WidgetId, WidgetDef> = {
   'panel-sites-table': {
     id: 'panel-sites-table',
     title: 'My Sites Table',
-    allowedRoles: ['SITE_OWNER', 'EVZONE_ADMIN'],
+    allowedRoles: ['SITE_OWNER', 'STATION_OWNER', 'EVZONE_ADMIN'],
     component: SitesTableWidget as any,
     defaultSize: '2',
     category: 'panel',
@@ -401,7 +402,7 @@ export const WIDGET_REGISTRY: Record<WidgetId, WidgetDef> = {
   'panel-apps-table': {
     id: 'panel-apps-table',
     title: 'Applications Pipeline',
-    allowedRoles: ['SITE_OWNER', 'EVZONE_ADMIN'],
+    allowedRoles: ['SITE_OWNER', 'STATION_OWNER', 'EVZONE_ADMIN'],
     component: Pan.ApplicationsTableWidget as any,
     defaultSize: 'full',
     category: 'panel',
@@ -409,7 +410,7 @@ export const WIDGET_REGISTRY: Record<WidgetId, WidgetDef> = {
   'panel-leases-table': {
     id: 'panel-leases-table',
     title: 'Active Leases',
-    allowedRoles: ['SITE_OWNER', 'EVZONE_ADMIN'],
+    allowedRoles: ['SITE_OWNER', 'STATION_OWNER', 'EVZONE_ADMIN'],
     component: Pan.ActiveLeasesWidget as any,
     defaultSize: 'full',
     category: 'panel',
@@ -434,7 +435,7 @@ export const WIDGET_REGISTRY: Record<WidgetId, WidgetDef> = {
   'panel-owner-workflow': {
     id: 'panel-owner-workflow',
     title: 'Owner Workflow',
-    allowedRoles: ['OWNER', 'SITE_OWNER'],
+    allowedRoles: ['SITE_OWNER', 'STATION_OWNER'],
     component: OwnerWorkflowWidget as any,
     defaultSize: 'full',
     category: 'panel',

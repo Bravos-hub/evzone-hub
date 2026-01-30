@@ -7,7 +7,7 @@ type Flag = {
   key: string
   description: string
   enabled: boolean
-  audience: 'All' | 'Admin' | 'Operator' | 'Owner'
+  audience: 'All' | 'Admin' | 'Operator' | 'STATION_OWNER'
 }
 
 const mockFlags: Flag[] = [
@@ -41,7 +41,7 @@ export function FeatureFlags() {
         <div className="card grid md:grid-cols-3 gap-3">
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search flags" className="input" />
           <select value={audience} onChange={(e) => setAudience(e.target.value as Flag['audience'] | 'All')} className="select">
-            {['All', 'Admin', 'Operator', 'Owner'].map((a) => (
+            {['All', 'Admin', 'Operator', 'STATION_OWNER'].map((a) => (
               <option key={a}>{a}</option>
             ))}
           </select>
@@ -81,4 +81,5 @@ export function FeatureFlags() {
     </DashboardLayout>
   )
 }
+
 

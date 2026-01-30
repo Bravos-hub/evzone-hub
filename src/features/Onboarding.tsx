@@ -8,11 +8,11 @@ import { PATHS } from '@/app/router/paths'
    Public route (no auth required for initial steps)
 ───────────────────────────────────────────────────────────────────────────── */
 
-type OnboardingRole = 'owner' | 'operator' | 'technician' | 'site-owner'
+type OnboardingRole = 'STATION_OWNER' | 'operator' | 'technician' | 'site-owner'
 type OnboardingStep = 'role' | 'plan' | 'info' | 'pending'
 
 const ROLES = [
-  { code: 'owner', label: 'Station Owner', desc: 'Manage chargers, pricing, tariffs and energy.', icon: 'user' },
+  { code: 'STATION_OWNER', label: 'Station Owner', desc: 'Manage chargers, pricing, tariffs and energy.', icon: 'user' },
   { code: 'operator', label: 'Operator', desc: 'Run day‑to‑day station operations and teams.', icon: 'shield' },
   { code: 'technician', label: 'Technician', desc: 'Install, commission, and maintain equipment.', icon: 'wrench' },
   { code: 'site-owner', label: 'Site Owner', desc: 'List parking sites to host EV chargers.', icon: 'building' },
@@ -168,7 +168,7 @@ export function Onboarding() {
             </p>
 
             <div className="rounded-xl bg-surface border border-border p-6 shadow-sm">
-              {selectedRole === 'owner' && (
+              {selectedRole === 'STATION_OWNER' && (
                 <OwnerSteps onComplete={() => setStep('pending')} onBack={() => setStep('plan')} />
               )}
               {selectedRole === 'operator' && (
@@ -224,4 +224,5 @@ export function Onboarding() {
 }
 
 export default Onboarding
+
 

@@ -117,7 +117,7 @@ export function SwapStationDetail() {
   const role = user?.role
   const ownerOrgId = me?.orgId || me?.organizationId
   const capability = me?.ownerCapability || user?.ownerCapability
-  const needsScope = role === 'OWNER' || role === 'STATION_OPERATOR'
+  const needsScope = role === 'STATION_OWNER' || role === 'STATION_OPERATOR'
   const accessLoading = needsScope && (meLoading || stationLoading)
 
   const accessContext = {
@@ -511,4 +511,5 @@ function KpiCard({ label, value, icon }: { label: string; value: string; icon?: 
     </Card>
   )
 }
+
 

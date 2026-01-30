@@ -12,10 +12,12 @@ interface StatusDonutProps {
 }
 
 export function StatusDonut({ data, title = 'Charger Status' }: StatusDonutProps) {
+    if (!data) return null
+
     const chartData = [
-        { name: 'Online', value: data.online, color: '#10b981' }, // Green-500
-        { name: 'Offline', value: data.offline, color: '#ef4444' }, // Red-500
-        { name: 'Maintenance', value: data.maintenance, color: '#f59e0b' }, // Amber-500
+        { name: 'Online', value: data.online || 0, color: '#10b981' }, // Green-500
+        { name: 'Offline', value: data.offline || 0, color: '#ef4444' }, // Red-500
+        { name: 'Maintenance', value: data.maintenance || 0, color: '#f59e0b' }, // Amber-500
     ].filter(d => d.value > 0)
 
     return (

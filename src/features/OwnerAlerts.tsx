@@ -30,7 +30,7 @@ const MOCK_ALERTS: OwnerAlert[] = [
 
 export function OwnerAlerts() {
   const { user } = useAuthStore()
-  const role = user?.role ?? 'OWNER'
+  const role = user?.role ?? 'STATION_OWNER'
   const canView = hasPermission(role, 'incidents', 'view')
   const canManage = hasPermission(role, 'incidents', 'resolve')
 
@@ -178,4 +178,5 @@ function SeverityPill({ sev }: { sev: AlertSeverity }) {
 }
 
 export default OwnerAlerts
+
 

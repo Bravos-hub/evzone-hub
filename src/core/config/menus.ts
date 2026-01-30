@@ -74,7 +74,7 @@ export function menuFor(role: Role, ownerCapability?: 'CHARGE' | 'SWAP' | 'BOTH'
         { label: 'Documents / Verification', path: '/site-owner/docs' },
         { label: 'Settings', path: '/site-owner/settings' },
       ]
-    case 'OWNER': {
+    case 'STATION_OWNER': {
       const base = ownerCapability === 'SWAP' ? '/owner/swap' : ownerCapability === 'BOTH' ? '/owner/both' : '/owner/charge'
       if (ownerCapability === 'SWAP') {
         return [
@@ -187,4 +187,5 @@ export function menuFor(role: Role, ownerCapability?: 'CHARGE' | 'SWAP' | 'BOTH'
       return []
   }
 }
+
 

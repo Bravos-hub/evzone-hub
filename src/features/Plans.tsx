@@ -13,14 +13,14 @@ type Plan = {
   seats?: number
   features: string[]
   status: PlanStatus
-  target: 'Owner' | 'Operator' | 'Admin'
+  target: 'STATION_OWNER' | 'Operator' | 'Admin'
 }
 
 const mockPlans: Plan[] = [
-  { id: 'PLN-GROWTH', name: 'Growth', price: 420, currency: 'USD', seats: 10, features: ['Basic support', 'Reports', 'Ops'], status: 'Active', target: 'Owner' },
+  { id: 'PLN-GROWTH', name: 'Growth', price: 420, currency: 'USD', seats: 10, features: ['Basic support', 'Reports', 'Ops'], status: 'Active', target: 'STATION_OWNER' },
   { id: 'PLN-SCALE', name: 'Scale', price: 890, currency: 'USD', seats: 50, features: ['Priority support', 'Advanced reports', 'Dispatch'], status: 'Active', target: 'Operator' },
   { id: 'PLN-ENT', name: 'Enterprise', price: 2200, currency: 'USD', seats: 200, features: ['SLA', 'Custom integrations'], status: 'Active', target: 'Admin' },
-  { id: 'PLN-TRIAL', name: 'Trial', price: 0, currency: 'USD', seats: 5, features: ['Limited features'], status: 'Deprecated', target: 'Owner' },
+  { id: 'PLN-TRIAL', name: 'Trial', price: 0, currency: 'USD', seats: 5, features: ['Limited features'], status: 'Deprecated', target: 'STATION_OWNER' },
 ]
 
 export function Plans() {
@@ -47,7 +47,7 @@ export function Plans() {
             ))}
           </select>
           <select value={target} onChange={(e) => setTarget(e.target.value as Plan['target'] | 'All')} className="select">
-            {['All', 'Owner', 'Operator', 'Admin'].map((t) => (
+            {['All', 'STATION_OWNER', 'Operator', 'Admin'].map((t) => (
               <option key={t}>{t}</option>
             ))}
           </select>
@@ -103,4 +103,5 @@ export function Plans() {
     </DashboardLayout>
   )
 }
+
 

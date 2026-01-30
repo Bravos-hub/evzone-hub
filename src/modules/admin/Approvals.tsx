@@ -33,7 +33,7 @@ type Application = {
 const mockApplications: Application[] = [
   {
     id: 'APP-00121',
-    role: 'OWNER',
+    role: 'STATION_OWNER',
     org: 'Volt Mobility Ltd',
     contact: 'Sarah',
     email: 'sarah@volt.co',
@@ -89,7 +89,7 @@ const mockApplications: Application[] = [
   },
   {
     id: 'APP-00105',
-    role: 'OWNER',
+    role: 'STATION_OWNER',
     org: 'GridCity Ltd',
     contact: 'Ali',
     email: 'ali@grid.city',
@@ -364,4 +364,5 @@ function ReviewDrawer({
     </div>
   )
 }
+
 

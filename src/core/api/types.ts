@@ -471,22 +471,26 @@ export interface Site {
   updatedAt: string
 }
 
+export interface SiteLeaseDetails {
+  leaseType: LeaseType
+  expectedMonthlyPrice?: number
+  expectedFootfall: Footfall
+}
+
 export interface CreateSiteRequest {
   name: string
   city: string
   address: string
   powerCapacityKw: number
   parkingBays: number
-  purpose: SitePurpose
-  leaseType?: LeaseType
-  expectedMonthlyPrice?: number
-  expectedFootfall?: Footfall
+  purpose?: SitePurpose
   latitude?: number
   longitude?: number
   amenities?: string[]
   tags?: string[]
   photos?: string[]
-  ownerId?: string
+  ownerId: string
+  leaseDetails?: SiteLeaseDetails
 }
 
 export interface UpdateSiteRequest {
@@ -571,7 +575,7 @@ export interface PaymentHistoryEntry {
 export interface Tenant {
   id: string
   name: string
-  type: 'Operator' | 'Owner' | 'Fleet'
+  type: 'Operator' | 'STATION_OWNER' | 'Fleet'
   siteId: string
   siteName: string
   model: 'Revenue Share' | 'Fixed Rent' | 'Hybrid'
@@ -912,4 +916,5 @@ export interface Dispatch {
   dueAt?: string
   notes?: string
 }
+
 

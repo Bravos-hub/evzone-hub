@@ -34,7 +34,7 @@ const MOCK_REQUESTS: TechRequest[] = [
 
 export function TechRequests() {
   const { user } = useAuthStore()
-  const role = user?.role ?? 'OWNER'
+  const role = user?.role ?? 'STATION_OWNER'
   
   const canView = hasPermission(role, 'maintenance', 'view')
   const canCreate = hasPermission(role, 'maintenance', 'create')
@@ -268,4 +268,5 @@ function PriorityPill({ priority }: { priority: RequestPriority }) {
 }
 
 export default TechRequests
+
 

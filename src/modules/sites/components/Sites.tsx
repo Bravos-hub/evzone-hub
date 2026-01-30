@@ -44,23 +44,31 @@ function mapSiteFormToRequest(form: SiteForm, ownerId?: string): CreateSiteReque
   const purpose = PURPOSE_MAP[form.purpose] ?? 'COMMERCIAL'
   const isCommercial = purpose === 'COMMERCIAL'
 
-  return {
+  const request: CreateSiteRequest = {
     name: form.name.trim(),
     city: form.city.trim(),
     address: form.address.trim(),
     powerCapacityKw: Number.isFinite(powerCapacityKw) ? powerCapacityKw : 0,
     parkingBays: Number.isFinite(parkingBays) ? parkingBays : 0,
     purpose,
-    leaseType: isCommercial ? (LEASE_TYPE_MAP[form.lease] ?? 'REVENUE_SHARE') : undefined,
-    expectedMonthlyPrice: isCommercial && Number.isFinite(expectedMonthlyPrice ?? NaN) ? expectedMonthlyPrice : undefined,
-    expectedFootfall: isCommercial ? (FOOTFALL_MAP[form.footfall] ?? 'MEDIUM') : undefined,
     latitude: form.latitude ? Number(form.latitude) : undefined,
     longitude: form.longitude ? Number(form.longitude) : undefined,
     amenities: Array.from(form.amenities),
     tags: form.tags,
     photos: form.photoUrls,
-    ownerId: form.ownerId || ownerId,
+    ownerId: form.ownerId || ownerId || '',
   }
+
+  // Add leaseDetails if commercial purpose
+  if (isCommercial) {
+    request.leaseDetails = {
+      leaseType: LEASE_TYPE_MAP[form.lease] ?? 'REVENUE_SHARE',
+      expectedMonthlyPrice: Number.isFinite(expectedMonthlyPrice ?? NaN) ? expectedMonthlyPrice : undefined,
+      expectedFootfall: FOOTFALL_MAP[form.footfall] ?? 'MEDIUM',
+    }
+  }
+
+  return request
 }
 
 /**
@@ -93,7 +101,7 @@ export function Sites() {
   const [ack, setAck] = useState('')
 
   const isSiteOwner = user?.role === 'SITE_OWNER' || isInGroup(user?.role, ROLE_GROUPS.PLATFORM_ADMINS)
-  const isStationOwner = user?.role === 'OWNER' || user?.role === 'EVZONE_OPERATOR' // Station Owner is mapped to 'OWNER' role
+  const isStationOwner = user?.role === 'STATION_OWNER' || user?.role === 'EVZONE_OPERATOR' // Station Owner is mapped to 'STATION_OWNER' role
 
   // Determine available tabs
   const availableTabs = useMemo(() => {
@@ -510,3 +518,4 @@ function StatusPill({ status }: { status: string }) {
         'pending'
   return <span className={`pill ${color}`}>{clean}</span>
 }
+

@@ -154,7 +154,15 @@ export function Sidebar({ items: overrideItems, onClose }: SidebarProps) {
           <div className="min-w-0">
             <div className="text-sm font-bold text-white truncate">{user?.name ?? 'Guest'}</div>
             <div className="text-[11px] font-bold text-muted uppercase tracking-wider">
-              {user?.role ? ROLE_LABELS[user.role] : 'GUEST'}
+              {user?.role === 'STATION_OWNER'
+                ? (user.ownerCapability === 'BOTH'
+                  ? 'Hybrid Station Owner'
+                  : user.ownerCapability === 'SWAP'
+                    ? 'Swap Station Owner'
+                    : user.ownerCapability === 'CHARGE'
+                      ? 'Charge Station Owner'
+                      : 'Station Owner')
+                : (user?.role ? ROLE_LABELS[user.role] : 'GUEST')}
             </div>
           </div>
         </div>

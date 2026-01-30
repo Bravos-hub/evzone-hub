@@ -160,7 +160,7 @@ export function Login() {
 export function Register() {
   const navigate = useNavigate()
   const [accountType, setAccountType] = useState<'COMPANY' | 'INDIVIDUAL'>('COMPANY')
-  const [role, setRole] = useState<'OWNER' | 'STATION_OPERATOR' | 'SITE_OWNER' | 'TECHNICIAN_ORG'>('OWNER')
+  const [role, setRole] = useState<'STATION_OWNER' | 'STATION_OPERATOR' | 'SITE_OWNER' | 'TECHNICIAN_ORG'>('STATION_OWNER')
   const [capability, setCapability] = useState<'CHARGE' | 'SWAP' | 'BOTH'>('BOTH')
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
@@ -183,11 +183,11 @@ export function Register() {
     setForm(f => ({ ...f, [k]: v }))
   }
 
-  const needsCapability = role === 'OWNER' || role === 'STATION_OPERATOR'
+  const needsCapability = role === 'STATION_OWNER' || role === 'STATION_OPERATOR'
   const isCompany = accountType === 'COMPANY'
 
   const roleOptions = [
-    { label: 'Station Owner', value: 'OWNER' as const },
+    { label: 'Station Owner', value: 'STATION_OWNER' as const },
     { label: 'Operator', value: 'STATION_OPERATOR' as const },
     { label: 'Technician', value: 'TECHNICIAN_ORG' as const },
     { label: 'Site Owner', value: 'SITE_OWNER' as const },
@@ -616,5 +616,6 @@ export function VerifyEmail() {
 }
 
 export default Login
+
 
 

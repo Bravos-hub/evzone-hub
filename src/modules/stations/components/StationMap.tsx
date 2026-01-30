@@ -1,269 +1,348 @@
-import { useState, useMemo, useEffect, useRef } from 'react'
+import { useState, useMemo, useRef, useCallback } from 'react'
 import { useAuthStore } from '@/core/auth/authStore'
 import { hasPermission } from '@/constants/permissions'
-import * as d3Geo from 'd3-geo'
-import * as d3Zoom from 'd3-zoom'
-import 'd3-transition'
-import { select } from 'd3-selection'
-import { feature } from 'topojson-client'
-import countries110m from 'world-atlas/countries-110m.json'
+import Map, { Source, Layer, Popup, NavigationControl, MapRef } from '@vis.gl/react-maplibre'
+import maplibregl from 'maplibre-gl'
+import 'maplibre-gl/dist/maplibre-gl.css'
+import type { FeatureCollection } from 'geojson'
+import { useStations } from '../hooks/useStations'
+import type { Station as ApiStation } from '@/core/api/types'
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   Station Map — Owner/Operator station map view with interactive world map
+   Station Map — Owner/Operator station map view with MapLibre GL JS
    RBAC: Owners, Operators, Site Owners
 ───────────────────────────────────────────────────────────────────────────── */
 
-type StationStatus = 'Active' | 'Paused' | 'Offline' | 'Maintenance'
-
-interface Station {
+// Map the backend Station type to our display needs
+interface StationMapData {
   id: string
   name: string
-  city: string
-  country: string
-  countryCode: string
-  status: StationStatus
-  kW: number
-  connector: string
   address: string
+  status: string
   lat: number
   lng: number
 }
 
-const MOCK_STATIONS: Station[] = [
-  { id: 'st-101', name: 'City Mall Roof', city: 'Kampala', country: 'Uganda', countryCode: '800', status: 'Active', kW: 250, connector: 'CCS2', address: 'Plot 7 Jinja Rd', lat: 0.3476, lng: 32.5825 },
-  { id: 'st-102', name: 'Tech Park A', city: 'Entebbe', country: 'Uganda', countryCode: '800', status: 'Paused', kW: 150, connector: 'Type 2', address: 'Block 4', lat: 0.0630, lng: 32.4631 },
-  { id: 'st-103', name: 'Airport East', city: 'Nairobi', country: 'Kenya', countryCode: '404', status: 'Active', kW: 300, connector: 'CCS2', address: 'Terminal C', lat: -1.2864, lng: 36.8172 },
-  { id: 'st-104', name: 'Central Hub', city: 'Dar es Salaam', country: 'Tanzania', countryCode: '834', status: 'Active', kW: 200, connector: 'CHAdeMO', address: 'Industrial Area', lat: -6.7924, lng: 39.2083 },
-  { id: 'st-105', name: 'Business Park', city: 'Berlin', country: 'Germany', countryCode: '276', status: 'Maintenance', kW: 180, connector: 'CCS2', address: 'Building 5', lat: 52.5200, lng: 13.4050 },
-]
+function mapApiStationToDisplay(station: ApiStation): StationMapData {
+  return {
+    id: station.id,
+    name: station.name,
+    address: station.address,
+    status: station.status,
+    lat: station.latitude,
+    lng: station.longitude,
+  }
+}
 
 export function StationMap() {
   const { user } = useAuthStore()
-  const role = user?.role ?? 'OWNER'
+  const role = user?.role ?? 'STATION_OWNER'
   const canView = hasPermission(role, 'stations', 'view')
 
-  const [q, setQ] = useState('')
-  const [countryFilter, setCountryFilter] = useState('All')
-  const [statusFilter, setStatusFilter] = useState('All')
-  const [connectorFilter, setConnectorFilter] = useState('All')
-  const [selectedStation, setSelectedStation] = useState<string | null>(null)
-  const [selectedCountry, setSelectedCountry] = useState<string | null>(null)
-  const [isZoomed, setIsZoomed] = useState(false)
-  const svgRef = useRef<SVGSVGElement>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
-  const gRef = useRef<SVGGElement>(null)
+  // Fetch stations from backend
+  const { data: apiStations, isLoading, error } = useStations()
 
-  const worldData = useMemo(() => {
-    try {
-      const topo = countries110m as any
-      const data = feature(topo, topo.objects.countries) as any
-      return data
-    } catch (error) {
-      console.error('StationMap: Error loading world data', error)
-      return null
+  // Filters
+  const [q, setQ] = useState('')
+  const [statusFilter, setStatusFilter] = useState('All')
+
+  // Map State
+  const mapRef = useRef<MapRef>(null)
+  const [popupInfo, setPopupInfo] = useState<StationMapData | null>(null)
+  const [viewState, setViewState] = useState({
+    longitude: 35.0,
+    latitude: -1.0,
+    zoom: 4
+  })
+
+  // Transform API data
+  const stations = useMemo(() =>
+    (apiStations || []).map(mapApiStationToDisplay),
+    [apiStations]
+  )
+
+  // 1. Data Processing - Filter the stations
+  const filteredStations = useMemo(() =>
+    stations
+      .filter(s => !q || s.name.toLowerCase().includes(q.toLowerCase()) || s.address.toLowerCase().includes(q.toLowerCase()))
+      .filter(s => statusFilter === 'All' || s.status === statusFilter)
+    , [stations, q, statusFilter])
+
+  // Convert to GeoJSON for MapLibre
+  // In Phase 2, this will be replaced by a vector tile source URL
+  const stationsGeoJson = useMemo<FeatureCollection>(() => ({
+    type: 'FeatureCollection',
+    features: filteredStations.map(s => ({
+      type: 'Feature',
+      properties: { ...s }, // Pass all props for popups/styling
+      geometry: { type: 'Point', coordinates: [s.lng, s.lat] }
+    }))
+  }), [filteredStations])
+
+
+  // Stats
+  const avgHealth = Math.round((filteredStations.filter(s => s.status === 'ACTIVE').length / (filteredStations.length || 1)) * 100)
+  const openIncidents = filteredStations.filter(s => s.status === 'INACTIVE').length
+
+  // Handlers
+  const onSelectStation = useCallback((stationId: string) => {
+    const station = stations.find(s => s.id === stationId)
+    if (station && mapRef.current) {
+      mapRef.current.flyTo({
+        center: [station.lng, station.lat],
+        zoom: 14,
+        essential: true
+      })
+      setPopupInfo(station)
+    }
+  }, [stations])
+
+  const onMapClick = useCallback(async (event: maplibregl.MapLayerMouseEvent) => {
+    const feature = event.features?.[0]
+    if (!feature) return
+
+    // Check if clicked cluster
+    const clusterId = feature.properties?.cluster_id
+    if (clusterId && mapRef.current) {
+      const source = mapRef.current.getSource('stations-source') as maplibregl.GeoJSONSource
+      try {
+        const zoom = await source.getClusterExpansionZoom(clusterId)
+        mapRef.current.flyTo({
+          center: (feature.geometry as any).coordinates,
+          zoom: zoom ?? 10,
+          essential: true
+        })
+      } catch (err) {
+        console.error('Error getting cluster expansion zoom:', err)
+      }
+      return
+    }
+
+    // Check if clicked unclustered point
+    const props = feature.properties as StationMapData
+    if (props && props.id) {
+      setPopupInfo(props)
     }
   }, [])
 
-  const filtered = useMemo(() =>
-    MOCK_STATIONS
-      .filter(s => !q || s.name.toLowerCase().includes(q.toLowerCase()) || s.address.toLowerCase().includes(q.toLowerCase()))
-      .filter(s => countryFilter === 'All' || s.country === countryFilter)
-      .filter(s => statusFilter === 'All' || s.status === statusFilter)
-      .filter(s => connectorFilter === 'All' || s.connector === connectorFilter)
-    , [q, countryFilter, statusFilter, connectorFilter])
+  if (!canView) return <div className="p-8 text-center text-muted">No permission to view stations.</div>
 
-  const countriesList = useMemo(() =>
-    Array.from(new Set(MOCK_STATIONS.map(s => s.country))).sort()
-    , [])
-
-  const stationsByCountry = useMemo(() => {
-    const map = new Map<string, number>()
-    MOCK_STATIONS.forEach(s => {
-      map.set(s.countryCode, (map.get(s.countryCode) || 0) + 1)
-    })
-    return map
-  }, [])
-
-  const resetZoom = () => {
-    if (!svgRef.current) return
-    select(svgRef.current)
-      .transition()
-      .duration(750)
-      .call((d3Zoom.zoom() as any).transform, d3Zoom.zoomIdentity)
-  }
-
-  const handleCountryClick = (f: any, projection: any) => {
-    if (!svgRef.current) return
-    const svg = select(svgRef.current)
-    const container = containerRef.current
-    if (!container) return
-
-    const width = container.clientWidth
-    const height = container.clientHeight
-    const path = d3Geo.geoPath().projection(projection)
-    const bounds = path.bounds(f)
-    const dx = bounds[1][0] - bounds[0][0]
-    const dy = bounds[1][1] - bounds[0][1]
-    const x = (bounds[0][0] + bounds[1][0]) / 2
-    const y = (bounds[0][1] + bounds[1][1]) / 2
-    const scale = Math.max(1, Math.min(15, 0.9 / Math.max(dx / width, dy / height)))
-    const translate = [width / 2 - scale * x, height / 2 - scale * y]
-
-    svg.transition().duration(750).call(
-      (d3Zoom.zoom() as any).transform,
-      d3Zoom.zoomIdentity.translate(translate[0], translate[1]).scale(scale)
+  if (error) {
+    return (
+      <div className="p-8 text-center">
+        <div className="text-danger mb-2">Failed to load stations</div>
+        <div className="text-sm text-muted">{error instanceof Error ? error.message : 'Unknown error'}</div>
+      </div>
     )
   }
 
-  useEffect(() => {
-    if (!worldData || !svgRef.current || !containerRef.current) return
-
-    const updateMap = () => {
-      if (!svgRef.current || !containerRef.current) return
-      const width = containerRef.current.clientWidth || 800
-      const height = containerRef.current.clientHeight || 500
-
-      const svg = select(svgRef.current)
-      svg.selectAll('*').remove()
-      svg.attr('width', width).attr('height', height)
-
-      const projection = d3Geo.geoNaturalEarth1().fitSize([width, height], worldData)
-      const path = d3Geo.geoPath().projection(projection)
-
-      const g = svg.append('g')
-
-      const zoom = d3Zoom.zoom<SVGSVGElement, unknown>()
-        .scaleExtent([1, 15])
-        .on('zoom', (event) => {
-          g.attr('transform', event.transform)
-          setIsZoomed(event.transform.k !== 1 || event.transform.x !== 0 || event.transform.y !== 0)
-        })
-      svg.call(zoom)
-
-      g.selectAll('path.country')
-        .data(worldData.features)
-        .enter()
-        .append('path')
-        .attr('class', 'country')
-        .attr('d', path as any)
-        .attr('fill', (d: any) => {
-          const id = String(d.id)
-          if (stationsByCountry.has(id)) return '#03cd8c'
-          return '#e5e7eb'
-        })
-        .attr('stroke', '#94a3b8')
-        .attr('stroke-width', 0.5)
-        .style('cursor', 'pointer')
-        .on('click', (event, d) => {
-          event.stopPropagation()
-          handleCountryClick(d, projection)
-        })
-
-      g.selectAll('circle.station')
-        .data(filtered)
-        .enter()
-        .append('circle')
-        .attr('cx', d => projection([d.lng, d.lat])?.[0] ?? 0)
-        .attr('cy', d => projection([d.lng, d.lat])?.[1] ?? 0)
-        .attr('r', 4)
-        .attr('fill', d => {
-          if (d.status === 'Active') return '#03cd8c'
-          if (d.status === 'Paused') return '#f59e0b'
-          if (d.status === 'Offline') return '#ef4444'
-          return '#3b82f6'
-        })
-        .attr('stroke', '#fff')
-        .attr('stroke-width', 1)
-    }
-
-    updateMap()
-    window.addEventListener('resize', updateMap)
-    return () => window.removeEventListener('resize', updateMap)
-  }, [worldData, filtered, stationsByCountry])
-
-  if (!canView) return <div className="p-8 text-center">No permission.</div>
-
-  const avgHealth = Math.round((filtered.filter(s => s.status === 'Active').length / filtered.length) * 100) || 0
-  const openIncidents = filtered.filter(s => s.status === 'Offline').length
-
   return (
-    <div className="flex flex-col gap-4">
-      <div className="bg-bg-secondary border border-border-light rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="flex flex-col gap-4 h-[calc(100vh-140px)]">
+      {/* Header Stats */}
+      <div className="bg-bg-secondary border border-border-light rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0">
         <div>
           <h1 className="text-xl font-bold text-text">Stations Map</h1>
-          <p className="text-sm text-muted">{filtered.length} stations</p>
+          <p className="text-sm text-muted">{filteredStations.length} stations found</p>
         </div>
         <div className="flex gap-6">
           <div className="text-center">
             <div className="text-xs text-muted uppercase">Avg Health</div>
-            <div className="text-lg font-bold text-ok">{avgHealth}%</div>
+            <div className={`text-lg font-bold ${avgHealth > 90 ? 'text-ok' : 'text-warn'}`}>{avgHealth}%</div>
           </div>
           <div className="text-center">
             <div className="text-xs text-muted uppercase">Incidents</div>
-            <div className="text-lg font-bold text-danger">{openIncidents}</div>
+            <div className={`text-lg font-bold ${openIncidents === 0 ? 'text-muted' : 'text-danger'}`}>{openIncidents}</div>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-4">
-        <aside className="card p-4 space-y-4 h-fit">
-          <input
-            value={q}
-            onChange={e => setQ(e.target.value)}
-            placeholder="Search..."
-            className="input w-full"
-          />
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-2">
-            <select value={countryFilter} onChange={e => setCountryFilter(e.target.value)} className="select">
-              <option value="All">All Countries</option>
-              {countriesList.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="select">
+      <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-4 grow min-h-0">
+
+        {/* Sidebar Controls */}
+        <aside className="card p-4 flex flex-col gap-4 h-full overflow-hidden">
+          <div className="shrink-0 space-y-4">
+            <input
+              value={q}
+              onChange={e => setQ(e.target.value)}
+              placeholder="Search station or address..."
+              className="input w-full"
+              disabled={isLoading}
+            />
+            <select
+              value={statusFilter}
+              onChange={e => setStatusFilter(e.target.value)}
+              className="select w-full"
+              disabled={isLoading}
+            >
               <option value="All">All Status</option>
-              {['Active', 'Paused', 'Offline', 'Maintenance'].map(s => <option key={s} value={s}>{s}</option>)}
+              <option value="ACTIVE">Active</option>
+              <option value="INACTIVE">Inactive</option>
+              <option value="MAINTENANCE">Maintenance</option>
             </select>
           </div>
-          <ul className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
-            {filtered.map(s => (
-              <li
-                key={s.id}
-                className="p-3 border border-border-light rounded-lg hover:border-accent/40 cursor-pointer"
-                onClick={() => setSelectedStation(s.id)}
-              >
-                <div className="flex justify-between font-medium text-sm">
-                  <span>{s.name}</span>
-                  <span className={s.status === 'Active' ? 'text-ok' : 'text-danger'}>{s.status}</span>
+
+          <div className="grow overflow-y-auto pr-1 space-y-2">
+            {isLoading ? (
+              // Loading skeleton
+              <>
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="p-3 border border-border-light rounded-lg animate-pulse">
+                    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div>
+                    <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
+                  </div>
+                ))}
+              </>
+            ) : filteredStations.length === 0 ? (
+              <div className="text-center text-muted text-sm py-4">No stations match your filters.</div>
+            ) : (
+              filteredStations.map(s => (
+                <div
+                  key={s.id}
+                  className={`p-3 border rounded-lg cursor-pointer transition-colors ${popupInfo?.id === s.id ? 'border-accent bg-accent/5' : 'border-border-light hover:border-accent/50'
+                    }`}
+                  onClick={() => onSelectStation(s.id)}
+                >
+                  <div className="flex justify-between font-medium text-sm">
+                    <span className="text-text">{s.name}</span>
+                    <StatusPill status={s.status} />
+                  </div>
+                  <div className="text-xs text-muted mt-1">
+                    {s.address}
+                  </div>
                 </div>
-                <div className="text-xs text-muted mt-1">{s.city}, {s.country}</div>
-              </li>
-            ))}
-          </ul>
+              ))
+            )}
+          </div>
         </aside>
 
-        <section ref={containerRef} className="card p-2 min-h-[500px] relative bg-[#f1f5f9] dark:bg-[#0f172a] overflow-hidden">
-          {isZoomed && (
-            <button
-              onClick={resetZoom}
-              className="absolute top-4 right-4 z-10 text-[10px] font-bold px-2 py-1 rounded-md bg-white/5 border border-white/10 text-muted hover:text-text backdrop-blur-sm"
+        {/* Map Canvas */}
+        <section className="card overflow-hidden relative min-h-[400px] border border-border-light">
+          <Map
+            ref={mapRef}
+            initialViewState={viewState}
+            onMove={evt => setViewState(evt.viewState)}
+            mapStyle="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
+            interactiveLayerIds={['clusters', 'unclustered-point']}
+            onClick={onMapClick}
+            cursor="pointer"
+          >
+            <NavigationControl position="top-right" />
+
+            {/* Source: Phase 1 (GeoJSON) -> Phase 2 (Vector Tiles) */}
+            <Source
+              id="stations-source"
+              type="geojson"
+              data={stationsGeoJson}
+              cluster={true}
+              clusterMaxZoom={14}
+              clusterRadius={50}
             >
-              Reset Zoom
-            </button>
-          )}
-          <svg ref={svgRef} className="w-full h-full cursor-grab active:cursor-grabbing" />
+              {/* Layer 1: Clusters (Circles) */}
+              <Layer
+                id="clusters"
+                type="circle"
+                filter={['has', 'point_count']}
+                paint={{
+                  'circle-color': [
+                    'step',
+                    ['get', 'point_count'],
+                    '#51bbd6', // < 100
+                    100,
+                    '#f1f075', // 100+
+                    750,
+                    '#f28cb1'  // 750+
+                  ],
+                  'circle-radius': [
+                    'step',
+                    ['get', 'point_count'],
+                    20,
+                    100,
+                    30,
+                    750,
+                    40
+                  ]
+                }}
+              />
+
+              {/* Layer 2: Cluster Counts (Text) */}
+              <Layer
+                id="cluster-count"
+                type="symbol"
+                filter={['has', 'point_count']}
+                layout={{
+                  'text-field': '{point_count_abbreviated}',
+                  'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
+                  'text-size': 12
+                }}
+              />
+
+              {/* Layer 3: Unclustered Points (Individual Stations) */}
+              {/* Color coded by status: Active=Green (#03cd8c), Offline=Red (#ef4444), etc */}
+              <Layer
+                id="unclustered-point"
+                type="circle"
+                filter={['!', ['has', 'point_count']]}
+                paint={{
+                  'circle-color': [
+                    'match',
+                    ['get', 'status'],
+                    'Active', '#03cd8c',
+                    'Paused', '#f59e0b',
+                    'Offline', '#ef4444',
+                    'Maintenance', '#3b82f6',
+                    /* default */ '#94a3b8'
+                  ],
+                  'circle-radius': 6,
+                  'circle-stroke-width': 1,
+                  'circle-stroke-color': '#fff'
+                }}
+              />
+            </Source>
+
+            {/* Popup for selected station */}
+            {popupInfo && (
+              <Popup
+                anchor="top"
+                longitude={popupInfo.lng}
+                latitude={popupInfo.lat}
+                onClose={() => setPopupInfo(null)}
+                closeOnClick={false}
+              >
+                <div className="p-1 min-w-[200px]">
+                  <div className="flex justify-between items-start mb-2">
+                    <h3 className="font-bold text-sm text-gray-900">{popupInfo.name}</h3>
+                    <StatusPill status={popupInfo.status} size="xs" />
+                  </div>
+                  <div className="text-xs text-gray-600 space-y-1">
+                    <p>📍 {popupInfo.address}</p>
+                    <p className="mt-2 pt-2 border-t border-gray-100 flex gap-2">
+                      <button className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-800 py-1 px-2 rounded transition-colors text-center">
+                        Details
+                      </button>
+                      <button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-1 px-2 rounded transition-colors text-center">
+                        Manage
+                      </button>
+                    </p>
+                  </div>
+                </div>
+              </Popup>
+            )}
+          </Map>
         </section>
       </div>
     </div>
   )
 }
 
-function StatusPill({ status }: { status: StationStatus }) {
-  const colors: Record<StationStatus, string> = {
-    Active: 'bg-ok/20 text-ok',
-    Paused: 'bg-warn/20 text-warn',
-    Offline: 'bg-danger/20 text-danger',
-    Maintenance: 'bg-info/20 text-info',
+function StatusPill({ status, size = 'sm' }: { status: string, size?: 'sm' | 'xs' }) {
+  const colors: Record<string, string> = {
+    ACTIVE: 'bg-ok/20 text-ok',
+    INACTIVE: 'bg-danger/20 text-danger',
+    MAINTENANCE: 'bg-warn/20 text-warn',
   }
-  return <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${colors[status]}`}>{status}</span>
+  const sizeClasses = size === 'xs' ? 'text-[9px] px-1.5 py-0.5' : 'text-[10px] px-2 py-0.5'
+  const displayText = status === 'ACTIVE' ? 'Active' : status === 'INACTIVE' ? 'Inactive' : 'Maintenance'
+  return <span className={`${sizeClasses} rounded-full font-bold uppercase ${colors[status] || 'bg-gray/20 text-gray'}`}>{displayText}</span>
 }
 
 export default StationMap

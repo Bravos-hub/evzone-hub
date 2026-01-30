@@ -6,7 +6,7 @@ import { getPermissionsForFeature } from '@/constants/permissions'
 type ModulePerms = Record<string, boolean>
 type Matrix = Record<string, ModulePerms>
 
-const DEFAULT_ROLES = ['SUPER_ADMIN', 'EVZONE_ADMIN', 'OWNER', 'EVZONE_OPERATOR', 'TECHNICIAN_ORG', 'SITE_OWNER', 'MANAGER', 'ATTENDANT']
+const DEFAULT_ROLES = ['SUPER_ADMIN', 'EVZONE_ADMIN', 'STATION_OWNER', 'EVZONE_OPERATOR', 'TECHNICIAN_ORG', 'SITE_OWNER', 'MANAGER', 'ATTENDANT']
 const DEFAULT_MODULES = ['Users', 'Sites', 'Charge Points', 'Sessions', 'Billing', 'Reports', 'OCPI', 'OCPP', 'Flags']
 
 function initMatrix(mods: string[], roles: string[]): Matrix {
@@ -248,4 +248,5 @@ export function RolesMatrix() {
     </DashboardLayout>
   )
 }
+
 

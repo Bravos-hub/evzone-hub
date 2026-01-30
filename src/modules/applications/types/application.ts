@@ -90,8 +90,8 @@ export interface LeaseTerms {
     leaseDuration: number // months
     securityDepositMonths: number
     revenueSharePercent?: number
-    maintenanceResponsibility: 'OWNER' | 'OPERATOR' | 'SHARED'
-    utilitiesResponsibility: 'OWNER' | 'OPERATOR'
+    maintenanceResponsibility: 'STATION_OWNER' | 'OPERATOR' | 'SHARED'
+    utilitiesResponsibility: 'STATION_OWNER' | 'OPERATOR'
     noticePeriodDays: number
     renewalOption: boolean
     customClauses?: string[]
@@ -112,3 +112,4 @@ export interface ApplicationListFilters {
     status?: ApplicationStatus
     siteId?: string
 }
+

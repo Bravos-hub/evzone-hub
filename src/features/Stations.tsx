@@ -138,7 +138,7 @@ export function Stations() {
   const availableTabs = useMemo(() => {
     const tabs: Array<{ id: StationsTab; label: string }> = [{ id: 'overview', label: 'Overview' }]
     const capability = me?.ownerCapability || user?.ownerCapability
-    const needsScope = user?.role === 'OWNER' || user?.role === 'STATION_OPERATOR'
+    const needsScope = user?.role === 'STATION_OWNER' || user?.role === 'STATION_OPERATOR'
     const allowCharge = !needsScope || capabilityAllowsCharge(capability)
     const allowSwap = !needsScope || capabilityAllowsSwap(capability)
 
@@ -158,7 +158,7 @@ export function Stations() {
     })).filter(Boolean) as any[]
   }, [rows])
 
-  const needsScope = user?.role === 'OWNER' || user?.role === 'STATION_OPERATOR'
+  const needsScope = user?.role === 'STATION_OWNER' || user?.role === 'STATION_OPERATOR'
   const accessLoading = needsScope && meLoading
 
   if (!perms.access) {
@@ -251,7 +251,7 @@ export function Stations() {
               </div>
 
               {/* Map Section - Hidden for Site Owners/Owners */}
-              {!['SITE_OWNER', 'OWNER'].includes(user?.role || '') && (
+              {!['SITE_OWNER', 'STATION_OWNER'].includes(user?.role || '') && (
                 <div className="card p-0 overflow-hidden">
                   <div className="border-b border-border-light p-4">
                     <h3 className="font-semibold">Station Map</h3>
@@ -351,3 +351,4 @@ export function Stations() {
     </DashboardLayout>
   )
 }
+
