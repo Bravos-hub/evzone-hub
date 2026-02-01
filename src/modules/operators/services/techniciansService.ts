@@ -26,12 +26,10 @@ export interface TechnicianAssignment {
 
 export const techniciansService = {
     getJobs: async (): Promise<TechnicianJob[]> => {
-        const { data } = await api.get('/technicians/me/jobs')
-        return data
+        return api.get<TechnicianJob[]>('/technicians/me/jobs')
     },
 
     getAssignment: async (): Promise<TechnicianAssignment | null> => {
-        const { data } = await api.get('/technicians/me/assignment')
-        return data
+        return api.get<TechnicianAssignment>('/technicians/me/assignment')
     },
 }

@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useAuthStore } from '@/core/auth/authStore'
 import { hasPermission } from '@/constants/permissions'
+import { useUsers, useUpdateUser } from '@/modules/auth/hooks/useUsers'
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Operators — Owner's operator management
@@ -23,9 +24,6 @@ interface Operator {
   regions: string[]
 }
 
-/* import { Operators } ... */
-import { useUsers } from '@/modules/auth/hooks/useUsers'
-
 export function Operators() {
   const { user } = useAuthStore()
   const role = user?.role ?? 'STATION_OWNER'
@@ -33,6 +31,7 @@ export function Operators() {
   const canManage = hasPermission(role, 'team', 'edit')
 
   const { data: usersData, isLoading } = useUsers()
+  const { mutate: updateUser } = useUpdateUser()
 
   // Map Users to Operators (assuming EVZONE_OPERATOR role or similar)
   // For now, mapping all users or filtering if role available
@@ -44,12 +43,12 @@ export function Operators() {
         id: u.id,
         name: u.name,
         sites: u._count?.operatedStations || 0,
-        sla: 'Silver', // Default
+        sla: 'Silver' as SLATier, // Default
         noc: 'Business', // Default
         response: '24h', // Default
         tickets: 0, // Default
         uptime: '99.0%', // Default
-        status: u.status || 'Active',
+        status: (u.status || 'Active') as OperatorStatus,
         regions: ['Africa'], // Default
       }))
   }, [usersData])
@@ -72,8 +71,9 @@ export function Operators() {
 
   const toggle = (op: Operator) => {
     const newStatus = op.status === 'Active' ? 'Suspended' : 'Active'
-    setOperators(list => list.map(o => o.id === op.id ? { ...o, status: newStatus } : o))
-    toast(`${newStatus === 'Active' ? 'Resumed' : 'Suspended'} ${op.name}`)
+    updateUser({ id: op.id, data: { status: newStatus } }, {
+      onSuccess: () => toast(`${newStatus === 'Active' ? 'Resumed' : 'Suspended'} ${op.name}`)
+    })
   }
 
   if (!canView) {

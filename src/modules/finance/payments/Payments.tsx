@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { useAuthStore } from '@/core/auth/authStore'
 import { hasPermission } from '@/constants/permissions'
+import { usePayments } from './usePayments'
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Payments — Payments & Settlements tracking
@@ -22,12 +23,6 @@ interface Payment {
   date: string
   status: PaymentStatus
 }
-
-/* import { Payments } ... */
-import { usePayments } from './usePayments'
-import type { Payment as ApiPayment } from './usePayments' // Actually type is in service or defined here.
-// I defined Payment in Payments.tsx. I should align types.
-// Defining local Payment interface to match what I expect from API or update API to match this.
 
 export function Payments() {
   const { user } = useAuthStore()
