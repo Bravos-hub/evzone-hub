@@ -23,20 +23,20 @@ interface Payment {
   status: PaymentStatus
 }
 
-const MOCK_PAYMENTS: Payment[] = [
-  { ref: 'PAY-9901', type: 'Session', site: 'Central Hub', method: 'Card', amount: 5.12, fee: 0.15, net: 4.97, date: '2025-10-29 10:41', status: 'Settled' },
-  { ref: 'PAY-9900', type: 'Swap', site: 'SS-701', method: 'Mobile Money', amount: 2.50, fee: 0.08, net: 2.42, date: '2025-10-29 10:14', status: 'Settled' },
-  { ref: 'STL-2210', type: 'Settlement', site: '—', method: 'Bank', amount: -1200.00, fee: 0.00, net: -1200.00, date: '2025-10-29 09:00', status: 'Sent' },
-  { ref: 'FEE-110', type: 'Fee', site: '—', method: '—', amount: -12.00, fee: 0.00, net: -12.00, date: '2025-10-28 18:00', status: 'Applied' },
-  { ref: 'PAY-9899', type: 'Session', site: 'Airport East', method: 'Card', amount: 8.75, fee: 0.26, net: 8.49, date: '2025-10-28 16:22', status: 'Pending' },
-  { ref: 'PAY-9898', type: 'Session', site: 'Tech Park', method: 'Wallet', amount: 3.20, fee: 0.10, net: 3.10, date: '2025-10-28 14:05', status: 'Refunded' },
-]
+/* import { Payments } ... */
+import { usePayments } from './usePayments'
+import type { Payment as ApiPayment } from './usePayments' // Actually type is in service or defined here.
+// I defined Payment in Payments.tsx. I should align types.
+// Defining local Payment interface to match what I expect from API or update API to match this.
 
 export function Payments() {
   const { user } = useAuthStore()
   const role = user?.role ?? 'EVZONE_OPERATOR'
   const canView = hasPermission(role, 'billing', 'view')
   const canRefund = hasPermission(role, 'billing', 'refund')
+
+  const { data: paymentsData, isLoading } = usePayments()
+  const payments = paymentsData || []
 
   const [type, setType] = useState('All')
   const [status, setStatus] = useState('All')
@@ -49,18 +49,18 @@ export function Payments() {
   const toast = (m: string) => { setAck(m); setTimeout(() => setAck(''), 2000) }
 
   const filtered = useMemo(() =>
-    MOCK_PAYMENTS
-      .filter(r => type === 'All' || r.type === type)
-      .filter(r => status === 'All' || r.status === status)
-      .filter(r => site === 'All' || r.site === site)
-      .filter(r => !q || (r.ref + ' ' + r.site).toLowerCase().includes(q.toLowerCase()))
-      .filter(r => new Date(r.date) >= new Date(from) && new Date(r.date) <= new Date(to + 'T23:59:59'))
-  , [type, status, site, from, to, q])
+    payments
+      .filter((r: any) => type === 'All' || r.type === type)
+      .filter((r: any) => status === 'All' || r.status === status)
+      .filter((r: any) => site === 'All' || r.site === site)
+      .filter((r: any) => !q || (r.ref + ' ' + r.site).toLowerCase().includes(q.toLowerCase()))
+      .filter((r: any) => new Date(r.date) >= new Date(from) && new Date(r.date) <= new Date(to + 'T23:59:59'))
+    , [payments, type, status, site, from, to, q])
 
   const totals = useMemo(() => ({
-    gross: filtered.reduce((sum, r) => sum + r.amount, 0),
-    fees: filtered.reduce((sum, r) => sum + r.fee, 0),
-    net: filtered.reduce((sum, r) => sum + r.net, 0),
+    gross: filtered.reduce((sum: number, r: any) => sum + (r.amount || 0), 0),
+    fees: filtered.reduce((sum: number, r: any) => sum + (r.fee || 0), 0),
+    net: filtered.reduce((sum: number, r: any) => sum + (r.net || 0), 0),
   }), [filtered])
 
   if (!canView) {
@@ -98,17 +98,17 @@ export function Payments() {
             <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-subtle" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="M21 21l-3.6-3.6" /></svg>
             <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search ref / site" className="w-full rounded-lg border border-border pl-9 pr-3 py-2 outline-none focus:ring-2 focus:ring-accent" />
           </label>
-        <select value={type} onChange={e => setType(e.target.value)} className="select">
-          {['All', 'Session', 'Swap', 'Settlement', 'Fee'].map(o => <option key={o}>{o}</option>)}
-        </select>
-        <select value={status} onChange={e => setStatus(e.target.value)} className="select">
-          {['All', 'Settled', 'Sent', 'Applied', 'Pending', 'Refunded'].map(o => <option key={o}>{o}</option>)}
-        </select>
-        <select value={site} onChange={e => setSite(e.target.value)} className="select">
-          {['All', 'Central Hub', 'SS-701', 'Airport East', 'Tech Park'].map(o => <option key={o}>{o}</option>)}
-        </select>
-        <input type="date" value={from} onChange={e => setFrom(e.target.value)} className="input" />
-        <input type="date" value={to} onChange={e => setTo(e.target.value)} className="input" />
+          <select value={type} onChange={e => setType(e.target.value)} className="select">
+            {['All', 'Session', 'Swap', 'Settlement', 'Fee'].map(o => <option key={o}>{o}</option>)}
+          </select>
+          <select value={status} onChange={e => setStatus(e.target.value)} className="select">
+            {['All', 'Settled', 'Sent', 'Applied', 'Pending', 'Refunded'].map(o => <option key={o}>{o}</option>)}
+          </select>
+          <select value={site} onChange={e => setSite(e.target.value)} className="select">
+            {['All', 'Central Hub', 'SS-701', 'Airport East', 'Tech Park'].map(o => <option key={o}>{o}</option>)}
+          </select>
+          <input type="date" value={from} onChange={e => setFrom(e.target.value)} className="input" />
+          <input type="date" value={to} onChange={e => setTo(e.target.value)} className="input" />
         </section>
 
         {/* Export */}
@@ -123,18 +123,18 @@ export function Payments() {
         <section className="overflow-x-auto rounded-xl border border-border bg-surface">
           <table className="min-w-full text-sm">
             <thead className="bg-muted text-subtle">
-            <tr>
-              <th>Ref</th>
-              <th>Type</th>
-              <th>Site / Station</th>
-              <th>Method</th>
-              <th className="px-4 py-3 !text-right font-medium">Amount</th>
-              <th className="px-4 py-3 !text-right font-medium">Fee</th>
-              <th className="px-4 py-3 !text-right font-medium">Net</th>
-              <th>Date</th>
-              <th>Status</th>
-              <th className="px-4 py-3 !text-right font-medium">Actions</th>
-            </tr>
+              <tr>
+                <th>Ref</th>
+                <th>Type</th>
+                <th>Site / Station</th>
+                <th>Method</th>
+                <th className="px-4 py-3 !text-right font-medium">Amount</th>
+                <th className="px-4 py-3 !text-right font-medium">Fee</th>
+                <th className="px-4 py-3 !text-right font-medium">Net</th>
+                <th>Date</th>
+                <th>Status</th>
+                <th className="px-4 py-3 !text-right font-medium">Actions</th>
+              </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {filtered.map(r => (

@@ -1,5 +1,6 @@
 import type { WidgetProps } from '../../types'
 import { Card } from '@/ui/components/Card'
+import { useTechnicianAssignment } from '@/modules/operators/hooks/useTechnicianAssignment'
 
 export type StationAssignment = {
   id: string
@@ -22,11 +23,9 @@ export type StationMetric = {
 export type StationAssignmentConfig = {
   title?: string
   subtitle?: string
-  station?: StationAssignment
-  metrics?: StationMetric[]
 }
 
-function statusClass(status: StationAssignment['status']) {
+function statusClass(status: string) {
   switch (status) {
     case 'online':
       return 'text-ok border-ok/40 bg-ok/10'
@@ -39,7 +38,7 @@ function statusClass(status: StationAssignment['status']) {
   }
 }
 
-function toneClass(tone?: StationMetricTone) {
+function toneClass(tone?: string) {
   switch (tone) {
     case 'ok':
       return 'text-ok'
@@ -52,42 +51,33 @@ function toneClass(tone?: StationMetricTone) {
   }
 }
 
-function capabilityLabel(capability: StationAssignment['capability']) {
+function capabilityLabel(capability: string) {
   if (capability === 'Both') return 'Charge + Swap'
   return capability
 }
-
-// Default mock data (Migration from dashboardConfigs.ts)
-const DEFAULT_STATION: StationAssignment = {
-  id: 'ST-001',
-  name: 'Central Hub',
-  location: 'Kampala - Main Ave',
-  status: 'online',
-  capability: 'Both',
-  shift: '08:00 - 16:00',
-  attendant: 'Alex Kato',
-}
-
-const DEFAULT_METRICS: StationMetric[] = [
-  { label: 'Chargers available', value: '4 / 12', tone: 'ok' },
-  { label: 'Swap docks open', value: '3 / 10', tone: 'warn' },
-  { label: 'Queue', value: '3 waiting', tone: 'warn' },
-  { label: 'Last sync', value: '2m ago', tone: 'ok' },
-]
 
 export function StationAssignmentWidget({ config }: WidgetProps<StationAssignmentConfig>) {
   const {
     title = 'Assigned station',
     subtitle = 'Station details for this shift',
-    station = DEFAULT_STATION,
-    metrics = DEFAULT_METRICS,
   } = config ?? {}
 
-  if (!station) {
+  const { data: assignment, isLoading } = useTechnicianAssignment()
+
+  if (isLoading) {
     return (
       <Card>
         <div className="card-title">{title}</div>
-        <div className="text-sm text-muted">No station assigned yet.</div>
+        <div className="text-sm text-muted py-8 text-center">Loading assignment...</div>
+      </Card>
+    )
+  }
+
+  if (!assignment) {
+    return (
+      <Card>
+        <div className="card-title">{title}</div>
+        <div className="text-sm text-muted py-4">No station assigned for this shift.</div>
       </Card>
     )
   }
@@ -99,28 +89,28 @@ export function StationAssignmentWidget({ config }: WidgetProps<StationAssignmen
           <div className="card-title">{title}</div>
           {subtitle && <div className="text-xs text-muted">{subtitle}</div>}
         </div>
-        <span className={`text-[10px] uppercase font-semibold rounded-full px-2 py-0.5 border ${statusClass(station.status)}`}>
-          {station.status}
+        <span className={`text-[10px] uppercase font-semibold rounded-full px-2 py-0.5 border ${statusClass(assignment.status)}`}>
+          {assignment.status}
         </span>
       </div>
 
       <div className="p-4 grid gap-4">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <div className="text-lg font-semibold text-text">{station.name}</div>
+            <div className="text-lg font-semibold text-text">{assignment.name}</div>
             <div className="text-xs text-muted">
-              {station.id} | {station.location}
+              {assignment.id} | {assignment.location}
             </div>
           </div>
           <div className="text-right">
             <div className="text-xs text-muted">Station type</div>
-            <div className="text-sm font-semibold text-text">{capabilityLabel(station.capability)}</div>
+            <div className="text-sm font-semibold text-text">{capabilityLabel(assignment.capability)}</div>
           </div>
         </div>
 
-        {metrics.length > 0 && (
+        {assignment.metrics && assignment.metrics.length > 0 && (
           <div className="grid grid-cols-2 gap-3">
-            {metrics.map((m) => (
+            {assignment.metrics.map((m) => (
               <div key={m.label} className="panel">
                 <div className="text-[11px] uppercase text-muted">{m.label}</div>
                 <div className={`text-lg font-semibold ${toneClass(m.tone)}`}>{m.value}</div>
@@ -130,8 +120,8 @@ export function StationAssignmentWidget({ config }: WidgetProps<StationAssignmen
         )}
 
         <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted">
-          <div>Shift: {station.shift}</div>
-          <div>Attendant: {station.attendant}</div>
+          <div>Shift: {assignment.shift}</div>
+          <div>Attendant: {assignment.attendant}</div>
         </div>
       </div>
     </Card>

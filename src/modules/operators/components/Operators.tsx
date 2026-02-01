@@ -23,12 +23,8 @@ interface Operator {
   regions: string[]
 }
 
-const MOCK_OPERATORS: Operator[] = [
-  { id: 'op-101', name: 'VoltOps', sites: 12, sla: 'Gold', noc: '24/7', response: '4h', tickets: 8, uptime: '99.7%', status: 'Active', regions: ['Africa', 'Europe'] },
-  { id: 'op-102', name: 'GridManaged', sites: 7, sla: 'Silver', noc: 'Business', response: '8h', tickets: 3, uptime: '99.1%', status: 'Active', regions: ['Africa', 'Asia'] },
-  { id: 'op-103', name: 'ChargePilot', sites: 4, sla: 'Platinum', noc: '24/7', response: '2h', tickets: 1, uptime: '99.9%', status: 'Invited', regions: ['Americas', 'Europe'] },
-  { id: 'op-104', name: 'AmpCrew Ops', sites: 5, sla: 'Bronze', noc: 'Business', response: 'Next-day', tickets: 12, uptime: '98.2%', status: 'Suspended', regions: ['Africa'] },
-]
+/* import { Operators } ... */
+import { useUsers } from '@/modules/auth/hooks/useUsers'
 
 export function Operators() {
   const { user } = useAuthStore()
@@ -36,11 +32,32 @@ export function Operators() {
   const canView = hasPermission(role, 'team', 'view')
   const canManage = hasPermission(role, 'team', 'edit')
 
+  const { data: usersData, isLoading } = useUsers()
+
+  // Map Users to Operators (assuming EVZONE_OPERATOR role or similar)
+  // For now, mapping all users or filtering if role available
+  const operators = useMemo(() => {
+    if (!usersData) return []
+    return usersData
+      //.filter(u => u.role === 'EVZONE_OPERATOR') // Uncomment if strict filtering needed
+      .map((u: any) => ({
+        id: u.id,
+        name: u.name,
+        sites: u._count?.operatedStations || 0,
+        sla: 'Silver', // Default
+        noc: 'Business', // Default
+        response: '24h', // Default
+        tickets: 0, // Default
+        uptime: '99.0%', // Default
+        status: u.status || 'Active',
+        regions: ['Africa'], // Default
+      }))
+  }, [usersData])
+
   const [q, setQ] = useState('')
   const [status, setStatus] = useState('All')
   const [sla, setSla] = useState('All')
   const [region, setRegion] = useState('All')
-  const [operators, setOperators] = useState(MOCK_OPERATORS)
   const [ack, setAck] = useState('')
 
   const toast = (m: string) => { setAck(m); setTimeout(() => setAck(''), 2000) }
@@ -51,7 +68,7 @@ export function Operators() {
       .filter(r => status === 'All' || r.status === status)
       .filter(r => sla === 'All' || r.sla === sla)
       .filter(r => region === 'All' || r.regions.includes(region))
-  , [operators, q, status, sla, region])
+    , [operators, q, status, sla, region])
 
   const toggle = (op: Operator) => {
     const newStatus = op.status === 'Active' ? 'Suspended' : 'Active'

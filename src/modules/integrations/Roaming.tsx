@@ -1,6 +1,8 @@
 import { useState, useMemo } from 'react'
 import { useAuthStore } from '@/core/auth/authStore'
 import { hasPermission } from '@/constants/permissions'
+import { useRoamingSessions, useRoamingCdrs } from './useRoaming'
+import type { RoamingSession, RoamingCDR } from './roamingService'
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Roaming — OCPI Sessions & CDRs
@@ -11,72 +13,17 @@ type RoamingRole = 'CPO' | 'MSP'
 type SessionStatus = 'Completed' | 'Charging' | 'Failed' | 'Refunded'
 type CDRStatus = 'Finalized' | 'Sent' | 'Disputed' | 'Voided' | 'Pending'
 
-interface RoamingSession {
-  id: string
-  role: RoamingRole
-  partner: string
-  site: string
-  cp: string
-  start: string
-  end: string
-  dur: string
-  kwh: number
-  cur: string
-  amt: number
-  status: SessionStatus
-}
-
-interface RoamingCDR {
-  cdr: string
-  session: string
-  role: RoamingRole
-  partner: string
-  site: string
-  start: string
-  end: string
-  dur: string
-  kwh: number
-  cur: string
-  amt: number
-  tariff: string
-  fee: number
-  net: number
-  status: CDRStatus
-}
-
-const MOCK_SESSIONS: RoamingSession[] = [
-  { id: 'EVZ-21853', role: 'MSP', partner: 'VoltHub', site: 'Central Hub', cp: 'CP-A1/2', start: '2025-10-29 10:05', end: '2025-10-29 10:41', dur: '36m', kwh: 18.2, cur: 'USD', amt: 5.12, status: 'Completed' },
-  { id: 'EVZ-21844', role: 'CPO', partner: 'GreenRoam', site: 'Airport East', cp: 'CP-B4/1', start: '2025-10-29 07:18', end: '2025-10-29 07:29', dur: '11m', kwh: 4.1, cur: 'USD', amt: 1.25, status: 'Failed' },
-  { id: 'EVZ-21810', role: 'MSP', partner: 'VoltHub', site: 'Tech Park', cp: 'CP-C2/1', start: '2025-10-28 19:02', end: '2025-10-28 19:40', dur: '38m', kwh: 12.6, cur: 'EUR', amt: 3.80, status: 'Completed' },
-]
-
-const MOCK_CDRS: RoamingCDR[] = [
-  { cdr: 'CDR-9901', session: 'EVZ-21853', role: 'MSP', partner: 'VoltHub', site: 'Central Hub', start: '2025-10-29 10:05', end: '2025-10-29 10:41', dur: '36m', kwh: 18.2, cur: 'USD', amt: 5.12, tariff: 'Night Saver', fee: 0.15, net: 4.97, status: 'Finalized' },
-  { cdr: 'CDR-9899', session: 'EVZ-21844', role: 'CPO', partner: 'GreenRoam', site: 'Airport East', start: '2025-10-29 07:18', end: '2025-10-29 07:29', dur: '11m', kwh: 4.1, cur: 'USD', amt: 1.25, tariff: 'Standard', fee: 0.04, net: 1.21, status: 'Sent' },
-  { cdr: 'CDR-9890', session: 'EVZ-21810', role: 'MSP', partner: 'VoltHub', site: 'Tech Park', start: '2025-10-28 19:02', end: '2025-10-28 19:40', dur: '38m', kwh: 12.6, cur: 'EUR', amt: 3.80, tariff: 'Night Saver', fee: 0.11, net: 3.69, status: 'Disputed' },
-]
-
-const SESSION_KPIS = [
-  { label: 'Partners', value: '22' },
-  { label: 'Sessions (30d)', value: '3,420' },
-  { label: 'Roaming kWh (30d)', value: '12,840' },
-  { label: 'Gross (30d)', value: '$8,920' },
-  { label: 'Failures (24h)', value: '7' },
-]
-
-const CDR_KPIS = [
-  { label: 'CDRs (30d)', value: '3,390' },
-  { label: 'Gross (30d)', value: '$8,760' },
-  { label: 'Fees (30d)', value: '$420' },
-  { label: 'Net (30d)', value: '$8,340' },
-  { label: 'Disputes (open)', value: '4' },
-]
-
 export function Roaming() {
   const { user } = useAuthStore()
   const role = user?.role ?? 'EVZONE_OPERATOR'
   const canView = hasPermission(role, 'protocols', 'view')
   const canManage = hasPermission(role, 'protocols', 'manage')
+
+  const { data: sessionsData, isLoading: isLoadingSessions } = useRoamingSessions()
+  const { data: cdrsData, isLoading: isLoadingCdrs } = useRoamingCdrs()
+
+  const sessions = sessionsData || []
+  const cdrsRaw = cdrsData || []
 
   const [tab, setTab] = useState<'sessions' | 'cdrs'>('sessions')
   const [q, setQ] = useState('')
@@ -88,21 +35,21 @@ export function Roaming() {
 
   const toast = (m: string) => { setAck(m); setTimeout(() => setAck(''), 2000) }
 
-  const sessions = useMemo(() =>
-    MOCK_SESSIONS
+  const filteredSessions = useMemo(() =>
+    sessions
       .filter(r => !q || (r.id + ' ' + r.partner + ' ' + r.site).toLowerCase().includes(q.toLowerCase()))
       .filter(r => roleFilter === 'All' || r.role === roleFilter)
       .filter(r => partner === 'All' || r.partner === partner)
       .filter(r => status === 'All' || r.status === status)
-  , [q, roleFilter, partner, status])
+    , [sessions, q, roleFilter, partner, status])
 
-  const cdrs = useMemo(() =>
-    MOCK_CDRS
+  const filteredCdrs = useMemo(() =>
+    cdrsRaw
       .filter(r => !q || (r.cdr + ' ' + r.session + ' ' + r.partner).toLowerCase().includes(q.toLowerCase()))
       .filter(r => roleFilter === 'All' || r.role === roleFilter)
       .filter(r => partner === 'All' || r.partner === partner)
       .filter(r => status === 'All' || r.status === status)
-  , [q, roleFilter, partner, status])
+    , [cdrsRaw, q, roleFilter, partner, status])
 
   const amtStr = (cur: string, amt: number) => {
     if (!fx) return `${cur} ${amt.toFixed(2)}`
@@ -110,11 +57,29 @@ export function Roaming() {
     return `USD ${usd.toFixed(2)}`
   }
 
+  // KPIs Calculation (on filtered data or all data? Usually filtered is better for analysis)
+  const sessionKpis = [
+    { label: 'Partners', value: new Set(filteredSessions.map(s => s.partner)).size.toString() },
+    { label: 'Sessions', value: filteredSessions.length.toString() },
+    { label: 'Roaming kWh', value: filteredSessions.reduce((acc, s) => acc + s.kwh, 0).toFixed(1) },
+    { label: 'Gross', value: '$' + filteredSessions.reduce((acc, s) => acc + s.amt, 0).toFixed(0) },
+    { label: 'Failures', value: filteredSessions.filter(s => s.status === 'Failed').length.toString() },
+  ]
+
+  const cdrKpis = [
+    { label: 'CDRs', value: filteredCdrs.length.toString() },
+    { label: 'Gross', value: '$' + filteredCdrs.reduce((acc, c) => acc + c.amt, 0).toFixed(0) },
+    { label: 'Fees', value: '$' + filteredCdrs.reduce((acc, c) => acc + c.fee, 0).toFixed(0) },
+    { label: 'Net', value: '$' + filteredCdrs.reduce((acc, c) => acc + c.net, 0).toFixed(0) },
+    { label: 'Disputes', value: filteredCdrs.filter(c => c.status === 'Disputed').length.toString() },
+  ]
+
   if (!canView) {
     return <div className="p-8 text-center text-subtle">No permission to view Roaming.</div>
   }
 
-  const kpis = tab === 'sessions' ? SESSION_KPIS : CDR_KPIS
+  const kpis = tab === 'sessions' ? sessionKpis : cdrKpis
+  const isLoading = tab === 'sessions' ? isLoadingSessions : isLoadingCdrs
 
   return (
     <div className="space-y-6">
@@ -170,8 +135,11 @@ export function Roaming() {
         </label>
       </section>
 
+      {/* Table Loading State */}
+      {isLoading && <div className="p-12 text-center text-subtle">Loading data...</div>}
+
       {/* Sessions Table */}
-      {tab === 'sessions' && (
+      {!isLoading && tab === 'sessions' && (
         <section className="overflow-x-auto rounded-xl border border-border bg-surface">
           <table className="min-w-full text-sm">
             <thead className="bg-muted text-subtle">
@@ -190,7 +158,7 @@ export function Roaming() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {sessions.map(r => (
+              {filteredSessions.map(r => (
                 <tr key={r.id} className="hover:bg-muted/50">
                   <td className="px-4 py-3 font-medium truncate max-w-[80px]" title={r.id}>{r.id}</td>
                   <td className="px-4 py-3 text-xs">{r.role}</td>
@@ -214,12 +182,12 @@ export function Roaming() {
               ))}
             </tbody>
           </table>
-          {sessions.length === 0 && <div className="p-8 text-center text-subtle">No sessions match your filters.</div>}
+          {filteredSessions.length === 0 && <div className="p-8 text-center text-subtle">No sessions match your filters.</div>}
         </section>
       )}
 
       {/* CDRs Table */}
-      {tab === 'cdrs' && (
+      {!isLoading && tab === 'cdrs' && (
         <section className="overflow-x-auto rounded-xl border border-border bg-surface">
           <table className="min-w-full text-sm">
             <thead className="bg-muted text-subtle">
@@ -238,7 +206,7 @@ export function Roaming() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {cdrs.map(r => (
+              {filteredCdrs.map(r => (
                 <tr key={r.cdr} className="hover:bg-muted/50">
                   <td className="px-4 py-3 font-medium truncate max-w-[80px]" title={r.cdr}>{r.cdr}</td>
                   <td className="px-4 py-3 text-subtle text-xs truncate max-w-[80px]" title={r.session}>{r.session}</td>
@@ -265,33 +233,34 @@ export function Roaming() {
               ))}
             </tbody>
           </table>
-          {cdrs.length === 0 && <div className="p-8 text-center text-subtle">No CDRs match your filters.</div>}
+          {filteredCdrs.length === 0 && <div className="p-8 text-center text-subtle">No CDRs match your filters.</div>}
         </section>
       )}
     </div>
   )
 }
 
-function SessionStatusPill({ status }: { status: SessionStatus }) {
-  const colors: Record<SessionStatus, string> = {
+function SessionStatusPill({ status }: { status: string }) {
+  const colors: Record<string, string> = {
     Completed: 'bg-emerald-100 text-emerald-700',
     Charging: 'bg-blue-100 text-blue-700',
     Failed: 'bg-rose-100 text-rose-700',
     Refunded: 'bg-amber-100 text-amber-700',
   }
-  return <span className={`px-2 py-0.5 rounded-full text-xs ${colors[status]}`}>{status}</span>
+  return <span className={`px-2 py-0.5 rounded-full text-xs ${colors[status] || 'bg-gray-100'}`}>{status}</span>
 }
 
-function CDRStatusPill({ status }: { status: CDRStatus }) {
-  const colors: Record<CDRStatus, string> = {
+function CDRStatusPill({ status }: { status: string }) {
+  const colors: Record<string, string> = {
     Finalized: 'bg-emerald-100 text-emerald-700',
     Sent: 'bg-blue-100 text-blue-700',
     Disputed: 'bg-amber-100 text-amber-700',
     Voided: 'bg-gray-100 text-gray-600',
     Pending: 'bg-gray-100 text-gray-700',
   }
-  return <span className={`px-2 py-0.5 rounded-full text-xs ${colors[status]}`}>{status}</span>
+  return <span className={`px-2 py-0.5 rounded-full text-xs ${colors[status] || 'bg-gray-100'}`}>{status}</span>
 }
+
 
 export default Roaming
 

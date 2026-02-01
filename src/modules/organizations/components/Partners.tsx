@@ -11,6 +11,20 @@ type PartnerStatus = 'Connected' | 'Pending' | 'Error'
 type PartnerRole = 'CPO' | 'EMSP'
 type OCPIModule = 'Locations' | 'Sessions' | 'CDRs' | 'Tariffs'
 
+/* import { Partners } from ... no, in same file */
+import { usePartners } from '../hooks/usePartners'
+import type { Partner } from '../services/partnersService'
+
+/* ... removed local Partner interface and MOCK_PARTNERS ... */
+/* Re-defining types if they differ or just use service types. Protocol types usually match. */
+/* The component defined Partner interface matches service interface roughly. */
+/* I will use the service interface. */
+
+type PartnerStatus = 'Connected' | 'Pending' | 'Error'
+type PartnerRole = 'CPO' | 'EMSP'
+type OCPIModule = 'Locations' | 'Sessions' | 'CDRs' | 'Tariffs'
+
+/*
 interface Partner {
   id: string
   name: string
@@ -21,19 +35,16 @@ interface Partner {
   endpoint?: string
   lastSync?: string
 }
-
-const MOCK_PARTNERS: Partner[] = [
-  { id: 'p-001', name: 'GridRoam', role: 'EMSP', status: 'Connected', modules: ['Locations', 'Sessions', 'CDRs'], version: 'OCPI 2.2.1', endpoint: 'https://api.gridroam.com/ocpi', lastSync: '2025-10-28 14:30' },
-  { id: 'p-002', name: 'ChargeNet', role: 'CPO', status: 'Pending', modules: ['Locations'], version: 'OCPI 2.2.1', endpoint: 'https://api.chargenet.io/ocpi' },
-  { id: 'p-003', name: 'OpenWatt', role: 'CPO', status: 'Error', modules: ['Locations', 'CDRs'], version: 'OCPI 2.1.1', endpoint: 'https://api.openwatt.eu/ocpi', lastSync: '2025-10-25 09:15' },
-  { id: 'p-004', name: 'VoltWave', role: 'EMSP', status: 'Connected', modules: ['Locations', 'Sessions', 'Tariffs', 'CDRs'], version: 'OCPI 2.2.1', endpoint: 'https://api.voltwave.net/ocpi', lastSync: '2025-10-28 15:00' },
-]
+*/
 
 export function Partners() {
   const { user } = useAuthStore()
   const role = user?.role ?? 'EVZONE_OPERATOR'
   const canView = hasPermission(role, 'protocols', 'view')
   const canManage = hasPermission(role, 'protocols', 'manage')
+
+  const { data: partnersData, isLoading } = usePartners()
+  const partners = partnersData || []
 
   const [q, setQ] = useState('')
   const [status, setStatus] = useState('All')
@@ -45,12 +56,12 @@ export function Partners() {
   const toast = (m: string) => { setAck(m); setTimeout(() => setAck(''), 2000) }
 
   const filtered = useMemo(() =>
-    MOCK_PARTNERS
+    partners
       .filter(p => p.name.toLowerCase().includes(q.toLowerCase()))
       .filter(p => status === 'All' || p.status === status)
       .filter(p => partnerRole === 'All' || p.role === partnerRole)
-      .filter(p => moduleFilter === 'All' || p.modules.includes(moduleFilter as OCPIModule))
-  , [q, status, partnerRole, moduleFilter])
+      .filter(p => moduleFilter === 'All' || p.modules.includes(moduleFilter as any))
+    , [partners, q, status, partnerRole, moduleFilter])
 
   if (!canView) {
     return <div className="p-8 text-center text-subtle">No permission to view Partners.</div>
