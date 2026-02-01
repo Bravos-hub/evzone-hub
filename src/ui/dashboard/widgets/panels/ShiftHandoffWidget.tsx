@@ -3,8 +3,13 @@ import React, { useState } from 'react';
 /**
  * Operator Shift Handoff Widget
  */
+// Default mock context if not provided
+const DEFAULT_CONTEXT = {
+    initialNotes: 'Night shift reported minor OCPP instability on CP-B4. Grid voltage stable.',
+}
+
 export function ShiftHandoffWidget({ config }: { config: any }) {
-    const [notes, setNotes] = useState(config?.initialNotes || '');
+    const [notes, setNotes] = useState(config?.initialNotes || DEFAULT_CONTEXT.initialNotes);
     const [isSaving, setIsSaving] = useState(false);
     const [lastSaved, setLastSaved] = useState<string | null>(null);
 
@@ -53,8 +58,8 @@ export function ShiftHandoffWidget({ config }: { config: any }) {
                         onClick={handleSave}
                         disabled={isSaving}
                         className={`mt-3 w-full py-2.5 rounded-xl font-bold text-[13px] transition-all flex items-center justify-center gap-2 ${isSaving
-                                ? 'bg-white/10 text-muted cursor-not-allowed'
-                                : 'bg-accent text-white hover:bg-accent-hover shadow-lg active:scale-[0.98]'
+                            ? 'bg-white/10 text-muted cursor-not-allowed'
+                            : 'bg-accent text-white hover:bg-accent-hover shadow-lg active:scale-[0.98]'
                             }`}
                     >
                         {isSaving ? (

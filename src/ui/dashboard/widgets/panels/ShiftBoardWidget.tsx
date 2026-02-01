@@ -17,7 +17,15 @@ export type ShiftBoardConfig = {
 }
 
 export function ShiftBoardWidget({ config }: WidgetProps<ShiftBoardConfig>) {
-    const { title = 'Shift Board', subtitle = 'Staff currently on duty', staff = [] } = config ?? {}
+    // Default mock data if not provided (Migration from dashboardConfigs.ts)
+    const defaultStaff: StaffMember[] = [
+        { id: 'USR-101', name: 'Sarah Chen', role: 'Lead Attendant', status: 'active' as const, assignment: 'Downtown Hub' },
+        { id: 'USR-102', name: 'Marcus Miller', role: 'Attendant', status: 'active' as const, assignment: 'Downtown Hub' },
+        { id: 'USR-103', name: 'Elena Rodriguez', role: 'Attendant', status: 'break' as const, assignment: 'Westside' },
+        { id: 'USR-104', name: 'Jordan Smith', role: 'Senior Tech', status: 'offline' as const, assignment: 'On Call' },
+    ]
+
+    const { title = 'Shift Board', subtitle = 'Staff currently on duty', staff = defaultStaff } = config ?? {}
 
     const getStatusColor = (status: StaffMember['status']) => {
         switch (status) {

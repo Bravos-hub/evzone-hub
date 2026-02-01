@@ -57,12 +57,30 @@ function capabilityLabel(capability: StationAssignment['capability']) {
   return capability
 }
 
+// Default mock data (Migration from dashboardConfigs.ts)
+const DEFAULT_STATION: StationAssignment = {
+  id: 'ST-001',
+  name: 'Central Hub',
+  location: 'Kampala - Main Ave',
+  status: 'online',
+  capability: 'Both',
+  shift: '08:00 - 16:00',
+  attendant: 'Alex Kato',
+}
+
+const DEFAULT_METRICS: StationMetric[] = [
+  { label: 'Chargers available', value: '4 / 12', tone: 'ok' },
+  { label: 'Swap docks open', value: '3 / 10', tone: 'warn' },
+  { label: 'Queue', value: '3 waiting', tone: 'warn' },
+  { label: 'Last sync', value: '2m ago', tone: 'ok' },
+]
+
 export function StationAssignmentWidget({ config }: WidgetProps<StationAssignmentConfig>) {
   const {
     title = 'Assigned station',
     subtitle = 'Station details for this shift',
-    station,
-    metrics = [],
+    station = DEFAULT_STATION,
+    metrics = DEFAULT_METRICS,
   } = config ?? {}
 
   if (!station) {

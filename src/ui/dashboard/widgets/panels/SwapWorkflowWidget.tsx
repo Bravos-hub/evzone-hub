@@ -64,6 +64,23 @@ function formatAmount(amount: number, currency: string) {
   return `${currency} ${formatted}`
 }
 
+// Default mock data (Migration from dashboardConfigs.ts)
+const DEFAULT_FLOW = {
+  title: 'Swap workflow',
+  subtitle: 'Scan batteries, assign docks, confirm payment',
+  steps: [
+    { id: 'swap-1', label: 'Scan returned battery', detail: 'BAT-1049', status: 'done' as const },
+    { id: 'swap-2', label: 'Check power and energy', detail: 'SOC 23% - 1.2 kWh', status: 'done' as const },
+    { id: 'swap-3', label: 'Assign return dock', detail: 'Dock R-07', status: 'done' as const },
+    { id: 'swap-4', label: 'Assign charged dock', detail: 'Dock C-12', status: 'active' as const },
+    { id: 'swap-5', label: 'Scan charged battery', detail: 'Waiting for scan', status: 'pending' as const },
+    { id: 'swap-6', label: 'Calculate amount and confirm payment', detail: 'UGX 9,200', status: 'pending' as const },
+  ],
+  returnedBattery: { id: 'BAT-1049', soc: 23, energyKwh: 1.2, dock: 'R-07' },
+  chargedBattery: { id: 'BAT-1107', soc: 98, energyKwh: 4.8, dock: 'C-12' },
+  payment: { amount: 9200, currency: 'UGX', method: 'Cash', status: 'pending' as const },
+}
+
 export function SwapWorkflowWidget({ config }: WidgetProps<SwapWorkflowConfig>) {
   const {
     title = 'Swap session workflow',
@@ -72,7 +89,7 @@ export function SwapWorkflowWidget({ config }: WidgetProps<SwapWorkflowConfig>) 
     returnedBattery,
     chargedBattery,
     payment,
-  } = config ?? {}
+  } = config || DEFAULT_FLOW
 
   return (
     <Card className="p-0">

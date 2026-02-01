@@ -8,137 +8,10 @@ import { hasPermission } from '@/constants/permissions'
 // MOCK DATA - In production, this would come from API/stores
 // ═══════════════════════════════════════════════════════════════════════════
 
-const mockRegions = [
-  { region: 'North America', uptime: 99.4, incidents: 12, stations: 540, revenueUsd: 1_240_000, sessions: 182_000 },
-  { region: 'Europe', uptime: 99.1, incidents: 9, stations: 430, revenueUsd: 1_050_000, sessions: 154_000 },
-  { region: 'Africa', uptime: 98.6, incidents: 14, stations: 210, revenueUsd: 460_000, sessions: 72_000 },
-  { region: 'Asia', uptime: 99.2, incidents: 8, stations: 380, revenueUsd: 980_000, sessions: 141_000 },
-  { region: 'Middle East', uptime: 98.9, incidents: 6, stations: 190, revenueUsd: 410_000, sessions: 61_000 },
-]
-
-const mockChoropleth: ChoroplethDatum[] = [
-  { id: 'N_AMERICA', label: 'North America', metrics: { stations: 540, sessions: 182000, uptime: 99.4, revenueUsd: 1240000 } },
-  { id: 'EUROPE', label: 'Europe', metrics: { stations: 430, sessions: 154000, uptime: 99.1, revenueUsd: 1050000 } },
-  { id: 'AFRICA', label: 'Africa', metrics: { stations: 210, sessions: 72000, uptime: 98.6, revenueUsd: 460000 } },
-  { id: 'ASIA', label: 'Asia', metrics: { stations: 380, sessions: 141000, uptime: 99.2, revenueUsd: 980000 } },
-  { id: 'MIDDLE_EAST', label: 'Middle East', metrics: { stations: 190, sessions: 61000, uptime: 98.9, revenueUsd: 410000 } },
-]
-
-const mockIncidents = [
-  { id: 'INC-2401', title: 'Grid instability - Lagos', sev: 'SEV1' as const, owner: 'Ops West', eta: '45m', sla: '01:12' },
-  { id: 'INC-2389', title: 'OCPP drop - Berlin hub', sev: 'SEV2' as const, owner: 'Ops EU', eta: '1h20', sla: '02:05' },
-  { id: 'INC-2377', title: 'Battery recall flag', sev: 'SEV3' as const, owner: 'Safety', eta: '—', sla: '06:30' },
-]
-
-const mockDispatches = [
-  { id: 'DSP-8832', job: 'Swap stack recal', region: 'NA', tech: 'Crew A', eta: '32m', priority: 'P1' as const },
-  { id: 'DSP-8821', job: 'Charger RCD check', region: 'EU', tech: 'Crew D', eta: '1h05', priority: 'P2' as const },
-  { id: 'DSP-8810', job: 'Locker door fault', region: 'AF', tech: 'Partner-X', eta: '1h30', priority: 'P3' as const },
-]
-
-const mockApprovals = [
-  { id: 'KYC-204', type: 'Owner KYC', owner: 'Volt Mobility', age: '2d', status: 'Review' as const },
-  { id: 'ACR-118', type: 'Access review', owner: 'Ops EU', age: '1d', status: 'Pending' as const },
-  { id: 'KYC-199', type: 'Technician vetting', owner: 'Contractor-Z', age: '4d', status: 'Blocked' as const },
-]
-
-const mockHealth = [
-  { service: 'Core API', status: 'Operational' as const, p95: 182, errors: 0.08, backlog: 3 },
-  { service: 'OCPP Broker', status: 'Degraded' as const, p95: 420, errors: 0.42, backlog: 28 },
-  { service: 'Webhooks', status: 'Operational' as const, p95: 210, errors: 0.11, backlog: 7 },
-  { service: 'OCPI Sync', status: 'Operational' as const, p95: 260, errors: 0.05, backlog: 2 },
-]
-
-const mockPaymentIssues = [
-  { id: 'PAY-771', provider: 'Stripe', type: 'Card auth fail spike', amount: 18240, status: 'Retrying' as const },
-  { id: 'PAY-766', provider: 'Flutterwave', type: 'Reconciliation gap', amount: 9210, status: 'Open' as const },
-]
-
-const mockAuditEvents = [
-  { id: 'AUD-9921', actor: 'd.admin', action: 'Impersonated owner', scope: 'OWNER-442', when: '06m ago' },
-  { id: 'AUD-9917', actor: 'c.sre', action: 'API key rotated', scope: 'Platform', when: '19m ago' },
-  { id: 'AUD-9909', actor: 'b.billing', action: 'Exported ledger', scope: 'Region=EU', when: '42m ago' },
-]
-
-const mockStationsStatus = [
-  { id: 'ST-001', name: 'Downtown Hub A', location: 'Commercial St 12', status: 'online' as const, occupancy: 85, activeSessions: 6, lastPulse: '2m ago' },
-  { id: 'ST-002', name: 'Westside Supercharge', location: 'Highway Exit 4', status: 'warning' as const, occupancy: 40, activeSessions: 2, lastPulse: '5m ago' },
-  { id: 'ST-003', name: 'Airport Express', location: 'Terminal 2 P4', status: 'online' as const, occupancy: 10, activeSessions: 1, lastPulse: '1m ago' },
-]
-
-const mockStaffMembers = [
-  { id: 'USR-101', name: 'Sarah Chen', role: 'Lead Attendant', status: 'active' as const, assignment: 'Downtown Hub' },
-  { id: 'USR-102', name: 'Marcus Miller', role: 'Attendant', status: 'active' as const, assignment: 'Downtown Hub' },
-  { id: 'USR-103', name: 'Elena Rodriguez', role: 'Attendant', status: 'break' as const, assignment: 'Westside' },
-  { id: 'USR-104', name: 'Jordan Smith', role: 'Senior Tech', status: 'offline' as const, assignment: 'On Call' },
-]
-
-const mockActiveSessions = [
-  { id: 'SES-991', bay: 'A1', user: 'Tesla Mod 3', carModel: 'White (K-8821)', soc: 72, startTime: '12:45', powerKw: 120, cost: 14.20, status: 'charging' as const },
-  { id: 'SES-992', bay: 'A2', user: 'Rivian R1T', carModel: 'Blue (B-9912)', soc: 45, startTime: '13:10', powerKw: 150, cost: 8.50, status: 'charging' as const },
-  { id: 'SES-993', bay: 'B1', user: 'Ford F-150', carModel: 'Grey (F-2204)', soc: 92, startTime: '11:30', powerKw: 45, cost: 32.10, status: 'finishing' as const },
-]
-
-const mockAttendantStation = {
-  id: 'ST-001',
-  name: 'Central Hub',
-  location: 'Kampala - Main Ave',
-  status: 'online' as const,
-  capability: 'Both' as const,
-  shift: '08:00 - 16:00',
-  attendant: 'Alex Kato',
-}
-
-const mockAttendantMetrics = [
-  { label: 'Chargers available', value: '4 / 12', tone: 'ok' as const },
-  { label: 'Swap docks open', value: '3 / 10', tone: 'warn' as const },
-  { label: 'Queue', value: '3 waiting', tone: 'warn' as const },
-  { label: 'Last sync', value: '2m ago', tone: 'ok' as const },
-]
-
-const mockAttendantBookings = [
-  { id: 'BK-1102', customer: 'Amina K', service: 'Charge' as const, time: '14:00', bay: 'Bay 3', status: 'Confirmed' as const },
-  { id: 'BK-1106', customer: 'Daniel M', service: 'Swap' as const, time: '14:20', bay: 'Dock 2', status: 'Pending' as const },
-  { id: 'BK-1107', customer: 'Grace N', service: 'Charge' as const, time: '14:45', bay: 'Bay 1', status: 'Confirmed' as const },
-  { id: 'BK-1109', customer: 'Joseph S', service: 'Swap' as const, time: '15:10', bay: 'Dock 4', status: 'Completed' as const },
-]
-
-const mockChargeScans = [
-  { chargerId: 'CP-A1', rfid: 'RF-2188', time: '2m ago', status: 'ready' as const },
-  { chargerId: 'CP-A4', rfid: 'RF-2196', time: '11m ago', status: 'started' as const },
-]
-
-const mockSwapWorkflow = {
-  title: 'Swap workflow',
-  subtitle: 'Scan batteries, assign docks, confirm payment',
-  steps: [
-    { id: 'swap-1', label: 'Scan returned battery', detail: 'BAT-1049', status: 'done' as const },
-    { id: 'swap-2', label: 'Check power and energy', detail: 'SOC 23% - 1.2 kWh', status: 'done' as const },
-    { id: 'swap-3', label: 'Assign return dock', detail: 'Dock R-07', status: 'done' as const },
-    { id: 'swap-4', label: 'Assign charged dock', detail: 'Dock C-12', status: 'active' as const },
-    { id: 'swap-5', label: 'Scan charged battery', detail: 'Waiting for scan', status: 'pending' as const },
-    { id: 'swap-6', label: 'Calculate amount and confirm payment', detail: 'UGX 9,200', status: 'pending' as const },
-  ],
-  returnedBattery: { id: 'BAT-1049', soc: 23, energyKwh: 1.2, dock: 'R-07' },
-  chargedBattery: { id: 'BAT-1107', soc: 98, energyKwh: 4.8, dock: 'C-12' },
-  payment: { amount: 9200, currency: 'UGX', method: 'Cash', status: 'pending' as const },
-}
-
-const mockSites = [
-  { id: 'st-401', name: 'Business Park A', city: 'Wuxi', status: 'Active', bays: 14, power: 150, updated: '2025-10-20 11:45' },
-  { id: 'st-402', name: 'City Mall Roof', city: 'Kampala', status: 'Approved', bays: 25, power: 250, updated: '2025-10-19 16:10' },
-  { id: 'st-403', name: 'Airport Long-Stay', city: 'Nairobi', status: 'Pending', bays: 30, power: 300, updated: '2025-10-18 09:30' },
-]
-
-const mockApps = [
-  { id: 'APP-2201', site: 'Airport Long‑Stay', model: 'Revenue share', terms: '12%', status: 'Under Review', date: '2025-10-18' },
-  { id: 'APP-2200', site: 'Warehouse West', model: 'Fixed rent', terms: '$500/mo', status: 'Applied', date: '2025-10-12' },
-  { id: 'APP-2199', site: 'Tech Campus', model: 'Hybrid', terms: '8% + $200/mo', status: 'Approved', date: '2025-10-05' },
-]
-
-const mockOperatorContext = {
-  initialNotes: 'Night shift reported minor OCPP instability on CP-B4. Grid voltage stable.',
-}
+// ═══════════════════════════════════════════════════════════════════════════
+// MOCK DATA - In production, this would come from API/stores
+// (Mock data definitions moved to individual widgets as defaults)
+// ═══════════════════════════════════════════════════════════════════════════
 
 const GENERIC_DASHBOARD: DashboardConfig = {
   title: 'Dashboard',
@@ -172,7 +45,7 @@ const ADMIN_DASHBOARD_CONFIG: DashboardConfig = {
     {
       sectionTitle: 'Global Operations',
       widgets: [
-        { id: 'map-world', size: '3', config: { title: 'Live Hotspots', subtitle: 'Regional metrics by station density', data: mockChoropleth } },
+        { id: 'map-world', size: '3', config: { title: 'Live Hotspots', subtitle: 'Regional metrics by station density' } },
         {
           id: 'panel-alerts', size: '1', config: {
             title: 'Vulnerabilities & Alerts', metrics: [
@@ -194,7 +67,7 @@ const ADMIN_DASHBOARD_CONFIG: DashboardConfig = {
       widgets: [
         {
           id: 'panel-settlement', size: '2', config: {
-            title: 'Exchange & Settlement', issues: mockPaymentIssues, exports: [
+            title: 'Exchange & Settlement', exports: [
               { label: 'Ledger export (EU)', status: 'queued', when: '3m ago' },
               { label: 'Disputes aging', status: 'running', when: '11m ago' },
             ]
@@ -236,14 +109,14 @@ export const DASHBOARD_CONFIGS: Record<DashboardKey, DashboardConfig> = {
       {
         sectionTitle: 'Stations & Incidents',
         widgets: [
-          { id: 'map-world', size: '2', config: { title: 'Regional Map', subtitle: 'Online/offline by region', data: mockChoropleth } },
+          { id: 'map-world', size: '2', config: { title: 'Regional Map', subtitle: 'Online/offline by region' } },
           { id: 'list-incidents', size: '2', config: { title: 'Top Incidents' } },
         ],
       },
       {
         sectionTitle: 'Handoff & Ops',
         widgets: [
-          { id: 'panel-shift-handoff', size: 'full', config: mockOperatorContext },
+          { id: 'panel-shift-handoff', size: 'full', config: {} },
         ],
       },
       {
@@ -257,7 +130,7 @@ export const DASHBOARD_CONFIGS: Record<DashboardKey, DashboardConfig> = {
         sectionTitle: 'Governance',
         widgets: [
           { id: 'list-audit', size: '2', config: { title: 'Recent Actions' } },
-          { id: 'panel-settlement', size: '2', config: { title: 'Settlement Exceptions', issues: mockPaymentIssues } },
+          { id: 'panel-settlement', size: '2', config: { title: 'Settlement Exceptions' } },
         ],
       },
     ],
@@ -393,7 +266,7 @@ export const DASHBOARD_CONFIGS: Record<DashboardKey, DashboardConfig> = {
       {
         sectionTitle: 'Quick Actions & Network',
         widgets: [
-          { id: 'map-world', size: '2', config: { title: 'Regional Map', subtitle: 'Station metrics', data: mockChoropleth } },
+          { id: 'map-world', size: '2', config: { title: 'Regional Map', subtitle: 'Station metrics' } },
           {
             id: 'panel-quick-actions', size: '2', config: {
               title: 'Operational Control',
@@ -453,7 +326,7 @@ export const DASHBOARD_CONFIGS: Record<DashboardKey, DashboardConfig> = {
       {
         sectionTitle: 'Attendants & Shifts',
         widgets: [
-          { id: 'panel-shift-board', size: '2', config: { staff: mockStaffMembers } },
+          { id: 'panel-shift-board', size: '2', config: {} },
           { id: 'panel-placeholder', size: '2', config: { title: 'Attendant performance', subtitle: 'Check-ins, notes, errors' } },
         ],
       },
@@ -473,30 +346,30 @@ export const DASHBOARD_CONFIGS: Record<DashboardKey, DashboardConfig> = {
   ATTENDANT: {
     title: 'Station Attendant Dashboard',
     kpiRow: [
-      { id: 'kpi-generic', config: { title: 'Assigned station', value: `${mockAttendantStation.name} (${mockAttendantStation.id})` } },
+      { id: 'kpi-generic', config: { title: 'Assigned station', value: 'Central Hub (ST-001)' } },
       { id: 'kpi-generic', config: { title: 'Charges today', value: '24', trend: 'up', delta: '+4 vs yesterday' } },
       { id: 'kpi-generic', config: { title: 'Swaps today', value: '18', trend: 'up', delta: '+2 vs yesterday' } },
-      { id: 'kpi-generic', config: { title: 'Bookings today', value: String(mockAttendantBookings.length) } },
+      { id: 'kpi-generic', config: { title: 'Bookings today', value: '4' } },
     ],
     rows: [
       {
         sectionTitle: 'Station Overview',
         widgets: [
-          { id: 'panel-station-assignment', size: '2', config: { station: mockAttendantStation, metrics: mockAttendantMetrics } },
-          { id: 'panel-bookings-queue', size: '2', config: { stationName: mockAttendantStation.name } },
+          { id: 'panel-station-assignment', size: '2', config: {} },
+          { id: 'panel-bookings-queue', size: '2', config: { stationName: 'Central Hub' } },
         ],
       },
       {
         sectionTitle: 'Charging Operations',
         widgets: [
           { id: 'panel-sessions-console', size: '2', config: { title: 'Live charging sessions', subtitle: 'Active bays for assigned station' } },
-          { id: 'panel-charge-start', size: '2', config: { tips: ['Verify connector', 'Assign bay', 'Confirm rate'], recentScans: mockChargeScans } },
+          { id: 'panel-charge-start', size: '2', config: { tips: ['Verify connector', 'Assign bay', 'Confirm rate'] } },
         ],
       },
       {
         sectionTitle: 'Swap Operations',
         widgets: [
-          { id: 'panel-swap-flow', size: 'full', config: mockSwapWorkflow },
+          { id: 'panel-swap-flow', size: 'full', config: {} },
         ],
       },
     ],

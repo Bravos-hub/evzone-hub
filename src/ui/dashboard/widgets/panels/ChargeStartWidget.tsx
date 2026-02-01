@@ -19,12 +19,18 @@ function scanStatusClass(status: ChargeScan['status']) {
   return status === 'started' ? 'approved' : 'pending'
 }
 
+// Default mock data (Migration from dashboardConfigs.ts)
+const DEFAULT_SCANS: ChargeScan[] = [
+  { chargerId: 'CP-A1', rfid: 'RF-2188', time: '2m ago', status: 'ready' },
+  { chargerId: 'CP-A4', rfid: 'RF-2196', time: '11m ago', status: 'started' },
+]
+
 export function ChargeStartWidget({ config }: WidgetProps<ChargeStartConfig>) {
   const {
     title = 'Start charge session',
     subtitle = 'Scan charger QR or tap RFID to begin',
     tips = [],
-    recentScans = [],
+    recentScans = DEFAULT_SCANS,
   } = config ?? {}
 
   return (

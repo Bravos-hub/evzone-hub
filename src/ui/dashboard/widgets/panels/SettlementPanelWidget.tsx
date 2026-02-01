@@ -22,8 +22,14 @@ function StatusPill({ status }: { status: PaymentIssue['status'] }) {
   return <span className={cls}>{status}</span>
 }
 
+// Default mock data (Migration from dashboardConfigs.ts)
+const DEFAULT_ISSUES: PaymentIssue[] = [
+  { id: 'PAY-771', provider: 'Stripe', type: 'Card auth fail spike', amount: 18240, status: 'Retrying' as const },
+  { id: 'PAY-766', provider: 'Flutterwave', type: 'Reconciliation gap', amount: 9210, status: 'Open' as const },
+]
+
 export function SettlementPanelWidget({ config }: WidgetProps<SettlementPanelConfig>) {
-  const { title = 'Settlement & Payments', subtitle, issues = [], exports = [] } = config ?? {}
+  const { title = 'Settlement & Payments', subtitle, issues = DEFAULT_ISSUES, exports = [] } = config ?? {}
 
   return (
     <Card className="p-0">
