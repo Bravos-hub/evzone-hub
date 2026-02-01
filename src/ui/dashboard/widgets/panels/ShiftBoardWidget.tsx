@@ -16,18 +16,13 @@ export type ShiftBoardConfig = {
     staff: StaffMember[]
 }
 
+import { useTechnicianAvailability } from '@/modules/admin/hooks/useTechnicianAvailability';
+
 export function ShiftBoardWidget({ config }: WidgetProps<ShiftBoardConfig>) {
-    // Default mock data if not provided (Migration from dashboardConfigs.ts)
-    const defaultStaff: StaffMember[] = [
-        { id: 'USR-101', name: 'Sarah Chen', role: 'Lead Attendant', status: 'active' as const, assignment: 'Downtown Hub' },
-        { id: 'USR-102', name: 'Marcus Miller', role: 'Attendant', status: 'active' as const, assignment: 'Downtown Hub' },
-        { id: 'USR-103', name: 'Elena Rodriguez', role: 'Attendant', status: 'break' as const, assignment: 'Westside' },
-        { id: 'USR-104', name: 'Jordan Smith', role: 'Senior Tech', status: 'offline' as const, assignment: 'On Call' },
-    ]
+    const { technicians, isLoading } = useTechnicianAvailability();
+    const { title = 'Shift Board', subtitle = 'Staff currently on duty' } = config ?? {}
 
-    const { title = 'Shift Board', subtitle = 'Staff currently on duty', staff = defaultStaff } = config ?? {}
-
-    const getStatusColor = (status: StaffMember['status']) => {
+    const getStatusColor = (status: string) => {
         switch (status) {
             case 'active': return 'bg-emerald-500'
             case 'break': return 'bg-amber-500'
@@ -35,6 +30,16 @@ export function ShiftBoardWidget({ config }: WidgetProps<ShiftBoardConfig>) {
             default: return 'bg-slate-500'
         }
     }
+
+    if (isLoading) return <Card className="p-4">Loading staff...</Card>;
+
+    const staff = technicians.map(t => ({
+        id: t.userId,
+        name: t.user.name,
+        role: 'Technician', // This could come from user role if available
+        status: t.status as 'active' | 'break' | 'offline',
+        assignment: t.location || 'Unassigned',
+    }));
 
     return (
         <Card className="p-0">

@@ -17,14 +17,8 @@ type Service = {
   responseTime: number
 }
 
-const mockServices: Service[] = [
-  { id: 'SVC-001', name: 'API Gateway', status: 'Operational', uptime: '99.99%', lastCheck: '30s ago', responseTime: 45 },
-  { id: 'SVC-002', name: 'OCPP Backend', status: 'Operational', uptime: '99.95%', lastCheck: '30s ago', responseTime: 120 },
-  { id: 'SVC-003', name: 'Payment Service', status: 'Degraded', uptime: '99.80%', lastCheck: '30s ago', responseTime: 850 },
-  { id: 'SVC-004', name: 'Database Primary', status: 'Operational', uptime: '99.99%', lastCheck: '30s ago', responseTime: 12 },
-  { id: 'SVC-005', name: 'Message Queue', status: 'Operational', uptime: '99.97%', lastCheck: '30s ago', responseTime: 35 },
-  { id: 'SVC-006', name: 'Analytics Pipeline', status: 'Maintenance', uptime: '98.50%', lastCheck: '5m ago', responseTime: 0 },
-]
+const services: Service[] = [] // Connected to HealthModule in future phase
+
 
 // ═══════════════════════════════════════════════════════════════════════════
 // MAIN COMPONENT
@@ -42,9 +36,9 @@ export function SystemHealth() {
   const { user } = useAuthStore()
   const perms = getPermissionsForFeature(user?.role, 'systemHealth')
 
-  const operational = mockServices.filter((s) => s.status === 'Operational').length
-  const degraded = mockServices.filter((s) => s.status === 'Degraded').length
-  const down = mockServices.filter((s) => s.status === 'Down').length
+  const operational = services.filter((s) => s.status === 'Operational').length
+  const degraded = services.filter((s) => s.status === 'Degraded').length
+  const down = services.filter((s) => s.status === 'Down').length
 
   function statusColor(s: ServiceStatus) {
     switch (s) {
@@ -70,7 +64,7 @@ export function SystemHealth() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
         <div className="card">
           <div className="text-xs text-muted">Total Services</div>
-          <div className="text-xl font-bold text-text">{mockServices.length}</div>
+          <div className="text-xl font-bold text-text">{services.length}</div>
         </div>
         <div className="card">
           <div className="text-xs text-muted">Operational</div>
@@ -88,7 +82,8 @@ export function SystemHealth() {
 
       {/* Services Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-        {mockServices.map((s) => (
+        {services.length === 0 && <div className="col-span-full py-12 text-center text-muted">No health data available</div>}
+        {services.map((s) => (
           <div key={s.id} className="card">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">

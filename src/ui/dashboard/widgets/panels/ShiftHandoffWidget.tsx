@@ -4,12 +4,10 @@ import React, { useState } from 'react';
  * Operator Shift Handoff Widget
  */
 // Default mock context if not provided
-const DEFAULT_CONTEXT = {
-    initialNotes: 'Night shift reported minor OCPP instability on CP-B4. Grid voltage stable.',
-}
+const DEFAULT_NOTES = 'No checks pending.';
 
 export function ShiftHandoffWidget({ config }: { config: any }) {
-    const [notes, setNotes] = useState(config?.initialNotes || DEFAULT_CONTEXT.initialNotes);
+    const [notes, setNotes] = useState(config?.initialNotes || DEFAULT_NOTES);
     const [isSaving, setIsSaving] = useState(false);
     const [lastSaved, setLastSaved] = useState<string | null>(null);
 
@@ -34,15 +32,11 @@ export function ShiftHandoffWidget({ config }: { config: any }) {
                     <ul className="text-[13px] space-y-3 flex-1">
                         <li className="flex items-start gap-2.5 text-text/80">
                             <span className="w-1.5 h-1.5 rounded-full bg-accent mt-1.5 flex-shrink-0" />
-                            <span>08:00–16:00 • Central Hub region</span>
+                            <span>Current Shift: 08:00–16:00</span>
                         </li>
                         <li className="flex items-start gap-2.5 text-text/80">
-                            <span className="w-1.5 h-1.5 rounded-full bg-rose-500 mt-1.5 flex-shrink-0" />
-                            <span>Open critical: IN-921 (OCPP timeout)</span>
-                        </li>
-                        <li className="flex items-start gap-2.5 text-text/80">
-                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1.5 flex-shrink-0" />
-                            <span>Escalation: CP-B4 comms pending</span>
+                            <span className="w-1.5 h-1.5 rounded-full bg-ok mt-1.5 flex-shrink-0" />
+                            <span>System Status: Operational</span>
                         </li>
                     </ul>
                 </div>
