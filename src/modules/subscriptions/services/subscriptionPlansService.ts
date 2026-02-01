@@ -1,6 +1,4 @@
-import { API_CONFIG } from '@/core/api/config';
-
-const baseURL = API_CONFIG.baseURL;
+import { apiClient as api } from '@/core/api/client';
 
 export type SubscriptionPlan = {
     id: string;
@@ -14,7 +12,6 @@ export type SubscriptionPlan = {
     isActive: boolean;
     isPublic: boolean;
     isPopular: boolean;
-    limits?: any;
     features?: PlanFeature[];
     permissions?: PlanPermission[];
     createdAt: string;
@@ -23,8 +20,9 @@ export type SubscriptionPlan = {
 
 export type PlanFeature = {
     id: string;
-    name: string;
-    category?: string;
+    key: string;
+    featureValue: string;
+    description?: string;
     order?: number;
 };
 
@@ -32,8 +30,6 @@ export type PlanPermission = {
     id: string;
     resource: string;
     action: string;
-    scope?: string;
-    limit?: number;
 };
 
 export type CreatePlanDto = {
@@ -47,72 +43,37 @@ export type CreatePlanDto = {
     isActive?: boolean;
     isPublic?: boolean;
     isPopular?: boolean;
-    limits?: any;
-    features?: Omit<PlanFeature, 'id'>[];
-    permissions?: Omit<PlanPermission, 'id'>[];
+    features?: { key: string; value: string; description?: string; order?: number }[];
 };
 
 export type UpdatePlanDto = Partial<CreatePlanDto>;
 
 export const subscriptionPlansService = {
     async getAll(filters?: { role?: string; isActive?: boolean; isPublic?: boolean }): Promise<SubscriptionPlan[]> {
-        const params = new URLSearchParams();
-        if (filters?.role) params.append('role', filters.role);
-        if (filters?.isActive !== undefined) params.append('isActive', String(filters.isActive));
-        if (filters?.isPublic !== undefined) params.append('isPublic', String(filters.isPublic));
-
-        const url = `${baseURL}/subscription-plans${params.toString() ? `?${params.toString()}` : ''}`;
-        const response = await fetch(url);
-        if (!response.ok) throw new Error('Failed to fetch subscription plans');
-        return response.json();
+        return await api.get('/subscription-plans', { params: filters } as any);
     },
 
     async getById(id: string): Promise<SubscriptionPlan> {
-        const response = await fetch(`${baseURL}/subscription-plans/${id}`);
-        if (!response.ok) throw new Error('Failed to fetch subscription plan');
-        return response.json();
+        return await api.get(`/subscription-plans/${id}`);
     },
 
     async getByCode(code: string): Promise<SubscriptionPlan> {
-        const response = await fetch(`${baseURL}/subscription-plans/code/${code}`);
-        if (!response.ok) throw new Error('Failed to fetch subscription plan');
-        return response.json();
+        return await api.get(`/subscription-plans/code/${code}`);
     },
 
-    async create(data: CreatePlanDto): Promise<SubscriptionPlan> {
-        const response = await fetch(`${baseURL}/subscription-plans`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data),
-        });
-        if (!response.ok) throw new Error('Failed to create subscription plan');
-        return response.json();
+    async create(planData: CreatePlanDto): Promise<SubscriptionPlan> {
+        return await api.post('/subscription-plans', planData);
     },
 
-    async update(id: string, data: UpdatePlanDto): Promise<SubscriptionPlan> {
-        const response = await fetch(`${baseURL}/subscription-plans/${id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data),
-        });
-        if (!response.ok) throw new Error('Failed to update subscription plan');
-        return response.json();
-    },
-
-    async toggleActive(id: string, isActive: boolean): Promise<SubscriptionPlan> {
-        const response = await fetch(`${baseURL}/subscription-plans/${id}/toggle-active`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ isActive }),
-        });
-        if (!response.ok) throw new Error('Failed to toggle plan status');
-        return response.json();
+    async update(id: string, planData: UpdatePlanDto): Promise<SubscriptionPlan> {
+        return await api.patch(`/subscription-plans/${id}`, planData);
     },
 
     async delete(id: string): Promise<void> {
-        const response = await fetch(`${baseURL}/subscription-plans/${id}`, {
-            method: 'DELETE',
-        });
-        if (!response.ok) throw new Error('Failed to delete subscription plan');
+        await api.delete(`/subscription-plans/${id}`);
     },
+
+    async toggleActive(id: string, isActive: boolean): Promise<SubscriptionPlan> {
+        return await api.patch(`/subscription-plans/${id}`, { isActive });
+    }
 };

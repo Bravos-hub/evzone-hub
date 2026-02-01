@@ -65,3 +65,18 @@ export function useResellerDashboard(startDate?: string, endDate?: string) {
   })
 }
 
+
+export function useRegionalMetrics() {
+  return useQuery({
+    queryKey: ['analytics', 'regions'],
+    queryFn: () => analyticsService.getRegionalMetrics(),
+  })
+}
+
+export function useSystemHealth() {
+  return useQuery({
+    queryKey: ['analytics', 'system-health'],
+    queryFn: () => analyticsService.getSystemHealth(),
+    refetchInterval: 30000,
+  })
+}

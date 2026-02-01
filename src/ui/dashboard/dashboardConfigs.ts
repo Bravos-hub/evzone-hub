@@ -186,8 +186,8 @@ const ADMIN_DASHBOARD_CONFIG: DashboardConfig = {
     },
     {
       widgets: [
-        { id: 'list-incidents', size: '2', config: { title: 'Incidents', incidents: mockIncidents } },
-        { id: 'list-dispatch', size: '2', config: { title: 'Dispatch Queue', items: mockDispatches } },
+        { id: 'list-incidents', size: '2', config: { title: 'Incidents' } },
+        { id: 'list-dispatch', size: '2', config: { title: 'Dispatch Queue' } },
       ],
     },
     {
@@ -200,12 +200,12 @@ const ADMIN_DASHBOARD_CONFIG: DashboardConfig = {
             ]
           }
         },
-        { id: 'panel-health', size: '2', config: { title: 'System Health', items: mockHealth } },
+        { id: 'panel-health', size: '2', config: { title: 'System Health' } },
       ],
     },
     {
       widgets: [
-        { id: 'panel-performance', size: 'full', config: { title: 'Performance Distribution', regions: mockRegions } },
+        { id: 'panel-performance', size: 'full', config: { title: 'Performance Distribution' } },
       ],
     },
   ],
@@ -237,7 +237,7 @@ export const DASHBOARD_CONFIGS: Record<DashboardKey, DashboardConfig> = {
         sectionTitle: 'Stations & Incidents',
         widgets: [
           { id: 'map-world', size: '2', config: { title: 'Regional Map', subtitle: 'Online/offline by region', data: mockChoropleth } },
-          { id: 'list-incidents', size: '2', config: { title: 'Top Incidents', incidents: mockIncidents } },
+          { id: 'list-incidents', size: '2', config: { title: 'Top Incidents' } },
         ],
       },
       {
@@ -249,14 +249,14 @@ export const DASHBOARD_CONFIGS: Record<DashboardKey, DashboardConfig> = {
       {
         sectionTitle: 'Approvals & Dispatch',
         widgets: [
-          { id: 'list-approvals', size: '2', config: { title: 'Approvals Queue', items: mockApprovals } },
-          { id: 'list-dispatch', size: '2', config: { title: 'Dispatch Board', items: mockDispatches } },
+          { id: 'list-approvals', size: '2', config: { title: 'Approvals Queue' } },
+          { id: 'list-dispatch', size: '2', config: { title: 'Dispatch Board' } },
         ],
       },
       {
         sectionTitle: 'Governance',
         widgets: [
-          { id: 'list-audit', size: '2', config: { title: 'Recent Actions', events: mockAuditEvents } },
+          { id: 'list-audit', size: '2', config: { title: 'Recent Actions' } },
           { id: 'panel-settlement', size: '2', config: { title: 'Settlement Exceptions', issues: mockPaymentIssues } },
         ],
       },
@@ -365,7 +365,7 @@ export const DASHBOARD_CONFIGS: Record<DashboardKey, DashboardConfig> = {
         sectionTitle: 'Station Operations',
         widgets: [
           { id: 'panel-placeholder', size: '2', config: { title: 'Station status', subtitle: 'Connectors, queues, alerts' } },
-          { id: 'list-incidents', size: '2', config: { title: 'Station Incidents', incidents: mockIncidents.slice(0, 2) } },
+          { id: 'list-incidents', size: '2', config: { title: 'Station Incidents' } },
         ],
       },
       {
@@ -417,7 +417,7 @@ export const DASHBOARD_CONFIGS: Record<DashboardKey, DashboardConfig> = {
       {
         sectionTitle: 'Operations & Incidents',
         widgets: [
-          { id: 'list-incidents', size: '2', config: { title: 'Active Incidents', incidents: mockIncidents.slice(0, 3) } },
+          { id: 'list-incidents', size: '2', config: { title: 'Active Incidents' } },
           { id: 'chart-bar', size: '2', config: { title: 'Daily Sessions', values: [145, 178, 162, 198, 187, 210, 287], color: '#f77f00', labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] } },
         ],
       },
@@ -446,7 +446,7 @@ export const DASHBOARD_CONFIGS: Record<DashboardKey, DashboardConfig> = {
       {
         sectionTitle: 'Stations Overview & Live Status',
         widgets: [
-          { id: 'panel-stations-status', size: '2', config: { stations: mockStationsStatus } },
+          { id: 'panel-stations-status', size: '2', config: {} },
           { id: 'panel-placeholder', size: '2', config: { title: 'Live ops snapshot', subtitle: 'Sessions, queues, downtime' } },
         ],
       },
@@ -460,8 +460,8 @@ export const DASHBOARD_CONFIGS: Record<DashboardKey, DashboardConfig> = {
       {
         sectionTitle: 'Incidents & Maintenance',
         widgets: [
-          { id: 'list-incidents', size: '2', config: { title: 'Incidents queue', incidents: mockIncidents.slice(0, 2) } },
-          { id: 'list-dispatch', size: '2', config: { title: 'Maintenance requests', items: mockDispatches.slice(0, 2) } },
+          { id: 'list-incidents', size: '2', config: { title: 'Incidents queue' } },
+          { id: 'list-dispatch', size: '2', config: { title: 'Maintenance requests' } },
         ],
       },
     ],
@@ -483,13 +483,13 @@ export const DASHBOARD_CONFIGS: Record<DashboardKey, DashboardConfig> = {
         sectionTitle: 'Station Overview',
         widgets: [
           { id: 'panel-station-assignment', size: '2', config: { station: mockAttendantStation, metrics: mockAttendantMetrics } },
-          { id: 'panel-bookings-queue', size: '2', config: { stationName: mockAttendantStation.name, bookings: mockAttendantBookings } },
+          { id: 'panel-bookings-queue', size: '2', config: { stationName: mockAttendantStation.name } },
         ],
       },
       {
         sectionTitle: 'Charging Operations',
         widgets: [
-          { id: 'panel-sessions-console', size: '2', config: { title: 'Live charging sessions', subtitle: 'Active bays for assigned station', sessions: mockActiveSessions } },
+          { id: 'panel-sessions-console', size: '2', config: { title: 'Live charging sessions', subtitle: 'Active bays for assigned station' } },
           { id: 'panel-charge-start', size: '2', config: { tips: ['Verify connector', 'Assign bay', 'Confirm rate'], recentScans: mockChargeScans } },
         ],
       },
@@ -517,7 +517,7 @@ export const DASHBOARD_CONFIGS: Record<DashboardKey, DashboardConfig> = {
       {
         sectionTitle: 'Job Queue & Priorities',
         widgets: [
-          { id: 'list-dispatch', size: '2', config: { title: 'My jobs list', items: mockDispatches } },
+          { id: 'list-dispatch', size: '2', config: { title: 'My jobs list' } },
           { id: 'panel-placeholder', size: '2', config: { title: 'Job timeline', subtitle: 'New → in progress → done' } },
         ],
       },
@@ -554,7 +554,7 @@ export const DASHBOARD_CONFIGS: Record<DashboardKey, DashboardConfig> = {
       {
         sectionTitle: 'Available Jobs',
         widgets: [
-          { id: 'list-dispatch', size: '2', config: { title: 'Job board', items: mockDispatches } },
+          { id: 'list-dispatch', size: '2', config: { title: 'Job board' } },
           { id: 'panel-placeholder', size: '2', config: { title: 'Job map', subtitle: 'Nearby opportunities' } },
         ],
       },
@@ -677,10 +677,10 @@ function generateDashboardFromPermissions(roleKey: DashboardKey): DashboardConfi
   // Lists
   const listWidgets: any[] = []
   if (hasPermission(role, 'incidents', 'access')) {
-    listWidgets.push({ id: 'list-incidents', size: '2', config: { title: 'Recent Incidents', incidents: [] } })
+    listWidgets.push({ id: 'list-incidents', size: '2', config: { title: 'Recent Incidents' } })
   }
   if (hasPermission(role, 'techRequests', 'access')) {
-    listWidgets.push({ id: 'list-dispatch', size: '2', config: { title: 'Tech Requests', items: [] } })
+    listWidgets.push({ id: 'list-dispatch', size: '2', config: { title: 'Tech Requests' } })
   }
 
   // Assemble Rows

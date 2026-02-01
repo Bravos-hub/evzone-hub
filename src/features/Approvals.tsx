@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { useAuthStore } from '@/core/auth/authStore'
 import { getPermissionsForFeature } from '@/constants/permissions'
+import { useApprovals, useApproveApplication, useRejectApplication, useApproveKyc, useRejectKyc } from '@/modules/approvals/hooks/useApprovals'
 import { ROLE_LABELS } from '@/constants/roles'
 import type { Role } from '@/core/auth/types'
 
@@ -30,78 +31,8 @@ type Application = {
 // MOCK DATA
 // ═══════════════════════════════════════════════════════════════════════════
 
-const mockApplications: Application[] = [
-  {
-    id: 'APP-00121',
-    role: 'STATION_OWNER',
-    org: 'Volt Mobility Ltd',
-    contact: 'Sarah',
-    email: 'sarah@volt.co',
-    country: 'UGA',
-    site: 'Central Hub',
-    plan: 'owner-growth',
-    submittedAt: '2025-11-01 10:22',
-    status: 'Pending',
-    notes: '',
-    docs: [{ id: 'D-101', name: 'Company Certificate.pdf', type: 'pdf', url: '#' }],
-  },
-  {
-    id: 'APP-00128',
-    role: 'EVZONE_OPERATOR',
-    org: 'SunRun Ops',
-    contact: 'Jon',
-    email: 'jon@sunrun.com',
-    country: 'UGA',
-    site: 'City Lot A',
-    plan: 'op-plus',
-    submittedAt: '2025-11-03 14:05',
-    status: 'SendBack',
-    notes: 'Upload TIN',
-    docs: [{ id: 'D-103', name: 'ID Card.png', type: 'image', url: '#' }],
-  },
-  {
-    id: 'APP-00135',
-    role: 'SITE_OWNER',
-    org: 'Mall Holdings',
-    contact: 'Grace',
-    email: 'grace@mall.com',
-    country: 'UGA',
-    site: 'City Mall Roof',
-    plan: 'so-pro',
-    submittedAt: '2025-11-04 09:16',
-    status: 'Pending',
-    notes: '',
-    docs: [{ id: 'D-104', name: 'Lease Draft.pdf', type: 'pdf', url: '#' }],
-  },
-  {
-    id: 'APP-00142',
-    role: 'TECHNICIAN_PUBLIC',
-    org: '—',
-    contact: 'Allan',
-    email: 'allan@tech.me',
-    country: 'UGA',
-    site: '—',
-    plan: 'tech-free',
-    submittedAt: '2025-11-04 18:49',
-    status: 'Pending',
-    notes: '',
-    docs: [],
-  },
-  {
-    id: 'APP-00105',
-    role: 'STATION_OWNER',
-    org: 'GridCity Ltd',
-    contact: 'Ali',
-    email: 'ali@grid.city',
-    country: 'UGA',
-    site: 'Warehouse Lot',
-    plan: 'owner-enterprise',
-    submittedAt: '2025-10-28 11:40',
-    status: 'Rejected',
-    notes: 'Incomplete documents',
-    docs: [{ id: 'D-105', name: 'Bank Letter.pdf', type: 'pdf', url: '#' }],
-  },
-]
+
+// Mock data removed in favor of verify hooks
 
 // ═══════════════════════════════════════════════════════════════════════════
 // MAIN COMPONENT
@@ -119,15 +50,47 @@ export function Approvals() {
   const { user } = useAuthStore()
   const perms = getPermissionsForFeature(user?.role, 'approvals')
 
-  const [rows, setRows] = useState<Application[]>([])
+  /* 
+   * INTEGRATED HOOKS
+   */
+  const { data: approvalItems = [], isLoading } = useApprovals({
+    type: undefined // Fetch all types
+  })
+
+  const approveMutation = useApproveApplication()
+  const rejectMutation = useRejectApplication() // We might need specific hooks per type, but let's assume Application hook covers general requests for now or we map it.
+  // Actually, useApprovals returns different types.
+  // If type is KYC, use useApproveKyc. If APPLICATION, use useApproveApplication.
+  const approveKycMutation = useApproveKyc()
+  const rejectKycMutation = useRejectKyc()
+
+  // Map API data to UI format
+  // We assume 'details' contains the application specific fields
+  const rows = useMemo(() => {
+    return approvalItems.map(item => ({
+      id: item.id,
+      role: (item.details?.role || 'STATION_OWNER') as Role,
+      org: item.details?.org || '—',
+      contact: item.applicantName || item.details?.contact || 'Unknown',
+      email: item.details?.email || '—',
+      country: item.details?.country || '—',
+      site: item.details?.site || '—',
+      plan: item.details?.plan || '—',
+      submittedAt: new Date(item.submittedAt).toLocaleString(),
+      status: (item.status === 'PENDING' ? 'Pending' : item.status === 'APPROVED' ? 'Approved' : 'Rejected') as ApprovalStatus, // Map backend UPPERCASE to Title Case
+      notes: item.reviewNotes || '',
+      docs: item.details?.docs || [],
+      originalType: item.type, // Keep track for actions
+      applicantId: item.applicantId
+    }))
+  }, [approvalItems])
+
   const [q, setQ] = useState('')
   const [roleFilter, setRoleFilter] = useState<Role | 'All'>('All')
   const [statusFilter, setStatusFilter] = useState<ApprovalStatus | 'All'>('Pending')
   const [openId, setOpenId] = useState<string | null>(null)
 
-  useEffect(() => {
-    setRows(mockApplications)
-  }, [])
+  // Remove manual useEffect for mock data
 
   const filtered = useMemo(() => {
     return rows
@@ -154,10 +117,23 @@ export function Approvals() {
   }
 
   async function handleAction(id: string, action: 'approve' | 'reject' | 'sendback') {
-    const newStatus: ApprovalStatus = action === 'approve' ? 'Approved' : action === 'reject' ? 'Rejected' : 'SendBack'
-    setRows((list) => list.map((r) => (r.id === id ? { ...r, status: newStatus } : r)))
-    setOpenId(null)
-    alert(`${action} ${id} (demo)`)
+    const row = rows.find(r => r.id === id);
+    if (!row) return;
+
+    try {
+      if (row.originalType === 'KYC') {
+        if (action === 'approve') await approveKycMutation.mutateAsync({ userId: row.applicantId, reviewedBy: user?.id || 'Admin' });
+        else if (action === 'reject') await rejectKycMutation.mutateAsync({ userId: row.applicantId, reviewedBy: user?.id || 'Admin', notes: 'Rejected via dashboard' });
+      } else {
+        // Default to Application
+        if (action === 'approve') await approveMutation.mutateAsync({ applicationId: id, reviewedBy: user?.id || 'Admin' });
+        else if (action === 'reject') await rejectMutation.mutateAsync({ applicationId: id, reviewedBy: user?.id || 'Admin', notes: 'Rejected via dashboard' });
+      }
+      setOpenId(null)
+    } catch (e) {
+      console.error("Action failed", e);
+      alert("Failed to update status");
+    }
   }
 
   return (

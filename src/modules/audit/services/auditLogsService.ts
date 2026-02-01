@@ -1,6 +1,4 @@
-import { API_CONFIG } from '@/core/api/config';
-
-const baseURL = API_CONFIG.baseURL;
+import { apiClient as api } from '@/core/api/client';
 
 export type AuditLog = {
     id: string;
@@ -30,32 +28,14 @@ export type AuditLogFilters = {
 
 export const auditLogsService = {
     async getAll(filters?: AuditLogFilters): Promise<{ data: AuditLog[]; pagination: any }> {
-        const params = new URLSearchParams();
-        if (filters?.actor) params.append('actor', filters.actor);
-        if (filters?.action) params.append('action', filters.action);
-        if (filters?.resource) params.append('resource', filters.resource);
-        if (filters?.status) params.append('status', filters.status);
-        if (filters?.startDate) params.append('startDate', filters.startDate);
-        if (filters?.endDate) params.append('endDate', filters.endDate);
-        if (filters?.page) params.append('page', String(filters.page));
-        if (filters?.limit) params.append('limit', String(filters.limit));
-
-        const url = `${baseURL}/audit-logs${params.toString() ? `?${params.toString()}` : ''}`;
-        const response = await fetch(url);
-        if (!response.ok) throw new Error('Failed to fetch audit logs');
-        return response.json();
+        return await api.get('/audit-logs', { params: filters } as any);
     },
 
     async getByResource(resource: string, resourceId: string): Promise<AuditLog[]> {
-        const response = await fetch(`${baseURL}/audit-logs/resource/${resource}/${resourceId}`);
-        if (!response.ok) throw new Error('Failed to fetch audit logs for resource');
-        return response.json();
+        return await api.get(`/audit-logs/resource/${resource}/${resourceId}`);
     },
 
     async getByActor(actor: string, limit?: number): Promise<AuditLog[]> {
-        const url = `${baseURL}/audit-logs/actor/${actor}${limit ? `?limit=${limit}` : ''}`;
-        const response = await fetch(url);
-        if (!response.ok) throw new Error('Failed to fetch audit logs for actor');
-        return response.json();
+        return await api.get(`/audit-logs/actor/${actor}`, { params: { limit } } as any);
     },
 };

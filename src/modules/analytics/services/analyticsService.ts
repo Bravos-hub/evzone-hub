@@ -95,5 +95,18 @@ export const analyticsService = {
 
     return response.blob()
   },
-}
 
+  /**
+   * Get regional metrics
+   */
+  async getRegionalMetrics(): Promise<unknown> {
+    return apiClient.get<unknown>('/analytics/regions')
+  },
+
+  /**
+   * Get system health metrics
+   */
+  async getSystemHealth(): Promise<unknown> {
+    return apiClient.get<unknown>('/analytics/system-health')
+  },
+}

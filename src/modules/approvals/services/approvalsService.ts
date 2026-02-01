@@ -1,6 +1,4 @@
-import { API_CONFIG } from '@/core/api/config';
-
-const baseURL = API_CONFIG.baseURL;
+import { apiClient as api } from '@/core/api/client';
 
 export type ApprovalType = 'KYC' | 'ACCESS_REQUEST' | 'DOCUMENT_VERIFICATION' | 'TENANT_APPLICATION';
 export type ApprovalStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
@@ -21,52 +19,23 @@ export type ApprovalItem = {
 
 export const approvalsService = {
     async getPendingApprovals(filters?: { type?: ApprovalType }): Promise<ApprovalItem[]> {
-        const params = new URLSearchParams();
-        if (filters?.type) params.append('type', filters.type);
-
-        const url = `${baseURL}/approvals${params.toString() ? `?${params.toString()}` : ''}`;
-        const response = await fetch(url);
-        if (!response.ok) throw new Error('Failed to fetch approvals');
-        return response.json();
+        return await api.get('/approvals', { params: filters } as any);
     },
 
     async approveKyc(userId: string, reviewedBy: string, notes?: string): Promise<any> {
-        const response = await fetch(`${baseURL}/approvals/kyc/${userId}/approve`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ reviewedBy, notes }),
-        });
-        if (!response.ok) throw new Error('Failed to approve KYC');
-        return response.json();
+        return await api.post(`/approvals/kyc/${userId}/approve`, { reviewedBy, notes });
     },
 
     async rejectKyc(userId: string, reviewedBy: string, notes: string): Promise<any> {
-        const response = await fetch(`${baseURL}/approvals/kyc/${userId}/reject`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ reviewedBy, notes }),
-        });
-        if (!response.ok) throw new Error('Failed to reject KYC');
-        return response.json();
+        return await api.post(`/approvals/kyc/${userId}/reject`, { reviewedBy, notes });
     },
 
     async approveApplication(applicationId: string, reviewedBy: string, notes?: string): Promise<any> {
-        const response = await fetch(`${baseURL}/approvals/application/${applicationId}/approve`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ reviewedBy, notes }),
-        });
-        if (!response.ok) throw new Error('Failed to approve application');
-        return response.json();
+        // Assuming backend expects request ID or resource ID. Service uses 'applicationId' as ID.
+        return await api.post(`/approvals/application/${applicationId}/approve`, { reviewedBy, notes });
     },
 
     async rejectApplication(applicationId: string, reviewedBy: string, notes: string): Promise<any> {
-        const response = await fetch(`${baseURL}/approvals/application/${applicationId}/reject`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ reviewedBy, notes }),
-        });
-        if (!response.ok) throw new Error('Failed to reject application');
-        return response.json();
+        return await api.post(`/approvals/application/${applicationId}/reject`, { reviewedBy, notes });
     },
 };

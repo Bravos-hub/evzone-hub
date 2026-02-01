@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { useAuthStore } from '@/core/auth/authStore'
 import { getPermissionsForFeature } from '@/constants/permissions'
-import { useSubscriptionPlans } from '@/modules/subscriptions/hooks/useSubscriptionPlans'
+import { useSubscriptionPlans, useCreateSubscriptionPlan, useDeleteSubscriptionPlan } from '@/modules/subscriptions/hooks/useSubscriptionPlans'
 
 type PlanStatus = 'Active' | 'Deprecated'
 
@@ -18,12 +18,49 @@ export function Plans() {
     isActive: status === 'Active' ? true : status === 'Deprecated' ? false : undefined,
   })
 
+  const createMutation = useCreateSubscriptionPlan()
+  const deleteMutation = useDeleteSubscriptionPlan()
+
   const rows = useMemo(() => {
     if (!plans) return []
     return plans
-      .filter((p) => (status === 'All' ? true : (p.isActive ? 'Active' : 'Deprecated') === status))
-      .filter((p) => (target === 'All' ? true : p.role === target))
+      .filter((p: any) => (status === 'All' ? true : (p.isActive ? 'Active' : 'Deprecated') === status))
+      .filter((p: any) => (target === 'All' ? true : p.role === target))
   }, [plans, status, target])
+
+  const handleDelete = async (id: string) => {
+    if (confirm('Are you sure you want to delete this plan?')) {
+      try {
+        await deleteMutation.mutateAsync(id)
+      } catch (err) {
+        alert('Failed to delete plan')
+      }
+    }
+  }
+
+  const handleCreate = async () => {
+    // Demo creation for now, ideally opens a modal
+    const code = prompt('Enter Plan Code (unique):')
+    if (!code) return
+
+    try {
+      await createMutation.mutateAsync({
+        code,
+        name: 'New Plan',
+        description: 'Created via UI',
+        role: 'STATION_OWNER',
+        price: 99.99,
+        currency: 'USD',
+        billingCycle: 'MONTHLY',
+        isActive: true,
+        isPublic: true,
+        isPopular: false,
+        features: []
+      })
+    } catch (err) {
+      alert('Failed to create plan')
+    }
+  }
 
 
   return (
@@ -46,8 +83,8 @@ export function Plans() {
         {/* Actions */}
         {perms.create && (
           <div className="flex items-center gap-2">
-            <button className="btn secondary" onClick={() => alert('Create plan (mock)')}>
-              + Create plan
+            <button className="btn secondary" onClick={handleCreate} disabled={createMutation.isPending}>
+              {createMutation.isPending ? 'Creating...' : '+ Create plan'}
             </button>
           </div>
         )}
@@ -59,7 +96,7 @@ export function Plans() {
         {/* Cards */}
         {!isLoading && !error && (
           <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {rows.map((p) => (
+            {rows.map((p: any) => (
               <div key={p.id} className="card flex flex-col gap-3">
                 <div className="flex items-center justify-between">
                   <div>
@@ -78,8 +115,8 @@ export function Plans() {
                 <div className="text-sm text-muted">{p.description}</div>
                 {p.features && p.features.length > 0 && (
                   <ul className="text-sm list-disc pl-5 space-y-1">
-                    {p.features.map((f) => (
-                      <li key={f.id}>{f.name}</li>
+                    {p.features.map((f: any) => (
+                      <li key={f.id || f.key}>{f.name || f.featureValue}</li>
                     ))}
                   </ul>
                 )}
@@ -90,7 +127,7 @@ export function Plans() {
                     </button>
                   )}
                   {perms.delete && (
-                    <button className="btn danger" onClick={() => alert(`Delete plan ${p.id} (API integration pending)`)}>
+                    <button className="btn danger" onClick={() => handleDelete(p.id)} disabled={deleteMutation.isPending}>
                       Delete
                     </button>
                   )}
