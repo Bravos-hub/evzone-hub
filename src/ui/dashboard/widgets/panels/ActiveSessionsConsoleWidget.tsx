@@ -19,9 +19,7 @@ export function ActiveSessionsConsoleWidget({ config }: WidgetProps<ActiveSessio
     } = config ?? {}
 
     // Fetch active sessions from API
-    const { data: sessions, isLoading } = useSessions({
-        status: statusFilter || 'ACTIVE',
-    })
+    const { data: sessions, isLoading } = useActiveSessions()
 
     const activeSessions = useMemo(() => {
         if (!sessions) return []
