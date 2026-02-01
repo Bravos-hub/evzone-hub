@@ -189,7 +189,7 @@ export function Approvals() {
           />
           <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value as Role | 'All')} className="select">
             <option value="All">All Roles</option>
-            <option value="OWNER">{ROLE_LABELS.OWNER}</option>
+            <option value="STATION_OWNER">{ROLE_LABELS.STATION_OWNER}</option>
             <option value="EVZONE_OPERATOR">{ROLE_LABELS.EVZONE_OPERATOR}</option>
             <option value="SITE_OWNER">{ROLE_LABELS.SITE_OWNER}</option>
             <option value="TECHNICIAN_PUBLIC">{ROLE_LABELS.TECHNICIAN_PUBLIC}</option>

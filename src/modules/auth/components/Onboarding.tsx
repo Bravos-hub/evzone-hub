@@ -19,7 +19,7 @@ const ROLES = [
 ] as const
 
 const PLANS: Record<OnboardingRole, { code: string; name: string; price: string; features: string[] }[]> = {
-  owner: [
+  STATION_OWNER: [
     { code: 'owner-starter', name: 'Starter', price: 'Free', features: ['Up to 5 chargers', 'Basic reporting', 'Email support'] },
     { code: 'owner-growth', name: 'Growth', price: '$49/mo', features: ['Up to 25 chargers', 'Smart charging', 'Priority support'] },
     { code: 'owner-enterprise', name: 'Enterprise', price: 'Custom', features: ['Unlimited chargers', 'SLA guarantees', 'Dedicated account manager'] },
