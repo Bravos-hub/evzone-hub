@@ -90,6 +90,7 @@ export interface UpdateUserRequest {
   organizationId?: string
   ownerCapability?: OwnerCapability
   assignedStations?: string[]
+  status?: 'Active' | 'Pending' | 'Suspended' | 'Inactive' | 'Invited'
 }
 
 // Station Types

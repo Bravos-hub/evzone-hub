@@ -10,6 +10,7 @@ import type { AuthResponse } from './types';
 type RequestOptions = RequestInit & {
   skipAuth?: boolean;
   skipRefresh?: boolean;
+  params?: Record<string, any>;
 };
 
 class ApiClient {
@@ -79,14 +80,28 @@ class ApiClient {
   /**
    * Make API request with automatic cookie handling
    */
-  async request<T>(
+  async request<T = any>(
     endpoint: string,
     options: RequestOptions = {}
   ): Promise<T> {
-    const { skipAuth = false, skipRefresh = false, ...fetchOptions } = options;
+    const { skipAuth = false, skipRefresh = false, params, ...fetchOptions } = options;
 
     // Build full URL
-    const url = endpoint.startsWith('http') ? endpoint : `${this.baseURL}${endpoint}`;
+    let url = endpoint.startsWith('http') ? endpoint : `${this.baseURL}${endpoint}`;
+
+    // Append query params if present
+    if (params) {
+      const qs = new URLSearchParams();
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          qs.append(key, String(value));
+        }
+      });
+      const queryString = qs.toString();
+      if (queryString) {
+        url += (url.includes('?') ? '&' : '?') + queryString;
+      }
+    }
 
     // Prepare headers
     const headers = new Headers(fetchOptions.headers);
@@ -167,14 +182,14 @@ class ApiClient {
   /**
    * GET request
    */
-  get<T>(endpoint: string, options?: RequestOptions): Promise<T> {
+  get<T = any>(endpoint: string, options?: RequestOptions): Promise<T> {
     return this.request<T>(endpoint, { ...options, method: 'GET' });
   }
 
   /**
    * POST request
    */
-  post<T>(endpoint: string, data?: unknown, options?: RequestOptions): Promise<T> {
+  post<T = any>(endpoint: string, data?: unknown, options?: RequestOptions): Promise<T> {
     return this.request<T>(endpoint, {
       ...options,
       method: 'POST',
@@ -185,7 +200,7 @@ class ApiClient {
   /**
    * PATCH request
    */
-  patch<T>(endpoint: string, data?: unknown, options?: RequestOptions): Promise<T> {
+  patch<T = any>(endpoint: string, data?: unknown, options?: RequestOptions): Promise<T> {
     return this.request<T>(endpoint, {
       ...options,
       method: 'PATCH',
@@ -196,7 +211,7 @@ class ApiClient {
   /**
    * PUT request
    */
-  put<T>(endpoint: string, data?: unknown, options?: RequestOptions): Promise<T> {
+  put<T = any>(endpoint: string, data?: unknown, options?: RequestOptions): Promise<T> {
     return this.request<T>(endpoint, {
       ...options,
       method: 'PUT',
@@ -207,7 +222,7 @@ class ApiClient {
   /**
    * DELETE request
    */
-  delete<T>(endpoint: string, options?: RequestOptions): Promise<T> {
+  delete<T = any>(endpoint: string, options?: RequestOptions): Promise<T> {
     return this.request<T>(endpoint, { ...options, method: 'DELETE' });
   }
 }

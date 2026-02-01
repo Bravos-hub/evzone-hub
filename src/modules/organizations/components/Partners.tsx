@@ -7,9 +7,7 @@ import { hasPermission } from '@/constants/permissions'
    RBAC: Platform admins and operators
 ───────────────────────────────────────────────────────────────────────────── */
 
-type PartnerStatus = 'Connected' | 'Pending' | 'Error'
-type PartnerRole = 'CPO' | 'EMSP'
-type OCPIModule = 'Locations' | 'Sessions' | 'CDRs' | 'Tariffs'
+
 
 /* import { Partners } from ... no, in same file */
 import { usePartners } from '../hooks/usePartners'

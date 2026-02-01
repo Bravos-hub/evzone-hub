@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { useAuthStore } from '@/core/auth/authStore'
 import { getPermissionsForFeature } from '@/constants/permissions'
-import { useTechnicianJobs } from './hooks/useTechnicianJobs'
+import { useTechnicianJobs } from '../hooks/useTechnicianJobs'
 import type { TechnicianJob } from '@/modules/operators/services/techniciansService'
 
 type JobStatus = 'Available' | 'Accepted' | 'In Progress' | 'Completed' | 'Cancelled'
