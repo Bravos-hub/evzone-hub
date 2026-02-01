@@ -49,68 +49,6 @@ const severities: Array<Severity | 'All'> = ['All', 'SEV1', 'SEV2', 'SEV3', 'SEV
 const statuses: Array<IncidentStatus | 'All'> = ['All', 'Investigating', 'Identified', 'Mitigating', 'Monitoring', 'Resolved']
 const impacts: Array<Impact | 'All'> = ['All', 'Charging', 'Swapping', 'Payments', 'Auth', 'Fleet', 'Other']
 
-const mockIncidents: Incident[] = [
-  {
-    id: 'INC-2401',
-    title: 'Mobile money confirmations delayed',
-    status: 'Investigating',
-    severity: 'SEV1',
-    impact: 'Payments',
-    region: 'AFRICA',
-    org: '—',
-    commander: 'SRE Oncall',
-    createdAt: '2025-12-24 09:25',
-    updatedAt: '2025-12-24 09:42',
-    summary: 'Spike in top-ups not reflecting. Suspected payment webhook delays.',
-    affectedStationsCount: 0,
-    eta: 'Unknown',
-  },
-  {
-    id: 'INC-2392',
-    title: 'Charging sessions stuck at starting',
-    status: 'Mitigating',
-    severity: 'SEV2',
-    impact: 'Charging',
-    region: 'AFRICA',
-    org: 'Volt Mobility',
-    commander: 'Operator EA',
-    createdAt: '2025-12-20 10:30',
-    updatedAt: '2025-12-24 08:59',
-    summary: 'Partial outage affecting session state transitions.',
-    affectedStationsCount: 3,
-    eta: '2h',
-  },
-  {
-    id: 'INC-2384',
-    title: 'Swap bay door unlock failures',
-    status: 'Monitoring',
-    severity: 'SEV2',
-    impact: 'Swapping',
-    region: 'AFRICA',
-    org: 'Volt Mobility',
-    commander: 'Support L2',
-    createdAt: '2025-12-18 16:10',
-    updatedAt: '2025-12-23 20:05',
-    summary: 'Vendor patch applied. Monitoring recurrence.',
-    affectedStationsCount: 1,
-    eta: '4h',
-  },
-  {
-    id: 'INC-2350',
-    title: 'OCPP heartbeat timeouts Berlin',
-    status: 'Resolved',
-    severity: 'SEV3',
-    impact: 'Charging',
-    region: 'EUROPE',
-    org: 'Mall Holdings',
-    commander: 'SRE Oncall',
-    createdAt: '2025-12-15 14:20',
-    updatedAt: '2025-12-16 09:00',
-    summary: 'Network configuration issue resolved.',
-    affectedStationsCount: 5,
-    eta: '—',
-  },
-]
 
 // ═══════════════════════════════════════════════════════════════════════════
 // MAIN COMPONENT

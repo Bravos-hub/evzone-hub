@@ -16,29 +16,58 @@ type Listing = {
   rating?: number
 }
 
-const mockListings: Listing[] = [
-  { id: 'OP-001', kind: 'Operators', name: 'VoltOps Ltd', region: 'AFRICA', city: 'Kampala', capacity: 200 },
-  { id: 'OP-002', kind: 'Operators', name: 'GridManaged', region: 'EUROPE', city: 'Berlin', capacity: 120 },
-  { id: 'SITE-101', kind: 'Sites', name: 'City Mall Rooftop', region: 'AFRICA', city: 'Kampala', capacity: 5 },
-  { id: 'SITE-203', kind: 'Sites', name: 'Tech Park Lot', region: 'AFRICA', city: 'Nairobi', capacity: 8 },
-  { id: 'TECH-11', kind: 'Technicians', name: 'AmpCrew Techs', region: 'AFRICA', city: 'Nairobi', skills: ['OCPP', 'HVAC'], rating: 4.7 },
-  { id: 'TECH-22', kind: 'Technicians', name: 'Partner-X', region: 'EUROPE', city: 'Berlin', skills: ['Battery', 'Swap'], rating: 4.5 },
-]
+import { useOrganizations } from '@/modules/organizations/hooks/useOrganizations'
+import { useSites } from '@/modules/sites/hooks/useSites'
 
 export function Marketplace() {
   const { user } = useAuthStore()
-  const perms = getPermissionsForFeature(user?.role, 'marketplace' as any) // permissive; adjust if added to permissions
+  const perms = getPermissionsForFeature(user?.role, 'marketplace' as any)
+
+  const { data: sitesData, isLoading: sitesLoading } = useSites()
+  const { data: orgsData, isLoading: orgsLoading } = useOrganizations()
 
   const [kind, setKind] = useState<ListingKind | 'All'>('All')
   const [region, setRegion] = useState<'ALL' | string>('ALL')
   const [q, setQ] = useState('')
 
+  const listings: Listing[] = useMemo(() => {
+    const list: Listing[] = []
+
+    if (sitesData) {
+      sitesData.forEach((site) => {
+        list.push({
+          id: site.id,
+          kind: 'Sites',
+          name: site.name,
+          region: 'AFRICA', // Default or derive from site address/country
+          city: site.address.split(',')[1]?.trim() || 'Unknown',
+          capacity: site.parkingBays || 0,
+        })
+      })
+    }
+
+    if (orgsData) {
+      orgsData.forEach((org: any) => {
+        list.push({
+          id: org.id,
+          kind: 'Operators',
+          name: org.name,
+          region: org.region || 'AFRICA',
+          city: org.country || 'Unknown',
+          capacity: org._count?.sites || 0,
+        })
+      })
+    }
+
+    return list
+  }, [sitesData, orgsData])
+
   const rows = useMemo(() => {
-    return mockListings
+    return listings
       .filter((l) => (kind === 'All' ? true : l.kind === kind))
       .filter((l) => (region === 'ALL' ? true : l.region === region))
       .filter((l) => (q ? (l.name + ' ' + l.city).toLowerCase().includes(q.toLowerCase()) : true))
-  }, [kind, region, q])
+  }, [listings, kind, region, q])
 
   return (
     <DashboardLayout pageTitle="Marketplace">
@@ -60,6 +89,12 @@ export function Marketplace() {
         </div>
 
         <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-3">
+          {(sitesLoading || orgsLoading) && (
+            <div className="col-span-full text-center py-8 text-muted">Loading marketplace...</div>
+          )}
+          {!sitesLoading && !orgsLoading && rows.length === 0 && (
+            <div className="col-span-full text-center py-8 text-muted">No listings found</div>
+          )}
           {rows.map((l) => (
             <div key={l.id} className="card space-y-2">
               <div className="flex items-center justify-between">

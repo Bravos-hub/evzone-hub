@@ -33,41 +33,20 @@ type GeneratedReport = {
 // MOCK DATA
 // ═══════════════════════════════════════════════════════════════════════════
 
-const mockTemplates: ReportTemplate[] = [
-  { id: 'TPL-001', name: 'Monthly Revenue Summary', type: 'Revenue', description: 'Revenue breakdown by station and region', lastGenerated: '2024-12-01', frequency: 'Monthly' },
-  { id: 'TPL-002', name: 'Session Analytics', type: 'Sessions', description: 'Session counts, durations, and completion rates', lastGenerated: '2024-12-24', frequency: 'Weekly' },
-  { id: 'TPL-003', name: 'Station Utilization', type: 'Utilization', description: 'Utilization percentages and peak hours', lastGenerated: '2024-12-23', frequency: 'Daily' },
-  { id: 'TPL-004', name: 'Incident Report', type: 'Incidents', description: 'All incidents with resolution times', lastGenerated: '2024-12-24', frequency: 'On-demand' },
-  { id: 'TPL-005', name: 'Compliance Audit', type: 'Compliance', description: 'Regulatory compliance status', lastGenerated: '2024-11-30', frequency: 'Monthly' },
-]
+import { useReportTemplates, useGeneratedReports } from '@/modules/analytics/hooks/useReports'
 
-const mockReports: GeneratedReport[] = [
-  { id: 'RPT-001', name: 'November Revenue Summary', type: 'Revenue', format: 'PDF', generatedAt: '2024-12-01 09:00', size: '2.4 MB', generatedBy: 'System' },
-  { id: 'RPT-002', name: 'Week 51 Sessions', type: 'Sessions', format: 'Excel', generatedAt: '2024-12-24 06:00', size: '1.1 MB', generatedBy: 'System' },
-  { id: 'RPT-003', name: 'Daily Utilization Dec 23', type: 'Utilization', format: 'CSV', generatedAt: '2024-12-24 00:05', size: '450 KB', generatedBy: 'System' },
-]
-
-// ═══════════════════════════════════════════════════════════════════════════
-// MAIN COMPONENT
-// ═══════════════════════════════════════════════════════════════════════════
-
-/**
- * Reports Page - Unified for all roles
- * 
- * RBAC Controls:
- * - viewAll: ADMIN, OPERATOR see all reports
- * - export: ADMIN, OPERATOR, OWNER can export
- * - schedule: ADMIN, OPERATOR can schedule
- */
 export function Reports() {
   const { user } = useAuthStore()
   const perms = getPermissionsForFeature(user?.role, 'reports')
 
+  const { data: templates } = useReportTemplates()
+  const { data: reports } = useGeneratedReports()
+
   const [tab, setTab] = useState<'templates' | 'generated'>('templates')
   const [typeFilter, setTypeFilter] = useState<ReportType | 'All'>('All')
 
-  const filteredTemplates = mockTemplates.filter((t) => (typeFilter === 'All' ? true : t.type === typeFilter))
-  const filteredReports = mockReports.filter((r) => (typeFilter === 'All' ? true : r.type === typeFilter))
+  const filteredTemplates = (templates || []).filter((t: any) => (typeFilter === 'All' ? true : t.type === typeFilter))
+  const filteredReports = (reports || []).filter((r: any) => (typeFilter === 'All' ? true : r.type === typeFilter))
 
   return (
     <DashboardLayout pageTitle="Reports & Exports">

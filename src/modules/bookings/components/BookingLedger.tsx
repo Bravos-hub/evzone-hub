@@ -26,52 +26,38 @@ type LedgerRow = {
   } | null
 }
 
-const mockRows: LedgerRow[] = [
-  {
-    id: 'BK-1001',
-    station: 'SS-701',
-    type: 'booking',
-    booking: { amount: 0.3, method: 'MobileMoney', status: 'Used' },
-    energy: { unit: 'percent', value: 18, amount: 1512, currency: 'UGX', method: 'AtStation:MobileMoney' },
-  },
-  {
-    id: 'WI-5555',
-    station: 'SS-701',
-    type: 'walkin',
-    booking: null,
-    energy: { unit: 'kWh', value: 0.4, amount: 0.06, currency: 'USD', method: 'AtStation:NFC' },
-  },
-  {
-    id: 'BK-1002',
-    station: 'SS-702',
-    type: 'booking',
-    booking: { amount: 0.45, method: 'Card', status: 'Used' },
-    energy: { unit: 'kWh', value: 0.42, amount: 0.08, currency: 'USD', method: 'AtStation:NFC' },
-  },
-]
+import { useBookings } from '@/modules/bookings/hooks/useBookings'
 
-function sum(arr: LedgerRow[], selector: (r: LedgerRow) => number): number {
-  return arr.reduce((acc, r) => acc + selector(r), 0)
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// MAIN COMPONENT
-// ═══════════════════════════════════════════════════════════════════════════
-
-/**
- * Booking Ledger - Owner feature
- * Shows booking vs energy revenue split with CSV exports
- */
 export function BookingLedger() {
   const { user } = useAuthStore()
   const perms = getPermissionsForFeature(user?.role, 'bookings')
+  const { data: bookings, isLoading } = useBookings()
+
+  const rows = useMemo(() => {
+    if (!bookings) return []
+    return bookings.map((b: any): LedgerRow => ({
+      id: b.id,
+      station: b.stationId || 'Unknown',
+      type: 'booking',
+      booking: {
+        amount: 0, // Placeholder as API doesn't return price yet
+        method: 'App',
+        status: b.status,
+      },
+      energy: null,
+    }))
+  }, [bookings])
+
+  function sum(arr: any[], selector: (r: any) => number): number {
+    return arr.reduce((acc, r) => acc + selector(r), 0)
+  }
 
   const totalBookingUSD = useMemo(
-    () => sum(mockRows, (r) => (r.booking?.amount && r.booking.method !== 'MobileMoneyUGX' ? r.booking.amount : 0)),
-    []
+    () => sum(rows, (r) => (r.booking?.amount ? r.booking.amount : 0)),
+    [rows]
   )
-  const totalEnergyUSD = useMemo(() => sum(mockRows, (r) => (r.energy && r.energy.currency === 'USD' ? r.energy.amount : 0)), [])
-  const totalEnergyUGX = useMemo(() => sum(mockRows, (r) => (r.energy && r.energy.currency === 'UGX' ? r.energy.amount : 0)), [])
+  const totalEnergyUSD = useMemo(() => 0, [])
+  const totalEnergyUGX = useMemo(() => 0, [])
 
   function exportCsv(kind: 'booking' | 'energy') {
     const header =
@@ -79,7 +65,7 @@ export function BookingLedger() {
         ? ['id', 'type', 'station', 'bookingAmount', 'bookingMethod', 'bookingStatus'].join(',')
         : ['id', 'type', 'station', 'energyUnit', 'energyValue', 'energyAmount', 'currency', 'method'].join(',')
 
-    const lines = mockRows.map((r) => {
+    const lines = rows.map((r) => {
       if (kind === 'booking') {
         return [r.id, r.type, r.station, r.booking?.amount || 0, r.booking?.method || '', r.booking?.status || ''].join(',')
       }
@@ -150,33 +136,41 @@ export function BookingLedger() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {mockRows.map((r) => (
-                <tr key={r.id} className="hover:bg-surface-alt">
-                  <td className="px-4 py-2 font-medium">{r.id}</td>
-                  <td className="px-4 py-2">
-                    {r.type === 'walkin' ? (
-                      <span className="text-xs px-2 py-0.5 rounded bg-surface-alt text-muted">Walk-in</span>
-                    ) : (
-                      'Booking'
-                    )}
-                  </td>
-                  <td className="px-4 py-2">{r.station}</td>
-                  <td className="px-4 py-2">
-                    {r.booking
-                      ? `$${r.booking.amount.toFixed(2)} • ${r.booking.method} • ${r.booking.status}`
-                      : '—'}
-                  </td>
-                  <td className="px-4 py-2">
-                    {r.energy
-                      ? `${r.energy.value} ${r.energy.unit} • ${
-                          r.energy.currency === 'USD'
-                            ? `$${r.energy.amount.toFixed(2)}`
-                            : `${r.energy.amount.toLocaleString()} UGX`
-                        } • ${r.energy.method}`
-                      : '—'}
-                  </td>
+              {isLoading ? (
+                <tr>
+                  <td colSpan={5} className="text-center py-8 text-muted">Loading ledger...</td>
                 </tr>
-              ))}
+              ) : rows.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="text-center py-8 text-muted">No transactions found</td>
+                </tr>
+              ) : (
+                rows.map((r) => (
+                  <tr key={r.id} className="hover:bg-surface-alt">
+                    <td className="px-4 py-2 font-medium">{r.id}</td>
+                    <td className="px-4 py-2">
+                      {r.type === 'walkin' ? (
+                        <span className="text-xs px-2 py-0.5 rounded bg-surface-alt text-muted">Walk-in</span>
+                      ) : (
+                        'Booking'
+                      )}
+                    </td>
+                    <td className="px-4 py-2">{r.station}</td>
+                    <td className="px-4 py-2">
+                      {r.booking
+                        ? `$${r.booking.amount.toFixed(2)} • ${r.booking.method} • ${r.booking.status}`
+                        : '—'}
+                    </td>
+                    <td className="px-4 py-2">
+                      {r.energy
+                        ? `${r.energy.value} ${r.energy.unit} • ${r.energy.currency === 'USD'
+                          ? `$${r.energy.amount.toFixed(2)}`
+                          : `${r.energy.amount.toLocaleString()} UGX`
+                        } • ${r.energy.method}`
+                        : '—'}
+                    </td>
+                  </tr>
+                )))}
             </tbody>
           </table>
         </div>
