@@ -4,6 +4,7 @@ import { useAuthStore } from '@/core/auth/authStore'
 import { getPermissionsForFeature } from '@/constants/permissions'
 import { useDisputes } from '@/modules/finance/disputes/useDisputes'
 import { getErrorMessage } from '@/core/api/errors'
+import { LoadingRow } from '@/ui/components/SkeletonCards'
 
 type DisputeStatus = 'Open' | 'Under Review' | 'Resolved' | 'Escalated'
 type DisputeType = 'Refund' | 'Chargeback' | 'Billing Error' | 'Service Complaint'
@@ -132,11 +133,7 @@ export function Disputes() {
             </tr>
           </thead>
           <tbody>
-            {isLoading && (
-              <tr>
-                <td colSpan={7} className="text-center py-8 text-muted">Loading disputes...</td>
-              </tr>
-            )}
+            {isLoading && <LoadingRow colSpan={7} />}
             {!isLoading && filtered.length === 0 && (
               <tr>
                 <td colSpan={7} className="text-center py-8 text-muted">No disputes found.</td>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useOperatorDashboard } from '@/modules/analytics/hooks/useAnalytics'
+import { InlineSkeleton } from '@/ui/components/SkeletonCards'
 
 type OperatorDashboardData = {
     handoff?: {
@@ -56,11 +57,11 @@ export function ShiftHandoffWidget({ config }: { config: any }) {
                     <ul className="text-[13px] space-y-3 flex-1">
                         <li className="flex items-start gap-2.5 text-text/80">
                             <span className="w-1.5 h-1.5 rounded-full bg-accent mt-1.5 flex-shrink-0" />
-                            <span>Current Shift: {isLoading ? 'Loading...' : currentShift}</span>
+                            <span>Current Shift: {isLoading ? <InlineSkeleton width={80} height={12} /> : currentShift}</span>
                         </li>
                         <li className="flex items-start gap-2.5 text-text/80">
                             <span className="w-1.5 h-1.5 rounded-full bg-ok mt-1.5 flex-shrink-0" />
-                            <span>System Status: {isLoading ? 'Loading...' : systemStatus}</span>
+                            <span>System Status: {isLoading ? <InlineSkeleton width={80} height={12} /> : systemStatus}</span>
                         </li>
                     </ul>
                 </div>

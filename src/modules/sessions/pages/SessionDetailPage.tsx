@@ -7,6 +7,7 @@ import { getErrorMessage } from '@/core/api/errors'
 import { useAuthStore } from '@/core/auth/authStore'
 import { getPermissionsForFeature } from '@/constants/permissions'
 import { useState } from 'react'
+import { StatGridSkeleton, TextSkeleton } from '@/ui/components/SkeletonCards'
 
 export function SessionDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -34,8 +35,11 @@ export function SessionDetailPage() {
   if (isLoading) {
     return (
       <DashboardLayout pageTitle="Session Details">
-        <div className="card">
-          <div className="text-center py-8 text-muted">Loading session...</div>
+        <div className="space-y-4">
+          <StatGridSkeleton count={4} />
+          <div className="card">
+            <TextSkeleton lines={4} />
+          </div>
         </div>
       </DashboardLayout>
     )

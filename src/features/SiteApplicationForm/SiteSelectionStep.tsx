@@ -1,4 +1,5 @@
 import { useStations } from '@/modules/stations/hooks/useStations'
+import { TextSkeleton } from '@/ui/components/SkeletonCards'
 
 interface SiteSelectionStepProps {
     data: any
@@ -55,7 +56,7 @@ export function SiteSelectionStep({ data, onChange, onNext, onBack }: SiteSelect
                         Select Site <span className="text-red-500">*</span>
                     </label>
                     {isLoading ? (
-                        <div className="text-sm text-muted">Loading available sites...</div>
+                        <TextSkeleton lines={1} />
                     ) : (
                         <select
                             value={data.siteId}

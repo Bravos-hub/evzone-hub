@@ -8,6 +8,7 @@ import { useProviders } from '@/modules/integrations/useProviders'
 import { auditLogger } from '@/core/utils/auditLogger'
 import { useAuthStore } from '@/core/auth/authStore'
 import { getPermissionsForFeature } from '@/constants/permissions'
+import { InlineSkeleton } from '@/ui/components/SkeletonCards'
 
 type VehicleType = 'BIKE' | 'CAR' | 'MIXED'
 type HardwareMode = 'COMPUTERIZED' | 'MANUAL'
@@ -317,19 +318,22 @@ export function AddSwapStation() {
               <h3 className="text-lg font-semibold">Station Basics</h3>
               <label className="grid gap-1">
                 <span className="text-sm font-medium">Site *</span>
-                <select
-                  value={form.siteId}
-                  onChange={(e) => updateForm('siteId', e.target.value)}
-                  className="select"
-                  disabled={loadingSites}
-                >
-                  <option value="">{loadingSites ? 'Loading sites...' : 'Choose a site...'}</option>
-                  {sites?.map((site) => (
-                    <option key={site.id} value={site.id}>
-                      {site.name}
-                    </option>
-                  ))}
-                </select>
+                {loadingSites ? (
+                  <InlineSkeleton width="100%" height={40} />
+                ) : (
+                  <select
+                    value={form.siteId}
+                    onChange={(e) => updateForm('siteId', e.target.value)}
+                    className="select"
+                  >
+                    <option value="">Choose a site...</option>
+                    {sites?.map((site) => (
+                      <option key={site.id} value={site.id}>
+                        {site.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </label>
 
               {selectedSite && (
@@ -363,19 +367,22 @@ export function AddSwapStation() {
                 </label>
                 <label className="grid gap-1">
                   <span className="text-sm font-medium">Battery provider *</span>
-                  <select
-                    value={form.providerId}
-                    onChange={(e) => updateForm('providerId', e.target.value)}
-                    className="select"
-                    disabled={loadingProviders}
-                  >
-                    <option value="">{loadingProviders ? 'Loading providers...' : 'Choose a provider...'}</option>
-                    {providers?.map((provider) => (
-                      <option key={provider.id} value={provider.id}>
-                        {provider.name}
-                      </option>
-                    ))}
-                  </select>
+                  {loadingProviders ? (
+                    <InlineSkeleton width="100%" height={40} />
+                  ) : (
+                    <select
+                      value={form.providerId}
+                      onChange={(e) => updateForm('providerId', e.target.value)}
+                      className="select"
+                    >
+                      <option value="">Choose a provider...</option>
+                      {providers?.map((provider) => (
+                        <option key={provider.id} value={provider.id}>
+                          {provider.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </label>
               </div>
             </div>

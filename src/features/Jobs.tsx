@@ -4,6 +4,7 @@ import { useAuthStore } from '@/core/auth/authStore'
 import { getPermissionsForFeature } from '@/constants/permissions'
 import { useTechnicianJobs } from '@/modules/dispatch/hooks/useTechnicianJobs'
 import { getErrorMessage } from '@/core/api/errors'
+import { TextSkeleton } from '@/ui/components/SkeletonCards'
 
 type JobStatus = 'Available' | 'Accepted' | 'In Progress' | 'Completed' | 'Cancelled'
 type JobPriority = 'Urgent' | 'High' | 'Normal' | 'Low'
@@ -86,7 +87,9 @@ export function Jobs() {
       {/* Jobs List */}
       <div className="space-y-3">
         {isLoading && (
-          <div className="card text-sm text-muted text-center py-8">Loading jobs...</div>
+          <div className="card py-8">
+            <TextSkeleton lines={2} centered />
+          </div>
         )}
         {!isLoading && filtered.length === 0 && (
           <div className="card text-sm text-muted text-center py-8">No jobs found.</div>

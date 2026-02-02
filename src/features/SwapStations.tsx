@@ -7,6 +7,7 @@ import { getPermissionsForFeature } from '@/constants/permissions'
 import { canAccessStation, capabilityAllowsSwap } from '@/core/auth/rbac'
 import { PATHS } from '@/app/router/paths'
 import { StationStatusPill, type StationStatus } from '@/ui/components/StationStatusPill'
+import { LoadingRow } from '@/ui/components/SkeletonCards'
 import { useStations } from '@/modules/stations/hooks/useStations'
 import { stationService } from '@/modules/stations/services/stationService'
 import { queryKeys } from '@/data/queryKeys'
@@ -241,13 +242,7 @@ export function SwapStations() {
                 </td>
               </tr>
             ))}
-            {accessLoading && (
-              <tr>
-                <td colSpan={8} className="text-center text-muted py-8">
-                  Loading access...
-                </td>
-              </tr>
-            )}
+            {accessLoading && <LoadingRow colSpan={8} />}
             {!isLoading && !accessLoading && filtered.length === 0 && (
               <tr>
                 <td colSpan={8} className="text-center text-muted py-8">

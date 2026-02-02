@@ -17,6 +17,7 @@ import clsx from 'clsx'
 import { RevenueCalculator } from './RevenueCalculator'
 import { DealConstructor } from './DealConstructor'
 import { DigitalSignaturePad } from './DigitalSignaturePad'
+import { TextSkeleton } from '@/ui/components/SkeletonCards'
 
 type Tab = 'overview' | 'negotiation' | 'documents'
 
@@ -38,7 +39,15 @@ export function SiteApplicationDetail() {
     const uploadLease = useUploadLease()
     const activateTenant = useActivateTenant()
 
-    if (isLoading) return <DashboardLayout pageTitle="Loading..."><div className="p-12 text-center text-muted">Loading application data...</div></DashboardLayout>
+    if (isLoading) {
+        return (
+            <DashboardLayout pageTitle="Site Application">
+                <div className="p-12">
+                    <TextSkeleton lines={3} centered />
+                </div>
+            </DashboardLayout>
+        )
+    }
     if (error || !app) return <DashboardLayout pageTitle="Error"><div className="p-12 text-center text-red-500">Failed to load application</div></DashboardLayout>
 
     const getStatusColor = (status: string) => {

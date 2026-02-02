@@ -5,6 +5,7 @@ import { SendNoticeModal } from './SendNoticeModal'
 import { FinancialStatusCard } from '@/ui/components/FinancialStatusCard'
 import { getErrorMessage } from '@/core/api/errors'
 import type { Tenant, LeaseContract } from '@/core/api/types'
+import { TextSkeleton } from '@/ui/components/SkeletonCards'
 
 interface TenantDetailModalProps {
   tenantId: string
@@ -31,7 +32,9 @@ export function TenantDetailModal({ tenantId, onClose }: TenantDetailModalProps)
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
         <div className="bg-panel border border-border-light rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
           <div className="p-6">
-            <div className="text-center py-8 text-muted">Loading tenant details...</div>
+            <div className="py-8">
+              <TextSkeleton lines={2} centered />
+            </div>
           </div>
         </div>
       </div>
@@ -242,7 +245,11 @@ function FinancialTab({ tenant }: { tenant: Tenant }) {
 
 function ContractTab({ contract, isLoading }: { contract?: LeaseContract; isLoading: boolean }) {
   if (isLoading) {
-    return <div className="text-center py-8 text-muted">Loading contract...</div>
+    return (
+      <div className="py-8">
+        <TextSkeleton lines={2} centered />
+      </div>
+    )
   }
 
   if (!contract) {

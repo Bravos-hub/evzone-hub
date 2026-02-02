@@ -2,6 +2,7 @@ import type { WidgetProps } from '../../types'
 import { Card } from '@/ui/components/Card'
 import { useActiveSessions } from '@/modules/sessions/hooks/useSessions'
 import { useMemo } from 'react'
+import { TextSkeleton } from '@/ui/components/SkeletonCards'
 
 export type ActiveSessionsConsoleConfig = {
     title?: string
@@ -52,7 +53,9 @@ export function ActiveSessionsConsoleWidget({ config }: WidgetProps<ActiveSessio
 
             <div className="p-4 grid gap-3">
                 {isLoading ? (
-                    <div className="py-12 text-center text-muted text-sm">Loading sessions...</div>
+                    <div className="py-12">
+                        <TextSkeleton lines={2} centered />
+                    </div>
                 ) : activeSessions.length === 0 ? (
                     <div className="py-12 border-2 border-dashed border-border-light rounded-2xl flex flex-col items-center justify-center gap-2 grayscale opacity-50">
                         <div className="text-sm font-semibold text-muted">No active sessions in this zone</div>

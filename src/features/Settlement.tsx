@@ -4,6 +4,7 @@ import { useAuthStore } from '@/core/auth/authStore'
 import { getPermissionsForFeature } from '@/constants/permissions'
 import { useSettlements } from '@/modules/finance/settlements/useSettlements'
 import { getErrorMessage } from '@/core/api/errors'
+import { LoadingRow } from '@/ui/components/SkeletonCards'
 
 type SettlementStatus = 'Queued' | 'Running' | 'Completed' | 'Failed'
 
@@ -102,11 +103,7 @@ export function Settlement() {
               </tr>
             </thead>
           <tbody>
-              {isLoading && (
-                <tr>
-                  <td colSpan={10} className="text-center py-8 text-muted">Loading settlements...</td>
-                </tr>
-              )}
+              {isLoading && <LoadingRow colSpan={10} />}
               {!isLoading && rows.length === 0 && (
                 <tr>
                   <td colSpan={10} className="text-center py-8 text-muted">No settlements found.</td>

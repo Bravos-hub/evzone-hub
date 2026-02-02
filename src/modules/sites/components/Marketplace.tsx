@@ -18,6 +18,7 @@ type Listing = {
 
 import { useOrganizations } from '@/modules/organizations/hooks/useOrganizations'
 import { useSites } from '@/modules/sites/hooks/useSites'
+import { TextSkeleton } from '@/ui/components/SkeletonCards'
 
 export function Marketplace() {
   const { user } = useAuthStore()
@@ -90,7 +91,9 @@ export function Marketplace() {
 
         <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-3">
           {(sitesLoading || orgsLoading) && (
-            <div className="col-span-full text-center py-8 text-muted">Loading marketplace...</div>
+            <div className="col-span-full py-8">
+              <TextSkeleton lines={2} centered />
+            </div>
           )}
           {!sitesLoading && !orgsLoading && rows.length === 0 && (
             <div className="col-span-full text-center py-8 text-muted">No listings found</div>

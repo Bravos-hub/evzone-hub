@@ -3,6 +3,7 @@ import { useAuthStore } from '@/core/auth/authStore'
 import { hasPermission } from '@/constants/permissions'
 import { useSubscriptionPlans } from '@/modules/subscriptions/hooks/useSubscriptionPlans'
 import { getErrorMessage } from '@/core/api/errors'
+import { TextSkeleton } from '@/ui/components/SkeletonCards'
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Owner Plans — Pricing plans and memberships
@@ -174,7 +175,11 @@ export function OwnerPlans() {
           </div>
         ))}
       </section>
-      {isLoading && <div className="p-8 text-center text-subtle">Loading plans...</div>}
+      {isLoading && (
+        <div className="p-8">
+          <TextSkeleton lines={2} centered />
+        </div>
+      )}
       {!isLoading && filtered.length === 0 && <div className="p-8 text-center text-subtle">No plans match your filters.</div>}
     </div>
   )

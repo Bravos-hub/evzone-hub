@@ -10,6 +10,7 @@ import { AddSite, type SiteForm } from './AddSite'
 import { SiteEditModal } from '@/modals'
 import { getErrorMessage } from '@/core/api/errors'
 import { auditLogger } from '@/core/utils/auditLogger'
+import { TextSkeleton } from '@/ui/components/SkeletonCards'
 import { PATHS } from '@/app/router/paths'
 import { ROLE_GROUPS, isInGroup } from '@/constants/roles'
 import type { CreateSiteRequest, SiteFootfall, SiteLeaseType } from '@/core/api/types'
@@ -189,7 +190,11 @@ export function SiteOwnerSites() {
           </select>
         </div>
 
-        {isLoading && <div className="text-center py-8 text-muted">Loading sites...</div>}
+        {isLoading && (
+          <div className="py-8">
+            <TextSkeleton lines={2} centered />
+          </div>
+        )}
         {error && <div className="p-3 bg-danger/10 text-danger rounded-lg text-sm">{getErrorMessage(error)}</div>}
 
         {!isLoading && !error && (

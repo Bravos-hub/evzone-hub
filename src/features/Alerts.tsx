@@ -5,6 +5,7 @@ import { hasPermission } from '@/constants/permissions'
 import { useNotifications } from '@/modules/notifications/hooks/useNotifications'
 import { getErrorMessage } from '@/core/api/errors'
 import type { NotificationItem } from '@/core/api/types'
+import { TextSkeleton } from '@/ui/components/SkeletonCards'
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Platform Alerts — System alerts monitoring and management
@@ -236,7 +237,11 @@ export function Alerts() {
               ))}
             </tbody>
           </table>
-          {isLoading && <div className="p-8 text-center text-subtle">Loading alerts...</div>}
+          {isLoading && (
+            <div className="p-8">
+              <TextSkeleton lines={2} centered />
+            </div>
+          )}
           {!isLoading && filtered.length === 0 && <div className="p-8 text-center text-subtle">No alerts match your filters.</div>}
         </section>
       </div>

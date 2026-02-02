@@ -2,6 +2,7 @@ import type { WidgetProps } from '../../types'
 import { Card } from '@/ui/components/Card'
 import { useBookings } from '@/modules/bookings/hooks/useBookings'
 import { useMemo } from 'react'
+import { LoadingRow } from '@/ui/components/SkeletonCards'
 
 export type BookingsQueueConfig = {
   title?: string
@@ -69,11 +70,7 @@ export function BookingsQueueWidget({ config }: WidgetProps<BookingsQueueConfig>
           </thead>
           <tbody>
             {isLoading ? (
-              <tr>
-                <td colSpan={5} className="py-8 text-center text-muted text-sm">
-                  Loading bookings...
-                </td>
-              </tr>
+              <LoadingRow colSpan={5} />
             ) : displayBookings.length === 0 ? (
               <tr>
                 <td colSpan={5} className="py-8 text-center text-muted text-sm italic">

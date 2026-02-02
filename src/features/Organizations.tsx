@@ -4,6 +4,7 @@ import { getPermissionsForFeature } from '@/constants/permissions'
 import { useAuthStore } from '@/core/auth/authStore'
 import { useOrganizations } from '@/modules/organizations/hooks/useOrganizations'
 import { getErrorMessage } from '@/core/api/errors'
+import { TextSkeleton } from '@/ui/components/SkeletonCards'
 
 type OrgStatus = 'Active' | 'Pending' | 'Suspended'
 
@@ -159,7 +160,11 @@ export function Organizations() {
               ))}
             </tbody>
           </table>
-          {isLoading && <div className="p-8 text-center text-subtle">Loading organizations...</div>}
+          {isLoading && (
+            <div className="p-8">
+              <TextSkeleton lines={2} centered />
+            </div>
+          )}
           {!isLoading && rows.length === 0 && <div className="p-8 text-center text-subtle">No organizations found.</div>}
         </div>
       </div>

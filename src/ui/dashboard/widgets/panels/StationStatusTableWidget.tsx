@@ -3,6 +3,7 @@ import { Card } from '@/ui/components/Card'
 import { MiniBar } from '../charts/MiniBarWidget'
 import { useStations } from '@/modules/stations/hooks/useStations'
 import { useMemo } from 'react'
+import { LoadingRow } from '@/ui/components/SkeletonCards'
 
 export type StationStatusTableConfig = {
     title?: string
@@ -68,11 +69,7 @@ export function StationStatusTableWidget({ config }: WidgetProps<StationStatusTa
                     </thead>
                     <tbody>
                         {isLoading ? (
-                            <tr>
-                                <td colSpan={4} className="py-8 text-center text-muted text-sm">
-                                    Loading stations...
-                                </td>
-                            </tr>
+                            <LoadingRow colSpan={4} />
                         ) : stationsList.length === 0 ? (
                             <tr>
                                 <td colSpan={4} className="py-8 text-center text-muted text-sm italic">

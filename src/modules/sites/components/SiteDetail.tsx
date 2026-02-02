@@ -11,6 +11,7 @@ import { useSiteDocuments, useUploadSiteDocument, useDeleteSiteDocument } from '
 import { ROLE_GROUPS, isInGroup } from '@/constants/roles'
 import { StationStatusPill } from '@/ui/components/StationStatusPill'
 import { SiteEditModal } from '@/modals'
+import { TextSkeleton } from '@/ui/components/SkeletonCards'
 
 export function SiteDetail() {
     const { id } = useParams<{ id: string }>()
@@ -77,7 +78,7 @@ export function SiteDetail() {
         return (
             <DashboardLayout pageTitle="Site Details">
                 <div className="flex items-center justify-center h-64">
-                    <div className="text-subtle">Loading site details...</div>
+                    <TextSkeleton lines={2} centered />
                 </div>
             </DashboardLayout>
         )
@@ -312,8 +313,8 @@ export function SiteDetail() {
                     </div>
 
                     {loadingDocs ? (
-                        <div className="text-center py-8 text-subtle">
-                            <span className="animate-pulse">Loading documents...</span>
+                        <div className="py-8">
+                            <TextSkeleton lines={2} centered />
                         </div>
                     ) : documents.length === 0 ? (
                         <div className="text-center py-8 border-2 border-dashed border-border rounded-lg bg-muted/10">

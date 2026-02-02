@@ -3,6 +3,7 @@ import { useAuthStore } from '@/core/auth/authStore'
 import { hasPermission } from '@/constants/permissions'
 import { usePartners } from '@/modules/organizations/hooks/usePartners'
 import { getErrorMessage } from '@/core/api/errors'
+import { TextSkeleton } from '@/ui/components/SkeletonCards'
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Partners — Roaming partners directory (OCPI peers)
@@ -137,8 +138,8 @@ export function Partners() {
       </section>
 
       {isLoading && (
-        <div className="rounded-xl border border-dashed border-border bg-surface p-8 text-center text-subtle">
-          Loading partners...
+        <div className="rounded-xl border border-dashed border-border bg-surface p-8">
+          <TextSkeleton lines={2} centered />
         </div>
       )}
       {!isLoading && filtered.length === 0 && (

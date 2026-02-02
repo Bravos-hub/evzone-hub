@@ -8,6 +8,7 @@ import { getPermissionsForFeature } from '@/constants/permissions'
 import { ROLE_GROUPS } from '@/constants/roles'
 import { canAccessStation } from '@/core/auth/rbac'
 import { Card } from '@/ui/components/Card'
+import { LoadingRow, TextSkeleton } from '@/ui/components/SkeletonCards'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES & ICONS
@@ -212,7 +213,7 @@ export function SwapStationDetail() {
     return (
       <DashboardLayout pageTitle="Swap Station Detail">
         <Card>
-          <p className="text-muted">Loading station access...</p>
+          <TextSkeleton lines={2} />
         </Card>
       </DashboardLayout>
     )
@@ -368,7 +369,9 @@ export function SwapStationDetail() {
 
           <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {swapBaysLoading && (
-              <div className="rounded-xl border border-border bg-surface p-4 text-sm text-muted">Loading swap bays...</div>
+              <div className="rounded-xl border border-border bg-surface p-4">
+                <TextSkeleton lines={2} />
+              </div>
             )}
             {swapBaysError && !swapBaysLoading && (
               <div className="rounded-xl border border-border bg-surface p-4 text-sm text-muted">Unable to load swap bays.</div>
@@ -404,11 +407,7 @@ export function SwapStationDetail() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {inventoryLoading && (
-                  <tr>
-                    <td colSpan={7} className="px-4 py-6 text-center text-muted">Loading inventory...</td>
-                  </tr>
-                )}
+                {inventoryLoading && <LoadingRow colSpan={7} lines={2} />}
                 {inventoryError && !inventoryLoading && (
                   <tr>
                     <td colSpan={7} className="px-4 py-6 text-center text-muted">Unable to load inventory.</td>

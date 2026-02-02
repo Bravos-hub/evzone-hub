@@ -4,6 +4,7 @@ import { useAuthStore } from '@/core/auth/authStore'
 import { getPermissionsForFeature } from '@/constants/permissions'
 import { useApiKeys, useSecrets, useRotateApiKey, useRevokeApiKey, useRotateSecret } from '@/modules/integrations/useIntegrationKeys'
 import { getErrorMessage } from '@/core/api/errors'
+import { LoadingRow } from '@/ui/components/SkeletonCards'
 
 /**
  * Integrations Page - Admin feature (API Keys, Secrets)
@@ -85,11 +86,7 @@ export function Integrations() {
               </tr>
             </thead>
             <tbody>
-              {apiKeysLoading && (
-                <tr>
-                  <td colSpan={6} className="text-center py-8 text-muted">Loading API keys...</td>
-                </tr>
-              )}
+              {apiKeysLoading && <LoadingRow colSpan={6} />}
               {!apiKeysLoading && apiKeys.length === 0 && (
                 <tr>
                   <td colSpan={6} className="text-center py-8 text-muted">No API keys found.</td>
@@ -151,11 +148,7 @@ export function Integrations() {
               </tr>
             </thead>
             <tbody>
-              {secretsLoading && (
-                <tr>
-                  <td colSpan={4} className="text-center py-8 text-muted">Loading secrets...</td>
-                </tr>
-              )}
+              {secretsLoading && <LoadingRow colSpan={4} />}
               {!secretsLoading && secrets.length === 0 && (
                 <tr>
                   <td colSpan={4} className="text-center py-8 text-muted">No secrets found.</td>

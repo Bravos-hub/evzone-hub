@@ -3,6 +3,7 @@ import { useAuthStore } from '@/core/auth/authStore'
 import { hasPermission } from '@/constants/permissions'
 import { useStations } from '@/modules/stations/hooks/useStations'
 import { getErrorMessage } from '@/core/api/errors'
+import { TextSkeleton } from '@/ui/components/SkeletonCards'
 import type { Station as ApiStation } from '@/core/api/types'
 import * as d3Geo from 'd3-geo'
 import * as d3Zoom from 'd3-zoom'
@@ -249,8 +250,8 @@ export function StationMap() {
         </div>
       )}
       {isLoading && (
-        <div className="rounded-lg bg-surface border border-border px-4 py-2 text-sm text-subtle">
-          Loading stations...
+        <div className="rounded-lg bg-surface border border-border px-4 py-2">
+          <TextSkeleton lines={1} />
         </div>
       )}
       <div className="bg-bg-secondary border border-border-light rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">

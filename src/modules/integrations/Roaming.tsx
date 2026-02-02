@@ -3,6 +3,7 @@ import { useAuthStore } from '@/core/auth/authStore'
 import { hasPermission } from '@/constants/permissions'
 import { useRoamingSessions, useRoamingCdrs } from './useRoaming'
 import type { RoamingSession, RoamingCDR } from './roamingService'
+import { TextSkeleton } from '@/ui/components/SkeletonCards'
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Roaming — OCPI Sessions & CDRs
@@ -136,7 +137,11 @@ export function Roaming() {
       </section>
 
       {/* Table Loading State */}
-      {isLoading && <div className="p-12 text-center text-subtle">Loading data...</div>}
+      {isLoading && (
+        <div className="p-12">
+          <TextSkeleton lines={2} centered />
+        </div>
+      )}
 
       {/* Sessions Table */}
       {!isLoading && tab === 'sessions' && (

@@ -111,3 +111,33 @@ export function ListCardSkeleton({ items = 3 }: { items?: number }) {
         </div>
     )
 }
+
+export function InlineSkeleton({ width = 80, height = 12, className = '' }: { width?: number | string; height?: number; className?: string }) {
+    return <Skeleton width={width} height={height} className={className} />
+}
+
+export function TextSkeleton({ lines = 3, className = '', centered = false }: { lines?: number; className?: string; centered?: boolean }) {
+    const widths = ['70%', '50%', '85%']
+    return (
+        <div className={`space-y-2 ${className}`}>
+            {Array.from({ length: lines }).map((_, i) => (
+                <Skeleton
+                    key={i}
+                    height={12}
+                    width={widths[i % widths.length]}
+                    className={centered ? 'mx-auto' : ''}
+                />
+            ))}
+        </div>
+    )
+}
+
+export function LoadingRow({ colSpan = 1, lines = 2 }: { colSpan?: number; lines?: number }) {
+    return (
+        <tr>
+            <td colSpan={colSpan} className="p-8">
+                <TextSkeleton lines={lines} centered />
+            </td>
+        </tr>
+    )
+}

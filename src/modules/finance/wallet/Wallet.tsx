@@ -5,6 +5,7 @@ import { ROLE_GROUPS } from '@/constants/roles'
 import { useWalletBalance, useWalletTransactions, useTopUp } from '@/modules/finance/wallet/useWallet'
 import { useStations } from '@/modules/stations/hooks/useStations'
 import { getErrorMessage } from '@/core/api/errors'
+import { StatGridSkeleton, TableSkeleton } from '@/ui/components/SkeletonCards'
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Wallet — Balance, transactions, payouts
@@ -158,8 +159,11 @@ export function Wallet() {
 
         {/* Loading State */}
         {isLoading && (
-          <div className="card">
-            <div className="text-center py-8 text-muted">Loading wallet data...</div>
+          <div className="space-y-4">
+            <StatGridSkeleton />
+            <div className="card">
+              <TableSkeleton rows={8} cols={8} />
+            </div>
           </div>
         )}
 

@@ -6,6 +6,7 @@ import { useStations } from '@/modules/stations/hooks/useStations'
 import { auditLogger } from '@/core/utils/auditLogger'
 import { getErrorMessage } from '@/core/api/errors'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
+import { InlineSkeleton } from '@/ui/components/SkeletonCards'
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Add Charger Wizard — Step-by-step charger provisioning
@@ -369,12 +370,16 @@ export function AddCharger() {
               <h3 className="text-lg font-semibold">Select Installation Site</h3>
               <label className="grid gap-1">
                 <span className="text-sm font-medium">Site *</span>
-                <select value={form.site} onChange={e => updateForm('site', e.target.value)} className="select" disabled={loadingStations}>
-                  <option value="">{loadingStations ? 'Loading sites...' : 'Choose a site...'}</option>
-                  {fetchStations?.map(s => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
-                </select>
+                {loadingStations ? (
+                  <InlineSkeleton width="100%" height={40} />
+                ) : (
+                  <select value={form.site} onChange={e => updateForm('site', e.target.value)} className="select">
+                    <option value="">Choose a site...</option>
+                    {fetchStations?.map(s => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                  </select>
+                )}
               </label>
               <label className="grid gap-1">
                 <span className="text-sm font-medium">Charger Name (optional)</span>

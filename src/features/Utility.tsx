@@ -3,6 +3,7 @@ import { useAuthStore } from '@/core/auth/authStore'
 import { hasPermission } from '@/constants/permissions'
 import { useUtilityDashboard } from '@/modules/utility/useUtility'
 import { getErrorMessage } from '@/core/api/errors'
+import { TextSkeleton } from '@/ui/components/SkeletonCards'
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Utility Dashboard — Grid signals, price & carbon forecast, DR tools
@@ -121,7 +122,11 @@ export function Utility() {
 
       {/* KPIs */}
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        {isLoading && <div className="col-span-full text-sm text-subtle">Loading KPIs...</div>}
+        {isLoading && (
+          <div className="col-span-full">
+            <TextSkeleton lines={1} />
+          </div>
+        )}
         {!isLoading && kpis.map(k => (
           <div key={k.label} className="rounded-xl bg-surface border border-border p-5 shadow-sm">
             <div className="text-sm text-subtle">{k.label}</div>
@@ -166,7 +171,11 @@ export function Utility() {
             <a href="/openadr" className="text-sm text-accent hover:underline">OpenADR Events</a>
           </div>
           <ul className="divide-y divide-border">
-            {isLoading && <li className="py-4 text-sm text-subtle">Loading grid signals...</li>}
+            {isLoading && (
+              <li className="py-4">
+                <TextSkeleton lines={1} />
+              </li>
+            )}
             {!isLoading && events.map(e => (
               <li key={e.id} className="py-3 flex items-center justify-between">
                 <div>

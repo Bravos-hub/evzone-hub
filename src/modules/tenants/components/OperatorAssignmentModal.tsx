@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useUsers } from '@/modules/auth/hooks/useUsers'
 import type { Station, User } from '@/core/api/types'
+import { InlineSkeleton } from '@/ui/components/SkeletonCards'
 
 type OperatorAssignmentModalProps = {
   open: boolean
@@ -70,19 +71,22 @@ export function OperatorAssignmentModal({
         <div className="space-y-4">
           <div>
             <label className="label">Operator</label>
-            <select
-              className="select w-full"
-              value={selectedOp}
-              onChange={(event) => setSelectedOp(event.target.value)}
-              disabled={isLoading}
-            >
-              <option value="">{isLoading ? 'Loading operators...' : 'Select an operator'}</option>
-              {operators.map(op => (
-                <option key={op.id} value={op.id}>
-                  {op.name} {op.email ? `(${op.email})` : ''}
-                </option>
-              ))}
-            </select>
+            {isLoading ? (
+              <InlineSkeleton width="100%" height={40} />
+            ) : (
+              <select
+                className="select w-full"
+                value={selectedOp}
+                onChange={(event) => setSelectedOp(event.target.value)}
+              >
+                <option value="">Select an operator</option>
+                {operators.map(op => (
+                  <option key={op.id} value={op.id}>
+                    {op.name} {op.email ? `(${op.email})` : ''}
+                  </option>
+                ))}
+              </select>
+            )}
             {!isLoading && operators.length === 0 && (
               <p className="text-xs text-muted mt-2">No operators available yet.</p>
             )}

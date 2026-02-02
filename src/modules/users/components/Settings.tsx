@@ -1,60 +1,130 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { useAuthStore } from '@/core/auth/authStore'
+import { useMe } from '@/modules/auth/hooks/useAuth'
+import { useUpdateMe } from '@/modules/auth/hooks/useUsers'
+import { useApiKeys, useRotateApiKey, useRevokeApiKey } from '@/modules/integrations/useIntegrationKeys'
+import { getErrorMessage } from '@/core/api/errors'
+import type { ApiKey } from '@/modules/integrations/integrationsService'
+import { TextSkeleton } from '@/ui/components/SkeletonCards'
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   Settings — Profile, Security, Notifications, API, Localization
-   RBAC: All authenticated users can access their own settings
-───────────────────────────────────────────────────────────────────────────── */
+/* Settings - Profile, Security, Notifications, API, Localization */
 
 type SettingsTab = 'profile' | 'security' | 'notifications' | 'api' | 'localization'
 
+type NotificationPrefs = {
+  emailAlerts: boolean
+  pushNotifications: boolean
+  smsAlerts: boolean
+  weeklyDigest: boolean
+  marketingEmails: boolean
+}
+
+type ProfileState = {
+  name: string
+  email: string
+  phone: string
+  company: string
+  title: string
+  country: string
+  city: string
+  language: string
+  timezone: string
+}
+
+const defaultNotifications: NotificationPrefs = {
+  emailAlerts: false,
+  pushNotifications: false,
+  smsAlerts: false,
+  weeklyDigest: false,
+  marketingEmails: false,
+}
+
+const formatDate = (value?: string) => {
+  if (!value) return '--'
+  const date = new Date(value)
+  if (!Number.isFinite(date.getTime())) return '--'
+  return date.toISOString().slice(0, 10)
+}
+
+const mapProfile = (user?: any): ProfileState => ({
+  name: user?.name || '',
+  email: user?.email || '',
+  phone: user?.phone || '',
+  company: user?.company || user?.organizationName || '',
+  title: user?.title || '',
+  country: user?.country || '',
+  city: user?.city || '',
+  language: user?.language || user?.locale || '',
+  timezone: user?.timezone || '',
+})
+
+const mapNotifications = (user?: any): NotificationPrefs => ({
+  ...defaultNotifications,
+  ...(user?.notificationPreferences || user?.preferences?.notifications || {}),
+})
+
 export function Settings() {
   const { user } = useAuthStore()
+  const { data: me, isLoading: meLoading, error: meError } = useMe()
+  const updateMe = useUpdateMe()
+
+  const { data: apiKeysData, isLoading: apiKeysLoading, error: apiKeysError } = useApiKeys()
+  const rotateApiKey = useRotateApiKey()
+  const revokeApiKey = useRevokeApiKey()
+
   const [tab, setTab] = useState<SettingsTab>('profile')
   const [ack, setAck] = useState('')
 
+  const resolvedUser = me || user
+
+  const [profile, setProfile] = useState<ProfileState>(() => mapProfile(resolvedUser))
+  const [profileDirty, setProfileDirty] = useState(false)
+
+  const [notifications, setNotifications] = useState<NotificationPrefs>(() => mapNotifications(resolvedUser))
+  const [notificationsDirty, setNotificationsDirty] = useState(false)
+
+  useEffect(() => {
+    if (!profileDirty) {
+      setProfile(mapProfile(resolvedUser))
+    }
+  }, [resolvedUser, profileDirty])
+
+  useEffect(() => {
+    if (!notificationsDirty) {
+      setNotifications(mapNotifications(resolvedUser))
+    }
+  }, [resolvedUser, notificationsDirty])
+
+  const apiKeys = useMemo<ApiKey[]>(() => {
+    if (Array.isArray(apiKeysData)) return apiKeysData
+    return (apiKeysData as any)?.data || []
+  }, [apiKeysData])
+
   const toast = (m: string) => { setAck(m); setTimeout(() => setAck(''), 2000) }
-
-  // Profile form
-  const [profile, setProfile] = useState({
-    name: user?.name || 'Ronald Isabirye',
-    email: 'charging@evzonegroup.com',
-    phone: '+256 700 000 000',
-    company: 'EVzone',
-    title: 'Product Lead',
-    country: 'Uganda',
-    city: 'Kampala',
-    language: 'EN',
-    timezone: 'Africa/Kampala',
-  })
-
-  // Security form
-  const [security, setSecurity] = useState({
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: '',
-    twoFactor: false,
-  })
-
-  // Notifications
-  const [notifications, setNotifications] = useState({
-    emailAlerts: true,
-    pushNotifications: true,
-    smsAlerts: false,
-    weeklyDigest: true,
-    marketingEmails: false,
-  })
-
-  // API
-  const [apiKeys] = useState([
-    { id: 'key-1', name: 'Production API', key: 'evz_prod_••••••••••••', created: '2025-10-01', lastUsed: '2025-10-28' },
-    { id: 'key-2', name: 'Development API', key: 'evz_dev_••••••••••••', created: '2025-09-15', lastUsed: '2025-10-20' },
-  ])
 
   const handleProfileSave = (e: React.FormEvent) => {
     e.preventDefault()
-    toast('Profile saved successfully!')
+    updateMe.mutate(
+      {
+        name: profile.name || undefined,
+        email: profile.email || undefined,
+        phone: profile.phone || undefined,
+        company: profile.company || undefined,
+        title: profile.title || undefined,
+        country: profile.country || undefined,
+        city: profile.city || undefined,
+        language: profile.language || undefined,
+        timezone: profile.timezone || undefined,
+      } as any,
+      {
+        onSuccess: () => {
+          toast('Profile saved successfully!')
+          setProfileDirty(false)
+        },
+        onError: (err) => toast(getErrorMessage(err))
+      }
+    )
   }
 
   const handleSecuritySave = (e: React.FormEvent) => {
@@ -63,13 +133,44 @@ export function Settings() {
       toast('Passwords do not match!')
       return
     }
-    toast('Security settings updated!')
+    toast('Password updates are managed via the reset password flow.')
     setSecurity(s => ({ ...s, currentPassword: '', newPassword: '', confirmPassword: '' }))
   }
 
   const handleNotificationsSave = () => {
-    toast('Notification preferences saved!')
+    updateMe.mutate(
+      { notificationPreferences: notifications } as any,
+      {
+        onSuccess: () => {
+          toast('Notification preferences saved!')
+          setNotificationsDirty(false)
+        },
+        onError: (err) => toast(getErrorMessage(err))
+      }
+    )
   }
+
+  const handleLocalizationSave = () => {
+    updateMe.mutate(
+      {
+        language: profile.language || undefined,
+        timezone: profile.timezone || undefined,
+        country: profile.country || undefined,
+        city: profile.city || undefined,
+      } as any,
+      {
+        onSuccess: () => toast('Localization settings saved!'),
+        onError: (err) => toast(getErrorMessage(err))
+      }
+    )
+  }
+
+  const [security, setSecurity] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+    twoFactor: false,
+  })
 
   const tabs: { key: SettingsTab; label: string }[] = [
     { key: 'profile', label: 'Profile' },
@@ -83,6 +184,11 @@ export function Settings() {
     <DashboardLayout pageTitle="Settings">
       <div className="space-y-6">
         {ack && <div className="rounded-lg bg-accent/10 text-accent px-4 py-2 text-sm">{ack}</div>}
+        {(meError || apiKeysError) && (
+          <div className="card mb-4 bg-red-50 border border-red-200 text-red-700 text-sm">
+            {getErrorMessage(meError || apiKeysError)}
+          </div>
+        )}
 
         {/* Tabs */}
         <div className="flex gap-2 border-b border-border pb-2">
@@ -104,14 +210,14 @@ export function Settings() {
 
             {/* Avatar */}
             <div className="flex items-center gap-4">
-              {user?.avatarUrl ? (
-                <img src={user.avatarUrl} alt={user.name} className="h-16 w-16 rounded-full object-cover border-2 border-accent/20" />
+              {resolvedUser?.avatarUrl ? (
+                <img src={resolvedUser.avatarUrl} alt={resolvedUser.name} className="h-16 w-16 rounded-full object-cover border-2 border-accent/20" />
               ) : (
                 <div className="h-16 w-16 rounded-full bg-muted grid place-items-center text-subtle text-sm">
-                  {profile.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                  {profile.name ? profile.name.split(' ').map(n => n[0]).join('').slice(0, 2) : '--'}
                 </div>
               )}
-              <button type="button" className="px-3 py-2 rounded-lg border border-border hover:bg-muted">
+              <button type="button" className="px-3 py-2 rounded-lg border border-border hover:bg-muted" disabled>
                 Upload avatar
               </button>
             </div>
@@ -119,38 +225,98 @@ export function Settings() {
             <div className="grid sm:grid-cols-2 gap-4">
               <label className="grid gap-1">
                 <span className="text-sm font-medium">Full Name</span>
-                <input value={profile.name} onChange={e => setProfile(p => ({ ...p, name: e.target.value }))} className="input" />
+                <input
+                  value={profile.name}
+                  onChange={e => {
+                    setProfile(p => ({ ...p, name: e.target.value }))
+                    setProfileDirty(true)
+                  }}
+                  className="input"
+                  disabled={meLoading}
+                />
               </label>
               <label className="grid gap-1">
                 <span className="text-sm font-medium">Email</span>
-                <input type="email" value={profile.email} onChange={e => setProfile(p => ({ ...p, email: e.target.value }))} className="input" />
+                <input
+                  type="email"
+                  value={profile.email}
+                  onChange={e => {
+                    setProfile(p => ({ ...p, email: e.target.value }))
+                    setProfileDirty(true)
+                  }}
+                  className="input"
+                  disabled={meLoading}
+                />
               </label>
               <label className="grid gap-1">
                 <span className="text-sm font-medium">Phone</span>
-                <input value={profile.phone} onChange={e => setProfile(p => ({ ...p, phone: e.target.value }))} className="input" />
+                <input
+                  value={profile.phone}
+                  onChange={e => {
+                    setProfile(p => ({ ...p, phone: e.target.value }))
+                    setProfileDirty(true)
+                  }}
+                  className="input"
+                  disabled={meLoading}
+                />
               </label>
               <label className="grid gap-1">
                 <span className="text-sm font-medium">Company</span>
-                <input value={profile.company} onChange={e => setProfile(p => ({ ...p, company: e.target.value }))} className="input" />
+                <input
+                  value={profile.company}
+                  onChange={e => {
+                    setProfile(p => ({ ...p, company: e.target.value }))
+                    setProfileDirty(true)
+                  }}
+                  className="input"
+                  disabled={meLoading}
+                />
               </label>
               <label className="grid gap-1">
                 <span className="text-sm font-medium">Title</span>
-                <input value={profile.title} onChange={e => setProfile(p => ({ ...p, title: e.target.value }))} className="input" />
+                <input
+                  value={profile.title}
+                  onChange={e => {
+                    setProfile(p => ({ ...p, title: e.target.value }))
+                    setProfileDirty(true)
+                  }}
+                  className="input"
+                  disabled={meLoading}
+                />
               </label>
               <label className="grid gap-1">
                 <span className="text-sm font-medium">Country</span>
-                <select value={profile.country} onChange={e => setProfile(p => ({ ...p, country: e.target.value }))} className="select">
+                <select
+                  value={profile.country}
+                  onChange={e => {
+                    setProfile(p => ({ ...p, country: e.target.value }))
+                    setProfileDirty(true)
+                  }}
+                  className="select"
+                  disabled={meLoading}
+                >
+                  <option value="">Select country</option>
                   {['Uganda', 'Kenya', 'Rwanda', 'Tanzania', 'China', 'United States', 'United Kingdom'].map(c => <option key={c}>{c}</option>)}
                 </select>
               </label>
               <label className="grid gap-1">
                 <span className="text-sm font-medium">City</span>
-                <input value={profile.city} onChange={e => setProfile(p => ({ ...p, city: e.target.value }))} className="input" />
+                <input
+                  value={profile.city}
+                  onChange={e => {
+                    setProfile(p => ({ ...p, city: e.target.value }))
+                    setProfileDirty(true)
+                  }}
+                  className="input"
+                  disabled={meLoading}
+                />
               </label>
             </div>
 
             <div className="flex justify-end">
-              <button type="submit" className="px-4 py-2 rounded-lg bg-accent text-white font-medium hover:bg-accent-hover">Save Changes</button>
+              <button type="submit" className="px-4 py-2 rounded-lg bg-accent text-white font-medium hover:bg-accent-hover" disabled={updateMe.isPending}>
+                {updateMe.isPending ? 'Saving...' : 'Save Changes'}
+              </button>
             </div>
           </form>
         )}
@@ -212,7 +378,10 @@ export function Settings() {
                   <input
                     type="checkbox"
                     checked={notifications[n.key as keyof typeof notifications]}
-                    onChange={e => setNotifications(prev => ({ ...prev, [n.key]: e.target.checked }))}
+                    onChange={e => {
+                      setNotifications(prev => ({ ...prev, [n.key]: e.target.checked }))
+                      setNotificationsDirty(true)
+                    }}
                     className="rounded h-5 w-5"
                   />
                 </label>
@@ -220,7 +389,9 @@ export function Settings() {
             </div>
 
             <div className="flex justify-end">
-              <button onClick={handleNotificationsSave} className="px-4 py-2 rounded-lg bg-accent text-white font-medium hover:bg-accent-hover">Save Preferences</button>
+              <button onClick={handleNotificationsSave} className="px-4 py-2 rounded-lg bg-accent text-white font-medium hover:bg-accent-hover" disabled={updateMe.isPending}>
+                {updateMe.isPending ? 'Saving...' : 'Save Preferences'}
+              </button>
             </div>
           </div>
         )}
@@ -230,12 +401,13 @@ export function Settings() {
           <div className="rounded-xl bg-surface border border-border p-6 space-y-6">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold">API Keys</h2>
-              {(user?.role === 'EVZONE_ADMIN' || user?.role === 'SUPER_ADMIN') && (
-                <button onClick={() => toast('Create API key (demo)')} className="px-4 py-2 rounded-lg bg-accent text-white font-medium hover:bg-accent-hover">
-                  Create API Key
-                </button>
-              )}
             </div>
+
+            {apiKeysLoading && (
+              <div className="py-2">
+                <TextSkeleton lines={1} />
+              </div>
+            )}
 
             <div className="overflow-x-auto rounded-lg border border-border">
               <table className="min-w-full text-sm">
@@ -251,20 +423,48 @@ export function Settings() {
                 <tbody className="divide-y divide-border">
                   {apiKeys.map(k => (
                     <tr key={k.id} className="hover:bg-muted/50">
-                      <td className="px-4 py-3 font-medium">{k.name}</td>
-                      <td className="px-4 py-3 font-mono text-subtle">{k.key}</td>
-                      <td className="px-4 py-3 text-subtle">{k.created}</td>
-                      <td className="px-4 py-3 text-subtle">{k.lastUsed}</td>
+                      <td className="px-4 py-3 font-medium">{k.name || k.id}</td>
+                      <td className="px-4 py-3 font-mono text-subtle">{k.prefix ? `${k.prefix}****` : '****'}</td>
+                      <td className="px-4 py-3 text-subtle">{formatDate(k.createdAt)}</td>
+                      <td className="px-4 py-3 text-subtle">{formatDate(k.lastUsedAt)}</td>
                       <td className="px-4 py-3 text-right">
                         <div className="inline-flex gap-2">
-                          <button onClick={() => toast('Copied to clipboard!')} className="px-2 py-1 rounded border border-border hover:bg-muted text-xs">Copy</button>
-                          {(user?.role === 'EVZONE_ADMIN' || user?.role === 'SUPER_ADMIN') && (
-                            <button onClick={() => toast('Revoked API key')} className="px-2 py-1 rounded border border-border hover:bg-muted text-xs text-red-600">Revoke</button>
+                          <button
+                            onClick={() => {
+                              if (k.prefix) {
+                                navigator?.clipboard?.writeText?.(k.prefix)
+                              }
+                              toast('Copied to clipboard!')
+                            }}
+                            className="px-2 py-1 rounded border border-border hover:bg-muted text-xs"
+                          >
+                            Copy
+                          </button>
+                          {(resolvedUser?.role === 'EVZONE_ADMIN' || resolvedUser?.role === 'SUPER_ADMIN') && (
+                            <>
+                              <button
+                                onClick={() => rotateApiKey.mutate(k.id, { onSuccess: () => toast('API key rotated') })}
+                                className="px-2 py-1 rounded border border-border hover:bg-muted text-xs"
+                              >
+                                Rotate
+                              </button>
+                              <button
+                                onClick={() => revokeApiKey.mutate(k.id, { onSuccess: () => toast('API key revoked') })}
+                                className="px-2 py-1 rounded border border-border hover:bg-muted text-xs text-red-600"
+                              >
+                                Revoke
+                              </button>
+                            </>
                           )}
                         </div>
                       </td>
                     </tr>
                   ))}
+                  {!apiKeysLoading && apiKeys.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="px-4 py-6 text-center text-muted">No API keys found.</td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -279,19 +479,28 @@ export function Settings() {
             <div className="grid sm:grid-cols-2 gap-4">
               <label className="grid gap-1">
                 <span className="text-sm font-medium">Language</span>
-                <select value={profile.language} onChange={e => setProfile(p => ({ ...p, language: e.target.value }))} className="select">
+                <select value={profile.language} onChange={e => {
+                  setProfile(p => ({ ...p, language: e.target.value }))
+                  setProfileDirty(true)
+                }} className="select">
+                  <option value="">Not set</option>
                   {['EN', 'FR', 'ES', 'SW', 'AR', 'ZH'].map(l => <option key={l}>{l}</option>)}
                 </select>
               </label>
               <label className="grid gap-1">
                 <span className="text-sm font-medium">Timezone</span>
-                <select value={profile.timezone} onChange={e => setProfile(p => ({ ...p, timezone: e.target.value }))} className="select">
+                <select value={profile.timezone} onChange={e => {
+                  setProfile(p => ({ ...p, timezone: e.target.value }))
+                  setProfileDirty(true)
+                }} className="select">
+                  <option value="">Not set</option>
                   {['Africa/Kampala', 'Africa/Nairobi', 'Europe/London', 'America/New_York', 'Asia/Shanghai'].map(t => <option key={t}>{t}</option>)}
                 </select>
               </label>
               <label className="grid gap-1">
                 <span className="text-sm font-medium">Date Format</span>
-                <select className="select">
+                <select className="select" defaultValue="">
+                  <option value="">Not set</option>
                   <option>DD/MM/YYYY</option>
                   <option>MM/DD/YYYY</option>
                   <option>YYYY-MM-DD</option>
@@ -299,7 +508,8 @@ export function Settings() {
               </label>
               <label className="grid gap-1">
                 <span className="text-sm font-medium">Currency</span>
-                <select className="select">
+                <select className="select" defaultValue="">
+                  <option value="">Not set</option>
                   <option>USD - US Dollar</option>
                   <option>EUR - Euro</option>
                   <option>UGX - Ugandan Shilling</option>
@@ -309,7 +519,9 @@ export function Settings() {
             </div>
 
             <div className="flex justify-end">
-              <button onClick={() => toast('Localization settings saved!')} className="px-4 py-2 rounded-lg bg-accent text-white font-medium hover:bg-accent-hover">Save Settings</button>
+              <button onClick={handleLocalizationSave} className="px-4 py-2 rounded-lg bg-accent text-white font-medium hover:bg-accent-hover" disabled={updateMe.isPending}>
+                {updateMe.isPending ? 'Saving...' : 'Save Settings'}
+              </button>
             </div>
           </div>
         )}
@@ -319,4 +531,3 @@ export function Settings() {
 }
 
 export default Settings
-

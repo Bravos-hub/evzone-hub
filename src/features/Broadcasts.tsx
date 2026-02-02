@@ -5,6 +5,7 @@ import { getPermissionsForFeature } from '@/constants/permissions'
 import { useNotices } from '@/modules/notifications/hooks/useNotices'
 import { useNoticeTemplates } from '@/modules/notifications/hooks/useNoticeTemplates'
 import { getErrorMessage } from '@/core/api/errors'
+import { LoadingRow } from '@/ui/components/SkeletonCards'
 
 /**
  * Broadcasts Page - Admin feature
@@ -85,11 +86,7 @@ export function Broadcasts() {
               </tr>
             </thead>
             <tbody>
-              {noticesLoading && (
-                <tr>
-                  <td colSpan={6} className="text-center py-8 text-muted">Loading broadcasts...</td>
-                </tr>
-              )}
+              {noticesLoading && <LoadingRow colSpan={6} />}
               {!noticesLoading && outbox.length === 0 && (
                 <tr>
                   <td colSpan={6} className="text-center py-8 text-muted">No broadcasts found.</td>
@@ -128,11 +125,7 @@ export function Broadcasts() {
               </tr>
             </thead>
             <tbody>
-              {templatesLoading && (
-                <tr>
-                  <td colSpan={4} className="text-center py-8 text-muted">Loading templates...</td>
-                </tr>
-              )}
+              {templatesLoading && <LoadingRow colSpan={4} />}
               {!templatesLoading && templates.length === 0 && (
                 <tr>
                   <td colSpan={4} className="text-center py-8 text-muted">No templates found.</td>

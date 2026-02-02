@@ -9,6 +9,7 @@ import { PATHS } from '@/app/router/paths'
 import type { Tenant } from '@/core/api/types'
 import type { Application } from '@/modules/applications/types'
 import { ApplicationDetailModal } from '@/modals'
+import { TextSkeleton } from '@/ui/components/SkeletonCards'
 
 type ViewMode = 'applications' | 'tenants'
 
@@ -209,7 +210,9 @@ export function SiteOwnerTenants() {
         </section>
 
         {(appsLoading || tenantsLoading) && (
-          <div className="text-center py-8 text-muted">Loading...</div>
+          <div className="py-8">
+            <TextSkeleton lines={2} centered />
+          </div>
         )}
 
         {!appsLoading && !tenantsLoading && (

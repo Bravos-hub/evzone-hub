@@ -3,6 +3,7 @@ import { useAuthStore } from '@/core/auth/authStore'
 import { hasPermission } from '@/constants/permissions'
 import { useOpenAdrEvents } from '@/modules/integrations/useOpenAdr'
 import { getErrorMessage } from '@/core/api/errors'
+import { LoadingRow } from '@/ui/components/SkeletonCards'
 
 /* ─────────────────────────────────────────────────────────────────────────────
    OpenADR Events — Demand Response management
@@ -149,11 +150,7 @@ export function OpenADR() {
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {isLoading && (
-              <tr>
-                <td colSpan={canManage ? 9 : 8} className="p-8 text-center text-subtle">Loading events...</td>
-              </tr>
-            )}
+            {isLoading && <LoadingRow colSpan={canManage ? 9 : 8} />}
             {!isLoading && filtered.map(r => (
               <tr key={r.id} className="hover:bg-muted/50">
                 <td className="px-4 py-3 font-medium">{r.id}</td>

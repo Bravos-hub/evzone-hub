@@ -4,6 +4,7 @@ import { hasPermission } from '@/constants/permissions'
 import { useDiscounts } from '@/modules/finance/payments/useDiscounts'
 import { useStations } from '@/modules/stations/hooks/useStations'
 import { getErrorMessage } from '@/core/api/errors'
+import { LoadingRow } from '@/ui/components/SkeletonCards'
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Discounts & Promotions — Owner discount management
@@ -202,11 +203,7 @@ export function Discounts() {
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {isLoading && (
-              <tr>
-                <td colSpan={canEdit ? 8 : 7} className="p-8 text-center text-subtle">Loading discounts...</td>
-              </tr>
-            )}
+            {isLoading && <LoadingRow colSpan={canEdit ? 8 : 7} />}
             {!isLoading && filtered.map(r => (
               <tr key={r.id} className="hover:bg-muted/50">
                 <td className="px-4 py-3 font-medium">{r.name}</td>

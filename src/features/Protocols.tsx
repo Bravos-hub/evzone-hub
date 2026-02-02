@@ -2,244 +2,317 @@ import { useMemo, useState } from 'react'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { useAuthStore } from '@/core/auth/authStore'
 import { getPermissionsForFeature } from '@/constants/permissions'
+import { useChargePoints } from '@/modules/charge-points/hooks/useChargePoints'
+import { useStations } from '@/modules/stations/hooks/useStations'
+import { usePartners } from '@/modules/organizations/hooks/usePartners'
+import { useSystemHealth } from '@/modules/analytics/hooks/useAnalytics'
+import { API_CONFIG } from '@/core/api/config'
+import { getErrorMessage } from '@/core/api/errors'
+import type { ChargePoint, Connector, Station } from '@/core/api/types'
+import { TableSkeleton, TextSkeleton } from '@/ui/components/SkeletonCards'
 
-type Endpoint = {
-  id: string
-  site: string
-  make: string
-  model: string
-  ver: '1.6J' | '2.0.1'
-  vendor: string
-  fw: string
-  status: 'Online' | 'Warning' | 'Offline'
-  hb: string
-  chargeBoxId: string
-  password: string
-  connectors: Array<{ id: number; t: string; kw: number; status: string }>
+const mapStatus = (status?: string): 'Online' | 'Warning' | 'Offline' => {
+  const v = String(status || '').toLowerCase()
+  if (v.includes('offline') || v.includes('down')) return 'Offline'
+  if (v.includes('degraded') || v.includes('maintenance')) return 'Warning'
+  return 'Online'
 }
 
-const ocppEndpoints: Endpoint[] = [
-  {
-    id: 'CP-A1',
-    site: 'Central Hub',
-    make: 'ABB',
-    model: 'Terra 54',
-    ver: '1.6J',
-    vendor: 'ABB',
-    fw: 'v2.1.0',
-    status: 'Online',
-    hb: '11:42',
-    chargeBoxId: 'CP-A1',
-    password: 'demo_pw_A',
-    connectors: [
-      { id: 1, t: 'CCS2', kw: 60, status: 'Available' },
-      { id: 2, t: 'Type 2', kw: 22, status: 'Available' },
-    ],
-  },
-  {
-    id: 'CP-B4',
-    site: 'Airport East',
-    make: 'Delta',
-    model: 'DC Wall 25',
-    ver: '1.6J',
-    vendor: 'Delta',
-    fw: 'v1.9.3',
-    status: 'Warning',
-    hb: '11:34',
-    chargeBoxId: 'CP-B4',
-    password: 'demo_pw_B',
-    connectors: [{ id: 1, t: 'CHAdeMO', kw: 50, status: 'Charging' }],
-  },
-  {
-    id: 'CP-C2',
-    site: 'Tech Park',
-    make: 'Huawei',
-    model: 'FusionCharge',
-    ver: '2.0.1',
-    vendor: 'Huawei',
-    fw: 'v3.0.0',
-    status: 'Offline',
-    hb: '10:01',
-    chargeBoxId: 'CP-C2',
-    password: 'demo_pw_C',
-    connectors: [{ id: 1, t: 'CCS2', kw: 120, status: 'Available' }],
-  },
-]
+const inferOcppVersion = (cp: ChargePoint): string => {
+  const v = String(cp.ocppStatus || '').toLowerCase()
+  if (v.includes('2.0')) return '2.0.1'
+  if (v.includes('1.6')) return '1.6J'
+  return '1.6J'
+}
 
-const ocpiPeers = [
-  { id: 'Hubject', status: 'Connected', lastSync: '10m ago' },
-  { id: 'Gireve', status: 'Connected', lastSync: '32m ago' },
-  { id: 'e-Clearing', status: 'Degraded', lastSync: '1h ago' },
-]
+const formatHeartbeat = (value?: string) => {
+  if (!value) return '-'
+  const date = new Date(value)
+  if (!Number.isFinite(date.getTime())) return '-'
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+}
 
-const mqttStats = { topics: 45, rate: '12.5K/min', status: 'Healthy' }
+const normalizeChargePoints = (data: unknown): ChargePoint[] => {
+  if (Array.isArray(data)) return data as ChargePoint[]
+  return (data as any)?.data || []
+}
+
+const normalizeStations = (data: unknown): Station[] => {
+  if (Array.isArray(data)) return data as Station[]
+  return (data as any)?.data || []
+}
+
+const csmsUrlFor = (ver: string) => {
+  const base = API_CONFIG.baseURL.replace(/^http/, 'ws')
+  const trimmed = base.replace(/\/api\/v\d+\/?$/, '')
+  return `${trimmed}/ocpp/${ver === '1.6J' ? '1.6' : '2.0.1'}`
+}
 
 export function Protocols() {
   const { user } = useAuthStore()
   const perms = getPermissionsForFeature(user?.role, 'protocolsConsole')
 
+  const { data: chargePointsData, isLoading: chargePointsLoading, error: chargePointsError } = useChargePoints()
+  const { data: stationsData, isLoading: stationsLoading } = useStations()
+  const { data: partnersData, isLoading: partnersLoading, error: partnersError } = usePartners()
+  const { data: healthData, isLoading: healthLoading, error: healthError } = useSystemHealth() as any
+
   const [q, setQ] = useState('')
-  const [ver, setVer] = useState<'All' | '1.6J' | '2.0.1'>('All')
+  const [ver, setVer] = useState<'All' | string>('All')
   const [make, setMake] = useState<'All' | string>('All')
 
-  const rows = useMemo(() => {
-    return ocppEndpoints
-      .map((r) => ({
-        ...r,
-        maxKw: Math.max(...(r.connectors || []).map((c) => c.kw || 0), 0),
-        activeSessions: (r.connectors || []).filter((c) => c.status === 'Charging').length,
+  const stations = useMemo<Station[]>(() => normalizeStations(stationsData), [stationsData])
+  const stationMap = useMemo(() => new Map(stations.map((s) => [s.id, s])), [stations])
+
+  const endpoints = useMemo(() => {
+    return normalizeChargePoints(chargePointsData).map((cp) => {
+      const connectors = (cp.connectors || []).map((c: Connector) => ({
+        id: c.id,
+        t: c.type,
+        kw: c.maxPowerKw,
+        status: c.status,
       }))
+
+      const maxKw = connectors.reduce((max, c) => Math.max(max, c.kw || 0), 0)
+      const activeSessions = connectors.filter((c) => String(c.status).toLowerCase() === 'occupied').length
+
+      return {
+        id: cp.id,
+        site: stationMap.get(cp.stationId)?.name || cp.stationId || 'Unknown',
+        make: cp.manufacturer || 'Unknown',
+        model: cp.model || 'Unknown',
+        ver: inferOcppVersion(cp),
+        vendor: cp.manufacturer || 'Unknown',
+        fw: cp.firmwareVersion || '-',
+        status: mapStatus(cp.status),
+        hb: formatHeartbeat(cp.lastHeartbeat),
+        chargeBoxId: cp.ocppId || cp.id,
+        connectors,
+        maxKw,
+        activeSessions,
+      }
+    })
+  }, [chargePointsData, stationMap])
+
+  const rows = useMemo(() => {
+    return endpoints
       .filter((r) => (q ? (r.id + ' ' + r.site + ' ' + r.make + ' ' + r.model).toLowerCase().includes(q.toLowerCase()) : true))
       .filter((r) => (ver === 'All' ? true : r.ver === ver))
       .filter((r) => (make === 'All' ? true : r.make === make))
-  }, [q, ver, make])
+  }, [endpoints, q, ver, make])
 
-  function csmsUrlFor(v: Endpoint['ver']) {
-    return `wss://csms.evzone.example/ocpp/${v === '1.6J' ? '1.6' : '2.0.1'}`
-  }
+  const makeOptions = useMemo(() => {
+    const set = new Set<string>()
+    endpoints.forEach((r) => {
+      if (r.make) set.add(r.make)
+    })
+    return ['All', ...Array.from(set)]
+  }, [endpoints])
+
+  const ocpiPeers = useMemo(() => {
+    const partners = Array.isArray(partnersData) ? partnersData : []
+    return partners.map((p) => ({
+      id: p.name || p.id,
+      status: p.status || 'Unknown',
+      lastSync: p.lastSync || '-',
+    }))
+  }, [partnersData])
+
+  const mqttService = useMemo(() => {
+    const services = (healthData as any)?.services || []
+    return services.find((s: any) => String(s.name || s.id || '').toLowerCase().includes('mqtt'))
+  }, [healthData])
+
+  const mqttStatus = mqttService ? mapStatus(mqttService.status) : 'Offline'
+  const mqttRate = mqttService?.rate || mqttService?.throughput || '-'
+  const mqttTopics = mqttService?.topics || mqttService?.topicCount || '-'
 
   function copy(text: string, msg: string) {
+    if (!text) return
     navigator?.clipboard?.writeText?.(text)
     alert(msg)
   }
 
+  if (!perms.access) {
+    return (
+      <DashboardLayout pageTitle="Protocols Console">
+        <div className="card">
+          <p className="text-muted">You don't have permission to view this page.</p>
+        </div>
+      </DashboardLayout>
+    )
+  }
+
+  const isLoading = chargePointsLoading || stationsLoading || partnersLoading || healthLoading
+  const error = chargePointsError || partnersError || healthError
+
   return (
     <DashboardLayout pageTitle="Protocols Console">
       <div className="space-y-4">
+        {error && (
+          <div className="card mb-4 bg-red-50 border border-red-200 text-red-700 text-sm">
+            {getErrorMessage(error)}
+          </div>
+        )}
+
         {/* Filters */}
         <div className="card grid md:grid-cols-5 gap-2">
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search charger/site/make/model" className="input md:col-span-2" />
-          <select value={ver} onChange={(e) => setVer(e.target.value as any)} className="select">
+          <select value={ver} onChange={(e) => setVer(e.target.value)} className="select">
             {['All', '1.6J', '2.0.1'].map((v) => (
               <option key={v}>{v}</option>
             ))}
           </select>
           <select value={make} onChange={(e) => setMake(e.target.value)} className="select">
-            {['All', 'ABB', 'Delta', 'Huawei', 'Siemens', 'StarCharge'].map((m) => (
+            {makeOptions.map((m) => (
               <option key={m}>{m}</option>
             ))}
           </select>
           <div className="text-sm text-muted self-center">{rows.length} result(s)</div>
         </div>
 
-        {/* OCPP table */}
-        <div className="table-wrap">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Charger</th>
-                <th>Site</th>
-                <th>Make</th>
-                <th>Model</th>
-                <th>OCPP</th>
-                <th>Max kW</th>
-                <th>Status</th>
-                <th>Heartbeat</th>
-                <th className="text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r.id}>
-                  <td className="font-semibold">{r.id}</td>
-                  <td>{r.site}</td>
-                  <td>{r.make}</td>
-                  <td>{r.model}</td>
-                  <td>{r.ver}</td>
-                  <td>{r.maxKw} kW</td>
-                  <td>
-                    <span
-                      className={`pill ${
-                        r.status === 'Online'
-                          ? 'approved'
-                          : r.status === 'Warning'
-                          ? 'pending'
-                          : 'bg-rose-100 text-rose-700'
-                      }`}
-                    >
-                      {r.status}
-                    </span>
-                  </td>
-                  <td>{r.hb}</td>
-                  <td className="text-right">
-                    <div className="inline-flex items-center gap-2">
-                      <button className="btn secondary" onClick={() => copy(csmsUrlFor(r.ver), 'CSMS URL copied')}>
-                        CSMS URL
-                      </button>
-                      <button className="btn secondary" onClick={() => copy(r.chargeBoxId, 'ChargeBoxId copied')}>
-                        ID
-                      </button>
-                      <button className="btn secondary" onClick={() => copy(r.password, 'Password copied')}>
-                        Password
-                      </button>
-                      <button
-                        className="btn secondary"
-                        onClick={() =>
-                          copy(
-                            JSON.stringify(
-                              {
-                                CSMS: csmsUrlFor(r.ver),
-                                ChargeBoxId: r.chargeBoxId,
-                                Password: r.password,
-                                OcppVersion: r.ver,
-                                hardware: { make: r.make, model: r.model },
-                                maxKw: r.maxKw,
-                              },
-                              null,
-                              2
-                            ),
-                            'Provisioning JSON copied'
-                          )
-                        }
-                      >
-                        Bundle
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        {isLoading && (
+          <div className="space-y-4">
+            <div className="card">
+              <TextSkeleton lines={2} />
+            </div>
+            <div className="card">
+              <TableSkeleton rows={6} cols={9} />
+            </div>
+          </div>
+        )}
 
-        {/* OCPI & MQTT */}
-        <div className="grid md:grid-cols-2 gap-3">
-          <div className="card">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="font-semibold">OCPI Peers</h3>
-              <span className="text-sm text-muted">({ocpiPeers.length})</span>
+        {!isLoading && (
+          <>
+            {/* OCPP table */}
+            <div className="table-wrap">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Charger</th>
+                    <th>Site</th>
+                    <th>Make</th>
+                    <th>Model</th>
+                    <th>OCPP</th>
+                    <th>Max kW</th>
+                    <th>Status</th>
+                    <th>Heartbeat</th>
+                    <th className="text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((r) => (
+                    <tr key={r.id}>
+                      <td className="font-semibold">{r.id}</td>
+                      <td>{r.site}</td>
+                      <td>{r.make}</td>
+                      <td>{r.model}</td>
+                      <td>{r.ver}</td>
+                      <td>{r.maxKw} kW</td>
+                      <td>
+                        <span
+                          className={`pill ${
+                            r.status === 'Online'
+                              ? 'approved'
+                              : r.status === 'Warning'
+                              ? 'pending'
+                              : 'bg-rose-100 text-rose-700'
+                          }`}
+                        >
+                          {r.status}
+                        </span>
+                      </td>
+                      <td>{r.hb}</td>
+                      <td className="text-right">
+                        <div className="inline-flex items-center gap-2">
+                          <button className="btn secondary" onClick={() => copy(csmsUrlFor(r.ver), 'CSMS URL copied')}>
+                            CSMS URL
+                          </button>
+                          <button className="btn secondary" onClick={() => copy(r.chargeBoxId, 'ChargeBoxId copied')}>
+                            ID
+                          </button>
+                          <button
+                            className="btn secondary"
+                            onClick={() =>
+                              copy(
+                                JSON.stringify(
+                                  {
+                                    CSMS: csmsUrlFor(r.ver),
+                                    ChargeBoxId: r.chargeBoxId,
+                                    OcppVersion: r.ver,
+                                    hardware: { make: r.make, model: r.model },
+                                    maxKw: r.maxKw,
+                                  },
+                                  null,
+                                  2
+                                ),
+                                'Provisioning JSON copied'
+                              )
+                            }
+                          >
+                            Bundle
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {rows.length === 0 && (
+                    <tr>
+                      <td colSpan={9} className="text-center text-muted py-6">No charge points found.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
-            <ul className="divide-y divide-border">
-              {ocpiPeers.map((p) => (
-                <li key={p.id} className="py-2 flex items-center justify-between">
-                  <div>
-                    <div className="font-medium">{p.id}</div>
-                    <div className="text-xs text-muted">Last sync: {p.lastSync}</div>
-                  </div>
-                  <span
-                    className={`pill ${
-                      p.status === 'Connected' ? 'approved' : p.status === 'Degraded' ? 'pending' : 'bg-rose-100 text-rose-700'
-                    }`}
-                  >
-                    {p.status}
+
+            {/* OCPI & MQTT */}
+            <div className="grid md:grid-cols-2 gap-3">
+              <div className="card">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-semibold">OCPI Peers</h3>
+                  <span className="text-sm text-muted">({ocpiPeers.length})</span>
+                </div>
+                <ul className="divide-y divide-border">
+                  {ocpiPeers.map((p) => (
+                    <li key={p.id} className="py-2 flex items-center justify-between">
+                      <div>
+                        <div className="font-medium">{p.id}</div>
+                        <div className="text-xs text-muted">Last sync: {p.lastSync}</div>
+                      </div>
+                      <span
+                        className={`pill ${
+                          p.status === 'Connected'
+                            ? 'approved'
+                            : p.status === 'Pending'
+                            ? 'pending'
+                            : 'bg-rose-100 text-rose-700'
+                        }`}
+                      >
+                        {p.status}
+                      </span>
+                    </li>
+                  ))}
+                  {ocpiPeers.length === 0 && (
+                    <li className="py-4 text-center text-muted">No peers found.</li>
+                  )}
+                </ul>
+              </div>
+              <div className="card">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-semibold">MQTT Broker</h3>
+                </div>
+                <div className="text-sm text-muted">Topics: {mqttTopics}</div>
+                <div className="text-sm text-muted">Rate: {mqttRate}</div>
+                <div className="mt-2">
+                  <span className={`pill ${mqttStatus === 'Online' ? 'approved' : mqttStatus === 'Warning' ? 'pending' : 'bg-rose-100 text-rose-700'}`}>
+                    {mqttStatus === 'Online' ? 'Healthy' : mqttStatus}
                   </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div className="card">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="font-semibold">MQTT Broker</h3>
+                </div>
+              </div>
             </div>
-            <div className="text-sm text-muted">Topics: {mqttStats.topics}</div>
-            <div className="text-sm text-muted">Rate: {mqttStats.rate}</div>
-            <div className="mt-2">
-              <span className="pill approved">{mqttStats.status}</span>
-            </div>
-          </div>
-        </div>
+          </>
+        )}
       </div>
     </DashboardLayout>
   )
 }
-

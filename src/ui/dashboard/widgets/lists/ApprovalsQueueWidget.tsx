@@ -2,6 +2,7 @@ import type { WidgetProps } from '../../types'
 import { Card } from '@/ui/components/Card'
 import { useApprovals } from '@/modules/approvals/hooks/useApprovals'
 import { useMemo } from 'react'
+import { TextSkeleton } from '@/ui/components/SkeletonCards'
 
 export type ApprovalsQueueConfig = {
   title?: string
@@ -50,7 +51,9 @@ export function ApprovalsQueueWidget({ config }: WidgetProps<ApprovalsQueueConfi
       </div>
       <div className="p-4 grid gap-3">
         {isLoading ? (
-          <div className="text-sm text-muted text-center py-4">Loading...</div>
+          <div className="py-4">
+            <TextSkeleton lines={2} centered />
+          </div>
         ) : display.length === 0 ? (
           <div className="text-sm text-muted text-center py-4">No pending approvals</div>
         ) : (

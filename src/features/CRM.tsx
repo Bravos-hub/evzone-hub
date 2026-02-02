@@ -4,6 +4,7 @@ import { useAuthStore } from '@/core/auth/authStore'
 import { getPermissionsForFeature } from '@/constants/permissions'
 import { useCrmStats, useCustomers } from '@/modules/organizations/hooks/useCrm'
 import { getErrorMessage } from '@/core/api/errors'
+import { TextSkeleton } from '@/ui/components/SkeletonCards'
 
 type CustomerType = 'Individual' | 'Business' | 'Fleet'
 type CustomerStatus = 'Active' | 'Inactive' | 'Churned'
@@ -119,7 +120,9 @@ export function CRM() {
           </tbody>
         </table>
         {(statsLoading || customersLoading) && (
-          <div className="p-8 text-center text-subtle">Loading CRM data...</div>
+          <div className="p-8">
+            <TextSkeleton lines={2} centered />
+          </div>
         )}
         {!statsLoading && !customersLoading && filtered.length === 0 && (
           <div className="p-8 text-center text-subtle">No customers found.</div>

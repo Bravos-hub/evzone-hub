@@ -3,6 +3,7 @@ import { useAuthStore } from '@/core/auth/authStore'
 import { hasPermission } from '@/constants/permissions'
 import { useNotifications } from '@/modules/notifications/hooks/useNotifications'
 import { getErrorMessage } from '@/core/api/errors'
+import { TextSkeleton } from '@/ui/components/SkeletonCards'
 import type { NotificationItem } from '@/core/api/types'
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -176,7 +177,9 @@ export function OwnerAlerts() {
         </div>
         <ul className="divide-y divide-border">
           {isLoading && (
-            <li className="py-6 text-center text-subtle">Loading alerts...</li>
+            <li className="py-6">
+              <TextSkeleton lines={2} centered />
+            </li>
           )}
           {filtered.map(a => (
             <li key={a.id} className="py-4 flex items-center justify-between gap-4">

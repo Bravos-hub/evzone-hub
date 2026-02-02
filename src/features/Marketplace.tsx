@@ -5,6 +5,7 @@ import { getPermissionsForFeature } from '@/constants/permissions'
 import { useSites } from '@/modules/sites/hooks/useSites'
 import { SiteApplicationForm } from '@/features/SiteApplicationForm'
 import { SiteDetail } from '@/features/SiteDetail'
+import { TextSkeleton } from '@/ui/components/SkeletonCards'
 
 type ListingKind = 'Operators' | 'Sites' | 'Technicians'
 type ViewMode = 'LIST' | 'DETAIL' | 'APPLY'
@@ -94,7 +95,13 @@ export function Marketplace() {
         </div>
 
         {isLoading ? (
-          <div className="text-center py-12 text-muted">Loading marketplace...</div>
+          <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-3">
+            {Array.from({ length: 6 }).map((_, idx) => (
+              <div key={idx} className="card">
+                <TextSkeleton lines={3} />
+              </div>
+            ))}
+          </div>
         ) : (
           <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-3">
             {listings.map((l) => (

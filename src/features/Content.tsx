@@ -3,6 +3,7 @@ import { useAuthStore } from '@/core/auth/authStore'
 import { PERMISSIONS, hasPermission } from '@/constants/permissions'
 import { useContent } from '@/modules/content/useContent'
 import { getErrorMessage } from '@/core/api/errors'
+import { LoadingRow } from '@/ui/components/SkeletonCards'
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Content Management — Pages, Announcements, Docs, Help articles, Media
@@ -192,11 +193,7 @@ export function Content() {
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {isLoading && (
-              <tr>
-                <td colSpan={canEdit ? 8 : 7} className="p-8 text-center text-subtle">Loading content...</td>
-              </tr>
-            )}
+            {isLoading && <LoadingRow colSpan={canEdit ? 8 : 7} />}
             {!isLoading && filtered.map(r => (
               <tr key={r.id} className="hover:bg-muted/50">
                 <td className="px-4 py-3 font-medium">{r.title}</td>

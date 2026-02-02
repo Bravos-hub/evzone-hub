@@ -3,6 +3,7 @@ import { useAuthStore } from '@/core/auth/authStore'
 import { hasPermission } from '@/constants/permissions'
 import { useTechnicianJobs } from '@/modules/dispatch/hooks/useTechnicianJobs'
 import { getErrorMessage } from '@/core/api/errors'
+import { TextSkeleton } from '@/ui/components/SkeletonCards'
 import type { TechnicianJob } from '@/modules/operators/services/techniciansService'
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -168,7 +169,9 @@ export function TechnicianJobs() {
       {/* Jobs list */}
       <section className="space-y-3">
         {isLoading && (
-          <div className="p-8 text-center text-subtle rounded-xl border border-border bg-surface">Loading jobs...</div>
+          <div className="p-8 rounded-xl border border-border bg-surface">
+            <TextSkeleton lines={2} centered />
+          </div>
         )}
         {filtered.map(job => (
           <div key={job.id} className="rounded-xl bg-surface border border-border p-4 hover:shadow-md transition-shadow">

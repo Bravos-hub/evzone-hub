@@ -3,6 +3,7 @@ import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { useAuthStore } from '@/core/auth/authStore'
 import { getPermissionsForFeature } from '@/constants/permissions'
 import { useSubscriptionPlans, useCreateSubscriptionPlan, useDeleteSubscriptionPlan } from '@/modules/subscriptions/hooks/useSubscriptionPlans'
+import { TextSkeleton } from '@/ui/components/SkeletonCards'
 
 type PlanStatus = 'Active' | 'Deprecated'
 
@@ -90,7 +91,11 @@ export function Plans() {
         )}
 
         {/* Loading/Error States */}
-        {isLoading && <div className="text-center py-8">Loading plans...</div>}
+        {isLoading && (
+          <div className="py-8">
+            <TextSkeleton lines={2} centered />
+          </div>
+        )}
         {error && <div className="text-center py-8 text-danger">Error loading plans: {error.message}</div>}
 
         {/* Cards */}

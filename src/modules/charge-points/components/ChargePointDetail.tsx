@@ -10,6 +10,7 @@ import { getPermissionsForFeature } from '@/constants/permissions'
 import { ROLE_GROUPS } from '@/constants/roles'
 import { canAccessStation } from '@/core/auth/rbac'
 import { StationStatusPill } from '@/ui/components/StationStatusPill'
+import { TextSkeleton } from '@/ui/components/SkeletonCards'
 import { getErrorMessage } from '@/core/api/errors'
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -88,7 +89,7 @@ export function ChargePointDetail() {
     if (isLoading) return (
         <DashboardLayout pageTitle="Charger Management">
             <div className="flex items-center justify-center h-64">
-                <div className="text-subtle">Loading charger details...</div>
+                <TextSkeleton lines={2} />
             </div>
         </DashboardLayout>
     )
@@ -105,7 +106,7 @@ export function ChargePointDetail() {
         return (
             <DashboardLayout pageTitle="Charger Management">
                 <div className="flex items-center justify-center h-64">
-                    <div className="text-subtle">Loading access...</div>
+                    <TextSkeleton lines={2} />
                 </div>
             </DashboardLayout>
         )

@@ -6,6 +6,7 @@ import { Card } from '@/ui/components/Card'
 import { useSessionHistory } from '@/modules/sessions/hooks/useSessions'
 import { useStations } from '@/modules/stations/hooks/useStations'
 import { getErrorMessage } from '@/core/api/errors'
+import { LoadingRow } from '@/ui/components/SkeletonCards'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES & MOCK DATA
@@ -176,11 +177,7 @@ export function BookingLedger() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {isLoading && (
-                <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-muted">Loading ledger...</td>
-                </tr>
-              )}
+              {isLoading && <LoadingRow colSpan={5} />}
               {!isLoading && ledgerRows.length === 0 && (
                 <tr>
                   <td colSpan={5} className="px-4 py-8 text-center text-muted">No ledger entries found.</td>

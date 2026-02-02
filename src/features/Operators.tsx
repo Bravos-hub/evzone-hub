@@ -4,6 +4,7 @@ import { hasPermission } from '@/constants/permissions'
 import { useUsers, useUpdateUser } from '@/modules/auth/hooks/useUsers'
 import { getErrorMessage } from '@/core/api/errors'
 import type { User } from '@/core/api/types'
+import { TextSkeleton } from '@/ui/components/SkeletonCards'
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Operators — Owner's operator management
@@ -194,7 +195,11 @@ export function Operators() {
             ))}
           </tbody>
         </table>
-        {isLoading && <div className="p-8 text-center text-subtle">Loading operators...</div>}
+        {isLoading && (
+          <div className="p-8">
+            <TextSkeleton lines={2} centered />
+          </div>
+        )}
         {!isLoading && filtered.length === 0 && <div className="p-8 text-center text-subtle">No operators match your filters.</div>}
       </section>
     </div>

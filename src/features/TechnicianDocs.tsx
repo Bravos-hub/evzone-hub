@@ -3,6 +3,7 @@ import { useAuthStore } from '@/core/auth/authStore'
 import { hasPermission } from '@/constants/permissions'
 import { useTechnicianDocs } from '@/modules/operators/hooks/useTechnicianDocs'
 import { getErrorMessage } from '@/core/api/errors'
+import { LoadingRow, TextSkeleton } from '@/ui/components/SkeletonCards'
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Technician Docs & Manuals — Document library
@@ -198,7 +199,9 @@ export function TechnicianDocs() {
       {view === 'Grid' && (
         <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {isLoading && (
-            <div className="col-span-full rounded-xl border border-border p-6 text-center text-subtle">Loading documents...</div>
+            <div className="col-span-full rounded-xl border border-border p-6">
+              <TextSkeleton lines={3} />
+            </div>
           )}
           {!isLoading && filtered.map(d => (
             <div key={d.id} className="rounded-xl bg-surface border border-border p-5 shadow-sm hover:shadow-md transition-shadow">
@@ -251,11 +254,7 @@ export function TechnicianDocs() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {isLoading && (
-                <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-muted">Loading documents...</td>
-                </tr>
-              )}
+              {isLoading && <LoadingRow colSpan={7} />}
               {!isLoading && filtered.map(d => (
                 <tr key={d.id} className="hover:bg-muted/50">
                   <td className="px-4 py-3 font-medium">{d.title}</td>

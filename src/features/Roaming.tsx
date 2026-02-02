@@ -3,6 +3,7 @@ import { useAuthStore } from '@/core/auth/authStore'
 import { hasPermission } from '@/constants/permissions'
 import { useRoamingCdrs, useRoamingSessions } from '@/modules/integrations/useRoaming'
 import { getErrorMessage } from '@/core/api/errors'
+import { TextSkeleton } from '@/ui/components/SkeletonCards'
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Roaming — OCPI Sessions & CDRs
@@ -222,7 +223,11 @@ export function Roaming() {
               ))}
             </tbody>
           </table>
-          {sessionsLoading && <div className="p-8 text-center text-subtle">Loading sessions...</div>}
+          {sessionsLoading && (
+            <div className="p-8">
+              <TextSkeleton lines={2} centered />
+            </div>
+          )}
           {!sessionsLoading && sessions.length === 0 && <div className="p-8 text-center text-subtle">No sessions match your filters.</div>}
         </section>
       )}
@@ -274,7 +279,11 @@ export function Roaming() {
             ))}
           </tbody>
         </table>
-        {cdrsLoading && <div className="p-8 text-center text-subtle">Loading CDRs...</div>}
+        {cdrsLoading && (
+          <div className="p-8">
+            <TextSkeleton lines={2} centered />
+          </div>
+        )}
         {!cdrsLoading && cdrs.length === 0 && <div className="p-8 text-center text-subtle">No CDRs match your filters.</div>}
       </section>
     )}

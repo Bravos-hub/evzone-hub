@@ -4,6 +4,7 @@ import { useAuthStore } from '@/core/auth/authStore'
 import { getPermissionsForFeature } from '@/constants/permissions'
 import { useTechnicianJobs } from '../hooks/useTechnicianJobs'
 import type { TechnicianJob } from '@/modules/operators/services/techniciansService'
+import { TextSkeleton } from '@/ui/components/SkeletonCards'
 
 type JobStatus = 'Available' | 'Accepted' | 'In Progress' | 'Completed' | 'Cancelled'
 type JobPriority = 'Urgent' | 'High' | 'Normal' | 'Low'
@@ -47,7 +48,9 @@ export function Jobs() {
   if (isLoading) {
     return (
       <DashboardLayout pageTitle="Jobs">
-        <div className="card text-center py-12 text-muted">Loading jobs...</div>
+        <div className="card py-12">
+          <TextSkeleton lines={2} centered />
+        </div>
       </DashboardLayout>
     )
   }

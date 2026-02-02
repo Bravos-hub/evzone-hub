@@ -3,6 +3,7 @@ import { useRequestWithdrawal, usePaymentMethods } from '@/modules/finance/withd
 import { getErrorMessage } from '@/core/api/errors'
 import type { PaymentMethod, PaymentMethodType } from '@/core/api/types'
 import { PaymentMethodModal } from './PaymentMethodModal'
+import { TextSkeleton } from '@/ui/components/SkeletonCards'
 
 interface WithdrawalModalProps {
   balance: number
@@ -156,7 +157,9 @@ export function WithdrawalModal({ balance, currency, onClose, onSuccess }: Withd
                 </button>
               </div>
               {methodsLoading ? (
-                <div className="text-center py-4 text-muted">Loading payment methods...</div>
+                <div className="py-4">
+                  <TextSkeleton lines={2} centered />
+                </div>
               ) : !paymentMethods || paymentMethods.length === 0 ? (
                 <div className="p-4 bg-muted/20 rounded-lg text-center">
                   <p className="text-sm text-muted mb-2">No payment methods added</p>

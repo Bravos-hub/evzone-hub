@@ -3,6 +3,7 @@ import type { WidgetProps } from '../../types'
 import { Card } from '@/ui/components/Card'
 import { WorldChoroplethMap, type ChoroplethDatum, type ChoroplethRegionId } from '@/ui/components/WorldChoroplethMap'
 import { useRegionalMetrics } from '@/modules/analytics/hooks/useAnalytics'
+import { TextSkeleton } from '@/ui/components/SkeletonCards'
 
 export type WorldMapConfig = {
   title?: string
@@ -72,7 +73,9 @@ export function WorldMapWidget({ config }: WidgetProps<WorldMapConfig>) {
   return (
     <Card>
       {isLoading && normalizedData.length === 0 ? (
-        <div className="text-sm text-center py-8 text-muted">Loading regional metrics...</div>
+        <div className="py-8">
+          <TextSkeleton lines={2} centered />
+        </div>
       ) : normalizedData.length === 0 ? (
         <div className="text-sm text-center py-8 text-muted">No regional metrics available.</div>
       ) : (

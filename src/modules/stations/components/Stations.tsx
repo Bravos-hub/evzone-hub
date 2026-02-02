@@ -10,6 +10,7 @@ import { StationsHeatMap, stationPointFromSeed } from '@/ui/components/StationsH
 import { SwapStations } from './SwapStations'
 import { useStations } from '@/modules/stations/hooks/useStations'
 import { getErrorMessage } from '@/core/api/errors'
+import { TextSkeleton } from '@/ui/components/SkeletonCards'
 
 // ... types and mock data omitted for brevity ...
 type StationType = 'Charge' | 'Swap' | 'Both'
@@ -196,7 +197,9 @@ export function Stations() {
           {/* Loading State */}
           {(isLoading || accessLoading) && (
             <div className="card">
-              <div className="text-center py-8 text-muted">{isLoading ? 'Loading stations...' : 'Loading access...'}</div>
+              <div className="py-8">
+                <TextSkeleton lines={2} centered />
+              </div>
             </div>
           )}
 

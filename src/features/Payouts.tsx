@@ -4,6 +4,7 @@ import { useAuthStore } from '@/core/auth/authStore'
 import { hasPermission } from '@/constants/permissions'
 import { useWithdrawalHistory } from '@/modules/finance/withdrawals/useWithdrawals'
 import { getErrorMessage } from '@/core/api/errors'
+import { TextSkeleton } from '@/ui/components/SkeletonCards'
 import type { WithdrawalTransaction, PaymentMethodType } from '@/core/api/types'
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -214,7 +215,11 @@ export function Payouts() {
             ))}
             </tbody>
           </table>
-          {isLoading && <div className="p-8 text-center text-subtle">Loading payouts...</div>}
+          {isLoading && (
+            <div className="p-8">
+              <TextSkeleton lines={2} centered />
+            </div>
+          )}
           {!isLoading && filtered.length === 0 && <div className="p-8 text-center text-subtle">No payouts match your filters.</div>}
         </section>
 

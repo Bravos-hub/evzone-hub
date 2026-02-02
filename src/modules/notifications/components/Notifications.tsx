@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { useNotifications } from '@/modules/notifications/hooks/useNotifications'
 import { getErrorMessage } from '@/core/api/errors'
+import { TextSkeleton } from '@/ui/components/SkeletonCards'
 import { PATHS } from '@/app/router/paths'
 import type { NotificationItem, NotificationKind, NoticeChannel } from '@/core/api/types'
 
@@ -160,8 +161,8 @@ export function Notifications() {
       {/* Notifications List */}
       <div className="space-y-2">
         {isLoading && (
-          <div className="card text-center text-muted py-6">
-            Loading notifications...
+          <div className="card py-6">
+            <TextSkeleton lines={2} centered />
           </div>
         )}
         {filtered.map((n) => (

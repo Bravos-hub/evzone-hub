@@ -3,6 +3,7 @@ import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { useAuthStore } from '@/core/auth/authStore'
 import { getPermissionsForFeature } from '@/constants/permissions'
 import { useAuditLogs } from '@/modules/audit/hooks/useAuditLogs'
+import { TextSkeleton } from '@/ui/components/SkeletonCards'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // MAIN COMPONENT
@@ -46,7 +47,11 @@ export function AuditLogs() {
   return (
     <DashboardLayout pageTitle="Audit Logs">
       {/* Loading/Error States */}
-      {isLoading && <div className="text-center py-8">Loading audit logs...</div>}
+      {isLoading && (
+        <div className="py-8">
+          <TextSkeleton lines={2} centered />
+        </div>
+      )}
       {error && <div className="text-center py-8 text-danger">Error loading audit logs: {error.message}</div>}
 
       {!isLoading && !error && (

@@ -6,6 +6,7 @@ import { ROLE_LABELS } from '@/constants/roles'
 import type { Role } from '@/core/auth/types'
 import { useApprovals, useApproveKyc, useRejectKyc, useApproveApplication, useRejectApplication } from '@/modules/approvals/hooks/useApprovals'
 import type { ApprovalType } from '@/modules/approvals/services/approvalsService'
+import { TextSkeleton } from '@/ui/components/SkeletonCards'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -106,7 +107,11 @@ export function Approvals() {
   return (
     <DashboardLayout pageTitle="Onboarding Approvals">
       {/* Loading/Error States */}
-      {isLoading && <div className="text-center py-8">Loading approvals...</div>}
+      {isLoading && (
+        <div className="py-8">
+          <TextSkeleton lines={2} centered />
+        </div>
+      )}
       {error && <div className="text-center py-8 text-danger">Error loading approvals: {error.message}</div>}
 
       {!isLoading && !error && (

@@ -5,6 +5,7 @@ import { useDispatches, useCreateDispatch } from '@/modules/dispatch/hooks/useDi
 import { useStations } from '@/modules/stations/hooks/useStations'
 import { getErrorMessage } from '@/core/api/errors'
 import type { Dispatch } from '@/core/api/types'
+import { TextSkeleton } from '@/ui/components/SkeletonCards'
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Tech Requests — Technician service requests management
@@ -283,7 +284,11 @@ export function TechRequests() {
             ))}
           </tbody>
         </table>
-        {isLoading && <div className="p-8 text-center text-subtle">Loading requests...</div>}
+        {isLoading && (
+          <div className="p-8">
+            <TextSkeleton lines={2} centered />
+          </div>
+        )}
         {!isLoading && filtered.length === 0 && <div className="p-8 text-center text-subtle">No requests found.</div>}
       </section>
 

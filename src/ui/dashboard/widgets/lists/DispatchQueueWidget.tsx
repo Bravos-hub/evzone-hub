@@ -2,6 +2,7 @@ import type { WidgetProps } from '../../types'
 import { Card } from '@/ui/components/Card'
 import { useDispatches } from '@/modules/dispatch/hooks/useDispatches'
 import { useMemo } from 'react'
+import { TextSkeleton } from '@/ui/components/SkeletonCards'
 
 export type DispatchQueueConfig = {
   title?: string
@@ -52,7 +53,9 @@ export function DispatchQueueWidget({ config }: WidgetProps<DispatchQueueConfig>
       </div>
       <div className="p-4 grid gap-3">
         {isLoading ? (
-          <div className="text-sm text-muted text-center py-4">Loading...</div>
+          <div className="py-4">
+            <TextSkeleton lines={2} centered />
+          </div>
         ) : display.length === 0 ? (
           <div className="text-sm text-muted text-center py-4">No dispatches</div>
         ) : (

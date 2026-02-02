@@ -3,6 +3,7 @@ import { useAuthStore } from '@/core/auth/authStore'
 import { useStations } from '@/modules/stations/hooks/useStations'
 import { useUsers } from '@/modules/auth/hooks/useUsers'
 import { ROLE_GROUPS } from '@/constants/roles'
+import { InlineSkeleton, TextSkeleton } from '@/ui/components/SkeletonCards'
 
 type Priority = 'Critical' | 'High' | 'Normal' | 'Low'
 type TechnicianType = 'org' | 'public'
@@ -99,7 +100,6 @@ export function DispatchModal({ isOpen, onClose, onSubmit, mode, dispatchId, sta
   }, [technicians])
 
   const selectedStation = stations.find(s => s.id === stationId)
-  const stationSelectLabel = stationsLoading && stations.length === 0 ? 'Loading stations...' : 'Select a station'
 
   const availableTechnicians = useMemo(() => {
     return technicians
@@ -247,20 +247,23 @@ export function DispatchModal({ isOpen, onClose, onSubmit, mode, dispatchId, sta
               <label className="block text-sm font-semibold text-text mb-2">
                 Station <span className="text-danger">*</span>
               </label>
-              <select 
-                value={stationId} 
-                onChange={(e) => setStationId(e.target.value)} 
-                className="select w-full"
-                disabled={stationsLoading && stations.length === 0}
-                required
-              >
-                <option value="">{stationSelectLabel}</option>
-                {stations.map(station => (
-                  <option key={station.id} value={station.id}>
-                    {station.name} ({station.id})
-                  </option>
-                ))}
-              </select>
+              {stationsLoading && stations.length === 0 ? (
+                <InlineSkeleton width="100%" height={40} />
+              ) : (
+                <select 
+                  value={stationId} 
+                  onChange={(e) => setStationId(e.target.value)} 
+                  className="select w-full"
+                  required
+                >
+                  <option value="">Select a station</option>
+                  {stations.map(station => (
+                    <option key={station.id} value={station.id}>
+                      {station.name} ({station.id})
+                    </option>
+                  ))}
+                </select>
+              )}
               
               {selectedStation && (
                 <div className="mt-3 p-4 rounded-lg bg-panel border border-border-light">
@@ -339,8 +342,8 @@ export function DispatchModal({ isOpen, onClose, onSubmit, mode, dispatchId, sta
               </label>
               <div className="space-y-2 max-h-[300px] overflow-y-auto">
                 {usersLoading ? (
-                  <div className="text-center py-8 text-muted">
-                    Loading technicians...
+                  <div className="py-8">
+                    <TextSkeleton lines={2} centered />
                   </div>
                 ) : availableTechnicians.length === 0 ? (
                   <div className="text-center py-8 text-muted">

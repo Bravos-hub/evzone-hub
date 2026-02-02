@@ -10,6 +10,7 @@ import { useApplications } from '@/modules/applications/hooks/useApplications'
 import { AddSite, type SiteForm } from './AddSite'
 import { SiteEditModal } from '@/modals'
 import { getErrorMessage } from '@/core/api/errors'
+import { TextSkeleton } from '@/ui/components/SkeletonCards'
 import { auditLogger } from '@/core/utils/auditLogger'
 import { PATHS } from '@/app/router/paths'
 import { ROLE_GROUPS, isInGroup } from '@/constants/roles'
@@ -242,7 +243,11 @@ export function SiteOwnerSites() {
               </select>
             </div>
 
-            {isLoading && <div className="text-center py-8 text-muted">Loading sites...</div>}
+            {isLoading && (
+              <div className="py-8">
+                <TextSkeleton lines={2} centered />
+              </div>
+            )}
             {error && <div className="p-3 bg-danger/10 text-danger rounded-lg text-sm">{getErrorMessage(error)}</div>}
 
             {!isLoading && !error && (
@@ -322,7 +327,9 @@ export function SiteOwnerSites() {
         {activeTab === 'applications' && (
           <div className="space-y-4">
             {applicationsLoading ? (
-              <div className="text-center py-8 text-muted">Loading applications...</div>
+              <div className="py-8">
+                <TextSkeleton lines={2} centered />
+              </div>
             ) : myApplications.length === 0 ? (
               <div className="text-center py-12 border-2 border-dashed border-border rounded-lg bg-muted/10">
                 <svg className="w-16 h-16 mx-auto text-muted mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">

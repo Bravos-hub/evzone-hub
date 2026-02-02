@@ -1,6 +1,7 @@
 import type { WidgetProps } from '../../types'
 import { Card } from '@/ui/components/Card'
 import { useSystemHealth } from '@/modules/analytics/hooks/useAnalytics'
+import { TextSkeleton } from '@/ui/components/SkeletonCards'
 
 export type HealthItem = {
   service: string
@@ -44,7 +45,9 @@ export function SystemHealthWidget({ config }: WidgetProps<SystemHealthConfig>) 
       </div>
       <div className="p-4 grid gap-3">
         {isLoading ? (
-          <div className="text-sm text-center py-4 text-muted">Loading health status...</div>
+          <div className="py-4">
+            <TextSkeleton lines={2} centered />
+          </div>
         ) : (
           items.map((h: any) => (
             <div key={h.service} className="flex items-center justify-between text-sm">

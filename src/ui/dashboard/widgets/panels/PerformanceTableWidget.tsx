@@ -2,6 +2,7 @@ import type { WidgetProps } from '../../types'
 import { Card } from '@/ui/components/Card'
 import { MiniBar } from '../charts/MiniBarWidget'
 import { useRegionalMetrics } from '@/modules/analytics/hooks/useAnalytics'
+import { TextSkeleton } from '@/ui/components/SkeletonCards'
 
 export type RegionPerformance = {
   region: string
@@ -31,7 +32,9 @@ export function PerformanceTableWidget({ config }: WidgetProps<PerformanceTableC
       </div>
       <div className="p-4 overflow-x-auto">
         {isLoading ? (
-          <div className="text-sm text-center py-4 text-muted">Loading regional data...</div>
+          <div className="py-4">
+            <TextSkeleton lines={2} centered />
+          </div>
         ) : (
           <table className="table w-full">
             <thead>

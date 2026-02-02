@@ -5,6 +5,7 @@ import { useStation, useUpdateStation } from '@/modules/stations/hooks/useStatio
 import { useUsers } from '@/modules/auth/hooks/useUsers'
 import { PATHS } from '@/app/router/paths'
 import { getErrorMessage } from '@/core/api/errors'
+import { TextSkeleton } from '@/ui/components/SkeletonCards'
 
 export function StationOperatorAssignment() {
     const { id } = useParams<{ id: string }>()
@@ -51,7 +52,9 @@ export function StationOperatorAssignment() {
     if (stationLoading || usersLoading) {
         return (
             <DashboardLayout pageTitle="Assign Station Operator">
-                <div className="card text-center py-8 text-muted">Loading...</div>
+                <div className="card">
+                    <TextSkeleton lines={2} />
+                </div>
             </DashboardLayout>
         )
     }

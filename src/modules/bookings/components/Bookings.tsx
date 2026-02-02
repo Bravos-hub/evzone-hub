@@ -3,6 +3,7 @@ import { useAuthStore } from '@/core/auth/authStore'
 import { getPermissionsForFeature } from '@/constants/permissions'
 import { useBookings } from '@/modules/bookings/hooks/useBookings'
 import { getErrorMessage } from '@/core/api/errors'
+import { StatGridSkeleton, TableSkeleton } from '@/ui/components/SkeletonCards'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -100,8 +101,11 @@ export function Bookings() {
 
       {/* Loading State */}
       {isLoading && (
-        <div className="card mb-4">
-          <div className="text-center py-8 text-muted">Loading bookings...</div>
+        <div className="space-y-4">
+          <StatGridSkeleton count={3} />
+          <div className="card">
+            <TableSkeleton rows={6} cols={7} />
+          </div>
         </div>
       )}
 

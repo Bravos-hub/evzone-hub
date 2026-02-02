@@ -5,6 +5,7 @@ import { hasPermission } from '@/constants/permissions'
 import { useParkingBays, useCreateParkingBay, useDeleteParkingBay } from '@/modules/parking/useParking'
 import { useSites } from '@/modules/sites/hooks/useSites'
 import { getErrorMessage } from '@/core/api/errors'
+import { LoadingRow } from '@/ui/components/SkeletonCards'
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Parking — Site Owner parking bay management
@@ -211,11 +212,7 @@ export function Parking() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {isLoading && (
-                  <tr>
-                    <td colSpan={canEdit ? 10 : 9} className="px-5 py-8 text-center text-muted">Loading parking bays...</td>
-                  </tr>
-                )}
+                {isLoading && <LoadingRow colSpan={canEdit ? 10 : 9} />}
                 {!isLoading && filtered.map(r => (
                   <tr key={r.id} className="hover:bg-muted/30 transition-colors">
                     <td className="px-5 py-4 font-bold text-accent">{r.id}</td>

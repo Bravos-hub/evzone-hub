@@ -5,6 +5,7 @@ import { getPermissionsForFeature } from '@/constants/permissions'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/core/api/client'
 import { getErrorMessage } from '@/core/api/errors'
+import { TextSkeleton } from '@/ui/components/SkeletonCards'
 
 type Flag = {
   key: string
@@ -110,7 +111,11 @@ export function FeatureFlags() {
               ))}
             </tbody>
           </table>
-          {isLoading && <div className="p-8 text-center text-subtle">Loading feature flags...</div>}
+          {isLoading && (
+            <div className="p-8">
+              <TextSkeleton lines={2} centered />
+            </div>
+          )}
           {!isLoading && rows.length === 0 && <div className="p-8 text-center text-subtle">No flags found.</div>}
         </div>
       </div>

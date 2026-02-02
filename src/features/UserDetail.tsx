@@ -10,6 +10,7 @@ import { useUser } from '@/modules/auth/hooks/useUsers'
 import { useUserSessions } from '@/modules/sessions/hooks/useSessions'
 import { getErrorMessage } from '@/core/api/errors'
 import { PATHS } from '@/app/router/paths'
+import { TextSkeleton } from '@/ui/components/SkeletonCards'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // MAIN COMPONENT
@@ -38,7 +39,7 @@ export function UserDetail() {
     return (
       <DashboardLayout pageTitle="User Details">
         <div className="card">
-          <div className="text-center py-8 text-muted">Loading user...</div>
+          <TextSkeleton lines={2} centered />
         </div>
       </DashboardLayout>
     )

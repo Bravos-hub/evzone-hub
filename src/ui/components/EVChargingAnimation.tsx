@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import Lottie from 'lottie-react'
+import { TextSkeleton } from '@/ui/components/SkeletonCards'
 
 export function EVChargingAnimation() {
   const [animationData, setAnimationData] = useState<any>(null)
@@ -16,7 +17,7 @@ export function EVChargingAnimation() {
   if (!animationData) {
     return (
       <div className="w-full max-w-[400px] h-[300px] mx-auto flex items-center justify-center">
-        <div className="text-muted text-sm">Loading animation...</div>
+        <TextSkeleton lines={2} centered />
       </div>
     )
   }

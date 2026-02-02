@@ -4,6 +4,7 @@ import { useAuthStore } from '@/core/auth/authStore'
 import { hasPermission } from '@/constants/permissions'
 import { usePayments } from '@/modules/finance/payments/usePayments'
 import { getErrorMessage } from '@/core/api/errors'
+import { TextSkeleton } from '@/ui/components/SkeletonCards'
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Payments — Payments & Settlements tracking
@@ -207,7 +208,11 @@ export function Payments() {
               ))}
             </tbody>
           </table>
-          {isLoading && <div className="p-8 text-center text-subtle">Loading payments...</div>}
+          {isLoading && (
+            <div className="p-8">
+              <TextSkeleton lines={2} centered />
+            </div>
+          )}
           {!isLoading && filtered.length === 0 && <div className="p-8 text-center text-subtle">No payments match your filters.</div>}
         </section>
       </div>

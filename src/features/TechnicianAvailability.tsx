@@ -6,6 +6,7 @@ import { useScopeStore } from '@/core/scope/scopeStore'
 import { regionInScope } from '@/core/scope/utils'
 import { useTechnicianAvailability } from '@/modules/admin/hooks/useTechnicianAvailability'
 import { getErrorMessage } from '@/core/api/errors'
+import { LoadingRow } from '@/ui/components/SkeletonCards'
 
 type Availability = {
   id: string
@@ -96,11 +97,7 @@ export function TechnicianAvailability() {
               </tr>
             </thead>
             <tbody>
-              {isLoading && (
-                <tr>
-                  <td colSpan={6} className="p-6 text-center text-subtle">Loading technicians...</td>
-                </tr>
-              )}
+              {isLoading && <LoadingRow colSpan={6} />}
               {!isLoading && rows.length === 0 && (
                 <tr>
                   <td colSpan={6} className="p-6 text-center text-subtle">No technicians match your filters.</td>

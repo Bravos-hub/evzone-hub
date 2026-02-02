@@ -3,6 +3,7 @@ import { useAuthStore } from '@/core/auth/authStore'
 import { getPermissionsForFeature } from '@/constants/permissions'
 import { useSystemHealth } from '@/modules/analytics/hooks/useAnalytics'
 import { getErrorMessage } from '@/core/api/errors'
+import { TextSkeleton } from '@/ui/components/SkeletonCards'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES & MOCK DATA
@@ -123,7 +124,11 @@ export function SystemHealth() {
 
       {/* Services Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-        {isLoading && <div className="col-span-full py-12 text-center text-muted">Loading health data...</div>}
+        {isLoading && (
+          <div className="col-span-full py-12">
+            <TextSkeleton lines={2} centered />
+          </div>
+        )}
         {!isLoading && services.length === 0 && <div className="col-span-full py-12 text-center text-muted">No health data available</div>}
         {!isLoading && services.map((s) => (
           <div key={s.id} className="card">
@@ -163,7 +168,11 @@ export function SystemHealth() {
       <div className="card">
         <h3 className="font-semibold text-text mb-3">Recent System Events</h3>
         <div className="space-y-2">
-          {isLoading && <div className="text-sm text-muted">Loading events...</div>}
+          {isLoading && (
+            <div className="text-sm">
+              <TextSkeleton lines={1} />
+            </div>
+          )}
           {!isLoading && events.length === 0 && <div className="text-sm text-muted">No recent events.</div>}
           {!isLoading && events.map((e: any) => (
             <div key={e.id} className="flex items-center gap-3 text-sm">

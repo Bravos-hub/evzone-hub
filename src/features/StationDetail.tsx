@@ -10,6 +10,7 @@ import { useMe } from '@/modules/auth/hooks/useAuth'
 import { canAccessStation } from '@/core/auth/rbac'
 import { ROLE_GROUPS, isInGroup } from '@/constants/roles'
 import { useMemo } from 'react'
+import { TextSkeleton } from '@/ui/components/SkeletonCards'
 import { useAuthStore } from '@/core/auth/authStore'
 
 export function StationDetail() {
@@ -48,7 +49,7 @@ export function StationDetail() {
     return (
       <DashboardLayout pageTitle="Station Details">
         <div className="card">
-          <div className="text-center py-8 text-muted">Loading station...</div>
+          <TextSkeleton lines={2} centered />
         </div>
       </DashboardLayout>
     )
@@ -58,7 +59,7 @@ export function StationDetail() {
     return (
       <DashboardLayout pageTitle="Station Details">
         <div className="card">
-          <div className="text-center py-8 text-muted">Loading access...</div>
+          <TextSkeleton lines={2} centered />
         </div>
       </DashboardLayout>
     )
@@ -202,7 +203,9 @@ export function StationDetail() {
       <div className="card mb-4">
         <h2 className="text-xl font-bold mb-4">Charge Points</h2>
         {chargePointsLoading ? (
-          <div className="text-center py-4 text-muted">Loading charge points...</div>
+          <div className="py-4">
+            <TextSkeleton lines={2} centered />
+          </div>
         ) : chargePoints && chargePoints.length > 0 ? (
           <div className="table-wrap">
             <table className="table">
@@ -250,7 +253,9 @@ export function StationDetail() {
       <div className="card">
         <h2 className="text-xl font-bold mb-4">Recent Sessions</h2>
         {sessionsLoading ? (
-          <div className="text-center py-4 text-muted">Loading sessions...</div>
+          <div className="py-4">
+            <TextSkeleton lines={2} centered />
+          </div>
         ) : sessions.length > 0 ? (
           <div className="table-wrap">
             <table className="table">

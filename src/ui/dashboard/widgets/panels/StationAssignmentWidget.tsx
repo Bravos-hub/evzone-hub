@@ -1,6 +1,7 @@
 import type { WidgetProps } from '../../types'
 import { Card } from '@/ui/components/Card'
 import { useTechnicianAssignment } from '@/modules/operators/hooks/useTechnicianAssignment'
+import { TextSkeleton } from '@/ui/components/SkeletonCards'
 
 export type StationAssignment = {
   id: string
@@ -68,7 +69,9 @@ export function StationAssignmentWidget({ config }: WidgetProps<StationAssignmen
     return (
       <Card>
         <div className="card-title">{title}</div>
-        <div className="text-sm text-muted py-8 text-center">Loading assignment...</div>
+        <div className="py-8">
+          <TextSkeleton lines={2} centered />
+        </div>
       </Card>
     )
   }

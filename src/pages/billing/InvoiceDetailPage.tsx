@@ -4,6 +4,7 @@ import { billingService } from '@/modules/finance/billing/billingService'
 import { useQuery } from '@tanstack/react-query'
 import { PATHS } from '@/app/router/paths'
 import { getErrorMessage } from '@/core/api/errors'
+import { TableSkeleton, TextSkeleton } from '@/ui/components/SkeletonCards'
 
 export function InvoiceDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -17,8 +18,13 @@ export function InvoiceDetailPage() {
   if (isLoading) {
     return (
       <DashboardLayout pageTitle="Invoice Details">
-        <div className="card">
-          <div className="text-center py-8 text-muted">Loading invoice...</div>
+        <div className="space-y-4">
+          <div className="card">
+            <TextSkeleton lines={3} />
+          </div>
+          <div className="card">
+            <TableSkeleton rows={4} cols={4} />
+          </div>
         </div>
       </DashboardLayout>
     )

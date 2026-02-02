@@ -2,6 +2,7 @@ import type { WidgetProps } from '../../types'
 import { Card } from '@/ui/components/Card'
 import { useAuditLogs } from '@/modules/audit/hooks/useAuditLogs'
 import { useMemo } from 'react'
+import { TextSkeleton } from '@/ui/components/SkeletonCards'
 
 export type AuditFeedConfig = {
   title?: string
@@ -47,7 +48,9 @@ export function AuditFeedWidget({ config }: WidgetProps<AuditFeedConfig>) {
       </div>
       <div className="p-4 grid gap-2">
         {isLoading ? (
-          <div className="text-sm text-muted text-center py-4">Loading...</div>
+          <div className="py-4">
+            <TextSkeleton lines={2} centered />
+          </div>
         ) : display.length === 0 ? (
           <div className="text-sm text-muted text-center py-4">No recent events</div>
         ) : (

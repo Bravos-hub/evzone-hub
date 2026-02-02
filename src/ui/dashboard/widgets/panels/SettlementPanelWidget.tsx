@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import type { WidgetProps } from '../../types'
 import { Card } from '@/ui/components/Card'
 import { useSettlements } from '@/modules/finance/settlements/useSettlements'
+import { TextSkeleton } from '@/ui/components/SkeletonCards'
 
 export type PaymentIssue = {
   id: string
@@ -60,7 +61,9 @@ export function SettlementPanelWidget({ config }: WidgetProps<SettlementPanelCon
       <div className="p-4 grid gap-4">
         <div className="grid gap-2">
           {isLoading && issues.length === 0 && (
-            <div className="text-sm text-center py-4 text-muted">Loading settlement issues...</div>
+            <div className="py-4">
+              <TextSkeleton lines={2} centered />
+            </div>
           )}
           {!isLoading && issues.length === 0 && (
             <div className="text-sm text-center py-4 text-muted">No settlement issues reported.</div>

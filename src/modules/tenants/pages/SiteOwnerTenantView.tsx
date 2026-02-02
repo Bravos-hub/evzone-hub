@@ -8,6 +8,7 @@ import { useTenant, useTenantContract } from '@/modules/applications/hooks/useAp
 import { useAssignedOperator } from '@/modules/tenants/hooks/useTenantDashboard'
 import { useStations } from '@/modules/stations/hooks/useStations'
 import { useSite } from '@/modules/sites/hooks/useSites'
+import { InlineSkeleton, TextSkeleton } from '@/ui/components/SkeletonCards'
 
 export function SiteOwnerTenantView() {
   const { id } = useParams<{ id: string }>()
@@ -57,7 +58,9 @@ export function SiteOwnerTenantView() {
   if (tenantLoading) {
     return (
       <DashboardLayout pageTitle="Tenant Health">
-        <div className="text-center py-8 text-muted">Loading tenant overview...</div>
+        <div className="py-8">
+          <TextSkeleton lines={2} centered />
+        </div>
       </DashboardLayout>
     )
   }
@@ -122,9 +125,15 @@ export function SiteOwnerTenantView() {
           <Card className="p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-sm font-bold uppercase tracking-widest text-muted">Lease Compliance</h2>
-              <span className="text-xs text-muted">{contractLoading ? 'Loading...' : 'Current'}</span>
+              <span className="text-xs text-muted">
+                {contractLoading ? <InlineSkeleton width={60} height={10} /> : 'Current'}
+              </span>
             </div>
-            {contractLoading && <div className="text-sm text-muted">Loading contract details...</div>}
+            {contractLoading && (
+              <div className="text-sm">
+                <TextSkeleton lines={2} />
+              </div>
+            )}
             {!contractLoading && contract && (
               <div className="space-y-3 text-sm">
                 <div className="flex items-center justify-between">

@@ -17,6 +17,7 @@ export type ShiftBoardConfig = {
 }
 
 import { useTechnicianAvailability } from '@/modules/admin/hooks/useTechnicianAvailability';
+import { TextSkeleton } from '@/ui/components/SkeletonCards'
 
 export function ShiftBoardWidget({ config }: WidgetProps<ShiftBoardConfig>) {
     const { technicians, isLoading } = useTechnicianAvailability();
@@ -31,7 +32,13 @@ export function ShiftBoardWidget({ config }: WidgetProps<ShiftBoardConfig>) {
         }
     }
 
-    if (isLoading) return <Card className="p-4">Loading staff...</Card>;
+    if (isLoading) {
+        return (
+            <Card className="p-4">
+                <TextSkeleton lines={2} centered />
+            </Card>
+        );
+    }
 
     const staff = technicians.map(t => ({
         id: t.userId,

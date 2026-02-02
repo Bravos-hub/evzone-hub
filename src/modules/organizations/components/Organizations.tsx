@@ -17,6 +17,7 @@ type Org = {
 }
 
 import { useOrganizations } from '../hooks/useOrganizations'
+import { LoadingRow } from '@/ui/components/SkeletonCards'
 
 export function Organizations() {
   const { user } = useAuthStore()
@@ -110,11 +111,7 @@ export function Organizations() {
             </thead>
             <tbody>
               {isLoading ? (
-                <tr>
-                  <td colSpan={8} className="text-center py-8 text-muted">
-                    Loading organizations...
-                  </td>
-                </tr>
+                <LoadingRow colSpan={8} />
               ) : rows.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="text-center py-8 text-muted">

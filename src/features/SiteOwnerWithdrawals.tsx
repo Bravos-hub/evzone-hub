@@ -6,6 +6,7 @@ import { PaymentMethodModal } from '@/modals/PaymentMethodModal'
 import { PaymentMethodCard } from '@/ui/components/PaymentMethodCard'
 import { getErrorMessage } from '@/core/api/errors'
 import type { PaymentMethod, WithdrawalTransaction } from '@/core/api/types'
+import { InlineSkeleton, TextSkeleton } from '@/ui/components/SkeletonCards'
 
 export function SiteOwnerWithdrawals() {
   const [showWithdrawalModal, setShowWithdrawalModal] = useState(false)
@@ -79,7 +80,7 @@ export function SiteOwnerWithdrawals() {
             <div>
               <div className="text-sm text-muted mb-1">Available Balance</div>
               {balanceLoading ? (
-                <div className="text-2xl font-bold text-muted">Loading...</div>
+                <InlineSkeleton width={140} height={24} />
               ) : (
                 <div className="text-3xl font-bold">
                   {balance?.currency || 'USD'} {balance?.balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
@@ -119,7 +120,9 @@ export function SiteOwnerWithdrawals() {
           </div>
           <div className="p-6">
             {methodsLoading ? (
-              <div className="text-center py-8 text-muted">Loading payment methods...</div>
+              <div className="py-8">
+                <TextSkeleton lines={2} centered />
+              </div>
             ) : !paymentMethods || paymentMethods.length === 0 ? (
               <div className="text-center py-8">
                 <p className="text-muted mb-4">No payment methods added</p>
@@ -159,7 +162,9 @@ export function SiteOwnerWithdrawals() {
           </div>
           <div className="p-6">
             {historyLoading ? (
-              <div className="text-center py-8 text-muted">Loading history...</div>
+              <div className="py-8">
+                <TextSkeleton lines={2} centered />
+              </div>
             ) : !withdrawalHistory || withdrawalHistory.length === 0 ? (
               <div className="text-center py-8 text-muted">No withdrawal history</div>
             ) : (
