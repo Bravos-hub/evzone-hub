@@ -1,6 +1,8 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useAuthStore } from '@/core/auth/authStore'
 import { hasPermission } from '@/constants/permissions'
+import { useUtilityDashboard } from '@/modules/utility/useUtility'
+import { getErrorMessage } from '@/core/api/errors'
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Utility Dashboard — Grid signals, price & carbon forecast, DR tools
@@ -25,43 +27,31 @@ interface SiteRow {
   status: 'Open' | 'Throttled' | 'Offline'
 }
 
-const KPIS = [
-  { label: 'Grid price now', value: '$0.23/kWh' },
-  { label: 'Carbon intensity', value: '412 gCO₂/kWh' },
-  { label: 'DR events today', value: '2' },
-  { label: 'Peak (today)', value: '1.42 MW' },
-  { label: 'Headroom saved (24h)', value: '12.4 MWh' },
-]
-
-const MOCK_EVENTS: GridEvent[] = [
-  { id: 'ADR-2411-07', type: 'OpenADR', level: 'HIGH', start: '2025-11-05 12:30', end: '2025-11-05 14:30', status: 'Active' },
-  { id: 'UTIL-2411-02', type: 'Utility Notice', level: 'MED', start: '2025-11-04 18:00', end: '2025-11-04 20:00', status: 'Ended' },
-]
-
-const MOCK_SITES: SiteRow[] = [
-  { id: 'SITE-401', name: 'Central Hub', city: 'Kampala', headroom: 45, enrolled: true, status: 'Open' },
-  { id: 'SITE-402', name: 'Airport East', city: 'Kampala', headroom: 18, enrolled: true, status: 'Throttled' },
-  { id: 'SITE-403', name: 'Business Park A', city: 'Wuxi', headroom: 72, enrolled: false, status: 'Open' },
-]
-
-const TARIFF_MAPPINGS = [
-  { utility: 'Umeme Time‑of‑Use', plan: 'Retail TOU A', bands: '3 bands' },
-  { utility: 'Umeme Peak', plan: 'Demand Charge', bands: '1 band' },
-]
-
 export function Utility() {
   const { user } = useAuthStore()
   const role = user?.role ?? 'EVZONE_OPERATOR'
   const canView = hasPermission(role, 'protocols', 'view')
   const canManage = hasPermission(role, 'protocols', 'manage')
 
+  const { data: dashboard, isLoading, error } = useUtilityDashboard()
+
   const [region, setRegion] = useState('All')
   const [utility, setUtility] = useState('All')
   const [gran, setGran] = useState('1h')
   const [signal, setSignal] = useState('All')
   const [q, setQ] = useState('')
-  const [sites, setSites] = useState(MOCK_SITES)
+  const [sites, setSites] = useState<SiteRow[]>([])
   const [ack, setAck] = useState('')
+
+  const kpis = dashboard?.kpis || []
+  const events = dashboard?.events || []
+  const tariffMappings = dashboard?.tariffMappings || []
+
+  useEffect(() => {
+    if (dashboard?.sites) {
+      setSites(dashboard.sites)
+    }
+  }, [dashboard?.sites])
 
   const toast = (m: string) => { setAck(m); setTimeout(() => setAck(''), 2000) }
 
@@ -81,6 +71,11 @@ export function Utility() {
 
   return (
     <div className="space-y-6">
+      {error && (
+        <div className="rounded-lg bg-red-50 border border-red-200 text-red-700 px-4 py-2 text-sm">
+          {getErrorMessage(error)}
+        </div>
+      )}
       {ack && <div className="rounded-lg bg-accent/10 text-accent px-4 py-2 text-sm">{ack}</div>}
 
       {/* Filters */}
@@ -126,7 +121,8 @@ export function Utility() {
 
       {/* KPIs */}
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        {KPIS.map(k => (
+        {isLoading && <div className="col-span-full text-sm text-subtle">Loading KPIs...</div>}
+        {!isLoading && kpis.map(k => (
           <div key={k.label} className="rounded-xl bg-surface border border-border p-5 shadow-sm">
             <div className="text-sm text-subtle">{k.label}</div>
             <div className="mt-2 text-2xl font-bold">{k.value}</div>
@@ -170,7 +166,8 @@ export function Utility() {
             <a href="/openadr" className="text-sm text-accent hover:underline">OpenADR Events</a>
           </div>
           <ul className="divide-y divide-border">
-            {MOCK_EVENTS.map(e => (
+            {isLoading && <li className="py-4 text-sm text-subtle">Loading grid signals...</li>}
+            {!isLoading && events.map(e => (
               <li key={e.id} className="py-3 flex items-center justify-between">
                 <div>
                   <div className="font-medium">
@@ -192,6 +189,9 @@ export function Utility() {
                 </div>
               </li>
             ))}
+            {!isLoading && events.length === 0 && (
+              <li className="py-4 text-sm text-subtle">No grid signals found.</li>
+            )}
           </ul>
         </div>
 
@@ -224,7 +224,7 @@ export function Utility() {
             <a href="/tariffs" className="text-sm text-accent hover:underline">Manage tariffs</a>
           </div>
           <ul className="divide-y divide-border">
-            {TARIFF_MAPPINGS.map((t, i) => (
+            {tariffMappings.map((t, i) => (
               <li key={i} className="py-3 flex items-center justify-between">
                 <div>
                   <div className="font-medium">{t.utility}</div>

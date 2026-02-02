@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { useAuthStore } from '@/core/auth/authStore'
 import { getPermissionsForFeature } from '@/constants/permissions'
+import { useApprovals } from '@/modules/approvals/hooks/useApprovals'
+import { getErrorMessage } from '@/core/api/errors'
 
 type KycStatus = 'Pending' | 'Approved' | 'Rejected' | 'Under Review'
 type RiskLevel = 'Low' | 'Medium' | 'High'
@@ -13,23 +15,40 @@ export function KycCompliance() {
   const { user } = useAuthStore()
   const perms = getPermissionsForFeature(user?.role, 'kycCompliance')
 
-  const mockCases = [
-    { id: 'KYC-001', entity: 'Volt Mobility Ltd', type: 'Business', status: 'Pending' as KycStatus, risk: 'Low' as RiskLevel, submitted: '2024-12-20', documents: 5 },
-    { id: 'KYC-002', entity: 'John Operator', type: 'Individual', status: 'Under Review' as KycStatus, risk: 'Medium' as RiskLevel, submitted: '2024-12-22', documents: 3 },
-    { id: 'KYC-003', entity: 'GridCity Ltd', type: 'Business', status: 'Approved' as KycStatus, risk: 'Low' as RiskLevel, submitted: '2024-12-15', documents: 6 },
-    { id: 'KYC-004', entity: 'SunRun Ops', type: 'Business', status: 'Rejected' as KycStatus, risk: 'High' as RiskLevel, submitted: '2024-12-10', documents: 2 },
-  ]
+  const { data: approvals = [], isLoading, error } = useApprovals({ type: 'KYC' })
+
+  const cases = useMemo(() => {
+    return approvals.map((item) => ({
+      id: item.id,
+      entity: item.applicantName || item.details?.entity || item.details?.organizationName || 'Unknown',
+      type: item.details?.entityType || item.details?.type || 'Business',
+      status: (item.status === 'PENDING'
+        ? 'Pending'
+        : item.status === 'APPROVED'
+          ? 'Approved'
+          : item.status === 'REJECTED'
+            ? 'Rejected'
+            : 'Under Review') as KycStatus,
+      risk: (item.details?.riskLevel || item.details?.risk || 'Low') as RiskLevel,
+      submitted: item.submittedAt,
+      documents: Array.isArray(item.details?.documents)
+        ? item.details.documents.length
+        : Array.isArray(item.details?.docs)
+          ? item.details.docs.length
+          : 0,
+    }))
+  }, [approvals])
 
   const [statusFilter, setStatusFilter] = useState<KycStatus | 'All'>('All')
 
   const filtered = useMemo(() => {
-    return mockCases.filter((c) => (statusFilter === 'All' ? true : c.status === statusFilter))
-  }, [statusFilter])
+    return cases.filter((c) => (statusFilter === 'All' ? true : c.status === statusFilter))
+  }, [cases, statusFilter])
 
   const stats = {
-    pending: mockCases.filter((c) => c.status === 'Pending' || c.status === 'Under Review').length,
-    approved: mockCases.filter((c) => c.status === 'Approved').length,
-    highRisk: mockCases.filter((c) => c.risk === 'High').length,
+    pending: cases.filter((c) => c.status === 'Pending' || c.status === 'Under Review').length,
+    approved: cases.filter((c) => c.status === 'Approved').length,
+    highRisk: cases.filter((c) => c.risk === 'High').length,
   }
 
   function statusColor(s: KycStatus) {
@@ -51,6 +70,11 @@ export function KycCompliance() {
 
   return (
     <DashboardLayout pageTitle="KYC & Compliance">
+      {error && (
+        <div className="card mb-4 bg-red-50 border border-red-200">
+          <div className="text-red-700 text-sm">{getErrorMessage(error)}</div>
+        </div>
+      )}
       {/* Summary */}
       <div className="grid grid-cols-3 gap-3 mb-4">
         <div className="card">
@@ -93,7 +117,21 @@ export function KycCompliance() {
             </tr>
           </thead>
           <tbody>
-            {filtered.map((c) => (
+            {isLoading && (
+              <tr>
+                <td colSpan={7} className="text-center py-8 text-muted">
+                  Loading KYC cases...
+                </td>
+              </tr>
+            )}
+            {!isLoading && filtered.length === 0 && (
+              <tr>
+                <td colSpan={7} className="text-center py-8 text-muted">
+                  No KYC cases found.
+                </td>
+              </tr>
+            )}
+            {!isLoading && filtered.map((c) => (
               <tr key={c.id}>
                 <td className="font-semibold text-text">{c.id}</td>
                 <td>{c.entity}</td>

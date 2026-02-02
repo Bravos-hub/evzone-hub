@@ -26,48 +26,6 @@ type ChargePoint = {
   totalSessions: number
 }
 
-const mockChargePoints: ChargePoint[] = [
-  {
-    id: 'CP-001',
-    name: 'Main Entrance A',
-    site: 'Central Hub',
-    make: 'ABB',
-    model: 'Terra 54',
-    status: 'Online',
-    connectors: [
-      { type: 'CCS2', kw: 50, status: 'Online' },
-      { type: 'Type 2', kw: 22, status: 'Online' },
-    ],
-    lastSession: '15m ago',
-    totalSessions: 1245,
-  },
-  {
-    id: 'CP-002',
-    name: 'Parking B4',
-    site: 'Central Hub',
-    make: 'Delta',
-    model: 'DC Wall 25',
-    status: 'Degraded',
-    connectors: [
-      { type: 'CHAdeMO', kw: 50, status: 'Offline' },
-      { type: 'CCS2', kw: 50, status: 'Online' },
-    ],
-    lastSession: '2h ago',
-    totalSessions: 892,
-  },
-  {
-    id: 'CP-003',
-    name: 'Visitor Lot',
-    site: 'Airport East',
-    make: 'Huawei',
-    model: 'FusionCharge',
-    status: 'Offline',
-    connectors: [{ type: 'CCS2', kw: 120, status: 'Offline' }],
-    lastSession: '1d ago',
-    totalSessions: 456,
-  },
-]
-
 // ═══════════════════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════════════════

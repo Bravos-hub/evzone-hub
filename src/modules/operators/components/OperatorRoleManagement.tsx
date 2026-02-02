@@ -1,40 +1,36 @@
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { RolePill } from '@/ui/components/RolePill'
 import { useAuthStore } from '@/core/auth/authStore'
 import { ROLE_LABELS } from '@/constants/roles'
 import type { Role } from '@/core/auth/types'
-
-interface CustomRole {
-    id: string
-    name: string
-    baseRole: Role
-    modules: string[]
-    memberCount: number
-}
-
-const INITIAL_CUSTOM_ROLES: CustomRole[] = [
-    { id: 'custom-1', name: 'Shift Lead', baseRole: 'MANAGER', modules: ['Dashboard', 'Stations', 'Incidents'], memberCount: 3 },
-    { id: 'custom-2', name: 'Junior Attendant', baseRole: 'ATTENDANT', modules: ['Dashboard', 'Sessions'], memberCount: 12 },
-]
+import { useRoles, useCreateRole, useDeleteRole, type CustomRole } from '../hooks/useRoles'
 
 export function OperatorRoleManagement() {
-    const { user } = useAuthStore()
-    const [roles, setRoles] = useState<CustomRole[]>(INITIAL_CUSTOM_ROLES)
+    const { data: roles = [], isLoading } = useRoles()
+    const { mutateAsync: createRole } = useCreateRole()
+    const { mutateAsync: deleteRole } = useDeleteRole()
     const [isAdding, setIsAdding] = useState(false)
     const [newRole, setNewRole] = useState({ name: '', baseRole: 'ATTENDANT' as Role })
 
-    const handleAddRole = () => {
+    const handleAddRole = async () => {
         if (!newRole.name) return
-        const id = `custom-${Math.random().toString(36).substr(2, 9)}`
-        setRoles([...roles, { ...newRole, id, modules: ['Dashboard'], memberCount: 0 }])
-        setIsAdding(false)
-        setNewRole({ name: '', baseRole: 'ATTENDANT' })
+        try {
+            await createRole({ ...newRole, modules: ['Dashboard'] })
+            setIsAdding(false)
+            setNewRole({ name: '', baseRole: 'ATTENDANT' })
+        } catch (error) {
+            console.error('Failed to create role:', error)
+        }
     }
 
-    const handleDeleteRole = (id: string) => {
+    const handleDeleteRole = async (id: string) => {
         if (confirm('Are you sure you want to delete this custom role?')) {
-            setRoles(roles.filter(r => r.id !== id))
+            try {
+                await deleteRole(id)
+            } catch (error) {
+                console.error('Failed to delete role:', error)
+            }
         }
     }
 

@@ -1,13 +1,16 @@
 import { useState, useMemo } from 'react'
 import { useAuthStore } from '@/core/auth/authStore'
 import { hasPermission } from '@/constants/permissions'
+import { useTechnicianJobs } from '@/modules/dispatch/hooks/useTechnicianJobs'
+import { getErrorMessage } from '@/core/api/errors'
+import type { TechnicianJob } from '@/modules/operators/services/techniciansService'
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Technician Jobs — Job management, surveys, tests, invoices
    RBAC: Technicians (view/manage assigned), Owners/Operators (view)
 ───────────────────────────────────────────────────────────────────────────── */
 
-type JobStatus = 'Pending' | 'Accepted' | 'En Route' | 'On Site' | 'Completed' | 'Cancelled'
+type JobStatus = 'Available' | 'Accepted' | 'In Progress' | 'Completed' | 'Cancelled'
 type JobType = 'Installation' | 'Repair' | 'Maintenance' | 'Inspection' | 'Commissioning'
 
 interface Job {
@@ -18,6 +21,7 @@ interface Job {
   charger?: string
   description: string
   status: JobStatus
+  postedAt?: string
   scheduledDate: string
   scheduledTime: string
   estimatedDuration: string
@@ -27,12 +31,43 @@ interface Job {
   notes?: string
 }
 
-const MOCK_JOBS: Job[] = [
-  { id: 'JOB-001', type: 'Repair', site: 'Central Hub', address: '123 Main St, Kampala', charger: 'CP-A1', description: 'Connector not latching properly', status: 'Accepted', scheduledDate: '2025-10-30', scheduledTime: '10:00', estimatedDuration: '2h', payRate: 75, client: 'Volt Mobility Ltd', contactPhone: '+256 700 123 456' },
-  { id: 'JOB-002', type: 'Installation', site: 'Airport East', address: '456 Airport Rd, Entebbe', description: 'Install 2x 150kW DC chargers', status: 'Pending', scheduledDate: '2025-11-02', scheduledTime: '09:00', estimatedDuration: '8h', payRate: 250, client: 'GridCity Ltd', contactPhone: '+256 700 234 567', notes: 'Bring own tools. Hard hats required.' },
-  { id: 'JOB-003', type: 'Maintenance', site: 'Tech Park', address: '789 Tech Way, Kampala', charger: 'CP-C2', description: 'Quarterly preventive maintenance', status: 'Completed', scheduledDate: '2025-10-22', scheduledTime: '09:00', estimatedDuration: '1.5h', payRate: 50, client: 'Mall Holdings', contactPhone: '+256 700 345 678' },
-  { id: 'JOB-004', type: 'Inspection', site: 'Downtown Garage', address: '101 City Center, Kampala', description: 'Pre-launch safety inspection', status: 'On Site', scheduledDate: '2025-10-28', scheduledTime: '14:00', estimatedDuration: '3h', payRate: 100, client: 'SunRun Ops', contactPhone: '+256 700 456 789' },
-]
+const inferType = (title: string, description?: string): JobType => {
+  const text = `${title} ${description || ''}`.toLowerCase()
+  if (text.includes('install')) return 'Installation'
+  if (text.includes('repair')) return 'Repair'
+  if (text.includes('inspect')) return 'Inspection'
+  if (text.includes('commission')) return 'Commissioning'
+  return 'Maintenance'
+}
+
+const formatDate = (value?: string) => {
+  if (!value) return '—'
+  const date = new Date(value)
+  return Number.isFinite(date.getTime()) ? date.toLocaleDateString() : '—'
+}
+
+const formatTime = (value?: string) => {
+  if (!value) return '—'
+  const date = new Date(value)
+  return Number.isFinite(date.getTime()) ? date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'
+}
+
+const mapJob = (job: TechnicianJob): Job => ({
+  id: job.id,
+  type: inferType(job.title, job.description),
+  site: job.station,
+  address: job.location,
+  charger: undefined,
+  description: job.description || job.title,
+  status: job.status as JobStatus,
+  postedAt: job.posted,
+  scheduledDate: formatDate(job.posted),
+  scheduledTime: formatTime(job.posted),
+  estimatedDuration: '—',
+  payRate: job.pay,
+  client: job.station,
+  contactPhone: '—',
+})
 
 export function TechnicianJobs() {
   const { user } = useAuthStore()
@@ -40,6 +75,8 @@ export function TechnicianJobs() {
   
   const canView = hasPermission(role, 'jobs', 'view')
   const canManage = ['TECHNICIAN_ORG', 'TECHNICIAN_PUBLIC'].includes(role)
+
+  const { data: jobsData, isLoading, error } = useTechnicianJobs()
 
   const [status, setStatus] = useState('All')
   const [type, setType] = useState('All')
@@ -50,12 +87,29 @@ export function TechnicianJobs() {
 
   const toast = (m: string) => { setAck(m); setTimeout(() => setAck(''), 2000) }
 
+  const jobs = useMemo<Job[]>(() => {
+    const raw = Array.isArray(jobsData) ? jobsData : (jobsData as any)?.data || []
+    return raw.map((job: TechnicianJob) => mapJob(job))
+  }, [jobsData])
+
   const filtered = useMemo(() =>
-    MOCK_JOBS
+    jobs
       .filter(j => !q || (j.id + ' ' + j.site + ' ' + j.description).toLowerCase().includes(q.toLowerCase()))
       .filter(j => status === 'All' || j.status === status)
       .filter(j => type === 'All' || j.type === type)
-  , [q, status, type])
+  , [jobs, q, status, type])
+
+  const kpis = useMemo(() => {
+    const thirtyDaysAgo = new Date()
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+    const completedRecent = jobs.filter(j => j.status === 'Completed' && j.postedAt && new Date(j.postedAt) >= thirtyDaysAgo)
+    return {
+      pending: jobs.filter(j => j.status === 'Available').length,
+      inProgress: jobs.filter(j => j.status === 'In Progress').length,
+      completedRecent: completedRecent.length,
+      earningsRecent: completedRecent.reduce((sum, j) => sum + j.payRate, 0),
+    }
+  }, [jobs])
 
   const handleStatusUpdate = (jobId: string, newStatus: JobStatus) => {
     toast(`Updated ${jobId} to ${newStatus}`)
@@ -67,25 +121,30 @@ export function TechnicianJobs() {
 
   return (
     <div className="space-y-6">
+      {error && (
+        <div className="rounded-lg bg-red-50 border border-red-200 text-red-700 px-4 py-2 text-sm">
+          {getErrorMessage(error)}
+        </div>
+      )}
       {ack && <div className="rounded-lg bg-accent/10 text-accent px-4 py-2 text-sm">{ack}</div>}
 
       {/* KPIs */}
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-xl bg-surface border border-border p-5 shadow-sm">
-          <div className="text-sm text-subtle">Pending Jobs</div>
-          <div className="mt-2 text-2xl font-bold">2</div>
+          <div className="text-sm text-subtle">Available Jobs</div>
+          <div className="mt-2 text-2xl font-bold">{kpis.pending}</div>
         </div>
         <div className="rounded-xl bg-surface border border-border p-5 shadow-sm">
           <div className="text-sm text-subtle">In Progress</div>
-          <div className="mt-2 text-2xl font-bold">1</div>
+          <div className="mt-2 text-2xl font-bold">{kpis.inProgress}</div>
         </div>
         <div className="rounded-xl bg-surface border border-border p-5 shadow-sm">
           <div className="text-sm text-subtle">Completed (30d)</div>
-          <div className="mt-2 text-2xl font-bold">12</div>
+          <div className="mt-2 text-2xl font-bold">{kpis.completedRecent}</div>
         </div>
         <div className="rounded-xl bg-accent text-white border border-accent p-5 shadow-sm">
           <div className="text-sm text-white/80">Earnings (30d)</div>
-          <div className="mt-2 text-2xl font-bold">$1,425</div>
+          <div className="mt-2 text-2xl font-bold">${kpis.earningsRecent.toFixed(0)}</div>
         </div>
       </section>
 
@@ -97,7 +156,7 @@ export function TechnicianJobs() {
         </label>
         <select value={status} onChange={e => setStatus(e.target.value)} className="select">
           <option value="All">All Status</option>
-          <option>Pending</option><option>Accepted</option><option>En Route</option><option>On Site</option><option>Completed</option><option>Cancelled</option>
+          <option>Available</option><option>Accepted</option><option>In Progress</option><option>Completed</option><option>Cancelled</option>
         </select>
         <select value={type} onChange={e => setType(e.target.value)} className="select">
           <option value="All">All Types</option>
@@ -108,6 +167,9 @@ export function TechnicianJobs() {
 
       {/* Jobs list */}
       <section className="space-y-3">
+        {isLoading && (
+          <div className="p-8 text-center text-subtle rounded-xl border border-border bg-surface">Loading jobs...</div>
+        )}
         {filtered.map(job => (
           <div key={job.id} className="rounded-xl bg-surface border border-border p-4 hover:shadow-md transition-shadow">
             <div className="flex items-start justify-between">
@@ -132,24 +194,24 @@ export function TechnicianJobs() {
                 {job.scheduledDate} at {job.scheduledTime}
               </div>
               <div className="flex gap-2">
-                {canManage && job.status === 'Pending' && (
+                {canManage && job.status === 'Available' && (
                   <>
                     <button onClick={() => handleStatusUpdate(job.id, 'Accepted')} className="px-3 py-1 rounded-lg bg-accent text-white text-sm hover:bg-accent-hover">Accept</button>
                     <button onClick={() => handleStatusUpdate(job.id, 'Cancelled')} className="px-3 py-1 rounded-lg border border-border text-sm hover:bg-muted">Decline</button>
                   </>
                 )}
                 {canManage && job.status === 'Accepted' && (
-                  <button onClick={() => handleStatusUpdate(job.id, 'En Route')} className="px-3 py-1 rounded-lg bg-accent text-white text-sm hover:bg-accent-hover">Start Journey</button>
+                  <button onClick={() => handleStatusUpdate(job.id, 'In Progress')} className="px-3 py-1 rounded-lg bg-accent text-white text-sm hover:bg-accent-hover">Start Job</button>
                 )}
-                {canManage && job.status === 'En Route' && (
-                  <button onClick={() => handleStatusUpdate(job.id, 'On Site')} className="px-3 py-1 rounded-lg bg-accent text-white text-sm hover:bg-accent-hover">Arrived</button>
+                {canManage && job.status === 'In Progress' && (
+                  <button onClick={() => handleStatusUpdate(job.id, 'Completed')} className="px-3 py-1 rounded-lg bg-accent text-white text-sm hover:bg-accent-hover">Complete</button>
                 )}
                 <button onClick={() => setSelectedJob(job)} className="px-3 py-1 rounded-lg border border-border text-sm hover:bg-muted">View Details</button>
               </div>
             </div>
           </div>
         ))}
-        {filtered.length === 0 && <div className="p-8 text-center text-subtle rounded-xl border border-border bg-surface">No jobs found.</div>}
+        {!isLoading && filtered.length === 0 && <div className="p-8 text-center text-subtle rounded-xl border border-border bg-surface">No jobs found.</div>}
       </section>
 
       {/* Job detail drawer */}
@@ -296,10 +358,9 @@ export function TechnicianJobs() {
 
 function StatusPill({ status }: { status: JobStatus }) {
   const colors: Record<JobStatus, string> = {
-    Pending: 'bg-gray-100 text-gray-700',
+    Available: 'bg-gray-100 text-gray-700',
     Accepted: 'bg-blue-100 text-blue-700',
-    'En Route': 'bg-purple-100 text-purple-700',
-    'On Site': 'bg-amber-100 text-amber-700',
+    'In Progress': 'bg-purple-100 text-purple-700',
     Completed: 'bg-emerald-100 text-emerald-700',
     Cancelled: 'bg-rose-100 text-rose-700',
   }

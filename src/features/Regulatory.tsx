@@ -1,6 +1,8 @@
 import { useState, useMemo } from 'react'
 import { useAuthStore } from '@/core/auth/authStore'
 import { hasPermission } from '@/constants/permissions'
+import { useDsars, useExportJobs, useRiskItems, useComplianceChecklist, usePolicyVersions } from '@/modules/compliance/useCompliance'
+import { getErrorMessage } from '@/core/api/errors'
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Regulatory & Compliance Dashboard
@@ -33,48 +35,16 @@ interface RiskItem {
   status: 'Open' | 'Planned' | 'Closed'
 }
 
-const KPIS = [
-  { label: 'Open DSARs', value: '3' },
-  { label: 'Export jobs pending', value: '2' },
-  { label: 'Policy gaps', value: '1' },
-  { label: 'Incidents (24h)', value: '0' },
-  { label: 'Audits due (30d)', value: '2' },
-]
-
-const CHECKLIST = [
-  { item: 'Data Retention (EU GDPR)', ok: true },
-  { item: 'Breach Notification (Uganda DP Act)', ok: true },
-  { item: 'Pricing Transparency (Utility Reg.)', ok: false },
-  { item: 'Security Baseline (SOC2‑lite)', ok: true },
-]
-
-const MOCK_DSARS: DSARRequest[] = [
-  { id: 'DSAR-2204', subject: 'User (Driver)', region: 'EU', received: '2025-10-25', due: '2025-11-08', status: 'In review' },
-  { id: 'DSAR-2203', subject: 'Partner (CPO)', region: 'UK', received: '2025-10-22', due: '2025-11-05', status: 'Pending' },
-  { id: 'DSAR-2202', subject: 'User (Technician)', region: 'UG', received: '2025-10-18', due: '2025-11-01', status: 'Completed' },
-]
-
-const MOCK_EXPORTS: ExportJob[] = [
-  { id: 'EXP-3302', dataset: 'Sessions', range: 'Oct 01‑28', size: '12.4 MB', status: 'Running', requested: '2025-10-29 10:12' },
-  { id: 'EXP-3301', dataset: 'Users (PII)', range: 'Oct 01‑15', size: '2.1 MB', status: 'Queued', requested: '2025-10-28 18:41' },
-  { id: 'EXP-3290', dataset: 'Invoices', range: 'Sep', size: '8.9 MB', status: 'Completed', requested: '2025-10-01 09:10' },
-]
-
-const MOCK_RISKS: RiskItem[] = [
-  { id: 'R-120', title: 'Tariff display mismatch', sev: 'Med', owner: 'Billing', status: 'Open' },
-  { id: 'R-103', title: 'Outdated privacy notice (CN)', sev: 'Low', owner: 'Legal', status: 'Planned' },
-]
-
-const POLICY_VERSIONS = [
-  { policy: 'Privacy', version: '1.3.0', date: '2025-10-11' },
-  { policy: 'Terms', version: '2.0.1', date: '2025-09-01' },
-  { policy: 'Cookies', version: '1.1.2', date: '2025-08-02' },
-]
-
 export function Regulatory() {
   const { user } = useAuthStore()
   const role = user?.role ?? 'EVZONE_OPERATOR'
   const canView = hasPermission(role, 'compliance', 'view')
+
+  const { data: dsarsData = [], isLoading: dsarsLoading, error: dsarsError } = useDsars()
+  const { data: exportsData = [], isLoading: exportsLoading, error: exportsError } = useExportJobs()
+  const { data: risksData = [], isLoading: risksLoading, error: risksError } = useRiskItems()
+  const { data: checklistData = [], isLoading: checklistLoading, error: checklistError } = useComplianceChecklist()
+  const { data: policiesData = [], isLoading: policiesLoading, error: policiesError } = usePolicyVersions()
 
   const [jurisdiction, setJurisdiction] = useState('All')
   const [scope, setScope] = useState('All')
@@ -83,11 +53,63 @@ export function Regulatory() {
 
   const toast = (m: string) => { setAck(m); setTimeout(() => setAck(''), 2000) }
 
-  const dsars = useMemo(() =>
-    MOCK_DSARS
+  const dsars = useMemo(() => {
+    const raw = Array.isArray(dsarsData) ? dsarsData : (dsarsData as any)?.data || []
+    return raw.map((r: any) => ({
+      id: r.id,
+      subject: r.subject || r.requester || '—',
+      region: r.region || r.jurisdiction || '—',
+      received: r.receivedAt || r.received || r.createdAt || '—',
+      due: r.dueAt || r.due || '—',
+      status: r.status || 'Pending',
+    }))
       .filter(r => !q || (r.id + ' ' + r.subject).toLowerCase().includes(q.toLowerCase()))
       .filter(r => jurisdiction === 'All' || r.region === jurisdiction)
-  , [q, jurisdiction])
+  }, [dsarsData, q, jurisdiction])
+
+  const exportJobs = useMemo(() => {
+    const raw = Array.isArray(exportsData) ? exportsData : (exportsData as any)?.data || []
+    return raw.map((e: any) => ({
+      id: e.id,
+      dataset: e.dataset || e.type || '—',
+      range: e.range || e.period || '—',
+      size: e.size || '—',
+      status: e.status || 'Queued',
+      requested: e.requestedAt || e.createdAt || '—',
+    }))
+  }, [exportsData])
+
+  const risks = useMemo(() => {
+    const raw = Array.isArray(risksData) ? risksData : (risksData as any)?.data || []
+    return raw.map((r: any) => ({
+      id: r.id,
+      title: r.title || '—',
+      sev: r.sev || r.severity || 'Low',
+      owner: r.owner || '—',
+      status: r.status || 'Open',
+    }))
+  }, [risksData])
+
+  const checklist = useMemo(() => {
+    return Array.isArray(checklistData) ? checklistData : (checklistData as any)?.data || []
+  }, [checklistData])
+
+  const policies = useMemo(() => {
+    return Array.isArray(policiesData) ? policiesData : (policiesData as any)?.data || []
+  }, [policiesData])
+
+  const kpis = useMemo(() => {
+    const openDsars = dsars.filter(d => d.status !== 'Completed').length
+    const pendingExports = exportJobs.filter(e => e.status !== 'Completed').length
+    const policyGaps = checklist.filter((c: any) => !c.ok).length
+    return [
+      { label: 'Open DSARs', value: String(openDsars) },
+      { label: 'Export jobs pending', value: String(pendingExports) },
+      { label: 'Policy gaps', value: String(policyGaps) },
+      { label: 'Incidents (24h)', value: '0' },
+      { label: 'Audits due (30d)', value: '0' },
+    ]
+  }, [dsars, exportJobs, checklist])
 
   if (!canView) {
     return <div className="p-8 text-center text-subtle">No permission to view Regulatory Dashboard.</div>
@@ -95,11 +117,16 @@ export function Regulatory() {
 
   return (
     <div className="space-y-6">
+      {(dsarsError || exportsError || risksError || checklistError || policiesError) && (
+        <div className="rounded-lg bg-red-50 border border-red-200 text-red-700 px-4 py-2 text-sm">
+          {getErrorMessage(dsarsError || exportsError || risksError || checklistError || policiesError)}
+        </div>
+      )}
       {ack && <div className="rounded-lg bg-accent/10 text-accent px-4 py-2 text-sm">{ack}</div>}
 
       {/* KPIs */}
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        {KPIS.map(k => (
+        {kpis.map(k => (
           <div key={k.label} className="rounded-xl bg-surface border border-border p-5 shadow-sm">
             <div className="text-sm text-subtle">{k.label}</div>
             <div className="mt-2 text-2xl font-bold">{k.value}</div>
@@ -134,7 +161,7 @@ export function Regulatory() {
           <button onClick={() => toast('Exported checklist')} className="text-sm text-accent hover:underline">Export</button>
         </div>
         <ul className="grid md:grid-cols-2 gap-3">
-          {CHECKLIST.map((c, i) => (
+          {checklist.map((c, i) => (
             <li key={i} className={`rounded-lg border p-3 flex items-center justify-between ${c.ok ? 'bg-muted border-border' : 'bg-rose-50 border-rose-200'}`}>
               <span>{c.item}</span>
               <span className={`text-xs px-2 py-0.5 rounded-full ${c.ok ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
@@ -206,7 +233,7 @@ export function Regulatory() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {MOCK_EXPORTS.map(e => (
+                {exportJobs.map(e => (
                   <tr key={e.id} className="hover:bg-muted/50">
                     <td className="px-3 py-2 font-medium">{e.id}</td>
                     <td className="px-3 py-2">{e.dataset}</td>
@@ -232,7 +259,7 @@ export function Regulatory() {
             <button onClick={() => toast('Download (demo)')} className="text-sm text-accent hover:underline">Download</button>
           </div>
           <ul className="divide-y divide-border">
-            {MOCK_RISKS.map(r => (
+            {risks.map(r => (
               <li key={r.id} className="py-3 flex items-center justify-between">
                 <div>
                   <div className="font-medium">{r.title}</div>
@@ -252,7 +279,7 @@ export function Regulatory() {
       <section className="rounded-xl bg-surface border border-border p-5 shadow-sm">
         <h2 className="font-semibold mb-4">Policy Versions</h2>
         <ul className="grid md:grid-cols-3 gap-3">
-          {POLICY_VERSIONS.map((p, i) => (
+          {policies.map((p, i) => (
             <li key={i} className="rounded-lg border border-border bg-muted p-4 flex items-center justify-between">
               <span>{p.policy} • v{p.version}</span>
               <span className="text-xs text-subtle">{p.date}</span>

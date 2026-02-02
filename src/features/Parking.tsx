@@ -2,6 +2,9 @@ import { useState, useMemo } from 'react'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { useAuthStore } from '@/core/auth/authStore'
 import { hasPermission } from '@/constants/permissions'
+import { useParkingBays, useCreateParkingBay, useDeleteParkingBay } from '@/modules/parking/useParking'
+import { useSites } from '@/modules/sites/hooks/useSites'
+import { getErrorMessage } from '@/core/api/errors'
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Parking — Site Owner parking bay management
@@ -22,22 +25,16 @@ interface ParkingBay {
   lastUsed: string
 }
 
-const MOCK_BAYS: ParkingBay[] = [
-  { id: 'PK-001', site: 'City Mall Roof', bay: 'A-01', type: 'EV Charging', status: 'Active', charger: 'CP-A1', rate: 2.50, occupancy: 78, lastUsed: '2025-10-29 10:15' },
-  { id: 'PK-002', site: 'City Mall Roof', bay: 'A-02', type: 'EV Charging', status: 'Active', charger: 'CP-A2', rate: 2.50, occupancy: 65, lastUsed: '2025-10-29 09:42' },
-  { id: 'PK-003', site: 'City Mall Roof', bay: 'B-01', type: 'Regular', status: 'Active', rate: 1.00, occupancy: 82, lastUsed: '2025-10-29 11:05' },
-  { id: 'PK-004', site: 'Business Park A', bay: 'C-01', type: 'EV Charging', status: 'Maintenance', charger: 'CP-C1', rate: 3.00, occupancy: 0, lastUsed: '2025-10-28 18:30' },
-  { id: 'PK-005', site: 'Business Park A', bay: 'C-02', type: 'Handicap', status: 'Reserved', rate: 0.00, occupancy: 45, lastUsed: '2025-10-29 08:15' },
-  { id: 'PK-006', site: 'Airport Long-Stay', bay: 'D-01', type: 'VIP', status: 'Active', rate: 5.00, occupancy: 55, lastUsed: '2025-10-29 07:00' },
-]
-
 export function Parking() {
   const { user } = useAuthStore()
   const role = user?.role ?? 'SITE_OWNER'
   const canView = hasPermission(role, 'parking', 'view')
   const canEdit = hasPermission(role, 'parking', 'edit')
 
-  const [bays, setBays] = useState<ParkingBay[]>(MOCK_BAYS)
+  const { data: baysData = [], isLoading, error } = useParkingBays()
+  const { data: sitesData } = useSites()
+  const createBay = useCreateParkingBay()
+  const deleteBay = useDeleteParkingBay()
   const [site, setSite] = useState('All')
   const [type, setType] = useState('All')
   const [status, setStatus] = useState('All')
@@ -46,14 +43,34 @@ export function Parking() {
 
   // Modal State
   const [showAddModal, setShowAddModal] = useState(false)
-  const [newBay, setNewBay] = useState<Partial<ParkingBay>>({
-    site: 'City Mall Roof',
+  const [newBay, setNewBay] = useState<Partial<ParkingBay> & { siteId?: string }>({
+    siteId: '',
     type: 'EV Charging',
     status: 'Active',
     rate: 2.50,
   })
 
   const toast = (m: string) => { setAck(m); setTimeout(() => setAck(''), 3000) }
+
+  const siteNameById = useMemo(() => {
+    const sites = Array.isArray(sitesData) ? sitesData : (sitesData as any)?.data || []
+    return new Map(sites.map((s: any) => [s.id, s.name || s.id]))
+  }, [sitesData])
+
+  const bays = useMemo<ParkingBay[]>(() => {
+    const raw = Array.isArray(baysData) ? baysData : (baysData as any)?.data || []
+    return raw.map((b: any) => ({
+      id: b.id,
+      site: siteNameById.get(b.siteId) || b.siteName || b.siteId || '—',
+      bay: b.bay,
+      type: b.type,
+      status: b.status,
+      charger: b.chargerId || b.charger,
+      rate: b.rate || 0,
+      occupancy: b.occupancy || 0,
+      lastUsed: b.lastUsed ? new Date(b.lastUsed).toLocaleString() : '—',
+    }))
+  }, [baysData, siteNameById])
 
   const filtered = useMemo(() =>
     bays
@@ -71,34 +88,37 @@ export function Parking() {
   }), [filtered])
 
   const handleAddBay = () => {
-    if (!newBay.bay || !newBay.site) {
+    if (!newBay.bay || !newBay.siteId) {
       toast('Please fill in required fields (Bay Name & Site)')
       return
     }
 
-    const id = `PK-${String(bays.length + 1).padStart(3, '0')}`
-    const entry: ParkingBay = {
-      id,
-      site: newBay.site!,
-      bay: newBay.bay!,
-      type: (newBay.type as any) || 'Regular',
-      status: 'Active',
-      charger: newBay.charger,
-      rate: Number(newBay.rate) || 0,
-      occupancy: 0,
-      lastUsed: 'Never',
-    }
-
-    setBays([entry, ...bays])
-    setShowAddModal(false)
-    setNewBay({ site: 'City Mall Roof', type: 'EV Charging', status: 'Active', rate: 2.50 })
-    toast(`Successfully added new bay ${id}`)
+    createBay.mutate(
+      {
+        siteId: newBay.siteId,
+        bay: newBay.bay,
+        type: (newBay.type as any) || 'Regular',
+        status: (newBay.status as any) || 'Active',
+        chargerId: newBay.charger,
+        rate: Number(newBay.rate) || 0,
+      },
+      {
+        onSuccess: () => {
+          setShowAddModal(false)
+          setNewBay({ siteId: '', type: 'EV Charging', status: 'Active', rate: 2.50 })
+          toast('Successfully added new bay')
+        },
+        onError: (err) => toast(getErrorMessage(err)),
+      }
+    )
   }
 
   const handleDeleteBay = (id: string) => {
     if (confirm(`Are you sure you want to delete bay ${id}?`)) {
-      setBays(bays.filter(b => b.id !== id))
-      toast(`Deleted bay ${id}`)
+      deleteBay.mutate(id, {
+        onSuccess: () => toast(`Deleted bay ${id}`),
+        onError: (err) => toast(getErrorMessage(err)),
+      })
     }
   }
 
@@ -109,6 +129,11 @@ export function Parking() {
   return (
     <DashboardLayout pageTitle="Site Owner — Parking">
       <div className="space-y-6">
+        {error && (
+          <div className="rounded-lg bg-red-50 border border-red-200 text-red-700 px-4 py-2 text-sm">
+            {getErrorMessage(error)}
+          </div>
+        )}
         {ack && (
           <div className="fixed top-4 right-4 z-50 animate-in fade-in slide-in-from-top-4 duration-300">
             <div className="rounded-lg bg-accent text-white px-6 py-3 shadow-lg flex items-center gap-3">
@@ -146,7 +171,7 @@ export function Parking() {
               <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search bay / site" className="w-full rounded-lg border border-border pl-9 pr-3 py-2 outline-none focus:ring-2 focus:ring-accent bg-background" />
             </label>
             <select value={site} onChange={e => setSite(e.target.value)} className="select bg-background">
-              {['All', 'City Mall Roof', 'Business Park A', 'Airport Long-Stay'].map(o => <option key={o}>{o}</option>)}
+              {['All', ...Array.from(new Set(bays.map(b => b.site)))].map(o => <option key={o}>{o}</option>)}
             </select>
             <select value={type} onChange={e => setType(e.target.value)} className="select bg-background">
               {['All', 'EV Charging', 'Regular', 'Handicap', 'VIP'].map(o => <option key={o}>{o}</option>)}
@@ -186,7 +211,12 @@ export function Parking() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {filtered.map(r => (
+                {isLoading && (
+                  <tr>
+                    <td colSpan={canEdit ? 10 : 9} className="px-5 py-8 text-center text-muted">Loading parking bays...</td>
+                  </tr>
+                )}
+                {!isLoading && filtered.map(r => (
                   <tr key={r.id} className="hover:bg-muted/30 transition-colors">
                     <td className="px-5 py-4 font-bold text-accent">{r.id}</td>
                     <td className="px-5 py-4 font-medium">{r.site}</td>
@@ -221,7 +251,7 @@ export function Parking() {
               </tbody>
             </table>
           </div>
-          {filtered.length === 0 && (
+          {!isLoading && filtered.length === 0 && (
             <div className="p-20 text-center flex flex-col items-center gap-4">
               <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center text-subtle">
                 <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.172 9.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
@@ -263,11 +293,14 @@ export function Parking() {
                 <div className="space-y-2">
                   <label className="text-sm font-semibold">Associated Site *</label>
                   <select
-                    value={newBay.site || ''}
-                    onChange={e => setNewBay({ ...newBay, site: e.target.value })}
+                    value={newBay.siteId || ''}
+                    onChange={e => setNewBay({ ...newBay, siteId: e.target.value })}
                     className="w-full rounded-xl border border-border p-3 outline-none focus:ring-2 focus:ring-accent bg-background"
                   >
-                    {['City Mall Roof', 'Business Park A', 'Airport Long-Stay'].map(o => <option key={o} value={o}>{o}</option>)}
+                    <option value="">Select site...</option>
+                    {(Array.isArray(sitesData) ? sitesData : (sitesData as any)?.data || []).map((s: any) => (
+                      <option key={s.id} value={s.id}>{s.name || s.id}</option>
+                    ))}
                   </select>
                 </div>
               </div>

@@ -1,6 +1,8 @@
 import { useState, useMemo } from 'react'
 import { useAuthStore } from '@/core/auth/authStore'
 import { hasPermission } from '@/constants/permissions'
+import { useTechnicianDocs } from '@/modules/operators/hooks/useTechnicianDocs'
+import { getErrorMessage } from '@/core/api/errors'
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Technician Docs & Manuals — Document library
@@ -19,16 +21,45 @@ interface Document {
   size: string
   updated: string
   owner: DocOwner
+  url?: string
 }
 
-const MOCK_DOCS: Document[] = [
-  { id: 'DOC-1201', title: 'Commissioning Checklist v2', cat: 'Commissioning', type: 'PDF', size: '240 KB', updated: '2025-10-20', owner: 'Team' },
-  { id: 'DOC-1200', title: 'OCPP 1.6J Quick Ref', cat: 'Diagnostics', type: 'PDF', size: '380 KB', updated: '2025-10-18', owner: 'Me' },
-  { id: 'DOC-1197', title: 'Safety — Lockout/Tagout', cat: 'Safety', type: 'PDF', size: '190 KB', updated: '2025-10-12', owner: 'Team' },
-  { id: 'IMG-221', title: 'Bay wiring — CP-A1', cat: 'Diagnostics', type: 'Image', size: '1.2 MB', updated: '2025-10-10', owner: 'Me' },
-  { id: 'DOC-1189', title: 'Vendor OEM-A Firmware Guide', cat: 'Firmware', type: 'Doc', size: '520 KB', updated: '2025-10-08', owner: 'Team' },
-  { id: 'DOC-1185', title: 'Emergency Procedures', cat: 'Safety', type: 'PDF', size: '310 KB', updated: '2025-10-05', owner: 'Team' },
-]
+const mapCategory = (value?: string): DocCategory => {
+  switch ((value || '').toLowerCase()) {
+    case 'commissioning':
+      return 'Commissioning'
+    case 'diagnostics':
+      return 'Diagnostics'
+    case 'firmware':
+      return 'Firmware'
+    case 'vendor':
+      return 'Vendor'
+    case 'safety':
+    default:
+      return 'Safety'
+  }
+}
+
+const mapType = (value?: string): DocType => {
+  switch ((value || '').toLowerCase()) {
+    case 'image':
+      return 'Image'
+    case 'doc':
+    case 'document':
+      return 'Doc'
+    case 'pdf':
+    default:
+      return 'PDF'
+  }
+}
+
+const formatBytes = (size?: number) => {
+  if (size === undefined || size === null) return '—'
+  if (size < 1024) return `${size} B`
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(0)} KB`
+  return `${(size / (1024 * 1024)).toFixed(1)} MB`
+}
+
 
 export function TechnicianDocs() {
   const { user } = useAuthStore()
@@ -46,26 +77,47 @@ export function TechnicianDocs() {
 
   const toast = (m: string) => { setAck(m); setTimeout(() => setAck(''), 2000) }
 
+  const { data: docsData = [], isLoading, error } = useTechnicianDocs()
+
+  const docs = useMemo<Document[]>(() => {
+    const raw = Array.isArray(docsData) ? docsData : (docsData as any)?.data || []
+    return raw.map((d: any) => ({
+      id: d.id,
+      title: d.title || d.name || '—',
+      cat: mapCategory(d.category || d.cat),
+      type: mapType(d.type || d.fileType),
+      size: typeof d.size === 'number' ? formatBytes(d.size) : d.size || '—',
+      updated: d.updatedAt ? new Date(d.updatedAt).toLocaleDateString() : d.updated || '—',
+      owner: d.owner === user?.id || d.owner === user?.name ? 'Me' : 'Team',
+      url: d.url || d.fileUrl,
+    }))
+  }, [docsData, user?.id, user?.name])
+
   const filtered = useMemo(() =>
-    MOCK_DOCS
+    docs
       .filter(d => !q || (d.title + ' ' + d.id).toLowerCase().includes(q.toLowerCase()))
       .filter(d => category === 'All' || d.cat === category)
       .filter(d => type === 'All' || d.type === type)
       .filter(d => owner === 'All' || (owner === 'Mine' ? d.owner === 'Me' : true))
       .sort((a, b) => sort === 'Recent' ? new Date(b.updated).getTime() - new Date(a.updated).getTime() : a.title.localeCompare(b.title))
-  , [q, category, type, owner, sort])
+  , [docs, q, category, type, owner, sort])
 
   const upload = () => {
     toast('Upload modal would open')
   }
 
-  const share = (id: string) => {
-    navigator.clipboard.writeText(`https://evzone.com/docs/${id}`)
-    toast(`Share link copied for ${id}`)
+  const share = (doc: Document) => {
+    const url = doc.url || `https://evzone.com/docs/${doc.id}`
+    navigator.clipboard.writeText(url)
+    toast(`Share link copied for ${doc.id}`)
   }
 
-  const download = (id: string) => {
-    toast(`Downloaded ${id}`)
+  const download = (doc: Document) => {
+    if (doc.url) {
+      window.open(doc.url, '_blank')
+      return
+    }
+    toast(`Downloaded ${doc.id}`)
   }
 
   if (!canView) {
@@ -74,6 +126,11 @@ export function TechnicianDocs() {
 
   return (
     <div className="space-y-6">
+      {error && (
+        <div className="rounded-lg bg-red-50 border border-red-200 text-red-700 px-4 py-2 text-sm">
+          {getErrorMessage(error)}
+        </div>
+      )}
       {ack && <div className="rounded-lg bg-accent/10 text-accent px-4 py-2 text-sm">{ack}</div>}
 
       {/* Header Actions */}
@@ -140,7 +197,10 @@ export function TechnicianDocs() {
       {/* Grid View */}
       {view === 'Grid' && (
         <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {filtered.map(d => (
+          {isLoading && (
+            <div className="col-span-full rounded-xl border border-border p-6 text-center text-subtle">Loading documents...</div>
+          )}
+          {!isLoading && filtered.map(d => (
             <div key={d.id} className="rounded-xl bg-surface border border-border p-5 shadow-sm hover:shadow-md transition-shadow">
               <div className="flex items-start justify-between mb-3">
                 <div className="flex-1">
@@ -158,17 +218,20 @@ export function TechnicianDocs() {
                 <div>Owner: {d.owner}</div>
               </div>
               <div className="flex items-center gap-2 pt-3 border-t border-border">
-                <button onClick={() => download(d.id)} className="flex-1 px-3 py-1.5 rounded border border-border hover:bg-muted text-xs flex items-center justify-center gap-1">
+                <button onClick={() => download(d)} className="flex-1 px-3 py-1.5 rounded border border-border hover:bg-muted text-xs flex items-center justify-center gap-1">
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" /></svg>
                   Download
                 </button>
-                <button onClick={() => share(d.id)} className="flex-1 px-3 py-1.5 rounded border border-border hover:bg-muted text-xs flex items-center justify-center gap-1">
+                <button onClick={() => share(d)} className="flex-1 px-3 py-1.5 rounded border border-border hover:bg-muted text-xs flex items-center justify-center gap-1">
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.07 0l2.83-2.83a5 5 0 1 0-7.07-7.07L11 4" /><path d="M14 11a5 5 0 0 1-7.07 0L4.1 8.17a5 5 0 1 1 7.07-7.07L13 3" /></svg>
                   Share
                 </button>
               </div>
             </div>
           ))}
+          {!isLoading && filtered.length === 0 && (
+            <div className="col-span-full rounded-xl border border-border p-6 text-center text-subtle">No documents match your filters.</div>
+          )}
         </section>
       )}
 
@@ -188,7 +251,12 @@ export function TechnicianDocs() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {filtered.map(d => (
+              {isLoading && (
+                <tr>
+                  <td colSpan={7} className="px-4 py-8 text-center text-muted">Loading documents...</td>
+                </tr>
+              )}
+              {!isLoading && filtered.map(d => (
                 <tr key={d.id} className="hover:bg-muted/50">
                   <td className="px-4 py-3 font-medium">{d.title}</td>
                   <td className="px-4 py-3"><CategoryPill cat={d.cat} /></td>
@@ -198,15 +266,15 @@ export function TechnicianDocs() {
                   <td className="px-4 py-3">{d.owner}</td>
                   <td className="px-4 py-3 text-right">
                     <div className="inline-flex items-center gap-2">
-                      <button onClick={() => download(d.id)} className="px-2 py-1 rounded border border-border hover:bg-muted text-xs">Download</button>
-                      <button onClick={() => share(d.id)} className="px-2 py-1 rounded border border-border hover:bg-muted text-xs">Share</button>
+                      <button onClick={() => download(d)} className="px-2 py-1 rounded border border-border hover:bg-muted text-xs">Download</button>
+                      <button onClick={() => share(d)} className="px-2 py-1 rounded border border-border hover:bg-muted text-xs">Share</button>
                     </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-          {filtered.length === 0 && <div className="p-8 text-center text-subtle">No documents match your filters.</div>}
+          {!isLoading && filtered.length === 0 && <div className="p-8 text-center text-subtle">No documents match your filters.</div>}
         </section>
       )}
     </div>

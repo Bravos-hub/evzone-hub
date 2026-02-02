@@ -1,6 +1,8 @@
-import { useState, useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useAuthStore } from '@/core/auth/authStore'
 import { hasPermission } from '@/constants/permissions'
+import { useSubscriptionPlans } from '@/modules/subscriptions/hooks/useSubscriptionPlans'
+import { getErrorMessage } from '@/core/api/errors'
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Owner Plans — Pricing plans and memberships
@@ -21,19 +23,26 @@ interface Plan {
   notes: string
 }
 
-const MOCK_PLANS: Plan[] = [
-  { id: 'pl-101', name: 'Night Saver', kind: 'TOU', status: 'Active', currency: 'USD', rate: '$0.15/kWh (22:00–06:00)', sites: ['All'], notes: 'Time-of-use discount' },
-  { id: 'pl-102', name: 'Fleet Basic', kind: 'Fleet', status: 'Active', currency: 'USD', rate: '$0.22/kWh + $39/mo', sites: ['Central Hub', 'East Parkade'], notes: 'Requires fleet contract' },
-  { id: 'pl-103', name: 'Weekend Free Hour', kind: 'Membership', status: 'Paused', currency: 'USD', rate: '$0.28/kWh + 1h free', sites: ['Warehouse Lot'], notes: 'Members only' },
-  { id: 'pl-104', name: 'Solar Noon', kind: 'TOU', status: 'Draft', currency: 'USD', rate: '$0.18/kWh (11:30–14:30)', sites: ['Central Hub'], notes: 'PV surplus window' },
-  { id: 'pl-105', name: 'Peak Hours', kind: 'TOU', status: 'Active', currency: 'EUR', rate: '€0.25/kWh (17:00–20:00)', sites: ['All'], notes: 'Peak pricing' },
-]
+function inferKind(name: string, code?: string): PlanType {
+  const v = `${name} ${code || ''}`.toLowerCase()
+  if (v.includes('fleet')) return 'Fleet'
+  if (v.includes('member')) return 'Membership'
+  return 'TOU'
+}
+
+function inferStatus(isActive?: boolean, isPublic?: boolean): PlanStatus {
+  if (isActive) return 'Active'
+  if (!isActive && isPublic) return 'Paused'
+  return 'Draft'
+}
 
 export function OwnerPlans() {
   const { user } = useAuthStore()
   const role = user?.role ?? 'STATION_OWNER'
   const canView = hasPermission(role, 'tariffs', 'view')
   const canEdit = hasPermission(role, 'tariffs', 'edit')
+
+  const { data: plansData, isLoading, error } = useSubscriptionPlans({ isPublic: true })
 
   const [q, setQ] = useState('')
   const [type, setType] = useState('All')
@@ -43,13 +52,27 @@ export function OwnerPlans() {
 
   const toast = (m: string) => { setAck(m); setTimeout(() => setAck(''), 2000) }
 
+  const plans = useMemo<Plan[]>(() => {
+    const raw = Array.isArray(plansData) ? plansData : []
+    return raw.map((p: any) => ({
+      id: p.id ?? p.code ?? '—',
+      name: p.name ?? 'Unnamed Plan',
+      kind: inferKind(p.name ?? '', p.code),
+      status: inferStatus(p.isActive, p.isPublic),
+      currency: p.currency ?? 'USD',
+      rate: p.price != null ? `${p.currency ?? 'USD'} ${Number(p.price).toFixed(2)} / ${p.billingCycle?.toLowerCase?.() ?? 'mo'}` : '—',
+      sites: p.sites ?? ['All'],
+      notes: p.description ?? '',
+    }))
+  }, [plansData])
+
   const filtered = useMemo(() =>
-    MOCK_PLANS
+    plans
       .filter(p => !q || p.name.toLowerCase().includes(q.toLowerCase()))
       .filter(p => type === 'All' || (type === 'TOU' ? p.kind === 'TOU' : p.kind === type))
       .filter(p => status === 'All' || p.status === status)
       .filter(p => p.currency === currency)
-  , [q, type, status, currency])
+  , [plans, q, type, status, currency])
 
   const kpis = useMemo(() => ({
     total: filtered.length,
@@ -64,6 +87,11 @@ export function OwnerPlans() {
 
   return (
     <div className="space-y-6">
+      {error && (
+        <div className="rounded-lg bg-red-50 border border-red-200 text-red-700 px-4 py-2 text-sm">
+          {getErrorMessage(error)}
+        </div>
+      )}
       {ack && <div className="rounded-lg bg-accent/10 text-accent px-4 py-2 text-sm">{ack}</div>}
 
       {/* KPIs */}
@@ -146,7 +174,8 @@ export function OwnerPlans() {
           </div>
         ))}
       </section>
-      {filtered.length === 0 && <div className="p-8 text-center text-subtle">No plans match your filters.</div>}
+      {isLoading && <div className="p-8 text-center text-subtle">Loading plans...</div>}
+      {!isLoading && filtered.length === 0 && <div className="p-8 text-center text-subtle">No plans match your filters.</div>}
     </div>
   )
 }

@@ -1,6 +1,9 @@
 import { useState, useMemo } from 'react'
 import { useAuthStore } from '@/core/auth/authStore'
 import { hasPermission } from '@/constants/permissions'
+import { useDiscounts } from '@/modules/finance/payments/useDiscounts'
+import { useStations } from '@/modules/stations/hooks/useStations'
+import { getErrorMessage } from '@/core/api/errors'
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Discounts & Promotions — Owner discount management
@@ -20,15 +23,46 @@ interface Discount {
   sites: string[]
   used: number
   status: DiscountStatus
+  currency?: string
 }
 
-const MOCK_DISCOUNTS: Discount[] = [
-  { id: 'ds-501', name: 'WELCOME10', kind: 'Promo code', value: '10% off', from: '2025-10-01', to: '2025-12-31', sites: ['All'], used: 128, status: 'Active' },
-  { id: 'ds-502', name: 'Fleet Partner A', kind: 'Partnership', value: '$0.05/kWh off', from: '2025-09-01', to: '2026-09-01', sites: ['Central Hub', 'East Parkade'], used: 412, status: 'Active' },
-  { id: 'ds-503', name: 'Weekend Saver', kind: 'Automatic', value: '$0.07/kWh off', from: '2025-11-01', to: '2025-12-01', sites: ['Warehouse Lot'], used: 0, status: 'Scheduled' },
-  { id: 'ds-504', name: 'Spring Blitz', kind: 'Automatic', value: '15% off', from: '2025-03-01', to: '2025-04-01', sites: ['Central Hub'], used: 920, status: 'Expired' },
-  { id: 'ds-505', name: 'HOLIDAY20', kind: 'Promo code', value: '20% off', from: '2025-12-20', to: '2026-01-05', sites: ['All'], used: 0, status: 'Draft' },
-]
+const mapStatus = (status?: string): DiscountStatus => {
+  switch ((status || '').toLowerCase()) {
+    case 'active':
+      return 'Active'
+    case 'scheduled':
+      return 'Scheduled'
+    case 'expired':
+      return 'Expired'
+    case 'draft':
+    default:
+      return 'Draft'
+  }
+}
+
+const mapType = (type?: string): DiscountType => {
+  switch ((type || '').toLowerCase()) {
+    case 'promo':
+    case 'promo code':
+    case 'code':
+      return 'Promo code'
+    case 'partnership':
+      return 'Partnership'
+    case 'automatic':
+    default:
+      return 'Automatic'
+  }
+}
+
+const formatValue = (value?: number | string, valueType?: string, currency?: string) => {
+  if (value === undefined || value === null || value === '') return '—'
+  if (typeof value === 'string') return value
+  const normalizedCurrency = currency || 'USD'
+  const vt = (valueType || '').toLowerCase()
+  if (vt === 'percent' || vt === '%') return `${value}% off`
+  if (vt === 'kwh') return `${normalizedCurrency === 'USD' ? '$' : ''}${value}/kWh off`
+  return `${normalizedCurrency === 'USD' ? '$' : ''}${value} off`
+}
 
 export function Discounts() {
   const { user } = useAuthStore()
@@ -45,13 +79,42 @@ export function Discounts() {
 
   const toast = (m: string) => { setAck(m); setTimeout(() => setAck(''), 2000) }
 
+  const { data: discountsData = [], isLoading, error } = useDiscounts()
+  const { data: stationsData } = useStations()
+
+  const stationNameById = useMemo(() => {
+    const stations = Array.isArray(stationsData) ? stationsData : (stationsData as any)?.data || []
+    return new Map(stations.map((s: any) => [s.id, s.name || s.code || s.id]))
+  }, [stationsData])
+
+  const discounts = useMemo<Discount[]>(() => {
+    const raw = Array.isArray(discountsData) ? discountsData : (discountsData as any)?.data || []
+    return raw.map((d: any) => {
+      const rawSites = d.sites || d.stationIds || d.applicableStations || ['All']
+      const resolvedSites = rawSites.map((s: string) => stationNameById.get(s) || s)
+      return {
+        id: d.id,
+        name: d.name || d.code || d.title || '—',
+        kind: mapType(d.type || d.kind),
+        value: formatValue(d.value, d.valueType, d.currency),
+        from: d.validFrom || d.startDate || d.from || '—',
+        to: d.validTo || d.endDate || d.to || '—',
+        sites: resolvedSites,
+        used: d.redemptions ?? d.used ?? 0,
+        status: mapStatus(d.status),
+        currency: d.currency || 'USD',
+      }
+    })
+  }, [discountsData, stationNameById])
+
   const filtered = useMemo(() =>
-    MOCK_DISCOUNTS
+    discounts
       .filter(r => !q || r.name.toLowerCase().includes(q.toLowerCase()))
       .filter(r => type === 'All' || r.kind === type)
       .filter(r => status === 'All' || r.status === status)
       .filter(r => site === 'All' || r.sites.includes(site) || r.sites.includes('All'))
-  , [q, type, status, site])
+      .filter(r => currency === 'All' || (r.currency || 'USD') === currency)
+  , [discounts, q, type, status, site, currency])
 
   const kpis = useMemo(() => ({
     total: filtered.length,
@@ -66,6 +129,11 @@ export function Discounts() {
 
   return (
     <div className="space-y-6">
+      {error && (
+        <div className="rounded-lg bg-red-50 border border-red-200 text-red-700 px-4 py-2 text-sm">
+          {getErrorMessage(error)}
+        </div>
+      )}
       {ack && <div className="rounded-lg bg-accent/10 text-accent px-4 py-2 text-sm">{ack}</div>}
 
       {/* KPIs */}
@@ -98,10 +166,10 @@ export function Discounts() {
           {['All', 'Promo code', 'Automatic', 'Partnership'].map(o => <option key={o}>{o}</option>)}
         </select>
         <select value={site} onChange={e => setSite(e.target.value)} className="select">
-          {['All', 'Central Hub', 'East Parkade', 'Warehouse Lot'].map(o => <option key={o}>{o}</option>)}
+          {['All', ...Array.from(new Set(discounts.flatMap(d => d.sites)))].map(o => <option key={o}>{o}</option>)}
         </select>
         <select value={currency} onChange={e => setCurrency(e.target.value)} className="select">
-          {['USD', 'EUR', 'UGX', 'KES', 'CNY'].map(o => <option key={o}>{o}</option>)}
+          {['All', 'USD', 'EUR', 'UGX', 'KES', 'CNY'].map(o => <option key={o}>{o}</option>)}
         </select>
         <select value={status} onChange={e => setStatus(e.target.value)} className="select">
           {['All', 'Active', 'Scheduled', 'Expired', 'Draft'].map(o => <option key={o}>{o}</option>)}
@@ -134,7 +202,12 @@ export function Discounts() {
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {filtered.map(r => (
+            {isLoading && (
+              <tr>
+                <td colSpan={canEdit ? 8 : 7} className="p-8 text-center text-subtle">Loading discounts...</td>
+              </tr>
+            )}
+            {!isLoading && filtered.map(r => (
               <tr key={r.id} className="hover:bg-muted/50">
                 <td className="px-4 py-3 font-medium">{r.name}</td>
                 <td className="px-4 py-3"><TypePill type={r.kind} /></td>
@@ -155,7 +228,7 @@ export function Discounts() {
             ))}
           </tbody>
         </table>
-        {filtered.length === 0 && <div className="p-8 text-center text-subtle">No discounts match your filters.</div>}
+        {!isLoading && filtered.length === 0 && <div className="p-8 text-center text-subtle">No discounts match your filters.</div>}
       </section>
     </div>
   )

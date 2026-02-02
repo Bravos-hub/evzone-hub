@@ -1,6 +1,9 @@
 import { useState, useMemo } from 'react'
 import { useAuthStore } from '@/core/auth/authStore'
 import { hasPermission } from '@/constants/permissions'
+import { useNotifications } from '@/modules/notifications/hooks/useNotifications'
+import { getErrorMessage } from '@/core/api/errors'
+import type { NotificationItem } from '@/core/api/types'
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Owner Alerts — Station/site alerting for Owners
@@ -18,15 +21,50 @@ interface OwnerAlert {
   device: string
   since: string
   status: AlertStatus
+  createdAtMs: number
 }
 
-const MOCK_ALERTS: OwnerAlert[] = [
-  { id: 'al-901', sev: 'Critical', type: 'Over-temp', site: 'City Mall Roof', device: 'CP-A1', since: '08:41', status: 'Open' },
-  { id: 'al-902', sev: 'High', type: 'OCPP error', site: 'Airport East', device: 'CP-B4', since: '07:22', status: 'Open' },
-  { id: 'al-903', sev: 'Info', type: 'Firmware', site: 'Tech Park A', device: 'CP-C2', since: 'Yesterday', status: 'Ack' },
-  { id: 'al-904', sev: 'Medium', type: 'Comms', site: 'Central Hub', device: 'CP-D1', since: '06:15', status: 'Open' },
-  { id: 'al-905', sev: 'High', type: 'Power', site: 'Warehouse Lot', device: 'CP-E2', since: '05:30', status: 'Resolved' },
-]
+const mapSeverity = (item: NotificationItem): AlertSeverity => {
+  const metaSev = item.metadata?.severity?.toLowerCase()
+  if (metaSev === 'critical') return 'Critical'
+  if (metaSev === 'high') return 'High'
+  if (metaSev === 'medium') return 'Medium'
+  if (metaSev === 'info') return 'Info'
+  switch (item.kind) {
+    case 'alert':
+      return 'High'
+    case 'warning':
+      return 'Medium'
+    case 'info':
+    case 'notice':
+      return 'Info'
+    default:
+      return 'Medium'
+  }
+}
+
+const mapStatus = (item: NotificationItem): AlertStatus => {
+  if (item.metadata?.status === 'resolved') return 'Resolved'
+  if (item.read) return 'Ack'
+  return 'Open'
+}
+
+const mapOwnerAlert = (item: NotificationItem): OwnerAlert => {
+  const created = new Date(item.createdAt)
+  const createdAtMs = Number.isFinite(created.getTime()) ? created.getTime() : Date.now()
+  const site = item.metadata?.site || item.metadata?.station || item.metadata?.stationName || '—'
+  const device = item.metadata?.device || item.metadata?.charger || item.metadata?.chargePoint || '—'
+  return {
+    id: item.id,
+    sev: mapSeverity(item),
+    type: item.metadata?.type || item.title || item.kind,
+    site,
+    device,
+    since: Number.isFinite(created.getTime()) ? created.toLocaleTimeString() : '—',
+    status: mapStatus(item),
+    createdAtMs,
+  }
+}
 
 export function OwnerAlerts() {
   const { user } = useAuthStore()
@@ -39,10 +77,20 @@ export function OwnerAlerts() {
   const [sev, setSev] = useState('All')
   const [type, setType] = useState('All')
   const [status, setStatus] = useState('Open')
-  const [alerts, setAlerts] = useState(MOCK_ALERTS)
+  const { data: notifications = [], isLoading, error } = useNotifications()
+  const [overrides, setOverrides] = useState<Record<string, AlertStatus>>({})
   const [ack, setAck] = useState('')
 
   const toast = (m: string) => { setAck(m); setTimeout(() => setAck(''), 2000) }
+
+  const baseAlerts = useMemo(() => notifications.map(mapOwnerAlert), [notifications])
+
+  const alerts = useMemo(() => {
+    return baseAlerts.map((alert) => ({
+      ...alert,
+      status: overrides[alert.id] ?? alert.status,
+    }))
+  }, [baseAlerts, overrides])
 
   const filtered = useMemo(() =>
     alerts
@@ -53,13 +101,16 @@ export function OwnerAlerts() {
       .filter(a => !q || a.site.toLowerCase().includes(q.toLowerCase()) || a.type.toLowerCase().includes(q.toLowerCase()))
   , [alerts, q, site, sev, type, status])
 
+  const siteOptions = useMemo(() => ['All', ...Array.from(new Set(alerts.map(a => a.site).filter(Boolean)))], [alerts])
+  const typeOptions = useMemo(() => ['All', ...Array.from(new Set(alerts.map(a => a.type).filter(Boolean)))], [alerts])
+
   const acknowledge = (id: string) => {
-    setAlerts(list => list.map(a => a.id === id ? { ...a, status: 'Ack' as AlertStatus } : a))
+    setOverrides((prev) => ({ ...prev, [id]: 'Ack' }))
     toast(`Acknowledged alert ${id}`)
   }
 
   const resolve = (id: string) => {
-    setAlerts(list => list.map(a => a.id === id ? { ...a, status: 'Resolved' as AlertStatus } : a))
+    setOverrides((prev) => ({ ...prev, [id]: 'Resolved' }))
     toast(`Resolved alert ${id}`)
   }
 
@@ -73,6 +124,11 @@ export function OwnerAlerts() {
 
   return (
     <div className="space-y-6">
+      {error && (
+        <div className="rounded-lg bg-red-50 border border-red-200 text-red-700 px-4 py-2 text-sm">
+          {getErrorMessage(error)}
+        </div>
+      )}
       {ack && <div className="rounded-lg bg-accent/10 text-accent px-4 py-2 text-sm">{ack}</div>}
 
       {/* Stats */}
@@ -94,13 +150,13 @@ export function OwnerAlerts() {
       <section className="bg-surface rounded-xl border border-border p-4">
         <div className="grid md:grid-cols-5 gap-3">
           <select value={site} onChange={e => setSite(e.target.value)} className="rounded-lg border border-border bg-surface px-3 py-2">
-            {['All', 'City Mall Roof', 'Airport East', 'Tech Park A', 'Central Hub', 'Warehouse Lot'].map(o => <option key={o}>{o}</option>)}
+            {siteOptions.map(o => <option key={o}>{o}</option>)}
           </select>
           <select value={sev} onChange={e => setSev(e.target.value)} className="rounded-lg border border-border bg-surface px-3 py-2">
             {['All', 'Critical', 'High', 'Medium', 'Info'].map(o => <option key={o}>{o}</option>)}
           </select>
           <select value={type} onChange={e => setType(e.target.value)} className="rounded-lg border border-border bg-surface px-3 py-2">
-            {['All', 'Over-temp', 'OCPP error', 'Firmware', 'Comms', 'Power'].map(o => <option key={o}>{o}</option>)}
+            {typeOptions.map(o => <option key={o}>{o}</option>)}
           </select>
           <select value={status} onChange={e => setStatus(e.target.value)} className="rounded-lg border border-border bg-surface px-3 py-2">
             {['Open', 'Ack', 'Resolved', 'All'].map(o => <option key={o}>{o}</option>)}
@@ -119,6 +175,9 @@ export function OwnerAlerts() {
           <div className="text-sm text-subtle">Total: {filtered.length}</div>
         </div>
         <ul className="divide-y divide-border">
+          {isLoading && (
+            <li className="py-6 text-center text-subtle">Loading alerts...</li>
+          )}
           {filtered.map(a => (
             <li key={a.id} className="py-4 flex items-center justify-between gap-4">
               <div className="min-w-0 flex-1">
@@ -150,6 +209,9 @@ export function OwnerAlerts() {
               )}
             </li>
           ))}
+          {!isLoading && filtered.length === 0 && (
+            <li className="py-6 text-center text-subtle">No alerts match your filters.</li>
+          )}
         </ul>
         {filtered.length === 0 && <div className="p-8 text-center text-subtle">No alerts match your filters.</div>}
       </section>

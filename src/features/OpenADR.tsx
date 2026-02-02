@@ -1,6 +1,8 @@
 import { useState, useMemo } from 'react'
 import { useAuthStore } from '@/core/auth/authStore'
 import { hasPermission } from '@/constants/permissions'
+import { useOpenAdrEvents } from '@/modules/integrations/useOpenAdr'
+import { getErrorMessage } from '@/core/api/errors'
 
 /* ─────────────────────────────────────────────────────────────────────────────
    OpenADR Events — Demand Response management
@@ -21,21 +23,6 @@ interface DREvent {
   status: EventStatus
 }
 
-const MOCK_EVENTS: DREvent[] = [
-  { id: 'EVT-9102', program: 'PeakSaver', signal: 'LOAD', level: 'Moderate', start: '2025-10-29 16:00', end: '2025-10-29 18:00', sites: 6, status: 'Active' },
-  { id: 'EVT-9101', program: 'FastDR', signal: 'PRICE', level: 'High', start: '2025-10-29 12:00', end: '2025-10-29 13:00', sites: 4, status: 'Completed' },
-  { id: 'EVT-9100', program: 'PVShift', signal: 'LOAD', level: 'Low', start: '2025-10-30 11:00', end: '2025-10-30 14:00', sites: 8, status: 'Pending' },
-  { id: 'EVT-9098', program: 'PeakSaver', signal: 'PRICE', level: 'High', start: '2025-10-28 17:00', end: '2025-10-28 19:00', sites: 5, status: 'Cancelled' },
-]
-
-const KPIS = [
-  { label: 'Programs', value: '3' },
-  { label: 'Active events', value: '2' },
-  { label: 'Pending events', value: '4' },
-  { label: 'Sites subscribed', value: '18' },
-  { label: 'Opt-outs (24h)', value: '1' },
-]
-
 export function OpenADR() {
   const { user } = useAuthStore()
   const role = user?.role ?? 'EVZONE_OPERATOR'
@@ -52,14 +39,44 @@ export function OpenADR() {
 
   const toast = (m: string) => { setAck(m); setTimeout(() => setAck(''), 2000) }
 
+  const { data: eventsData = [], isLoading, error } = useOpenAdrEvents({ from, to })
+
+  const events = useMemo(() => {
+    const raw = Array.isArray(eventsData) ? eventsData : (eventsData as any)?.data || []
+    return raw.map((e: any) => ({
+      id: e.id,
+      program: e.program || e.programName || '—',
+      signal: (e.signal || e.signalType || 'LOAD') as SignalType,
+      level: (e.level || e.severity || 'Low') as DREvent['level'],
+      start: e.start || e.startAt || e.startsAt || '—',
+      end: e.end || e.endAt || e.endsAt || '—',
+      sites: e.sites ?? e.siteCount ?? 0,
+      status: (e.status || 'Pending') as EventStatus,
+    }))
+  }, [eventsData])
+
+  const kpis = useMemo(() => {
+    const programs = new Set(events.map(e => e.program)).size
+    const active = events.filter(e => e.status === 'Active').length
+    const pending = events.filter(e => e.status === 'Pending').length
+    const sites = events.reduce((sum, e) => sum + (e.sites || 0), 0)
+    return [
+      { label: 'Programs', value: String(programs) },
+      { label: 'Active events', value: String(active) },
+      { label: 'Pending events', value: String(pending) },
+      { label: 'Sites subscribed', value: String(sites) },
+      { label: 'Opt-outs (24h)', value: '0' },
+    ]
+  }, [events])
+
   const filtered = useMemo(() =>
-    MOCK_EVENTS
+    events
       .filter(r => !q || (r.id + ' ' + r.program).toLowerCase().includes(q.toLowerCase()))
       .filter(r => program === 'All' || r.program === program)
       .filter(r => status === 'All' || r.status === status)
       .filter(r => signal === 'All' || r.signal === signal)
       .filter(r => new Date(r.start) >= new Date(from) && new Date(r.end) <= new Date(to + 'T23:59:59'))
-  , [q, program, status, signal, from, to])
+  , [events, q, program, status, signal, from, to])
 
   if (!canView) {
     return <div className="p-8 text-center text-subtle">No permission to view OpenADR Events.</div>
@@ -67,11 +84,16 @@ export function OpenADR() {
 
   return (
     <div className="space-y-6">
+      {error && (
+        <div className="rounded-lg bg-red-50 border border-red-200 text-red-700 px-4 py-2 text-sm">
+          {getErrorMessage(error)}
+        </div>
+      )}
       {ack && <div className="rounded-lg bg-accent/10 text-accent px-4 py-2 text-sm">{ack}</div>}
 
       {/* KPIs */}
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        {KPIS.map(k => (
+        {kpis.map(k => (
           <div key={k.label} className="rounded-xl bg-surface border border-border p-5 shadow-sm">
             <div className="text-sm text-subtle">{k.label}</div>
             <div className="mt-2 text-2xl font-bold">{k.value}</div>
@@ -127,7 +149,12 @@ export function OpenADR() {
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {filtered.map(r => (
+            {isLoading && (
+              <tr>
+                <td colSpan={canManage ? 9 : 8} className="p-8 text-center text-subtle">Loading events...</td>
+              </tr>
+            )}
+            {!isLoading && filtered.map(r => (
               <tr key={r.id} className="hover:bg-muted/50">
                 <td className="px-4 py-3 font-medium">{r.id}</td>
                 <td className="px-4 py-3">{r.program}</td>
@@ -158,7 +185,7 @@ export function OpenADR() {
             ))}
           </tbody>
         </table>
-        {filtered.length === 0 && <div className="p-8 text-center text-subtle">No events match your filters.</div>}
+        {!isLoading && filtered.length === 0 && <div className="p-8 text-center text-subtle">No events match your filters.</div>}
       </section>
     </div>
   )

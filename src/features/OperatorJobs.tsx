@@ -1,6 +1,9 @@
 import { useState, useMemo } from 'react'
 import { useAuthStore } from '@/core/auth/authStore'
 import { hasPermission } from '@/constants/permissions'
+import { useDispatches } from '@/modules/dispatch/hooks/useDispatches'
+import { getErrorMessage } from '@/core/api/errors'
+import type { Dispatch } from '@/core/api/types'
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Operator Jobs — Job board for Operators
@@ -18,24 +21,71 @@ interface OperatorJob {
   type: JobType
   priority: JobPriority
   created: string
+  createdAtMs: number
   due: string
   assignee: string
   status: JobStatus
 }
 
-const MOCK_JOBS: OperatorJob[] = [
-  { id: 'JOB-441', site: 'Central Hub', device: 'CP-A1', type: 'Hardware', priority: 'High', created: '2025-10-28 09:15', due: '2025-10-28 17:15', assignee: '—', status: 'Open' },
-  { id: 'JOB-440', site: 'Airport East', device: 'CP-B4', type: 'Network', priority: 'Medium', created: '2025-10-27 22:05', due: '2025-10-28 04:05', assignee: 'RapidCharge Techs', status: 'In progress' },
-  { id: 'JOB-439', site: 'Tech Park A', device: 'CP-C2', type: 'Firmware', priority: 'Medium', created: '2025-10-25 15:02', due: '2025-10-26 15:02', assignee: 'FixVolt Ltd', status: 'Waiting' },
-  { id: 'JOB-438', site: 'Central Hub', device: 'SS-701', type: 'Hardware', priority: 'Critical', created: '2025-10-24 11:30', due: '2025-10-24 15:30', assignee: 'Aisha N.', status: 'Done' },
-  { id: 'JOB-437', site: 'Business Park', device: 'CP-D3', type: 'Software', priority: 'Low', created: '2025-10-23 14:20', due: '2025-10-25 14:20', assignee: '—', status: 'Open' },
-]
+const inferType = (dispatch: Dispatch): JobType => {
+  const text = `${dispatch.title} ${dispatch.description || ''}`.toLowerCase()
+  if (text.includes('network')) return 'Network'
+  if (text.includes('firmware')) return 'Firmware'
+  if (text.includes('software')) return 'Software'
+  if (text.includes('hardware')) return 'Hardware'
+  return 'Other'
+}
+
+const mapPriority = (priority?: string): JobPriority => {
+  switch ((priority || '').toLowerCase()) {
+    case 'critical':
+      return 'Critical'
+    case 'high':
+      return 'High'
+    case 'normal':
+      return 'Medium'
+    case 'low':
+    default:
+      return 'Low'
+  }
+}
+
+const mapStatus = (status?: string): JobStatus => {
+  switch ((status || '').toLowerCase()) {
+    case 'pending':
+      return 'Open'
+    case 'assigned':
+      return 'Waiting'
+    case 'in progress':
+      return 'In progress'
+    case 'completed':
+      return 'Done'
+    case 'cancelled':
+      return 'Cancelled'
+    default:
+      return 'Open'
+  }
+}
+
+const formatDateTime = (value?: string) => {
+  if (!value) return '—'
+  const date = new Date(value)
+  return Number.isFinite(date.getTime()) ? date.toLocaleString() : '—'
+}
+
+const formatDue = (dispatch: Dispatch) => {
+  if (dispatch.dueAt) return formatDateTime(dispatch.dueAt)
+  if (dispatch.dueDate) return `${dispatch.dueDate}${dispatch.dueTime ? ` ${dispatch.dueTime}` : ''}`
+  return '—'
+}
 
 export function OperatorJobs() {
   const { user } = useAuthStore()
   const role = user?.role ?? 'EVZONE_OPERATOR'
   const canView = hasPermission(role, 'jobs', 'view')
   const canManage = hasPermission(role, 'jobs', 'edit')
+
+  const { data: dispatchesData, isLoading, error } = useDispatches()
 
   const [q, setQ] = useState('')
   const [site, setSite] = useState('All Sites')
@@ -45,10 +95,28 @@ export function OperatorJobs() {
   const [from, setFrom] = useState('2025-10-01')
   const [to, setTo] = useState('2025-10-31')
   const [view, setView] = useState<'Table' | 'Board'>('Table')
-  const [jobs, setJobs] = useState(MOCK_JOBS)
   const [ack, setAck] = useState('')
 
   const toast = (m: string) => { setAck(m); setTimeout(() => setAck(''), 2000) }
+
+  const jobs = useMemo<OperatorJob[]>(() => {
+    const raw = Array.isArray(dispatchesData) ? dispatchesData : (dispatchesData as any)?.data || []
+    return raw.map((dispatch: Dispatch) => {
+      const createdMs = dispatch.createdAt ? new Date(dispatch.createdAt).getTime() : NaN
+      return {
+        id: dispatch.id,
+        site: dispatch.stationName || dispatch.stationId || '—',
+        device: dispatch.stationId || dispatch.incidentId || '—',
+        type: inferType(dispatch),
+        priority: mapPriority(dispatch.priority),
+        created: formatDateTime(dispatch.createdAt),
+        createdAtMs: Number.isFinite(createdMs) ? createdMs : Date.now(),
+        due: formatDue(dispatch),
+        assignee: dispatch.assignee || dispatch.assignedTo || '—',
+        status: mapStatus(dispatch.status),
+      }
+    })
+  }, [dispatchesData])
 
   const filtered = useMemo(() =>
     jobs
@@ -57,25 +125,24 @@ export function OperatorJobs() {
       .filter(r => status === 'All' || r.status === status)
       .filter(r => prio === 'All' || r.priority === prio)
       .filter(r => type === 'All' || r.type === type)
-      .filter(r => new Date(r.created) >= new Date(from) && new Date(r.created) <= new Date(to + 'T23:59:59'))
+      .filter(r => r.createdAtMs >= new Date(from).getTime() && r.createdAtMs <= new Date(to + 'T23:59:59').getTime())
   , [jobs, q, site, status, prio, type, from, to])
+
+  const siteOptions = useMemo(() => ['All Sites', ...Array.from(new Set(jobs.map(j => j.site).filter(Boolean)))], [jobs])
 
   const assign = (id: string) => {
     toast(`Assign ${id} modal would open`)
   }
 
   const start = (id: string) => {
-    setJobs(list => list.map(j => j.id === id ? { ...j, status: 'In progress' as JobStatus } : j))
     toast(`Started ${id}`)
   }
 
   const resolve = (id: string) => {
-    setJobs(list => list.map(j => j.id === id ? { ...j, status: 'Done' as JobStatus } : j))
     toast(`Resolved ${id}`)
   }
 
   const close = (id: string) => {
-    setJobs(list => list.map(j => j.id === id ? { ...j, status: 'Done' as JobStatus } : j))
     toast(`Closed ${id}`)
   }
 
@@ -85,6 +152,11 @@ export function OperatorJobs() {
 
   return (
     <div className="space-y-6">
+      {error && (
+        <div className="rounded-lg bg-red-50 border border-red-200 text-red-700 px-4 py-2 text-sm">
+          {getErrorMessage(error)}
+        </div>
+      )}
       {ack && <div className="rounded-lg bg-accent/10 text-accent px-4 py-2 text-sm">{ack}</div>}
 
       {/* Header Actions */}
@@ -106,7 +178,7 @@ export function OperatorJobs() {
           <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search job / device / site" className="input pl-9" />
         </label>
         <select value={site} onChange={e => setSite(e.target.value)} className="select">
-          {['All Sites', 'Central Hub', 'Airport East', 'Tech Park A', 'Business Park'].map(o => <option key={o}>{o}</option>)}
+          {siteOptions.map(o => <option key={o}>{o}</option>)}
         </select>
         <select value={status} onChange={e => setStatus(e.target.value)} className="select">
           {['All', 'Open', 'In progress', 'Waiting', 'Done', 'Cancelled'].map(o => <option key={o}>{o}</option>)}
@@ -189,7 +261,8 @@ export function OperatorJobs() {
               ))}
             </tbody>
           </table>
-          {filtered.length === 0 && <div className="p-8 text-center text-subtle">No jobs match your filters.</div>}
+          {isLoading && <div className="p-8 text-center text-subtle">Loading jobs...</div>}
+          {!isLoading && filtered.length === 0 && <div className="p-8 text-center text-subtle">No jobs match your filters.</div>}
         </section>
       )}
 

@@ -1,6 +1,8 @@
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { useAuthStore } from '@/core/auth/authStore'
 import { getPermissionsForFeature } from '@/constants/permissions'
+import { useSystemHealth } from '@/modules/analytics/hooks/useAnalytics'
+import { getErrorMessage } from '@/core/api/errors'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES & MOCK DATA
@@ -17,7 +19,24 @@ type Service = {
   responseTime: number
 }
 
-const services: Service[] = [] // Connected to HealthModule in future phase
+const mapStatus = (status?: string): ServiceStatus => {
+  switch ((status || '').toLowerCase()) {
+    case 'operational':
+      return 'Operational'
+    case 'degraded':
+    case 'partialoutage':
+    case 'partial_outage':
+      return 'Degraded'
+    case 'maintenance':
+      return 'Maintenance'
+    case 'down':
+    case 'outage':
+    case 'failed':
+      return 'Down'
+    default:
+      return 'Operational'
+  }
+}
 
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -35,6 +54,23 @@ const services: Service[] = [] // Connected to HealthModule in future phase
 export function SystemHealth() {
   const { user } = useAuthStore()
   const perms = getPermissionsForFeature(user?.role, 'systemHealth')
+  const { data: healthData, isLoading, error } = useSystemHealth() as any
+
+  const services: Service[] = (healthData?.services || []).map((s: any) => ({
+    id: s.id || s.name,
+    name: s.name || s.service || 'Service',
+    status: mapStatus(s.status),
+    uptime: s.uptime || s.uptimePercent || '—',
+    lastCheck: s.lastCheck || s.updatedAt || '—',
+    responseTime: s.responseTime ?? s.latency ?? 0,
+  }))
+
+  const events = (healthData?.events || []).map((e: any) => ({
+    id: e.id || e.timestamp || e.time || e.message,
+    time: e.time || e.timestamp || e.createdAt || '—',
+    severity: e.severity || e.level || 'Info',
+    message: e.message || e.title || '—',
+  }))
 
   const operational = services.filter((s) => s.status === 'Operational').length
   const degraded = services.filter((s) => s.status === 'Degraded').length
@@ -60,6 +96,11 @@ export function SystemHealth() {
 
   return (
     <DashboardLayout pageTitle="System Health">
+      {error && (
+        <div className="card mb-4 bg-red-50 border border-red-200">
+          <div className="text-red-700 text-sm">{getErrorMessage(error)}</div>
+        </div>
+      )}
       {/* Summary */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
         <div className="card">
@@ -82,8 +123,9 @@ export function SystemHealth() {
 
       {/* Services Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-        {services.length === 0 && <div className="col-span-full py-12 text-center text-muted">No health data available</div>}
-        {services.map((s) => (
+        {isLoading && <div className="col-span-full py-12 text-center text-muted">Loading health data...</div>}
+        {!isLoading && services.length === 0 && <div className="col-span-full py-12 text-center text-muted">No health data available</div>}
+        {!isLoading && services.map((s) => (
           <div key={s.id} className="card">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
@@ -121,21 +163,23 @@ export function SystemHealth() {
       <div className="card">
         <h3 className="font-semibold text-text mb-3">Recent System Events</h3>
         <div className="space-y-2">
-          <div className="flex items-center gap-3 text-sm">
-            <span className="text-muted">10m ago</span>
-            <span className="pill bg-warn/20 text-warn">Warning</span>
-            <span>Payment Service latency increased to 850ms</span>
-          </div>
-          <div className="flex items-center gap-3 text-sm">
-            <span className="text-muted">1h ago</span>
-            <span className="pill bg-muted/30 text-muted">Info</span>
-            <span>Analytics Pipeline scheduled maintenance started</span>
-          </div>
-          <div className="flex items-center gap-3 text-sm">
-            <span className="text-muted">3h ago</span>
-            <span className="pill bg-ok/20 text-ok">Resolved</span>
-            <span>Database failover completed successfully</span>
-          </div>
+          {isLoading && <div className="text-sm text-muted">Loading events...</div>}
+          {!isLoading && events.length === 0 && <div className="text-sm text-muted">No recent events.</div>}
+          {!isLoading && events.map((e: any) => (
+            <div key={e.id} className="flex items-center gap-3 text-sm">
+              <span className="text-muted">{e.time}</span>
+              <span className={`pill ${
+                e.severity.toLowerCase() === 'warning'
+                  ? 'bg-warn/20 text-warn'
+                  : e.severity.toLowerCase() === 'error'
+                    ? 'bg-rose-100 text-rose-700'
+                    : e.severity.toLowerCase() === 'resolved'
+                      ? 'bg-ok/20 text-ok'
+                      : 'bg-muted/30 text-muted'
+              }`}>{e.severity}</span>
+              <span>{e.message}</span>
+            </div>
+          ))}
         </div>
       </div>
     </DashboardLayout>

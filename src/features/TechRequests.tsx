@@ -1,6 +1,10 @@
 import { useState, useMemo } from 'react'
 import { useAuthStore } from '@/core/auth/authStore'
 import { hasPermission } from '@/constants/permissions'
+import { useDispatches, useCreateDispatch } from '@/modules/dispatch/hooks/useDispatches'
+import { useStations } from '@/modules/stations/hooks/useStations'
+import { getErrorMessage } from '@/core/api/errors'
+import type { Dispatch } from '@/core/api/types'
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Tech Requests — Technician service requests management
@@ -25,12 +29,65 @@ interface TechRequest {
   estimatedCost?: number
 }
 
-const MOCK_REQUESTS: TechRequest[] = [
-  { id: 'TR-001', type: 'Repair', site: 'Central Hub', charger: 'CP-A1', description: 'Connector not latching properly', priority: 'High', status: 'Assigned', created: '2025-10-28 09:00', scheduled: '2025-10-30 10:00', technician: 'Allan K.', estimatedCost: 150 },
-  { id: 'TR-002', type: 'Installation', site: 'Airport East', description: 'Install 2x 150kW DC chargers', priority: 'Normal', status: 'Open', created: '2025-10-27 14:30', estimatedCost: 2500 },
-  { id: 'TR-003', type: 'Maintenance', site: 'Tech Park', charger: 'CP-C2', description: 'Quarterly preventive maintenance', priority: 'Low', status: 'Completed', created: '2025-10-20 08:00', scheduled: '2025-10-22 09:00', technician: 'Grace M.' },
-  { id: 'TR-004', type: 'Inspection', site: 'Central Hub', description: 'Pre-launch safety inspection', priority: 'Urgent', status: 'In Progress', created: '2025-10-26 11:00', scheduled: '2025-10-28 14:00', technician: 'Allan K.', estimatedCost: 200 },
-]
+const inferType = (dispatch: Dispatch): RequestType => {
+  const text = `${dispatch.title} ${dispatch.description || ''}`.toLowerCase()
+  if (text.includes('install')) return 'Installation'
+  if (text.includes('repair')) return 'Repair'
+  if (text.includes('inspect')) return 'Inspection'
+  if (text.includes('commission')) return 'Commissioning'
+  return 'Maintenance'
+}
+
+const mapPriority = (priority?: string): RequestPriority => {
+  switch ((priority || '').toLowerCase()) {
+    case 'critical':
+      return 'Urgent'
+    case 'high':
+      return 'High'
+    case 'normal':
+      return 'Normal'
+    case 'low':
+    default:
+      return 'Low'
+  }
+}
+
+const mapStatus = (status?: string): RequestStatus => {
+  switch ((status || '').toLowerCase()) {
+    case 'pending':
+      return 'Open'
+    case 'assigned':
+      return 'Assigned'
+    case 'in progress':
+      return 'In Progress'
+    case 'completed':
+      return 'Completed'
+    case 'cancelled':
+      return 'Cancelled'
+    default:
+      return 'Open'
+  }
+}
+
+const toDispatchPriority = (priority: RequestPriority) => {
+  switch (priority) {
+    case 'Urgent':
+      return 'Critical'
+    case 'High':
+      return 'High'
+    case 'Normal':
+      return 'Normal'
+    case 'Low':
+    default:
+      return 'Low'
+  }
+}
+
+const formatDateTime = (value?: string) => {
+  if (!value) return '—'
+  const date = new Date(value)
+  return Number.isFinite(date.getTime()) ? date.toLocaleString() : '—'
+}
 
 export function TechRequests() {
   const { user } = useAuthStore()
@@ -38,6 +95,10 @@ export function TechRequests() {
   
   const canView = hasPermission(role, 'maintenance', 'view')
   const canCreate = hasPermission(role, 'maintenance', 'create')
+
+  const { data: dispatchesData, isLoading, error } = useDispatches()
+  const { data: stationsData } = useStations()
+  const createDispatch = useCreateDispatch()
 
   const [status, setStatus] = useState('All')
   const [type, setType] = useState('All')
@@ -52,29 +113,80 @@ export function TechRequests() {
   // New request form
   const [newRequest, setNewRequest] = useState({
     type: 'Repair' as RequestType,
-    site: '',
-    charger: '',
+    stationId: '',
     description: '',
     priority: 'Normal' as RequestPriority,
+    dueDate: new Date().toISOString().slice(0, 10),
+    dueTime: '09:00',
+    estimatedDuration: '2h',
   })
 
+  const stations = useMemo(() => Array.isArray(stationsData) ? stationsData : (stationsData as any)?.data || [], [stationsData])
+  const stationMap = useMemo(() => new Map(stations.map((s: any) => [s.id, s])), [stations])
+
+  const requests = useMemo<TechRequest[]>(() => {
+    const raw = Array.isArray(dispatchesData) ? dispatchesData : (dispatchesData as any)?.data || []
+    return raw.map((dispatch: Dispatch) => ({
+      id: dispatch.id,
+      type: inferType(dispatch),
+      site: stationMap.get(dispatch.stationId)?.name || dispatch.stationName || dispatch.stationId || '—',
+      charger: dispatch.stationId || dispatch.incidentId,
+      description: dispatch.description || dispatch.title,
+      priority: mapPriority(dispatch.priority),
+      status: mapStatus(dispatch.status),
+      created: formatDateTime(dispatch.createdAt),
+      scheduled: dispatch.dueAt ? formatDateTime(dispatch.dueAt) : dispatch.dueDate ? `${dispatch.dueDate} ${dispatch.dueTime || ''}` : undefined,
+      technician: dispatch.assignee || dispatch.assignedTo || '—',
+      estimatedCost: undefined,
+    }))
+  }, [dispatchesData, stationMap])
+
   const filtered = useMemo(() =>
-    MOCK_REQUESTS
+    requests
       .filter(r => !q || (r.id + ' ' + r.site + ' ' + r.description).toLowerCase().includes(q.toLowerCase()))
       .filter(r => status === 'All' || r.status === status)
       .filter(r => type === 'All' || r.type === type)
       .filter(r => priority === 'All' || r.priority === priority)
-  , [q, status, type, priority])
+  , [requests, q, status, type, priority])
+
+  const typeOptions = useMemo(() => ['All', ...Array.from(new Set(requests.map(r => r.type).filter(Boolean)))], [requests])
 
   const handleCreateRequest = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!newRequest.site || !newRequest.description) {
+    if (!newRequest.stationId || !newRequest.description) {
       toast('Please fill in required fields')
       return
     }
-    toast(`Tech request created: ${newRequest.type} at ${newRequest.site}`)
-    setShowNew(false)
-    setNewRequest({ type: 'Repair', site: '', charger: '', description: '', priority: 'Normal' })
+    createDispatch.mutate(
+      {
+        title: `${newRequest.type} request`,
+        description: newRequest.description,
+        priority: toDispatchPriority(newRequest.priority),
+        stationId: newRequest.stationId,
+        dueDate: newRequest.dueDate,
+        dueTime: newRequest.dueTime,
+        estimatedDuration: newRequest.estimatedDuration,
+        requiredSkills: [],
+      },
+      {
+        onSuccess: () => {
+          toast(`Tech request created: ${newRequest.type}`)
+          setShowNew(false)
+          setNewRequest({
+            type: 'Repair',
+            stationId: '',
+            description: '',
+            priority: 'Normal',
+            dueDate: new Date().toISOString().slice(0, 10),
+            dueTime: '09:00',
+            estimatedDuration: '2h',
+          })
+        },
+        onError: (err) => {
+          toast(getErrorMessage(err))
+        },
+      }
+    )
   }
 
   if (!canView) {
@@ -83,6 +195,11 @@ export function TechRequests() {
 
   return (
     <div className="space-y-6">
+      {error && (
+        <div className="rounded-lg bg-red-50 border border-red-200 text-red-700 px-4 py-2 text-sm">
+          {getErrorMessage(error)}
+        </div>
+      )}
       {ack && <div className="rounded-lg bg-accent/10 text-accent px-4 py-2 text-sm">{ack}</div>}
 
       {/* Header */}
@@ -106,8 +223,7 @@ export function TechRequests() {
           <option>Open</option><option>Assigned</option><option>In Progress</option><option>Completed</option><option>Cancelled</option>
         </select>
         <select value={type} onChange={e => setType(e.target.value)} className="rounded-lg border border-border bg-surface px-3 py-2">
-          <option value="All">All Types</option>
-          <option>Installation</option><option>Repair</option><option>Maintenance</option><option>Inspection</option><option>Commissioning</option>
+          {typeOptions.map(o => <option key={o} value={o}>{o}</option>)}
         </select>
         <select value={priority} onChange={e => setPriority(e.target.value)} className="rounded-lg border border-border bg-surface px-3 py-2">
           <option value="All">All Priority</option>
@@ -152,7 +268,8 @@ export function TechRequests() {
             ))}
           </tbody>
         </table>
-        {filtered.length === 0 && <div className="p-8 text-center text-subtle">No requests found.</div>}
+        {isLoading && <div className="p-8 text-center text-subtle">Loading requests...</div>}
+        {!isLoading && filtered.length === 0 && <div className="p-8 text-center text-subtle">No requests found.</div>}
       </section>
 
       {/* New request modal */}
@@ -177,14 +294,41 @@ export function TechRequests() {
                 </label>
                 <label className="grid gap-1">
                   <span className="text-sm font-medium">Site *</span>
-                  <select value={newRequest.site} onChange={e => setNewRequest(r => ({ ...r, site: e.target.value }))} className="select">
+                  <select value={newRequest.stationId} onChange={e => setNewRequest(r => ({ ...r, stationId: e.target.value }))} className="select">
                     <option value="">Select site...</option>
-                    <option>Central Hub</option><option>Airport East</option><option>Tech Park</option>
+                    {stations.map((station: any) => (
+                      <option key={station.id} value={station.id}>
+                        {station.name || station.code || station.id}
+                      </option>
+                    ))}
                   </select>
                 </label>
                 <label className="grid gap-1">
-                  <span className="text-sm font-medium">Charger (optional)</span>
-                  <input value={newRequest.charger} onChange={e => setNewRequest(r => ({ ...r, charger: e.target.value }))} className="input" placeholder="e.g., CP-A1" />
+                  <span className="text-sm font-medium">Due Date</span>
+                  <input
+                    type="date"
+                    value={newRequest.dueDate}
+                    onChange={e => setNewRequest(r => ({ ...r, dueDate: e.target.value }))}
+                    className="input"
+                  />
+                </label>
+                <label className="grid gap-1">
+                  <span className="text-sm font-medium">Due Time</span>
+                  <input
+                    type="time"
+                    value={newRequest.dueTime}
+                    onChange={e => setNewRequest(r => ({ ...r, dueTime: e.target.value }))}
+                    className="input"
+                  />
+                </label>
+                <label className="grid gap-1">
+                  <span className="text-sm font-medium">Estimated Duration</span>
+                  <input
+                    value={newRequest.estimatedDuration}
+                    onChange={e => setNewRequest(r => ({ ...r, estimatedDuration: e.target.value }))}
+                    className="input"
+                    placeholder="e.g., 2h"
+                  />
                 </label>
               </div>
               <label className="grid gap-1">

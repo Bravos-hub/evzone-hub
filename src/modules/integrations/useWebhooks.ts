@@ -61,3 +61,16 @@ export function useTestWebhook() {
     mutationFn: (id: string) => webhookService.test(id),
   })
 }
+
+export function useWebhookDeliveries(filters?: { status?: string; event?: string; limit?: number }) {
+  return useQuery({
+    queryKey: ['webhooks', 'deliveries', filters],
+    queryFn: () => webhookService.getDeliveries(filters),
+  })
+}
+
+export function useReplayWebhookDelivery() {
+  return useMutation({
+    mutationFn: (deliveryId: string) => webhookService.replayDelivery(deliveryId),
+  })
+}

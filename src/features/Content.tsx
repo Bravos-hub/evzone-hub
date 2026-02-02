@@ -1,6 +1,8 @@
 import { useState, useMemo } from 'react'
 import { useAuthStore } from '@/core/auth/authStore'
 import { PERMISSIONS, hasPermission } from '@/constants/permissions'
+import { useContent } from '@/modules/content/useContent'
+import { getErrorMessage } from '@/core/api/errors'
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Content Management — Pages, Announcements, Docs, Help articles, Media
@@ -21,22 +23,44 @@ interface ContentRow {
   author: string
 }
 
-const MOCK_CONTENT: ContentRow[] = [
-  { id: 'CNT-4101', title: 'EVzone — Privacy Policy', type: 'Page', locale: 'EN', updated: '2025-10-28 17:10', state: 'Published', author: 'admin@evzone' },
-  { id: 'CNT-4098', title: 'Grid outage notice (Kampala)', type: 'Announcement', locale: 'EN', updated: '2025-10-28 06:00', state: 'Scheduled', author: 'ops@evzone' },
-  { id: 'CNT-4092', title: 'Technician Safety — Lockout/Tagout', type: 'Doc', locale: 'EN', updated: '2025-10-26 10:12', state: 'Published', author: 'safety@evzone' },
-  { id: 'CNT-4088', title: 'Bienvenue sur EVzone (FR)', type: 'Page', locale: 'FR', updated: '2025-10-22 09:10', state: 'Draft', author: 'admin@evzone' },
-  { id: 'CNT-4085', title: 'How to start a charging session', type: 'Help', locale: 'EN', updated: '2025-10-20 14:30', state: 'Published', author: 'support@evzone' },
-  { id: 'CNT-4080', title: 'Station hero image kit', type: 'Media', locale: 'EN', updated: '2025-10-18 09:00', state: 'Published', author: 'design@evzone' },
-]
+const mapState = (state?: string): ContentState => {
+  switch ((state || '').toLowerCase()) {
+    case 'published':
+      return 'Published'
+    case 'scheduled':
+      return 'Scheduled'
+    case 'archived':
+      return 'Archived'
+    case 'draft':
+    default:
+      return 'Draft'
+  }
+}
 
-const KPIS = [
-  { label: 'Published', value: '128' },
-  { label: 'Drafts', value: '42' },
-  { label: 'Scheduled', value: '9' },
-  { label: 'Locales', value: '6' },
-  { label: 'Media items', value: '312' },
-]
+const mapType = (type?: string): ContentType => {
+  switch ((type || '').toLowerCase()) {
+    case 'announcement':
+      return 'Announcement'
+    case 'doc':
+    case 'document':
+      return 'Doc'
+    case 'help':
+      return 'Help'
+    case 'media':
+      return 'Media'
+    case 'page':
+    default:
+      return 'Page'
+  }
+}
+
+const mapLocale = (locale?: string): Locale => {
+  const value = (locale || '').toUpperCase()
+  if (value === 'FR' || value === 'ES' || value === 'SW' || value === 'AR' || value === 'ZH') {
+    return value as Locale
+  }
+  return 'EN'
+}
 
 export function Content() {
   const { user } = useAuthStore()
@@ -53,13 +77,43 @@ export function Content() {
 
   const toast = (m: string) => { setAck(m); setTimeout(() => setAck(''), 2000) }
 
+  const { data: contentData = [], isLoading, error } = useContent()
+
+  const rows = useMemo<ContentRow[]>(() => {
+    const raw = Array.isArray(contentData) ? contentData : (contentData as any)?.data || []
+    return raw.map((item: any) => ({
+      id: item.id,
+      title: item.title || item.name || '—',
+      type: mapType(item.type || item.kind),
+      locale: mapLocale(item.locale || item.language),
+      updated: item.updatedAt || item.updated || item.modifiedAt || '—',
+      state: mapState(item.status || item.state),
+      author: item.author || item.updatedBy || item.createdBy || '—',
+    }))
+  }, [contentData])
+
   const filtered = useMemo(() =>
-    MOCK_CONTENT
+    rows
       .filter(r => !q || (r.title + ' ' + r.id).toLowerCase().includes(q.toLowerCase()))
       .filter(r => type === 'All' || r.type === type)
       .filter(r => state === 'All' || r.state === state)
       .filter(r => locale === 'All' || r.locale === locale)
-  , [q, type, state, locale])
+  , [rows, q, type, state, locale])
+
+  const kpis = useMemo(() => {
+    const published = rows.filter(r => r.state === 'Published').length
+    const drafts = rows.filter(r => r.state === 'Draft').length
+    const scheduled = rows.filter(r => r.state === 'Scheduled').length
+    const locales = new Set(rows.map(r => r.locale)).size
+    const media = rows.filter(r => r.type === 'Media').length
+    return [
+      { label: 'Published', value: String(published) },
+      { label: 'Drafts', value: String(drafts) },
+      { label: 'Scheduled', value: String(scheduled) },
+      { label: 'Locales', value: String(locales) },
+      { label: 'Media items', value: String(media) },
+    ]
+  }, [rows])
 
   if (!canView) {
     return (
@@ -75,10 +129,15 @@ export function Content() {
       {ack && (
         <div className="rounded-lg bg-accent/10 text-accent px-4 py-2 text-sm">{ack}</div>
       )}
+      {error && (
+        <div className="rounded-lg bg-red-50 border border-red-200 text-red-700 px-4 py-2 text-sm">
+          {getErrorMessage(error)}
+        </div>
+      )}
 
       {/* KPIs */}
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        {KPIS.map(k => (
+        {kpis.map(k => (
           <div key={k.label} className="rounded-xl bg-surface border border-border p-5 shadow-sm">
             <div className="text-sm text-subtle">{k.label}</div>
             <div className="mt-2 text-2xl font-bold">{k.value}</div>
@@ -133,7 +192,12 @@ export function Content() {
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {filtered.map(r => (
+            {isLoading && (
+              <tr>
+                <td colSpan={canEdit ? 8 : 7} className="p-8 text-center text-subtle">Loading content...</td>
+              </tr>
+            )}
+            {!isLoading && filtered.map(r => (
               <tr key={r.id} className="hover:bg-muted/50">
                 <td className="px-4 py-3 font-medium">{r.title}</td>
                 <td className="px-4 py-3 text-subtle">{r.id}</td>
@@ -172,7 +236,7 @@ export function Content() {
             ))}
           </tbody>
         </table>
-        {filtered.length === 0 && (
+        {!isLoading && filtered.length === 0 && (
           <div className="p-8 text-center text-subtle">No content matches your filters.</div>
         )}
       </section>

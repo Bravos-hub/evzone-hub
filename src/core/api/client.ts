@@ -11,6 +11,7 @@ type RequestOptions = RequestInit & {
   skipAuth?: boolean;
   skipRefresh?: boolean;
   params?: Record<string, any>;
+  responseType?: 'json' | 'blob' | 'text';
 };
 
 class ApiClient {
@@ -84,7 +85,7 @@ class ApiClient {
     endpoint: string,
     options: RequestOptions = {}
   ): Promise<T> {
-    const { skipAuth = false, skipRefresh = false, params, ...fetchOptions } = options;
+    const { skipAuth = false, skipRefresh = false, params, responseType = 'json', ...fetchOptions } = options;
 
     // Build full URL
     let url = endpoint.startsWith('http') ? endpoint : `${this.baseURL}${endpoint}`;
@@ -171,11 +172,17 @@ class ApiClient {
       return null as T;
     }
 
-    // Parse JSON response
+    // Parse response
     try {
+      if (responseType === 'blob') {
+        return (await response.blob()) as unknown as T
+      }
+      if (responseType === 'text') {
+        return (await response.text()) as unknown as T
+      }
       return (await response.json()) as T;
     } catch (error) {
-      throw new ApiException('Invalid JSON response', response.status, error);
+      throw new ApiException('Invalid response format', response.status, error);
     }
   }
 

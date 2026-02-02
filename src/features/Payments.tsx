@@ -1,7 +1,9 @@
-import { useState, useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { useAuthStore } from '@/core/auth/authStore'
 import { hasPermission } from '@/constants/permissions'
+import { usePayments } from '@/modules/finance/payments/usePayments'
+import { getErrorMessage } from '@/core/api/errors'
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Payments — Payments & Settlements tracking
@@ -23,14 +25,39 @@ interface Payment {
   status: PaymentStatus
 }
 
-const MOCK_PAYMENTS: Payment[] = [
-  { ref: 'PAY-9901', type: 'Session', site: 'Central Hub', method: 'Card', amount: 5.12, fee: 0.15, net: 4.97, date: '2025-10-29 10:41', status: 'Settled' },
-  { ref: 'PAY-9900', type: 'Swap', site: 'SS-701', method: 'Mobile Money', amount: 2.50, fee: 0.08, net: 2.42, date: '2025-10-29 10:14', status: 'Settled' },
-  { ref: 'STL-2210', type: 'Settlement', site: '—', method: 'Bank', amount: -1200.00, fee: 0.00, net: -1200.00, date: '2025-10-29 09:00', status: 'Sent' },
-  { ref: 'FEE-110', type: 'Fee', site: '—', method: '—', amount: -12.00, fee: 0.00, net: -12.00, date: '2025-10-28 18:00', status: 'Applied' },
-  { ref: 'PAY-9899', type: 'Session', site: 'Airport East', method: 'Card', amount: 8.75, fee: 0.26, net: 8.49, date: '2025-10-28 16:22', status: 'Pending' },
-  { ref: 'PAY-9898', type: 'Session', site: 'Tech Park', method: 'Wallet', amount: 3.20, fee: 0.10, net: 3.10, date: '2025-10-28 14:05', status: 'Refunded' },
-]
+function normalizeType(value: unknown): PaymentType {
+  const v = String(value || '').toLowerCase()
+  if (v.includes('swap')) return 'Swap'
+  if (v.includes('settle')) return 'Settlement'
+  if (v.includes('fee')) return 'Fee'
+  return 'Session'
+}
+
+function normalizeStatus(value: unknown): PaymentStatus {
+  const v = String(value || '').toLowerCase()
+  if (v.includes('refund')) return 'Refunded'
+  if (v.includes('apply')) return 'Applied'
+  if (v.includes('sent')) return 'Sent'
+  if (v.includes('settle') || v.includes('paid')) return 'Settled'
+  return 'Pending'
+}
+
+function formatDateInput(d: Date) {
+  return d.toISOString().slice(0, 10)
+}
+
+function mapPayment(p: any): Payment {
+  const amount = Number(p.amount ?? p.grossAmount ?? p.total ?? 0)
+  const fee = Number(p.fee ?? p.fees ?? 0)
+  const net = Number(p.net ?? p.netAmount ?? (Number.isFinite(amount) ? amount - fee : 0))
+  const ref = p.ref ?? p.reference ?? p.id ?? '—'
+  const type = normalizeType(p.type ?? p.paymentType)
+  const status = normalizeStatus(p.status)
+  const method = p.method ?? p.paymentMethod ?? p.channel ?? '—'
+  const site = p.site ?? p.stationName ?? p.stationId ?? p.location ?? '—'
+  const date = p.date ?? p.createdAt ?? p.timestamp ?? ''
+  return { ref, type, site, method, amount, fee, net, date, status }
+}
 
 export function Payments() {
   const { user } = useAuthStore()
@@ -38,18 +65,33 @@ export function Payments() {
   const canView = hasPermission(role, 'billing', 'view')
   const canRefund = hasPermission(role, 'billing', 'refund')
 
+  const { data: paymentsData, isLoading, error } = usePayments()
+
   const [type, setType] = useState('All')
   const [status, setStatus] = useState('All')
   const [site, setSite] = useState('All')
-  const [from, setFrom] = useState('2025-10-01')
-  const [to, setTo] = useState('2025-10-31')
+  const [from, setFrom] = useState(() => formatDateInput(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)))
+  const [to, setTo] = useState(() => formatDateInput(new Date()))
   const [q, setQ] = useState('')
   const [ack, setAck] = useState('')
 
   const toast = (m: string) => { setAck(m); setTimeout(() => setAck(''), 2000) }
 
+  const payments = useMemo(() => {
+    const raw = Array.isArray(paymentsData) ? paymentsData : []
+    return raw.map(mapPayment)
+  }, [paymentsData])
+
+  const siteOptions = useMemo(() => {
+    const set = new Set<string>()
+    payments.forEach((p) => {
+      if (p.site) set.add(p.site)
+    })
+    return ['All', ...Array.from(set)]
+  }, [payments])
+
   const filtered = useMemo(() =>
-    MOCK_PAYMENTS
+    payments
       .filter(r => type === 'All' || r.type === type)
       .filter(r => status === 'All' || r.status === status)
       .filter(r => site === 'All' || r.site === site)
@@ -70,6 +112,11 @@ export function Payments() {
   return (
     <DashboardLayout pageTitle="Payments & Settlements">
       <div className="space-y-6">
+        {error && (
+          <div className="rounded-lg bg-red-50 border border-red-200 text-red-700 px-4 py-2 text-sm">
+            {getErrorMessage(error)}
+          </div>
+        )}
         {ack && <div className="rounded-lg bg-accent/10 text-accent px-4 py-2 text-sm">{ack}</div>}
 
         {/* KPIs */}
@@ -104,11 +151,11 @@ export function Payments() {
         <select value={status} onChange={e => setStatus(e.target.value)} className="select">
           {['All', 'Settled', 'Sent', 'Applied', 'Pending', 'Refunded'].map(o => <option key={o}>{o}</option>)}
         </select>
-        <select value={site} onChange={e => setSite(e.target.value)} className="select">
-          {['All', 'Central Hub', 'SS-701', 'Airport East', 'Tech Park'].map(o => <option key={o}>{o}</option>)}
-        </select>
-        <input type="date" value={from} onChange={e => setFrom(e.target.value)} className="input" />
-        <input type="date" value={to} onChange={e => setTo(e.target.value)} className="input" />
+          <select value={site} onChange={e => setSite(e.target.value)} className="select">
+            {siteOptions.map(o => <option key={o}>{o}</option>)}
+          </select>
+          <input type="date" value={from} onChange={e => setFrom(e.target.value)} className="input" />
+          <input type="date" value={to} onChange={e => setTo(e.target.value)} className="input" />
         </section>
 
         {/* Export */}
@@ -160,7 +207,8 @@ export function Payments() {
               ))}
             </tbody>
           </table>
-          {filtered.length === 0 && <div className="p-8 text-center text-subtle">No payments match your filters.</div>}
+          {isLoading && <div className="p-8 text-center text-subtle">Loading payments...</div>}
+          {!isLoading && filtered.length === 0 && <div className="p-8 text-center text-subtle">No payments match your filters.</div>}
         </section>
       </div>
     </DashboardLayout>

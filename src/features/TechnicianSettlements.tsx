@@ -1,43 +1,49 @@
 import { useState, useMemo } from 'react'
 import { useAuthStore } from '@/core/auth/authStore'
 import { hasPermission } from '@/constants/permissions'
+import { useWithdrawalHistory } from '@/modules/finance/withdrawals/useWithdrawals'
+import { getErrorMessage } from '@/core/api/errors'
+import type { WithdrawalTransaction, PaymentMethodType } from '@/core/api/types'
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Technician Settlements — Payout summary and job-level lines
    RBAC: Technicians (own), Admins (all)
 ───────────────────────────────────────────────────────────────────────────── */
 
-type SettlementStatus = 'Pending' | 'Approved' | 'Paid'
-type PayoutMethod = 'Mobile Money' | 'Bank'
+type SettlementStatus = 'Pending' | 'Approved' | 'Paid' | 'Flagged'
 
-interface SettlementLine {
-  id: string
-  date: string
-  site: string
-  hours: number
-  rate: number
-  travel: number
-  parts: number
-  allowance: number
-  platformFee: number
-  withholding: number
-  method: PayoutMethod
-  status: SettlementStatus
+type SettlementRow = WithdrawalTransaction & {
+  statusLabel: SettlementStatus
+  methodLabel: string
 }
 
-const MOCK_LINES: SettlementLine[] = [
-  { id: 'JOB-4312', date: '2025-11-03T10:00', site: 'Central Hub', hours: 2.0, rate: 25, travel: 5, parts: 0, allowance: 3, platformFee: 2, withholding: 1.5, method: 'Mobile Money', status: 'Pending' },
-  { id: 'JOB-4301', date: '2025-11-02T15:30', site: 'Airport East', hours: 1.5, rate: 25, travel: 0, parts: 10, allowance: 0, platformFee: 2, withholding: 2.0, method: 'Bank', status: 'Approved' },
-  { id: 'JOB-4295', date: '2025-10-30T09:00', site: 'Tech Park', hours: 3.0, rate: 25, travel: 4, parts: 0, allowance: 0, platformFee: 2, withholding: 2.5, method: 'Mobile Money', status: 'Paid' },
-  { id: 'JOB-4288', date: '2025-10-28T14:00', site: 'Business Park', hours: 1.0, rate: 25, travel: 5, parts: 15, allowance: 0, platformFee: 2, withholding: 1.0, method: 'Bank', status: 'Paid' },
-]
+const mapStatus = (status: WithdrawalTransaction['status']): SettlementStatus => {
+  switch (status) {
+    case 'pending':
+      return 'Pending'
+    case 'processing':
+      return 'Approved'
+    case 'completed':
+      return 'Paid'
+    case 'failed':
+    default:
+      return 'Flagged'
+  }
+}
 
-function calculateNet(r: SettlementLine) {
-  const base = r.hours * r.rate
-  const adds = r.travel + r.parts + r.allowance
-  const fees = r.platformFee
-  const tax = r.withholding || 0
-  return Math.max(0, base + adds - fees - tax)
+const mapMethod = (method: PaymentMethodType) => {
+  switch (method) {
+    case 'mobile':
+      return 'Mobile Money'
+    case 'bank':
+      return 'Bank'
+    case 'wallet':
+      return 'Wallet'
+    case 'card':
+      return 'Card'
+    default:
+      return 'Other'
+  }
 }
 
 export function TechnicianSettlements() {
@@ -46,43 +52,77 @@ export function TechnicianSettlements() {
   const isTechnician = role.startsWith('TECHNICIAN')
   const canView = hasPermission(role, 'earnings', 'view')
 
+  const { data: withdrawalsData, isLoading, error } = useWithdrawalHistory()
+
   const [period, setPeriod] = useState('This Month')
   const [status, setStatus] = useState('All')
   const [method, setMethod] = useState('All')
   const [q, setQ] = useState('')
-  const [selectedLine, setSelectedLine] = useState<SettlementLine | null>(null)
+  const [selectedLine, setSelectedLine] = useState<SettlementRow | null>(null)
   const [ack, setAck] = useState('')
 
   const toast = (m: string) => { setAck(m); setTimeout(() => setAck(''), 2000) }
 
+  const settlements = useMemo<SettlementRow[]>(() => {
+    const raw = Array.isArray(withdrawalsData) ? withdrawalsData : (withdrawalsData as any)?.data || []
+    return raw.map((tx: WithdrawalTransaction) => ({
+      ...tx,
+      statusLabel: mapStatus(tx.status),
+      methodLabel: mapMethod(tx.method),
+    }))
+  }, [withdrawalsData])
+
+  const periodFilter = useMemo(() => {
+    if (period === 'All Time') return null
+    const now = new Date()
+    if (period === 'This Week') {
+      const start = new Date(now)
+      start.setDate(now.getDate() - now.getDay())
+      start.setHours(0, 0, 0, 0)
+      return { start, end: now }
+    }
+    if (period === 'This Month') {
+      const start = new Date(now.getFullYear(), now.getMonth(), 1)
+      return { start, end: now }
+    }
+    if (period === 'Last Month') {
+      const start = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+      const end = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999)
+      return { start, end }
+    }
+    return null
+  }, [period])
+
   const filtered = useMemo(() =>
-    MOCK_LINES
-      .filter(r => status === 'All' || r.status === status)
-      .filter(r => method === 'All' || r.method === method)
-      .filter(r => !q || (r.id + r.site).toLowerCase().includes(q.toLowerCase()))
-  , [status, method, q])
+    settlements
+      .filter(r => status === 'All' || r.statusLabel === status)
+      .filter(r => method === 'All' || r.methodLabel === method)
+      .filter(r => {
+        if (!q) return true
+        const hay = `${r.id} ${r.reference} ${r.paymentMethodLabel || ''}`.toLowerCase()
+        return hay.includes(q.toLowerCase())
+      })
+      .filter(r => {
+        if (!periodFilter) return true
+        const created = new Date(r.createdAt)
+        return created >= periodFilter.start && created <= periodFilter.end
+      })
+  , [settlements, status, method, q, periodFilter])
 
   const totals = useMemo(() => {
     return filtered.reduce((acc, r) => {
-      const base = r.hours * r.rate
-      const adds = r.travel + r.parts + r.allowance
-      const fees = r.platformFee
-      const tax = r.withholding || 0
-      const net = base + adds - fees - tax
-      acc.base += base
-      acc.adds += adds
-      acc.fees += fees
-      acc.tax += tax
-      acc.net += net
+      acc.amount += r.amount
+      acc.fees += r.fee
+      acc.net += r.netAmount
       return acc
-    }, { base: 0, adds: 0, fees: 0, tax: 0, net: 0 })
+    }, { amount: 0, fees: 0, net: 0 })
   }, [filtered])
 
   const kpis = useMemo(() => ({
-    payable: filtered.filter(r => r.status === 'Pending').reduce((sum, r) => sum + calculateNet(r), 0),
-    paid: filtered.filter(r => r.status === 'Paid').reduce((sum, r) => sum + calculateNet(r), 0),
-    pending: filtered.filter(r => r.status === 'Pending').length,
-    approved: filtered.filter(r => r.status === 'Approved').reduce((sum, r) => sum + calculateNet(r), 0),
+    payable: filtered.filter(r => r.statusLabel === 'Pending').reduce((sum, r) => sum + r.netAmount, 0),
+    paid: filtered.filter(r => r.statusLabel === 'Paid').reduce((sum, r) => sum + r.netAmount, 0),
+    pending: filtered.filter(r => r.statusLabel === 'Pending').length,
+    approved: filtered.filter(r => r.statusLabel === 'Approved').reduce((sum, r) => sum + r.netAmount, 0),
   }), [filtered])
 
   const downloadStatement = () => {
@@ -91,7 +131,7 @@ export function TechnicianSettlements() {
       totals,
       lines: filtered.map(r => ({
         ...r,
-        net: calculateNet(r),
+        net: r.netAmount,
       })),
     }
     const blob = new Blob([JSON.stringify(statement, null, 2)], { type: 'application/json' })
@@ -112,6 +152,11 @@ export function TechnicianSettlements() {
 
   return (
     <div className="space-y-6">
+      {error && (
+        <div className="rounded-lg bg-red-50 border border-red-200 text-red-700 px-4 py-2 text-sm">
+          {getErrorMessage(error)}
+        </div>
+      )}
       {ack && <div className="rounded-lg bg-accent/10 text-accent px-4 py-2 text-sm">{ack}</div>}
 
       {/* KPIs */}
@@ -140,14 +185,14 @@ export function TechnicianSettlements() {
           {['This Week', 'This Month', 'Last Month', 'All Time'].map(o => <option key={o}>{o}</option>)}
         </select>
         <select value={status} onChange={e => setStatus(e.target.value)} className="select">
-          {['All', 'Pending', 'Approved', 'Paid'].map(o => <option key={o}>{o}</option>)}
+          {['All', 'Pending', 'Approved', 'Paid', 'Flagged'].map(o => <option key={o}>{o}</option>)}
         </select>
         <select value={method} onChange={e => setMethod(e.target.value)} className="select">
-          {['All', 'Mobile Money', 'Bank'].map(o => <option key={o}>{o}</option>)}
+          {['All', 'Mobile Money', 'Bank', 'Wallet', 'Card', 'Other'].map(o => <option key={o}>{o}</option>)}
         </select>
         <label className="relative md:col-span-2">
           <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-subtle" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="M21 21l-3.6-3.6" /></svg>
-          <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search job / site" className="input pl-9" />
+          <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search payout / reference" className="input pl-9" />
         </label>
       </section>
 
@@ -156,11 +201,11 @@ export function TechnicianSettlements() {
         <table className="min-w-full text-sm">
           <thead className="bg-muted text-subtle">
             <tr>
-              <th className="w-20">Job</th>
-              <th className="w-24">Date</th>
-              <th className="w-28">Site</th>
-              <th className="w-16 px-4 py-3 !text-right font-medium">Gross</th>
-              <th className="w-20 px-4 py-3 !text-right font-medium">Deductions</th>
+              <th className="w-24">Payout</th>
+              <th className="w-28">Reference</th>
+              <th className="w-24">Created</th>
+              <th className="w-20 px-4 py-3 !text-right font-medium">Amount</th>
+              <th className="w-16 px-4 py-3 !text-right font-medium">Fee</th>
               <th className="w-16 px-4 py-3 !text-right font-medium">Net</th>
               <th className="w-24">Method</th>
               <th className="w-20">Status</th>
@@ -168,35 +213,31 @@ export function TechnicianSettlements() {
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {filtered.map(r => {
-              const gross = r.hours * r.rate + r.travel + r.parts + r.allowance
-              const deductions = r.platformFee + r.withholding
-              const net = gross - deductions
-              return (
-                <tr key={r.id} className="hover:bg-muted/50 text-xs">
-                  <td className="px-4 py-3 font-medium truncate max-w-[80px]">
-                    <button onClick={() => setSelectedLine(r)} className="text-accent hover:underline" title={r.id}>
-                      {r.id}
-                    </button>
-                  </td>
-                  <td className="px-4 py-3 text-subtle whitespace-nowrap">{new Date(r.date).toLocaleDateString()}</td>
-                  <td className="px-4 py-3 truncate max-w-[112px]" title={r.site}>{r.site}</td>
-                  <td className="px-4 py-3 text-right whitespace-nowrap">${gross.toFixed(2)}</td>
-                  <td className="px-4 py-3 text-right text-subtle whitespace-nowrap">-${deductions.toFixed(2)}</td>
-                  <td className="px-4 py-3 text-right font-medium whitespace-nowrap">${net.toFixed(2)}</td>
-                  <td className="px-4 py-3 truncate max-w-[96px]">{r.method}</td>
-                  <td className="px-4 py-3"><StatusPill status={r.status} /></td>
-                  <td className="px-4 py-3 text-right">
-                    <button onClick={() => setSelectedLine(r)} className="px-2 py-1 rounded border border-border hover:bg-muted text-xs">
-                      Details
-                    </button>
-                  </td>
-                </tr>
-              )
-            })}
+            {filtered.map(r => (
+              <tr key={r.id} className="hover:bg-muted/50 text-xs">
+                <td className="px-4 py-3 font-medium truncate max-w-[96px]">
+                  <button onClick={() => setSelectedLine(r)} className="text-accent hover:underline" title={r.id}>
+                    {r.id}
+                  </button>
+                </td>
+                <td className="px-4 py-3 text-subtle truncate max-w-[112px]" title={r.reference}>{r.reference || '—'}</td>
+                <td className="px-4 py-3 text-subtle whitespace-nowrap">{new Date(r.createdAt).toLocaleDateString()}</td>
+                <td className="px-4 py-3 text-right whitespace-nowrap">${r.amount.toFixed(2)}</td>
+                <td className="px-4 py-3 text-right text-subtle whitespace-nowrap">-${r.fee.toFixed(2)}</td>
+                <td className="px-4 py-3 text-right font-medium whitespace-nowrap">${r.netAmount.toFixed(2)}</td>
+                <td className="px-4 py-3 truncate max-w-[96px]">{r.methodLabel}</td>
+                <td className="px-4 py-3"><StatusPill status={r.statusLabel} /></td>
+                <td className="px-4 py-3 text-right">
+                  <button onClick={() => setSelectedLine(r)} className="px-2 py-1 rounded border border-border hover:bg-muted text-xs">
+                    Details
+                  </button>
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
-        {filtered.length === 0 && <div className="p-8 text-center text-subtle">No settlement lines match your filters.</div>}
+        {isLoading && <div className="p-8 text-center text-subtle">Loading settlements...</div>}
+        {!isLoading && filtered.length === 0 && <div className="p-8 text-center text-subtle">No settlement lines match your filters.</div>}
       </section>
 
       {/* Totals */}
@@ -205,20 +246,16 @@ export function TechnicianSettlements() {
         <div className="grid md:grid-cols-2 gap-4 text-sm">
           <div className="space-y-2">
             <div className="flex justify-between">
-              <span className="text-subtle">Base (hours × rate):</span>
-              <span className="font-medium">${totals.base.toFixed(2)}</span>
+              <span className="text-subtle">Total Amount:</span>
+              <span className="font-medium">${totals.amount.toFixed(2)}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-subtle">Add-ons (travel + parts + allowance):</span>
-              <span className="font-medium">${totals.adds.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-subtle">Platform fees:</span>
+              <span className="text-subtle">Total Fees:</span>
               <span className="font-medium text-subtle">-${totals.fees.toFixed(2)}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-subtle">Tax withholding:</span>
-              <span className="font-medium text-subtle">-${totals.tax.toFixed(2)}</span>
+              <span className="text-subtle">Net Payable:</span>
+              <span className="font-medium">${totals.net.toFixed(2)}</span>
             </div>
             <div className="flex justify-between pt-2 border-t border-border font-semibold">
               <span>Net Payable:</span>
@@ -250,51 +287,39 @@ export function TechnicianSettlements() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <span className="text-subtle">Date:</span>
-                  <div className="font-medium">{new Date(selectedLine.date).toLocaleString()}</div>
+                  <div className="font-medium">{new Date(selectedLine.createdAt).toLocaleString()}</div>
                 </div>
                 <div>
-                  <span className="text-subtle">Site:</span>
-                  <div className="font-medium">{selectedLine.site}</div>
+                  <span className="text-subtle">Reference:</span>
+                  <div className="font-medium">{selectedLine.reference || '—'}</div>
                 </div>
                 <div>
                   <span className="text-subtle">Method:</span>
-                  <div className="font-medium">{selectedLine.method}</div>
+                  <div className="font-medium">{selectedLine.methodLabel}</div>
                 </div>
                 <div>
                   <span className="text-subtle">Status:</span>
-                  <div><StatusPill status={selectedLine.status} /></div>
+                  <div><StatusPill status={selectedLine.statusLabel} /></div>
                 </div>
               </div>
               <div className="border-t border-border pt-4">
                 <h4 className="font-semibold mb-2">Breakdown</h4>
                 <ul className="space-y-2">
                   <li className="flex justify-between">
-                    <span>Base ({selectedLine.hours}h × ${selectedLine.rate}/hr):</span>
-                    <span className="font-medium">${(selectedLine.hours * selectedLine.rate).toFixed(2)}</span>
+                    <span>Amount:</span>
+                    <span className="font-medium">${selectedLine.amount.toFixed(2)}</span>
                   </li>
                   <li className="flex justify-between">
-                    <span>Travel:</span>
-                    <span className="font-medium">${selectedLine.travel.toFixed(2)}</span>
+                    <span>Fee:</span>
+                    <span className="font-medium">-${selectedLine.fee.toFixed(2)}</span>
                   </li>
                   <li className="flex justify-between">
-                    <span>Parts:</span>
-                    <span className="font-medium">${selectedLine.parts.toFixed(2)}</span>
-                  </li>
-                  <li className="flex justify-between">
-                    <span>Allowance:</span>
-                    <span className="font-medium">${selectedLine.allowance.toFixed(2)}</span>
-                  </li>
-                  <li className="flex justify-between text-subtle">
-                    <span>Platform fee:</span>
-                    <span>-${selectedLine.platformFee.toFixed(2)}</span>
-                  </li>
-                  <li className="flex justify-between text-subtle">
-                    <span>Tax withholding:</span>
-                    <span>-${selectedLine.withholding.toFixed(2)}</span>
+                    <span>Net:</span>
+                    <span className="font-medium">${selectedLine.netAmount.toFixed(2)}</span>
                   </li>
                   <li className="flex justify-between pt-2 border-t border-border font-semibold">
                     <span>Net Payable:</span>
-                    <span className="text-accent">${calculateNet(selectedLine).toFixed(2)}</span>
+                    <span className="text-accent">${selectedLine.netAmount.toFixed(2)}</span>
                   </li>
                 </ul>
               </div>
@@ -311,6 +336,7 @@ function StatusPill({ status }: { status: SettlementStatus }) {
     Pending: 'bg-amber-100 text-amber-700',
     Approved: 'bg-blue-100 text-blue-700',
     Paid: 'bg-emerald-100 text-emerald-700',
+    Flagged: 'bg-rose-100 text-rose-700',
   }
   return <span className={`px-2 py-0.5 rounded-full text-xs ${colors[status]}`}>{status}</span>
 }

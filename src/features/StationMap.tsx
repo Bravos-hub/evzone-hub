@@ -1,6 +1,9 @@
-import { useState, useMemo, useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAuthStore } from '@/core/auth/authStore'
 import { hasPermission } from '@/constants/permissions'
+import { useStations } from '@/modules/stations/hooks/useStations'
+import { getErrorMessage } from '@/core/api/errors'
+import type { Station as ApiStation } from '@/core/api/types'
 import * as d3Geo from 'd3-geo'
 import * as d3Zoom from 'd3-zoom'
 import 'd3-transition'
@@ -29,13 +32,43 @@ interface Station {
   lng: number
 }
 
-const MOCK_STATIONS: Station[] = [
-  { id: 'st-101', name: 'City Mall Roof', city: 'Kampala', country: 'Uganda', countryCode: '800', status: 'Active', kW: 250, connector: 'CCS2', address: 'Plot 7 Jinja Rd', lat: 0.3476, lng: 32.5825 },
-  { id: 'st-102', name: 'Tech Park A', city: 'Entebbe', country: 'Uganda', countryCode: '800', status: 'Paused', kW: 150, connector: 'Type 2', address: 'Block 4', lat: 0.0630, lng: 32.4631 },
-  { id: 'st-103', name: 'Airport East', city: 'Nairobi', country: 'Kenya', countryCode: '404', status: 'Active', kW: 300, connector: 'CCS2', address: 'Terminal C', lat: -1.2864, lng: 36.8172 },
-  { id: 'st-104', name: 'Central Hub', city: 'Dar es Salaam', country: 'Tanzania', countryCode: '834', status: 'Active', kW: 200, connector: 'CHAdeMO', address: 'Industrial Area', lat: -6.7924, lng: 39.2083 },
-  { id: 'st-105', name: 'Business Park', city: 'Berlin', country: 'Germany', countryCode: '276', status: 'Maintenance', kW: 180, connector: 'CCS2', address: 'Building 5', lat: 52.5200, lng: 13.4050 },
-]
+const parseCity = (address?: string) => {
+  if (!address) return ''
+  const parts = address.split(',').map(part => part.trim()).filter(Boolean)
+  return parts.length > 1 ? parts[0] : ''
+}
+
+const parseCountry = (address?: string) => {
+  if (!address) return 'Unknown'
+  const parts = address.split(',').map(part => part.trim()).filter(Boolean)
+  return parts.length > 1 ? parts[parts.length - 1] : 'Unknown'
+}
+
+const mapStatus = (status?: string): StationStatus => {
+  switch ((status || '').toUpperCase()) {
+    case 'ACTIVE':
+      return 'Active'
+    case 'INACTIVE':
+      return 'Offline'
+    case 'MAINTENANCE':
+      return 'Maintenance'
+    default:
+      return 'Paused'
+  }
+}
+
+const mapConnector = (type?: string) => {
+  switch ((type || '').toUpperCase()) {
+    case 'CHARGING':
+      return 'Charging'
+    case 'SWAP':
+      return 'Swap'
+    case 'BOTH':
+      return 'Hybrid'
+    default:
+      return 'Unknown'
+  }
+}
 
 export function StationMap() {
   const { user } = useAuthStore()
@@ -53,6 +86,27 @@ export function StationMap() {
   const containerRef = useRef<HTMLDivElement>(null)
   const gRef = useRef<SVGGElement>(null)
 
+  const { data: stationsData, isLoading, error } = useStations()
+
+  const stations = useMemo<Station[]>(() => {
+    const raw = Array.isArray(stationsData) ? stationsData : (stationsData as any)?.data || []
+    return raw
+      .map((station: ApiStation & Record<string, any>): Station => ({
+        id: station.id,
+        name: station.name,
+        city: station.city || parseCity(station.address),
+        country: station.country || parseCountry(station.address),
+        countryCode: String(station.countryCode || station.country_code || station.countryNumeric || ''),
+        status: mapStatus(station.status),
+        kW: Number.isFinite(station.capacity) ? Number(station.capacity) : 0,
+        connector: mapConnector(station.type),
+        address: station.address || '',
+        lat: Number(station.latitude ?? station.lat ?? 0),
+        lng: Number(station.longitude ?? station.lng ?? 0),
+      }))
+      .filter((s) => Number.isFinite(s.lat) && Number.isFinite(s.lng))
+  }, [stationsData])
+
   const worldData = useMemo(() => {
     try {
       const topo = countries110m as any
@@ -65,24 +119,25 @@ export function StationMap() {
   }, [])
 
   const filtered = useMemo(() =>
-    MOCK_STATIONS
+    stations
       .filter(s => !q || s.name.toLowerCase().includes(q.toLowerCase()) || s.address.toLowerCase().includes(q.toLowerCase()))
       .filter(s => countryFilter === 'All' || s.country === countryFilter)
       .filter(s => statusFilter === 'All' || s.status === statusFilter)
       .filter(s => connectorFilter === 'All' || s.connector === connectorFilter)
-    , [q, countryFilter, statusFilter, connectorFilter])
+    , [stations, q, countryFilter, statusFilter, connectorFilter])
 
-  const countriesList = useMemo(() =>
-    Array.from(new Set(MOCK_STATIONS.map(s => s.country))).sort()
-    , [])
+  const countriesList = useMemo(() => {
+    return Array.from(new Set(stations.map(s => s.country).filter(Boolean))).sort()
+  }, [stations])
 
   const stationsByCountry = useMemo(() => {
     const map = new Map<string, number>()
-    MOCK_STATIONS.forEach(s => {
+    stations.forEach(s => {
+      if (!s.countryCode) return
       map.set(s.countryCode, (map.get(s.countryCode) || 0) + 1)
     })
     return map
-  }, [])
+  }, [stations])
 
   const resetZoom = () => {
     if (!svgRef.current) return
@@ -188,6 +243,16 @@ export function StationMap() {
 
   return (
     <div className="flex flex-col gap-4">
+      {error && (
+        <div className="rounded-lg bg-red-50 border border-red-200 text-red-700 px-4 py-2 text-sm">
+          {getErrorMessage(error)}
+        </div>
+      )}
+      {isLoading && (
+        <div className="rounded-lg bg-surface border border-border px-4 py-2 text-sm text-subtle">
+          Loading stations...
+        </div>
+      )}
       <div className="bg-bg-secondary border border-border-light rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-bold text-text">Stations Map</h1>

@@ -3,6 +3,9 @@ import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { useAuthStore } from '@/core/auth/authStore'
 import { getPermissionsForFeature } from '@/constants/permissions'
 import { Card } from '@/ui/components/Card'
+import { useSessionHistory } from '@/modules/sessions/hooks/useSessions'
+import { useStations } from '@/modules/stations/hooks/useStations'
+import { getErrorMessage } from '@/core/api/errors'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES & MOCK DATA
@@ -26,30 +29,6 @@ type LedgerRow = {
   } | null
 }
 
-const mockRows: LedgerRow[] = [
-  {
-    id: 'BK-1001',
-    station: 'SS-701',
-    type: 'booking',
-    booking: { amount: 0.3, method: 'MobileMoney', status: 'Used' },
-    energy: { unit: 'percent', value: 18, amount: 1512, currency: 'UGX', method: 'AtStation:MobileMoney' },
-  },
-  {
-    id: 'WI-5555',
-    station: 'SS-701',
-    type: 'walkin',
-    booking: null,
-    energy: { unit: 'kWh', value: 0.4, amount: 0.06, currency: 'USD', method: 'AtStation:NFC' },
-  },
-  {
-    id: 'BK-1002',
-    station: 'SS-702',
-    type: 'booking',
-    booking: { amount: 0.45, method: 'Card', status: 'Used' },
-    energy: { unit: 'kWh', value: 0.42, amount: 0.08, currency: 'USD', method: 'AtStation:NFC' },
-  },
-]
-
 function sum(arr: LedgerRow[], selector: (r: LedgerRow) => number): number {
   return arr.reduce((acc, r) => acc + selector(r), 0)
 }
@@ -65,13 +44,55 @@ function sum(arr: LedgerRow[], selector: (r: LedgerRow) => number): number {
 export function BookingLedger() {
   const { user } = useAuthStore()
   const perms = getPermissionsForFeature(user?.role, 'bookings')
+  const { data: historyData, isLoading, error } = useSessionHistory({ limit: 100 })
+  const { data: stationsData } = useStations()
+
+  const stationNameById = useMemo(() => {
+    const stations = Array.isArray(stationsData) ? stationsData : (stationsData as any)?.data || []
+    return new Map(stations.map((s: any) => [s.id, s.name || s.code || s.id]))
+  }, [stationsData])
+
+  const sessions = useMemo(() => {
+    if (Array.isArray(historyData)) return historyData
+    return (historyData as any)?.sessions || []
+  }, [historyData])
+
+  const ledgerRows = useMemo<LedgerRow[]>(() => {
+    return sessions.map((session: any) => {
+      const stationName = stationNameById.get(session.stationId) || session.stationName || session.stationId || '—'
+      const isBooking = Boolean(session.bookingId)
+      const cost = session.cost ?? session.amount ?? 0
+      const currency = session.currency || 'USD'
+      return {
+        id: session.id,
+        station: stationName,
+        type: isBooking ? 'booking' : 'walkin',
+        booking: isBooking
+          ? {
+            amount: cost,
+            method: session.paymentMethod || session.method || '—',
+            status: session.status || '—',
+          }
+          : null,
+        energy: session.energyDelivered || session.energyKwh
+          ? {
+            unit: 'kWh',
+            value: session.energyDelivered ?? session.energyKwh ?? 0,
+            amount: cost,
+            currency,
+            method: session.paymentMethod || session.method || 'Session',
+          }
+          : null,
+      }
+    })
+  }, [sessions, stationNameById])
 
   const totalBookingUSD = useMemo(
-    () => sum(mockRows, (r) => (r.booking?.amount && r.booking.method !== 'MobileMoneyUGX' ? r.booking.amount : 0)),
-    []
+    () => sum(ledgerRows, (r) => (r.booking?.amount && r.booking.method !== 'MobileMoneyUGX' ? r.booking.amount : 0)),
+    [ledgerRows]
   )
-  const totalEnergyUSD = useMemo(() => sum(mockRows, (r) => (r.energy && r.energy.currency === 'USD' ? r.energy.amount : 0)), [])
-  const totalEnergyUGX = useMemo(() => sum(mockRows, (r) => (r.energy && r.energy.currency === 'UGX' ? r.energy.amount : 0)), [])
+  const totalEnergyUSD = useMemo(() => sum(ledgerRows, (r) => (r.energy && r.energy.currency === 'USD' ? r.energy.amount : 0)), [ledgerRows])
+  const totalEnergyUGX = useMemo(() => sum(ledgerRows, (r) => (r.energy && r.energy.currency === 'UGX' ? r.energy.amount : 0)), [ledgerRows])
 
   function exportCsv(kind: 'booking' | 'energy') {
     const header =
@@ -79,7 +100,7 @@ export function BookingLedger() {
         ? ['id', 'type', 'station', 'bookingAmount', 'bookingMethod', 'bookingStatus'].join(',')
         : ['id', 'type', 'station', 'energyUnit', 'energyValue', 'energyAmount', 'currency', 'method'].join(',')
 
-    const lines = mockRows.map((r) => {
+    const lines = ledgerRows.map((r) => {
       if (kind === 'booking') {
         return [r.id, r.type, r.station, r.booking?.amount || 0, r.booking?.method || '', r.booking?.status || ''].join(',')
       }
@@ -110,6 +131,11 @@ export function BookingLedger() {
 
   return (
     <DashboardLayout pageTitle="Booking Ledger">
+      {error && (
+        <div className="card mb-4 bg-red-50 border border-red-200">
+          <div className="text-red-700 text-sm">{getErrorMessage(error)}</div>
+        </div>
+      )}
       {/* Summary KPIs */}
       <div className="grid grid-cols-3 gap-4 mb-6">
         <Card>
@@ -150,7 +176,17 @@ export function BookingLedger() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {mockRows.map((r) => (
+              {isLoading && (
+                <tr>
+                  <td colSpan={5} className="px-4 py-8 text-center text-muted">Loading ledger...</td>
+                </tr>
+              )}
+              {!isLoading && ledgerRows.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-4 py-8 text-center text-muted">No ledger entries found.</td>
+                </tr>
+              )}
+              {!isLoading && ledgerRows.map((r) => (
                 <tr key={r.id} className="hover:bg-surface-alt">
                   <td className="px-4 py-2 font-medium">{r.id}</td>
                   <td className="px-4 py-2">

@@ -1,6 +1,8 @@
-import { useState, useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useAuthStore } from '@/core/auth/authStore'
 import { hasPermission } from '@/constants/permissions'
+import { useRoamingCdrs, useRoamingSessions } from '@/modules/integrations/useRoaming'
+import { getErrorMessage } from '@/core/api/errors'
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Roaming — OCPI Sessions & CDRs
@@ -44,39 +46,14 @@ interface RoamingCDR {
   status: CDRStatus
 }
 
-const MOCK_SESSIONS: RoamingSession[] = [
-  { id: 'EVZ-21853', role: 'MSP', partner: 'VoltHub', site: 'Central Hub', cp: 'CP-A1/2', start: '2025-10-29 10:05', end: '2025-10-29 10:41', dur: '36m', kwh: 18.2, cur: 'USD', amt: 5.12, status: 'Completed' },
-  { id: 'EVZ-21844', role: 'CPO', partner: 'GreenRoam', site: 'Airport East', cp: 'CP-B4/1', start: '2025-10-29 07:18', end: '2025-10-29 07:29', dur: '11m', kwh: 4.1, cur: 'USD', amt: 1.25, status: 'Failed' },
-  { id: 'EVZ-21810', role: 'MSP', partner: 'VoltHub', site: 'Tech Park', cp: 'CP-C2/1', start: '2025-10-28 19:02', end: '2025-10-28 19:40', dur: '38m', kwh: 12.6, cur: 'EUR', amt: 3.80, status: 'Completed' },
-]
-
-const MOCK_CDRS: RoamingCDR[] = [
-  { cdr: 'CDR-9901', session: 'EVZ-21853', role: 'MSP', partner: 'VoltHub', site: 'Central Hub', start: '2025-10-29 10:05', end: '2025-10-29 10:41', dur: '36m', kwh: 18.2, cur: 'USD', amt: 5.12, tariff: 'Night Saver', fee: 0.15, net: 4.97, status: 'Finalized' },
-  { cdr: 'CDR-9899', session: 'EVZ-21844', role: 'CPO', partner: 'GreenRoam', site: 'Airport East', start: '2025-10-29 07:18', end: '2025-10-29 07:29', dur: '11m', kwh: 4.1, cur: 'USD', amt: 1.25, tariff: 'Standard', fee: 0.04, net: 1.21, status: 'Sent' },
-  { cdr: 'CDR-9890', session: 'EVZ-21810', role: 'MSP', partner: 'VoltHub', site: 'Tech Park', start: '2025-10-28 19:02', end: '2025-10-28 19:40', dur: '38m', kwh: 12.6, cur: 'EUR', amt: 3.80, tariff: 'Night Saver', fee: 0.11, net: 3.69, status: 'Disputed' },
-]
-
-const SESSION_KPIS = [
-  { label: 'Partners', value: '22' },
-  { label: 'Sessions (30d)', value: '3,420' },
-  { label: 'Roaming kWh (30d)', value: '12,840' },
-  { label: 'Gross (30d)', value: '$8,920' },
-  { label: 'Failures (24h)', value: '7' },
-]
-
-const CDR_KPIS = [
-  { label: 'CDRs (30d)', value: '3,390' },
-  { label: 'Gross (30d)', value: '$8,760' },
-  { label: 'Fees (30d)', value: '$420' },
-  { label: 'Net (30d)', value: '$8,340' },
-  { label: 'Disputes (open)', value: '4' },
-]
-
 export function Roaming() {
   const { user } = useAuthStore()
   const role = user?.role ?? 'EVZONE_OPERATOR'
   const canView = hasPermission(role, 'protocols', 'view')
   const canManage = hasPermission(role, 'protocols', 'manage')
+
+  const { data: sessionsData, isLoading: sessionsLoading, error: sessionsError } = useRoamingSessions()
+  const { data: cdrsData, isLoading: cdrsLoading, error: cdrsError } = useRoamingCdrs()
 
   const [tab, setTab] = useState<'sessions' | 'cdrs'>('sessions')
   const [q, setQ] = useState('')
@@ -88,21 +65,31 @@ export function Roaming() {
 
   const toast = (m: string) => { setAck(m); setTimeout(() => setAck(''), 2000) }
 
+  const sessionsRaw = Array.isArray(sessionsData) ? sessionsData : []
+  const cdrsRaw = Array.isArray(cdrsData) ? cdrsData : []
+
   const sessions = useMemo(() =>
-    MOCK_SESSIONS
+    sessionsRaw
       .filter(r => !q || (r.id + ' ' + r.partner + ' ' + r.site).toLowerCase().includes(q.toLowerCase()))
       .filter(r => roleFilter === 'All' || r.role === roleFilter)
       .filter(r => partner === 'All' || r.partner === partner)
       .filter(r => status === 'All' || r.status === status)
-  , [q, roleFilter, partner, status])
+  , [sessionsRaw, q, roleFilter, partner, status])
 
   const cdrs = useMemo(() =>
-    MOCK_CDRS
+    cdrsRaw
       .filter(r => !q || (r.cdr + ' ' + r.session + ' ' + r.partner).toLowerCase().includes(q.toLowerCase()))
       .filter(r => roleFilter === 'All' || r.role === roleFilter)
       .filter(r => partner === 'All' || r.partner === partner)
       .filter(r => status === 'All' || r.status === status)
-  , [q, roleFilter, partner, status])
+  , [cdrsRaw, q, roleFilter, partner, status])
+
+  const partnerOptions = useMemo(() => {
+    const set = new Set<string>()
+    sessionsRaw.forEach((s: any) => s.partner && set.add(s.partner))
+    cdrsRaw.forEach((c: any) => c.partner && set.add(c.partner))
+    return ['All', ...Array.from(set)]
+  }, [sessionsRaw, cdrsRaw])
 
   const amtStr = (cur: string, amt: number) => {
     if (!fx) return `${cur} ${amt.toFixed(2)}`
@@ -114,10 +101,31 @@ export function Roaming() {
     return <div className="p-8 text-center text-subtle">No permission to view Roaming.</div>
   }
 
-  const kpis = tab === 'sessions' ? SESSION_KPIS : CDR_KPIS
+  const sessionKpis = [
+    { label: 'Partners', value: partnerOptions.length > 0 ? String(partnerOptions.length - 1) : '0' },
+    { label: 'Sessions', value: sessionsRaw.length.toLocaleString() },
+    { label: 'Roaming kWh', value: sessionsRaw.reduce((acc: number, s: any) => acc + (s.kwh || 0), 0).toFixed(1) },
+    { label: 'Gross', value: `$${sessionsRaw.reduce((acc: number, s: any) => acc + (s.amt || 0), 0).toFixed(2)}` },
+    { label: 'Failures', value: sessionsRaw.filter((s: any) => s.status === 'Failed').length.toString() },
+  ]
+
+  const cdrKpis = [
+    { label: 'CDRs', value: cdrsRaw.length.toLocaleString() },
+    { label: 'Gross', value: `$${cdrsRaw.reduce((acc: number, c: any) => acc + (c.amt || 0), 0).toFixed(2)}` },
+    { label: 'Fees', value: `$${cdrsRaw.reduce((acc: number, c: any) => acc + (c.fee || 0), 0).toFixed(2)}` },
+    { label: 'Net', value: `$${cdrsRaw.reduce((acc: number, c: any) => acc + (c.net || 0), 0).toFixed(2)}` },
+    { label: 'Disputes', value: cdrsRaw.filter((c: any) => c.status === 'Disputed').length.toString() },
+  ]
+
+  const kpis = tab === 'sessions' ? sessionKpis : cdrKpis
 
   return (
     <div className="space-y-6">
+      {(sessionsError || cdrsError) && (
+        <div className="rounded-lg bg-red-50 border border-red-200 text-red-700 px-4 py-2 text-sm">
+          {getErrorMessage(sessionsError || cdrsError)}
+        </div>
+      )}
       {ack && <div className="rounded-lg bg-accent/10 text-accent px-4 py-2 text-sm">{ack}</div>}
 
       {/* Tab switcher */}
@@ -156,7 +164,7 @@ export function Roaming() {
           {['All', 'CPO', 'MSP'].map(o => <option key={o}>{o}</option>)}
         </select>
         <select value={partner} onChange={e => setPartner(e.target.value)} className="select">
-          {['All', 'VoltHub', 'GreenRoam'].map(o => <option key={o}>{o}</option>)}
+          {partnerOptions.map(o => <option key={o}>{o}</option>)}
         </select>
         <select value={status} onChange={e => setStatus(e.target.value)} className="select">
           {tab === 'sessions'
@@ -214,7 +222,8 @@ export function Roaming() {
               ))}
             </tbody>
           </table>
-          {sessions.length === 0 && <div className="p-8 text-center text-subtle">No sessions match your filters.</div>}
+          {sessionsLoading && <div className="p-8 text-center text-subtle">Loading sessions...</div>}
+          {!sessionsLoading && sessions.length === 0 && <div className="p-8 text-center text-subtle">No sessions match your filters.</div>}
         </section>
       )}
 
@@ -238,8 +247,8 @@ export function Roaming() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {cdrs.map(r => (
-                <tr key={r.cdr} className="hover:bg-muted/50">
+            {cdrs.map(r => (
+              <tr key={r.cdr} className="hover:bg-muted/50">
                   <td className="px-4 py-3 font-medium truncate max-w-[80px]" title={r.cdr}>{r.cdr}</td>
                   <td className="px-4 py-3 text-subtle text-xs truncate max-w-[80px]" title={r.session}>{r.session}</td>
                   <td className="px-4 py-3 text-xs">{r.role}</td>
@@ -262,12 +271,13 @@ export function Roaming() {
                     </td>
                   )}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-          {cdrs.length === 0 && <div className="p-8 text-center text-subtle">No CDRs match your filters.</div>}
-        </section>
-      )}
+            ))}
+          </tbody>
+        </table>
+        {cdrsLoading && <div className="p-8 text-center text-subtle">Loading CDRs...</div>}
+        {!cdrsLoading && cdrs.length === 0 && <div className="p-8 text-center text-subtle">No CDRs match your filters.</div>}
+      </section>
+    )}
     </div>
   )
 }

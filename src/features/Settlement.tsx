@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { useAuthStore } from '@/core/auth/authStore'
 import { getPermissionsForFeature } from '@/constants/permissions'
+import { useSettlements } from '@/modules/finance/settlements/useSettlements'
+import { getErrorMessage } from '@/core/api/errors'
 
 type SettlementStatus = 'Queued' | 'Running' | 'Completed' | 'Failed'
 
@@ -18,28 +20,42 @@ type SettlementItem = {
   note?: string
 }
 
-const mockSettlements: SettlementItem[] = [
-  { id: 'SET-001', region: 'EUROPE', org: 'GridManaged', type: 'Payout', amount: 89210, currency: 'USD', status: 'Running', startedAt: '2025-12-28 09:20', note: 'Batch EU-221' },
-  { id: 'SET-002', region: 'AFRICA', org: 'VoltOps Ltd', type: 'Reconciliation', amount: 18240, currency: 'USD', status: 'Queued', startedAt: '2025-12-28 09:10' },
-  { id: 'SET-003', region: 'AMERICAS', org: 'Central Park Owners Co', type: 'Disputes', amount: 4210, currency: 'USD', status: 'Completed', startedAt: '2025-12-27 18:00', finishedAt: '2025-12-27 19:05' },
-]
-
 export function Settlement() {
   const { user } = useAuthStore()
   const perms = getPermissionsForFeature(user?.role, 'settlement')
+
+  const { data: settlementsData = [], isLoading, error } = useSettlements()
 
   const [region, setRegion] = useState<'ALL' | string>('ALL')
   const [status, setStatus] = useState<SettlementStatus | 'All'>('All')
 
   const rows = useMemo(() => {
-    return mockSettlements
+    const raw = Array.isArray(settlementsData) ? settlementsData : (settlementsData as any)?.data || []
+    return raw
+      .map((r: any) => ({
+        id: r.id,
+        region: r.region || r.country || '—',
+        org: r.org || r.organizationName || r.organizationId || '—',
+        type: r.type || 'Payout',
+        amount: r.amount ?? r.netAmount ?? r.totalRevenue ?? 0,
+        currency: r.currency || 'USD',
+        status: r.status || 'Queued',
+        startedAt: r.startedAt || r.createdAt || '—',
+        finishedAt: r.finishedAt || r.payoutDate || undefined,
+        note: r.note || r.description || '',
+      }))
       .filter((r) => (region === 'ALL' ? true : r.region === region))
       .filter((r) => (status === 'All' ? true : r.status === status))
-  }, [region, status])
+  }, [settlementsData, region, status])
 
   return (
     <DashboardLayout pageTitle="Settlement">
       <div className="space-y-4">
+        {error && (
+          <div className="card bg-red-50 border border-red-200">
+            <div className="text-red-700 text-sm">{getErrorMessage(error)}</div>
+          </div>
+        )}
         {/* Filters */}
         <div className="card grid md:grid-cols-4 gap-3">
           <select value={region} onChange={(e) => setRegion(e.target.value)} className="select">
@@ -85,8 +101,18 @@ export function Settlement() {
                 <th className="!text-right">Actions</th>
               </tr>
             </thead>
-            <tbody>
-              {rows.map((r) => (
+          <tbody>
+              {isLoading && (
+                <tr>
+                  <td colSpan={10} className="text-center py-8 text-muted">Loading settlements...</td>
+                </tr>
+              )}
+              {!isLoading && rows.length === 0 && (
+                <tr>
+                  <td colSpan={10} className="text-center py-8 text-muted">No settlements found.</td>
+                </tr>
+              )}
+              {!isLoading && rows.map((r) => (
                 <tr key={r.id}>
                   <td className="font-semibold">{r.id}</td>
                   <td>{r.region}</td>
@@ -127,8 +153,8 @@ export function Settlement() {
                   </td>
                 </tr>
               ))}
-            </tbody>
-          </table>
+          </tbody>
+        </table>
         </div>
       </div>
     </DashboardLayout>

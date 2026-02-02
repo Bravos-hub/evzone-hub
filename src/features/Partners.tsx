@@ -1,6 +1,8 @@
 import { useState, useMemo } from 'react'
 import { useAuthStore } from '@/core/auth/authStore'
 import { hasPermission } from '@/constants/permissions'
+import { usePartners } from '@/modules/organizations/hooks/usePartners'
+import { getErrorMessage } from '@/core/api/errors'
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Partners — Roaming partners directory (OCPI peers)
@@ -22,18 +24,13 @@ interface Partner {
   lastSync?: string
 }
 
-const MOCK_PARTNERS: Partner[] = [
-  { id: 'p-001', name: 'GridRoam', role: 'EMSP', status: 'Connected', modules: ['Locations', 'Sessions', 'CDRs'], version: 'OCPI 2.2.1', endpoint: 'https://api.gridroam.com/ocpi', lastSync: '2025-10-28 14:30' },
-  { id: 'p-002', name: 'ChargeNet', role: 'CPO', status: 'Pending', modules: ['Locations'], version: 'OCPI 2.2.1', endpoint: 'https://api.chargenet.io/ocpi' },
-  { id: 'p-003', name: 'OpenWatt', role: 'CPO', status: 'Error', modules: ['Locations', 'CDRs'], version: 'OCPI 2.1.1', endpoint: 'https://api.openwatt.eu/ocpi', lastSync: '2025-10-25 09:15' },
-  { id: 'p-004', name: 'VoltWave', role: 'EMSP', status: 'Connected', modules: ['Locations', 'Sessions', 'Tariffs', 'CDRs'], version: 'OCPI 2.2.1', endpoint: 'https://api.voltwave.net/ocpi', lastSync: '2025-10-28 15:00' },
-]
-
 export function Partners() {
   const { user } = useAuthStore()
   const role = user?.role ?? 'EVZONE_OPERATOR'
   const canView = hasPermission(role, 'protocols', 'view')
   const canManage = hasPermission(role, 'protocols', 'manage')
+
+  const { data: partnersData = [], isLoading, error } = usePartners()
 
   const [q, setQ] = useState('')
   const [status, setStatus] = useState('All')
@@ -44,8 +41,13 @@ export function Partners() {
 
   const toast = (m: string) => { setAck(m); setTimeout(() => setAck(''), 2000) }
 
+  const partners = useMemo(() => {
+    const raw = Array.isArray(partnersData) ? partnersData : []
+    return raw as Partner[]
+  }, [partnersData])
+
   const filtered = useMemo(() =>
-    MOCK_PARTNERS
+    partners
       .filter(p => p.name.toLowerCase().includes(q.toLowerCase()))
       .filter(p => status === 'All' || p.status === status)
       .filter(p => partnerRole === 'All' || p.role === partnerRole)
@@ -58,6 +60,11 @@ export function Partners() {
 
   return (
     <div className="space-y-6">
+      {error && (
+        <div className="rounded-lg bg-red-50 border border-red-200 text-red-700 px-4 py-2 text-sm">
+          {getErrorMessage(error)}
+        </div>
+      )}
       {ack && <div className="rounded-lg bg-accent/10 text-accent px-4 py-2 text-sm">{ack}</div>}
 
       {/* Header actions */}
@@ -129,7 +136,12 @@ export function Partners() {
         ))}
       </section>
 
-      {filtered.length === 0 && (
+      {isLoading && (
+        <div className="rounded-xl border border-dashed border-border bg-surface p-8 text-center text-subtle">
+          Loading partners...
+        </div>
+      )}
+      {!isLoading && filtered.length === 0 && (
         <div className="rounded-xl border border-dashed border-border bg-surface p-8 text-center text-subtle">
           No partners match your filters.{' '}
           {canManage && (

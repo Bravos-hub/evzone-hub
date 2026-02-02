@@ -33,67 +33,6 @@ type Invoice = {
 // MOCK DATA
 // ═══════════════════════════════════════════════════════════════════════════
 
-const mockInvoices: Invoice[] = [
-  {
-    id: 'INV-2024-0012',
-    type: 'Usage',
-    org: 'Volt Mobility Ltd',
-    amount: 12450.00,
-    currency: 'USD',
-    status: 'Paid',
-    issuedAt: '2024-12-01',
-    dueAt: '2024-12-15',
-    paidAt: '2024-12-10',
-    description: 'November 2024 Usage - 4,532 sessions',
-  },
-  {
-    id: 'INV-2024-0011',
-    type: 'Subscription',
-    org: 'Volt Mobility Ltd',
-    amount: 2500.00,
-    currency: 'USD',
-    status: 'Paid',
-    issuedAt: '2024-12-01',
-    dueAt: '2024-12-15',
-    paidAt: '2024-12-05',
-    description: 'Pro Plan - December 2024',
-  },
-  {
-    id: 'INV-2024-0010',
-    type: 'Settlement',
-    org: 'GridCity Ltd',
-    amount: 8920.50,
-    currency: 'USD',
-    status: 'Pending',
-    issuedAt: '2024-12-05',
-    dueAt: '2024-12-20',
-    description: 'Settlement payout - November 2024',
-  },
-  {
-    id: 'INV-2024-0009',
-    type: 'Usage',
-    org: 'SunRun Ops',
-    amount: 3200.00,
-    currency: 'USD',
-    status: 'Overdue',
-    issuedAt: '2024-11-15',
-    dueAt: '2024-11-30',
-    description: 'October 2024 Usage - 1,245 sessions',
-  },
-  {
-    id: 'INV-2024-0008',
-    type: 'Credit',
-    org: 'Mall Holdings',
-    amount: -500.00,
-    currency: 'USD',
-    status: 'Refunded',
-    issuedAt: '2024-11-20',
-    dueAt: '2024-11-20',
-    paidAt: '2024-11-20',
-    description: 'Credit note - Service disruption compensation',
-  },
-]
-
 // ═══════════════════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════════════════

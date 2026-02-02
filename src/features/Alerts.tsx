@@ -2,6 +2,9 @@ import { useState, useMemo } from 'react'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { useAuthStore } from '@/core/auth/authStore'
 import { hasPermission } from '@/constants/permissions'
+import { useNotifications } from '@/modules/notifications/hooks/useNotifications'
+import { getErrorMessage } from '@/core/api/errors'
+import type { NotificationItem } from '@/core/api/types'
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Platform Alerts — System alerts monitoring and management
@@ -10,8 +13,8 @@ import { hasPermission } from '@/constants/permissions'
 
 type Severity = 'High' | 'Medium' | 'Low' | 'Info'
 type AlertStatus = 'New' | 'Acknowledged' | 'Resolved'
-type Source = 'OCPP' | 'OCPI' | 'Billing' | 'MQTT' | 'Auth'
-type Area = 'Backend' | 'Frontend' | 'Partner'
+type Source = 'OCPP' | 'OCPI' | 'Billing' | 'MQTT' | 'Auth' | 'Other'
+type Area = 'Backend' | 'Frontend' | 'Partner' | 'Other'
 
 interface Alert {
   id: string
@@ -20,16 +23,65 @@ interface Alert {
   area: Area
   msg: string
   ts: string
+  createdAtMs: number
   status: AlertStatus
 }
 
-const MOCK_ALERTS: Alert[] = [
-  { id: 'AL-2203', sev: 'High', src: 'OCPP', area: 'Backend', msg: 'Cluster eu-1 heartbeat failures', ts: '2025-10-29 11:34', status: 'New' },
-  { id: 'AL-2202', sev: 'Info', src: 'Billing', area: 'Backend', msg: 'Invoice batch completed', ts: '2025-10-29 10:58', status: 'Resolved' },
-  { id: 'AL-2201', sev: 'Medium', src: 'MQTT', area: 'Backend', msg: 'Retained message mismatch', ts: '2025-10-29 10:12', status: 'Acknowledged' },
-  { id: 'AL-2200', sev: 'Low', src: 'Auth', area: 'Frontend', msg: 'Unusual login pattern detected', ts: '2025-10-29 09:45', status: 'New' },
-  { id: 'AL-2199', sev: 'High', src: 'OCPI', area: 'Partner', msg: 'VoltHub sync timeout', ts: '2025-10-29 08:30', status: 'Acknowledged' },
-]
+const mapSeverity = (item: NotificationItem): Severity => {
+  const metaSev = item.metadata?.severity?.toLowerCase()
+  if (metaSev === 'high' || metaSev === 'critical') return 'High'
+  if (metaSev === 'medium') return 'Medium'
+  if (metaSev === 'low') return 'Low'
+  if (metaSev === 'info') return 'Info'
+  switch (item.kind) {
+    case 'alert':
+      return 'High'
+    case 'warning':
+      return 'Medium'
+    case 'info':
+    case 'notice':
+      return 'Info'
+    case 'system':
+      return 'Low'
+    default:
+      return 'Low'
+  }
+}
+
+const mapSource = (item: NotificationItem): Source => {
+  const src = (item.source || '').toUpperCase()
+  if (['OCPP', 'OCPI', 'BILLING', 'MQTT', 'AUTH'].includes(src)) return src as Source
+  return 'Other'
+}
+
+const mapArea = (item: NotificationItem): Area => {
+  const area = (item.metadata?.area || '').toLowerCase()
+  if (area.includes('front')) return 'Frontend'
+  if (area.includes('partner')) return 'Partner'
+  if (area.includes('back')) return 'Backend'
+  return 'Other'
+}
+
+const mapStatus = (item: NotificationItem): AlertStatus => {
+  if (item.metadata?.status === 'resolved') return 'Resolved'
+  if (item.read) return 'Acknowledged'
+  return 'New'
+}
+
+const mapAlert = (item: NotificationItem): Alert => {
+  const created = new Date(item.createdAt)
+  const createdAtMs = Number.isFinite(created.getTime()) ? created.getTime() : Date.now()
+  return {
+    id: item.id,
+    sev: mapSeverity(item),
+    src: mapSource(item),
+    area: mapArea(item),
+    msg: item.message || item.title,
+    ts: Number.isFinite(created.getTime()) ? created.toLocaleString() : item.createdAt,
+    createdAtMs,
+    status: mapStatus(item),
+  }
+}
 
 export function Alerts() {
   const { user } = useAuthStore()
@@ -44,10 +96,20 @@ export function Alerts() {
   const [q, setQ] = useState('')
   const [from, setFrom] = useState('2025-10-01')
   const [to, setTo] = useState('2025-10-31')
-  const [alerts, setAlerts] = useState(MOCK_ALERTS)
+  const { data: notifications = [], isLoading, error } = useNotifications()
+  const [overrides, setOverrides] = useState<Record<string, AlertStatus>>({})
   const [ack, setAck] = useState('')
 
   const toast = (m: string) => { setAck(m); setTimeout(() => setAck(''), 2000) }
+
+  const baseAlerts = useMemo(() => notifications.map(mapAlert), [notifications])
+
+  const alerts = useMemo(() => {
+    return baseAlerts.map((alert) => ({
+      ...alert,
+      status: overrides[alert.id] ?? alert.status,
+    }))
+  }, [baseAlerts, overrides])
 
   const filtered = useMemo(() =>
     alerts
@@ -56,15 +118,24 @@ export function Alerts() {
       .filter(a => src === 'All' || a.src === src)
       .filter(a => area === 'All' || a.area === area)
       .filter(a => status === 'All' || a.status === status)
-  , [alerts, q, sev, src, area, status])
+      .filter(a => {
+        if (!from || !to) return true
+        const fromMs = new Date(from).getTime()
+        const toMs = new Date(`${to}T23:59:59`).getTime()
+        return a.createdAtMs >= fromMs && a.createdAtMs <= toMs
+      })
+  , [alerts, q, sev, src, area, status, from, to])
+
+  const sourceOptions = useMemo(() => ['All', ...Array.from(new Set(alerts.map(a => a.src)))], [alerts])
+  const areaOptions = useMemo(() => ['All', ...Array.from(new Set(alerts.map(a => a.area)))], [alerts])
 
   const acknowledge = (id: string) => {
-    setAlerts(list => list.map(a => a.id === id ? { ...a, status: 'Acknowledged' as AlertStatus } : a))
+    setOverrides((prev) => ({ ...prev, [id]: 'Acknowledged' }))
     toast(`Acknowledged ${id}`)
   }
 
   const resolve = (id: string) => {
-    setAlerts(list => list.map(a => a.id === id ? { ...a, status: 'Resolved' as AlertStatus } : a))
+    setOverrides((prev) => ({ ...prev, [id]: 'Resolved' }))
     toast(`Resolved ${id}`)
   }
 
@@ -78,6 +149,11 @@ export function Alerts() {
 
   return (
     <DashboardLayout pageTitle="Platform Alerts">
+      {error && (
+        <div className="card mb-4 bg-red-50 border border-red-200 text-red-700 text-sm">
+          {getErrorMessage(error)}
+        </div>
+      )}
       <div className="space-y-6">
         {ack && <div className="rounded-lg bg-accent/10 text-accent px-4 py-2 text-sm">{ack}</div>}
 
@@ -91,10 +167,10 @@ export function Alerts() {
           {['All', 'High', 'Medium', 'Low', 'Info'].map(o => <option key={o}>{o}</option>)}
         </select>
         <select value={src} onChange={e => setSrc(e.target.value)} className="select">
-          {['All', 'OCPP', 'OCPI', 'Billing', 'MQTT', 'Auth'].map(o => <option key={o}>{o}</option>)}
+          {sourceOptions.map(o => <option key={o}>{o}</option>)}
         </select>
         <select value={area} onChange={e => setArea(e.target.value)} className="select">
-          {['All', 'Backend', 'Frontend', 'Partner'].map(o => <option key={o}>{o}</option>)}
+          {areaOptions.map(o => <option key={o}>{o}</option>)}
         </select>
         <select value={status} onChange={e => setStatus(e.target.value)} className="select">
           {['All', 'New', 'Acknowledged', 'Resolved'].map(o => <option key={o}>{o}</option>)}
@@ -160,7 +236,8 @@ export function Alerts() {
               ))}
             </tbody>
           </table>
-          {filtered.length === 0 && <div className="p-8 text-center text-subtle">No alerts match your filters.</div>}
+          {isLoading && <div className="p-8 text-center text-subtle">Loading alerts...</div>}
+          {!isLoading && filtered.length === 0 && <div className="p-8 text-center text-subtle">No alerts match your filters.</div>}
         </section>
       </div>
     </DashboardLayout>

@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { useAuthStore } from '@/core/auth/authStore'
 import { getPermissionsForFeature } from '@/constants/permissions'
+import { usePrivacyRequests } from '@/modules/compliance/useCompliance'
+import { getErrorMessage } from '@/core/api/errors'
 
 type RequestType = 'Data Export' | 'Data Deletion' | 'Opt-out' | 'Access Request'
 type RequestStatus = 'Pending' | 'Processing' | 'Completed' | 'Rejected'
@@ -13,21 +15,29 @@ export function PrivacyRequests() {
   const { user } = useAuthStore()
   const perms = getPermissionsForFeature(user?.role, 'privacyRequests')
 
-  const mockRequests = [
-    { id: 'PRV-001', requester: 'john@example.com', type: 'Data Export' as RequestType, status: 'Pending' as RequestStatus, submitted: '2024-12-22', dueDate: '2024-12-30' },
-    { id: 'PRV-002', requester: 'jane@company.com', type: 'Data Deletion' as RequestType, status: 'Processing' as RequestStatus, submitted: '2024-12-20', dueDate: '2024-12-28' },
-    { id: 'PRV-003', requester: 'bob@mail.com', type: 'Access Request' as RequestType, status: 'Completed' as RequestStatus, submitted: '2024-12-15', dueDate: '2024-12-23' },
-  ]
+  const { data: requestsData = [], isLoading, error } = usePrivacyRequests()
+
+  const requests = useMemo(() => {
+    const raw = Array.isArray(requestsData) ? requestsData : (requestsData as any)?.data || []
+    return raw.map((r: any) => ({
+      id: r.id,
+      requester: r.requester || r.requesterEmail || r.userEmail || '—',
+      type: (r.type || 'Access Request') as RequestType,
+      status: (r.status || 'Pending') as RequestStatus,
+      submitted: r.submittedAt || r.createdAt || '—',
+      dueDate: r.dueAt || r.dueDate || '—',
+    }))
+  }, [requestsData])
 
   const [statusFilter, setStatusFilter] = useState<RequestStatus | 'All'>('All')
 
   const filtered = useMemo(() => {
-    return mockRequests.filter((r) => (statusFilter === 'All' ? true : r.status === statusFilter))
-  }, [statusFilter])
+    return requests.filter((r) => (statusFilter === 'All' ? true : r.status === statusFilter))
+  }, [requests, statusFilter])
 
   const stats = {
-    pending: mockRequests.filter((r) => r.status === 'Pending').length,
-    processing: mockRequests.filter((r) => r.status === 'Processing').length,
+    pending: requests.filter((r) => r.status === 'Pending').length,
+    processing: requests.filter((r) => r.status === 'Processing').length,
     overdue: 0,
   }
 
@@ -42,6 +52,11 @@ export function PrivacyRequests() {
 
   return (
     <DashboardLayout pageTitle="Privacy Requests">
+      {error && (
+        <div className="card mb-4 bg-red-50 border border-red-200">
+          <div className="text-red-700 text-sm">{getErrorMessage(error)}</div>
+        </div>
+      )}
       {/* Summary */}
       <div className="grid grid-cols-3 gap-3 mb-4">
         <div className="card"><div className="text-xs text-muted">Pending</div><div className="text-xl font-bold text-warn">{stats.pending}</div></div>
@@ -75,7 +90,17 @@ export function PrivacyRequests() {
             </tr>
           </thead>
           <tbody>
-            {filtered.map((r) => (
+            {isLoading && (
+              <tr>
+                <td colSpan={7} className="text-center py-8 text-muted">Loading requests...</td>
+              </tr>
+            )}
+            {!isLoading && filtered.length === 0 && (
+              <tr>
+                <td colSpan={7} className="text-center py-8 text-muted">No privacy requests found.</td>
+              </tr>
+            )}
+            {!isLoading && filtered.map((r) => (
               <tr key={r.id}>
                 <td className="font-semibold text-text">{r.id}</td>
                 <td>{r.requester}</td>

@@ -1,7 +1,10 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { useAuthStore } from '@/core/auth/authStore'
 import { getPermissionsForFeature } from '@/constants/permissions'
+import { useNotices } from '@/modules/notifications/hooks/useNotices'
+import { useNoticeTemplates } from '@/modules/notifications/hooks/useNoticeTemplates'
+import { getErrorMessage } from '@/core/api/errors'
 
 /**
  * Broadcasts Page - Admin feature
@@ -12,20 +15,37 @@ export function Broadcasts() {
 
   const [tab, setTab] = useState<'outbox' | 'templates'>('outbox')
 
-  const mockOutbox = [
-    { id: 'BC-001', subject: 'System maintenance notice', audience: 'All Users', status: 'Sent', sentAt: '2024-12-23 15:00', opens: 2450 },
-    { id: 'BC-002', subject: 'New feature announcement', audience: 'Owners', status: 'Scheduled', sentAt: '2024-12-25 09:00', opens: 0 },
-    { id: 'BC-003', subject: 'Holiday schedule update', audience: 'All Staff', status: 'Draft', sentAt: '—', opens: 0 },
-  ]
+  const { data: noticesData = [], isLoading: noticesLoading, error: noticesError } = useNotices()
+  const { data: templatesData = [], isLoading: templatesLoading, error: templatesError } = useNoticeTemplates()
 
-  const mockTemplates = [
-    { id: 'TPL-001', name: 'Maintenance Notice', type: 'Email', lastUsed: '2024-12-23' },
-    { id: 'TPL-002', name: 'Feature Announcement', type: 'Email + Push', lastUsed: '2024-12-15' },
-    { id: 'TPL-003', name: 'Urgent Alert', type: 'SMS + Push', lastUsed: '2024-12-10' },
-  ]
+  const outbox = useMemo(() => {
+    const raw = Array.isArray(noticesData) ? noticesData : (noticesData as any)?.data || []
+    return raw.map((n: any) => ({
+      id: n.id,
+      subject: n.message || n.type || '—',
+      audience: n.tenantName || n.tenantId || 'All',
+      status: n.status === 'sent' ? 'Sent' : n.status === 'pending' ? 'Scheduled' : 'Draft',
+      sentAt: n.sentAt || n.createdAt || '—',
+      opens: n.opens ?? n.metadata?.opens ?? 0,
+    }))
+  }, [noticesData])
 
+  const templates = useMemo(() => {
+    const raw = Array.isArray(templatesData) ? templatesData : (templatesData as any)?.data || []
+    return raw.map((t: any) => ({
+      id: t.id,
+      name: t.name || t.title || '—',
+      type: t.type || 'Email',
+      lastUsed: t.lastUsedAt || '—',
+    }))
+  }, [templatesData])
   return (
     <DashboardLayout pageTitle="Broadcasts">
+      {(noticesError || templatesError) && (
+        <div className="card mb-4 bg-red-50 border border-red-200">
+          <div className="text-red-700 text-sm">{getErrorMessage(noticesError || templatesError)}</div>
+        </div>
+      )}
       {/* Tabs */}
       <div className="flex gap-2 border-b border-border-light pb-2 mb-4">
         <button
@@ -65,7 +85,17 @@ export function Broadcasts() {
               </tr>
             </thead>
             <tbody>
-              {mockOutbox.map((b) => (
+              {noticesLoading && (
+                <tr>
+                  <td colSpan={6} className="text-center py-8 text-muted">Loading broadcasts...</td>
+                </tr>
+              )}
+              {!noticesLoading && outbox.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="text-center py-8 text-muted">No broadcasts found.</td>
+                </tr>
+              )}
+              {!noticesLoading && outbox.map((b) => (
                 <tr key={b.id}>
                   <td className="font-semibold text-text">{b.subject}</td>
                   <td>{b.audience}</td>
@@ -98,7 +128,17 @@ export function Broadcasts() {
               </tr>
             </thead>
             <tbody>
-              {mockTemplates.map((t) => (
+              {templatesLoading && (
+                <tr>
+                  <td colSpan={4} className="text-center py-8 text-muted">Loading templates...</td>
+                </tr>
+              )}
+              {!templatesLoading && templates.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="text-center py-8 text-muted">No templates found.</td>
+                </tr>
+              )}
+              {!templatesLoading && templates.map((t) => (
                 <tr key={t.id}>
                   <td className="font-semibold text-text">{t.name}</td>
                   <td><span className="chip">{t.type}</span></td>

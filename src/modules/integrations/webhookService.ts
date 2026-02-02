@@ -41,6 +41,15 @@ export interface UpdateWebhookRequest {
   secret?: string
 }
 
+export interface WebhookDelivery {
+  id: string
+  endpoint: string
+  event: string
+  status: 'Delivered' | 'Failed' | 'Retrying'
+  statusCode?: number
+  createdAt: string
+}
+
 export const webhookService = {
   /**
    * Get all webhooks
@@ -82,5 +91,24 @@ export const webhookService = {
    */
   async test(id: string): Promise<{ success: boolean; statusCode?: number; error?: string }> {
     return apiClient.post<{ success: boolean; statusCode?: number; error?: string }>(`/webhooks/${id}/test`, {})
+  },
+
+  /**
+   * Get webhook delivery logs
+   */
+  async getDeliveries(filters?: { status?: string; event?: string; limit?: number }): Promise<WebhookDelivery[]> {
+    const params = new URLSearchParams()
+    if (filters?.status) params.append('status', filters.status)
+    if (filters?.event) params.append('event', filters.event)
+    if (filters?.limit) params.append('limit', String(filters.limit))
+    const queryString = params.toString()
+    return apiClient.get<WebhookDelivery[]>(`/webhooks/deliveries${queryString ? `?${queryString}` : ''}`)
+  },
+
+  /**
+   * Replay a webhook delivery
+   */
+  async replayDelivery(deliveryId: string): Promise<{ success: boolean }> {
+    return apiClient.post<{ success: boolean }>(`/webhooks/deliveries/${deliveryId}/replay`, {})
   },
 }
