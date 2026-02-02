@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { useAuthStore } from '@/core/auth/authStore'
@@ -32,9 +32,7 @@ export function UserDetail() {
   const sessions = Array.isArray(sessionsData) ? sessionsData : (sessionsData as any)?.recent || []
 
   // TODO: Implement audit logs API endpoint
-  const auditLogs = useMemo<Array<{ when: string; event: string; details: string }>>(() => {
-    return []
-  }, [userData, userId])
+  const auditLogs: Array<{ when: string; event: string; details: string }> = []
 
   if (isLoading) {
     return (

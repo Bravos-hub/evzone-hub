@@ -37,7 +37,7 @@ export function Tariffs() {
   const updateTariffMutation = useUpdateTariff()
   const deleteTariffMutation = useDeleteTariff()
 
-  const tariffs = tariffsData || []
+  const tariffs = useMemo(() => tariffsData || [], [tariffsData])
 
   const filtered = useMemo(() => {
     return tariffs

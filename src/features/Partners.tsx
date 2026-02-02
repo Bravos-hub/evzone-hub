@@ -52,7 +52,7 @@ export function Partners() {
       .filter(p => status === 'All' || p.status === status)
       .filter(p => partnerRole === 'All' || p.role === partnerRole)
       .filter(p => moduleFilter === 'All' || p.modules.includes(moduleFilter as OCPIModule))
-  , [q, status, partnerRole, moduleFilter])
+  , [partners, q, status, partnerRole, moduleFilter])
 
   if (!canView) {
     return <div className="p-8 text-center text-subtle">No permission to view Partners.</div>

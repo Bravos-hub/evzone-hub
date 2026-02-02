@@ -22,7 +22,7 @@ export function TariffEditor({ tariff, onSave, onCancel, isSaving }: TariffEdito
         if (elements.length === 0) {
             setElements([{ pricePerKwh: 0, startTime: '00:00', endTime: '23:59' }])
         }
-    }, [])
+    }, [elements.length])
 
     const handleAddElement = () => {
         setElements([...elements, { pricePerKwh: 0, startTime: '00:00', endTime: '23:59' }])

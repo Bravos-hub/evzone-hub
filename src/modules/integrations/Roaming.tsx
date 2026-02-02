@@ -22,8 +22,8 @@ export function Roaming() {
   const { data: sessionsData, isLoading: isLoadingSessions } = useRoamingSessions()
   const { data: cdrsData, isLoading: isLoadingCdrs } = useRoamingCdrs()
 
-  const sessions = sessionsData || []
-  const cdrsRaw = cdrsData || []
+  const sessions = useMemo(() => sessionsData || [], [sessionsData])
+  const cdrsRaw = useMemo(() => cdrsData || [], [cdrsData])
 
   const [tab, setTab] = useState<'sessions' | 'cdrs'>('sessions')
   const [q, setQ] = useState('')

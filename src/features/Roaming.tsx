@@ -65,8 +65,8 @@ export function Roaming() {
 
   const toast = (m: string) => { setAck(m); setTimeout(() => setAck(''), 2000) }
 
-  const sessionsRaw = Array.isArray(sessionsData) ? sessionsData : []
-  const cdrsRaw = Array.isArray(cdrsData) ? cdrsData : []
+  const sessionsRaw = useMemo(() => (Array.isArray(sessionsData) ? sessionsData : []), [sessionsData])
+  const cdrsRaw = useMemo(() => (Array.isArray(cdrsData) ? cdrsData : []), [cdrsData])
 
   const sessions = useMemo(() =>
     sessionsRaw

@@ -52,16 +52,16 @@ export function OperatorAssignments() {
   const [window, setWindow] = useState('Today')
   const [ack, setAck] = useState('')
 
-  const techs: Technician[] = [
+  const techs = useMemo<Technician[]>(() => ([
     { id: 'tx-010', name: 'RapidCharge Techs', region: 'Nairobi', skills: ['OCPP', 'ISO 15118', 'DC Fast'], sla: 'Gold', cap: 3, assigned: 1 },
     { id: 'tx-011', name: 'FixVolt Ltd', region: 'Kampala', skills: ['OCPP', 'AC Type 2'], sla: 'Gold', cap: 4, assigned: 2 },
     { id: 'tx-012', name: 'PowerMobility Co', region: 'Wuxi', skills: ['AC Type 2'], sla: 'Silver', cap: 2, assigned: 0 },
-  ]
+  ]), [])
 
-  const pending: PendingJob[] = [
+  const pending = useMemo<PendingJob[]>(() => ([
     { id: 'JOB-441', site: 'Central Hub', type: 'Replace fan', prio: 'High' },
     { id: 'JOB-440', site: 'Airport East', type: 'Comm check', prio: 'Medium' },
-  ]
+  ]), [])
 
   const filtered = useMemo(() => {
     return techs
@@ -69,7 +69,7 @@ export function OperatorAssignments() {
       .filter((t) => (region === 'All' ? true : t.region === region))
       .filter((t) => (sla === 'All' ? true : t.sla === sla))
       .filter((t) => (skill === 'All' ? true : t.skills.includes(skill)))
-  }, [q, region, sla, skill])
+  }, [q, region, sla, skill, techs])
 
   function assign(jobId: string, techId: string) {
     setAck(`Assigned ${jobId} → ${techId} (demo)`)

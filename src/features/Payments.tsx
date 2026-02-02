@@ -97,7 +97,7 @@ export function Payments() {
       .filter(r => site === 'All' || r.site === site)
       .filter(r => !q || (r.ref + ' ' + r.site).toLowerCase().includes(q.toLowerCase()))
       .filter(r => new Date(r.date) >= new Date(from) && new Date(r.date) <= new Date(to + 'T23:59:59'))
-  , [type, status, site, from, to, q])
+  , [payments, type, status, site, from, to, q])
 
   const totals = useMemo(() => ({
     gross: filtered.reduce((sum, r) => sum + r.amount, 0),

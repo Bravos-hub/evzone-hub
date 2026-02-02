@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { useAuthStore } from '@/core/auth/authStore'
@@ -40,8 +40,16 @@ export function SiteOwnerTenants() {
   const { data: applications, isLoading: appsLoading } = useApplications()
   const { data: tenants, isLoading: tenantsLoading } = useTenants()
 
-  const apps = applications || []
-  const tnts = tenants || []
+  const apps = useMemo(() => applications || [], [applications])
+  const tnts = useMemo(() => tenants || [], [tenants])
+
+  const updateTab = useCallback((tab: ViewMode) => {
+    setViewMode(tab)
+    const next = new URLSearchParams(searchParams)
+    next.set('tab', tab)
+    if (tab === 'tenants') next.delete('appId')
+    setSearchParams(next, { replace: true })
+  }, [searchParams, setSearchParams])
 
   useEffect(() => {
     const appId = searchParams.get('appId')
@@ -52,7 +60,7 @@ export function SiteOwnerTenants() {
         updateTab('applications')
       }
     }
-  }, [searchParams, apps])
+  }, [searchParams, apps, updateTab])
 
   const allSites = useMemo(() => {
     const sites = new Set<string>()
@@ -99,14 +107,6 @@ export function SiteOwnerTenants() {
 
   if (!canView) {
     return <div className="p-8 text-center text-subtle">No permission to view tenants.</div>
-  }
-
-  const updateTab = (tab: ViewMode) => {
-    setViewMode(tab)
-    const next = new URLSearchParams(searchParams)
-    next.set('tab', tab)
-    if (tab === 'tenants') next.delete('appId')
-    setSearchParams(next, { replace: true })
   }
 
   const handleUpdateStatus = (id: string, status: 'APPROVED' | 'REJECTED', terms?: any) => {

@@ -18,7 +18,7 @@ export function CRM() {
   const { data: customersData, isLoading } = useCustomers()
 
   // Fallback if data loading
-  const customers = customersData || []
+  const customers = useMemo(() => customersData || [], [customersData])
   const stats = statsData || { total: 0, active: 0, totalRevenue: 0 }
 
   const [q, setQ] = useState('')
@@ -28,7 +28,7 @@ export function CRM() {
     return customers
       .filter((c: any) => (q ? (c.name + ' ' + c.email).toLowerCase().includes(q.toLowerCase()) : true))
     //.filter((c: any) => (typeFilter === 'All' ? true : c.type === typeFilter)) // Type might be missing on real data yet
-  }, [q, typeFilter, customers])
+  }, [q, customers])
 
 
   return (

@@ -93,7 +93,7 @@ export function Sessions() {
           ? (r.id + ' ' + r.chargePointId + ' ' + r.site).toLowerCase().includes(q.toLowerCase())
           : true
       )
-  }, [historyData, site, status, paymentMethod, from, to, q])
+  }, [historyData, site, paymentMethod, from, to, q])
 
   const duration = (start: Date, end?: Date) => {
     if (!end) return '—'

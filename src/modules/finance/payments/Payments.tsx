@@ -31,7 +31,7 @@ export function Payments() {
   const canRefund = hasPermission(role, 'billing', 'refund')
 
   const { data: paymentsData, isLoading } = usePayments()
-  const payments = paymentsData || []
+  const payments = useMemo(() => paymentsData || [], [paymentsData])
 
   const [type, setType] = useState('All')
   const [status, setStatus] = useState('All')

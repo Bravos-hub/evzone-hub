@@ -42,7 +42,7 @@ export function Partners() {
   const canManage = hasPermission(role, 'protocols', 'manage')
 
   const { data: partnersData, isLoading } = usePartners()
-  const partners = partnersData || []
+  const partners = useMemo(() => partnersData || [], [partnersData])
 
   const [q, setQ] = useState('')
   const [status, setStatus] = useState('All')
