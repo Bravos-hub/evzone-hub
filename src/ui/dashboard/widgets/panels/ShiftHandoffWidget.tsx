@@ -1,11 +1,25 @@
 import { useEffect, useState } from 'react'
 import { useOperatorDashboard } from '@/modules/analytics/hooks/useAnalytics'
 
+type OperatorDashboardData = {
+    handoff?: {
+        notes?: string
+        currentShift?: string
+        systemStatus?: string
+    }
+    handoffNotes?: string
+    shift?: {
+        current?: string
+    }
+    systemStatus?: string
+    status?: string
+}
+
 /**
  * Operator Shift Handoff Widget
  */
 export function ShiftHandoffWidget({ config }: { config: any }) {
-    const { data, isLoading } = useOperatorDashboard()
+    const { data, isLoading } = useOperatorDashboard() as { data?: OperatorDashboardData; isLoading: boolean }
     const [notes, setNotes] = useState('')
     const [isSaving, setIsSaving] = useState(false)
     const [lastSaved, setLastSaved] = useState<string | null>(null)

@@ -29,6 +29,12 @@ interface TechRequest {
   estimatedCost?: number
 }
 
+type StationLite = {
+  id: string
+  name?: string
+  code?: string
+}
+
 const inferType = (dispatch: Dispatch): RequestType => {
   const text = `${dispatch.title} ${dispatch.description || ''}`.toLowerCase()
   if (text.includes('install')) return 'Installation'
@@ -121,15 +127,24 @@ export function TechRequests() {
     estimatedDuration: '2h',
   })
 
-  const stations = useMemo(() => Array.isArray(stationsData) ? stationsData : (stationsData as any)?.data || [], [stationsData])
-  const stationMap = useMemo(() => new Map(stations.map((s: any) => [s.id, s])), [stations])
+  const stations = useMemo<StationLite[]>(() => {
+    const raw = Array.isArray(stationsData) ? stationsData : (stationsData as any)?.data
+    return (raw || [])
+      .filter((s: any) => s && s.id)
+      .map((s: any) => ({
+        id: String(s.id),
+        name: s.name,
+        code: s.code,
+      }))
+  }, [stationsData])
+  const stationMap = useMemo(() => new Map(stations.map((s) => [s.id, s])), [stations])
 
   const requests = useMemo<TechRequest[]>(() => {
     const raw = Array.isArray(dispatchesData) ? dispatchesData : (dispatchesData as any)?.data || []
     return raw.map((dispatch: Dispatch) => ({
       id: dispatch.id,
       type: inferType(dispatch),
-      site: stationMap.get(dispatch.stationId)?.name || dispatch.stationName || dispatch.stationId || '—',
+      site: stationMap.get(String(dispatch.stationId))?.name || dispatch.stationName || dispatch.stationId || '—',
       charger: dispatch.stationId || dispatch.incidentId,
       description: dispatch.description || dispatch.title,
       priority: mapPriority(dispatch.priority),
@@ -412,5 +427,6 @@ function PriorityPill({ priority }: { priority: RequestPriority }) {
 }
 
 export default TechRequests
+
 
 
