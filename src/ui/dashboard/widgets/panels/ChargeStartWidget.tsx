@@ -1,5 +1,7 @@
+import { useMemo } from 'react'
 import type { WidgetProps } from '../../types'
 import { Card } from '@/ui/components/Card'
+import { useRealtimeStats } from '@/modules/analytics/hooks/useAnalytics'
 
 export type ChargeScan = {
   chargerId: string
@@ -19,19 +21,46 @@ function scanStatusClass(status: ChargeScan['status']) {
   return status === 'started' ? 'approved' : 'pending'
 }
 
-// Default mock data (Migration from dashboardConfigs.ts)
-const DEFAULT_SCANS: ChargeScan[] = [
-  { chargerId: 'CP-A1', rfid: 'RF-2188', time: '2m ago', status: 'ready' },
-  { chargerId: 'CP-A4', rfid: 'RF-2196', time: '11m ago', status: 'started' },
-]
+function formatScanTime(value: unknown) {
+  if (!value) return '—'
+  const parsed = new Date(String(value))
+  if (!Number.isNaN(parsed.getTime())) {
+    return parsed.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  }
+  return String(value)
+}
 
 export function ChargeStartWidget({ config }: WidgetProps<ChargeStartConfig>) {
-  const {
-    title = 'Start charge session',
-    subtitle = 'Scan charger QR or tap RFID to begin',
-    tips = [],
-    recentScans = DEFAULT_SCANS,
-  } = config ?? {}
+  const { data: realtime } = useRealtimeStats() as any
+
+  const recentScans = useMemo(() => {
+    if (config?.recentScans && config.recentScans.length > 0) return config.recentScans
+
+    const source = realtime?.recentScans ?? realtime?.scans ?? realtime?.recentEvents ?? []
+    if (!Array.isArray(source)) return []
+
+    return source
+      .map((entry: any) => {
+        const chargerId = entry.chargerId ?? entry.connectorId ?? entry.stationId ?? entry.id
+        const rfid = entry.rfid ?? entry.tag ?? entry.cardId ?? entry.customerId
+        if (!chargerId || !rfid) return null
+
+        const statusRaw = String(entry.status ?? entry.state ?? entry.event ?? '').toLowerCase()
+        const status: ChargeScan['status'] = statusRaw.includes('start') ? 'started' : 'ready'
+
+        return {
+          chargerId: String(chargerId),
+          rfid: String(rfid),
+          time: formatScanTime(entry.time ?? entry.timestamp ?? entry.createdAt ?? entry.startedAt),
+          status,
+        }
+      })
+      .filter((entry: ChargeScan | null): entry is ChargeScan => Boolean(entry))
+  }, [config?.recentScans, realtime])
+
+  const tips = config?.tips ?? (Array.isArray(realtime?.tips) ? realtime.tips : [])
+  const title = config?.title ?? 'Start charge session'
+  const subtitle = config?.subtitle ?? 'Scan charger QR or tap RFID to begin'
 
   return (
     <Card className="p-0">

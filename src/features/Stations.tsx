@@ -18,7 +18,7 @@ import { TableSkeleton } from '@/ui/components/SkeletonCards'
 
 // ... types and mock data omitted for brevity ...
 type StationType = 'Charge' | 'Swap' | 'Both'
-type Region = 'AFRICA' | 'EUROPE' | 'AMERICAS' | 'ASIA' | 'MIDDLE_EAST'
+type Region = 'AFRICA' | 'EUROPE' | 'AMERICAS' | 'ASIA' | 'MIDDLE_EAST' | 'UNKNOWN'
 type StationsTab = 'overview' | 'charge-points' | 'swap-stations' | 'smart-charging' | 'bookings'
 
 type Station = {
@@ -40,21 +40,31 @@ type Station = {
 }
 
 // Helper function to map API station to Station type
+const REGION_VALUES = new Set<Region>(['AFRICA', 'EUROPE', 'AMERICAS', 'ASIA', 'MIDDLE_EAST', 'UNKNOWN'])
+
+function normalizeRegion(value?: string): Region {
+  if (!value) return 'UNKNOWN'
+  const normalized = value.toUpperCase().replace(/[\s-]+/g, '_')
+  if (normalized === 'AMERICA') return 'AMERICAS'
+  if (normalized === 'MIDEAST') return 'MIDDLE_EAST'
+  return REGION_VALUES.has(normalized as Region) ? (normalized as Region) : 'UNKNOWN'
+}
+
 function mapApiStationToStation(apiStation: any): Station {
   return {
     id: apiStation.id,
     name: apiStation.name,
-    region: 'AFRICA' as Region, // API doesn't provide region, defaulting
-    country: '', // API doesn't provide country
+    region: normalizeRegion(apiStation.region),
+    country: apiStation.country || apiStation.countryCode || '',
     org: apiStation.orgId || 'N/A',
     type: apiStation.type === 'BOTH' ? 'Both' : apiStation.type === 'SWAP' ? 'Swap' : 'Charge',
     status: apiStation.status === 'ACTIVE' ? 'Online' : apiStation.status === 'INACTIVE' ? 'Offline' : 'Degraded',
-    healthScore: 0, // Would come from stats endpoint
-    utilization: 0, // Would come from analytics
-    connectors: 0, // Would come from charge points
-    swapBays: 0, // Would come from swap stations
-    openIncidents: 0, // Would come from incidents
-    lastHeartbeat: 'N/A', // Would come from real-time data
+    healthScore: Number(apiStation.healthScore ?? apiStation.health ?? 0),
+    utilization: Number(apiStation.utilization ?? 0),
+    connectors: Number(apiStation.connectors ?? 0),
+    swapBays: Number(apiStation.swapBays ?? 0),
+    openIncidents: Number(apiStation.openIncidents ?? 0),
+    lastHeartbeat: apiStation.lastHeartbeat || 'N/A',
     address: apiStation.address || '',
     gps: `${apiStation.latitude || 0}, ${apiStation.longitude || 0}`,
   }
@@ -67,6 +77,7 @@ const regions: Array<{ id: Region | 'ALL'; label: string }> = [
   { id: 'AMERICAS', label: 'Americas' },
   { id: 'ASIA', label: 'Asia' },
   { id: 'MIDDLE_EAST', label: 'Middle East' },
+  { id: 'UNKNOWN', label: 'Unknown' },
 ]
 
 export function Stations() {

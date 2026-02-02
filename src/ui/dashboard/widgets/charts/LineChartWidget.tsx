@@ -1,17 +1,27 @@
 import type { WidgetProps } from '../../types'
 import { Card } from '@/ui/components/Card'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, AreaChart } from 'recharts'
+import { useDashboard } from '@/modules/analytics/hooks/useDashboard'
 
 export type LineChartConfig = {
   title?: string
   subtitle?: string
-  values: number[]
+  values?: number[]
   stroke?: string
   labels?: string[]
 }
 
 export function LineChartWidget({ config }: WidgetProps<LineChartConfig>) {
-  const { title, subtitle, values = [], stroke = '#03cd8c', labels } = config ?? {}
+  const { data: dashboard } = useDashboard()
+  const fallbackSeries = dashboard?.trends?.revenue ?? []
+  const fallbackValues = fallbackSeries.map((point) => point.revenue ?? 0)
+  const fallbackLabels = fallbackSeries.map((point) => point.date)
+
+  const title = config?.title
+  const subtitle = config?.subtitle
+  const stroke = config?.stroke ?? '#03cd8c'
+  const values = (config?.values && config.values.length > 0) ? config.values : fallbackValues
+  const labels = (config?.labels && config.labels.length > 0) ? config.labels : fallbackLabels
 
   // Transform data for Recharts
   const data = values.map((value, index) => ({

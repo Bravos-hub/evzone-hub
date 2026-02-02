@@ -1,5 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { useAuthStore } from '@/core/auth/authStore'
+import { useStations } from '@/modules/stations/hooks/useStations'
+import { useUsers } from '@/modules/auth/hooks/useUsers'
+import { ROLE_GROUPS } from '@/constants/roles'
 
 type Priority = 'Critical' | 'High' | 'Normal' | 'Low'
 type TechnicianType = 'org' | 'public'
@@ -8,18 +11,16 @@ interface Technician {
   id: string
   name: string
   type: TechnicianType
-  skills: string[]
-  rating: number
-  available: boolean
-  phone: string
+  skills?: string[]
+  rating?: number
+  available?: boolean
+  phone?: string
 }
 
 interface Station {
   id: string
   name: string
   address: string
-  chargers: number
-  ownerContact: string
 }
 
 interface DispatchModalProps {
@@ -46,28 +47,14 @@ export interface DispatchFormData {
   requiredSkills: string[]
 }
 
-// Mock data
-const MOCK_STATIONS: Station[] = [
-  { id: 'ST-0001', name: 'Kampala CBD Hub', address: 'Plot 12, Kampala Road', chargers: 8, ownerContact: '+256 700 123 456' },
-  { id: 'ST-0002', name: 'Entebbe Airport Lot', address: 'Entebbe International Airport', chargers: 12, ownerContact: '+256 700 234 567' },
-  { id: 'ST-0017', name: 'Gulu Main Street', address: 'Churchill Drive, Gulu', chargers: 6, ownerContact: '+256 700 345 678' },
-]
-
-const MOCK_TECHNICIANS: Technician[] = [
-  { id: 'TECH-001', name: 'Allan Tech', type: 'org', skills: ['OCPP', 'Electrical', 'Firmware'], rating: 4.8, available: true, phone: '+256 701 111 111' },
-  { id: 'TECH-002', name: 'Betty Maina', type: 'org', skills: ['HVAC', 'Mechanical'], rating: 4.6, available: true, phone: '+256 701 222 222' },
-  { id: 'TECH-003', name: 'Charles Okello', type: 'public', skills: ['OCPP', 'Networking', 'Firmware'], rating: 4.9, available: true, phone: '+256 701 333 333' },
-  { id: 'TECH-004', name: 'Diana Nakato', type: 'public', skills: ['Battery', 'Swap Station', 'Electrical'], rating: 4.7, available: false, phone: '+256 701 444 444' },
-  { id: 'TECH-005', name: 'Emmanuel Ssali', type: 'public', skills: ['OCPP', 'Electrical', 'HVAC'], rating: 4.5, available: true, phone: '+256 701 555 555' },
-]
-
-const SKILLS_LIST = ['OCPP', 'Electrical', 'Firmware', 'HVAC', 'Mechanical', 'Networking', 'Battery', 'Swap Station']
-
 export function DispatchModal({ isOpen, onClose, onSubmit, mode, dispatchId, stationId: initialStationId, incidentId, stations: propStations }: DispatchModalProps) {
   const { user } = useAuthStore()
   const isSuperAdmin = user?.role === 'SUPER_ADMIN'
   const isOwner = ['STATION_OWNER', 'STATION_ADMIN', 'MANAGER'].includes(user?.role ?? '')
   const isAdmin = ['EVZONE_ADMIN', 'EVZONE_OPERATOR'].includes(user?.role ?? '')
+
+  const { data: stationsData = [], isLoading: stationsLoading } = useStations()
+  const { data: usersData = [], isLoading: usersLoading } = useUsers()
 
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -80,25 +67,58 @@ export function DispatchModal({ isOpen, onClose, onSubmit, mode, dispatchId, sta
   const [requiredSkills, setRequiredSkills] = useState<string[]>([])
   const [showTechnicianType, setShowTechnicianType] = useState<'org' | 'public' | 'all'>('org')
   
-  const stations = propStations || MOCK_STATIONS
-  const selectedStation = stations.find(s => s.id === stationId)
-  const selectedTechnician = MOCK_TECHNICIANS.find(t => t.id === technicianId)
+  const stations = useMemo(() => {
+    if (propStations && propStations.length > 0) return propStations
+    return stationsData.map((station) => ({
+      id: station.id,
+      name: station.name,
+      address: station.address || 'N/A',
+    }))
+  }, [propStations, stationsData])
 
-  // Filter technicians based on role and selection
-  const availableTechnicians = MOCK_TECHNICIANS.filter(tech => {
-    if (isSuperAdmin) return true
-    if (isAdmin) return tech.type === 'public' // Admin can only assign public
-    if (isOwner) {
-      if (showTechnicianType === 'org') return tech.type === 'org'
-      if (showTechnicianType === 'public') return tech.type === 'public'
-      return true
-    }
-    return false
-  }).filter(tech => {
-    // Filter by required skills if any selected
-    if (requiredSkills.length === 0) return true
-    return requiredSkills.some(skill => tech.skills.includes(skill))
-  })
+  const technicians = useMemo<Technician[]>(() => {
+    return (usersData || [])
+      .filter((u) => ROLE_GROUPS.TECHNICIANS.includes(u.role))
+      .map((u) => ({
+        id: u.id,
+        name: u.name,
+        type: u.role === 'TECHNICIAN_PUBLIC' ? 'public' : 'org',
+        skills: (u as any).skills,
+        rating: (u as any).rating,
+        available: u.status ? u.status === 'Active' : undefined,
+        phone: u.phone || undefined,
+      }))
+  }, [usersData])
+
+  const skillsOptions = useMemo(() => {
+    const set = new Set<string>()
+    technicians.forEach((tech) => {
+      tech.skills?.forEach((skill) => set.add(skill))
+    })
+    return Array.from(set)
+  }, [technicians])
+
+  const selectedStation = stations.find(s => s.id === stationId)
+  const stationSelectLabel = stationsLoading && stations.length === 0 ? 'Loading stations...' : 'Select a station'
+
+  const availableTechnicians = useMemo(() => {
+    return technicians
+      .filter((tech) => {
+        if (isSuperAdmin) return true
+        if (isAdmin) return tech.type === 'public'
+        if (isOwner) {
+          if (showTechnicianType === 'org') return tech.type === 'org'
+          if (showTechnicianType === 'public') return tech.type === 'public'
+          return true
+        }
+        return false
+      })
+      .filter((tech) => {
+        if (requiredSkills.length === 0) return true
+        if (!tech.skills || tech.skills.length === 0) return true
+        return requiredSkills.some((skill) => tech.skills?.includes(skill))
+      })
+  }, [technicians, isSuperAdmin, isAdmin, isOwner, showTechnicianType, requiredSkills])
 
   useEffect(() => {
     if (!isOpen) {
@@ -231,9 +251,10 @@ export function DispatchModal({ isOpen, onClose, onSubmit, mode, dispatchId, sta
                 value={stationId} 
                 onChange={(e) => setStationId(e.target.value)} 
                 className="select w-full"
+                disabled={stationsLoading && stations.length === 0}
                 required
               >
-                <option value="">Select a station</option>
+                <option value="">{stationSelectLabel}</option>
                 {stations.map(station => (
                   <option key={station.id} value={station.id}>
                     {station.name} ({station.id})
@@ -246,7 +267,7 @@ export function DispatchModal({ isOpen, onClose, onSubmit, mode, dispatchId, sta
                   <div className="text-sm space-y-1">
                     <div className="flex items-center gap-2">
                       <span className="text-muted">Address:</span>
-                      <span className="text-text">{selectedStation.address}</span>
+                      <span className="text-text">{selectedStation.address || 'N/A'}</span>
                     </div>
                   </div>
                 </div>
@@ -254,27 +275,29 @@ export function DispatchModal({ isOpen, onClose, onSubmit, mode, dispatchId, sta
             </div>
 
             {/* Required Skills */}
-            <div>
-              <label className="block text-sm font-semibold text-text mb-2">
-                Required Skills
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {SKILLS_LIST.map(skill => (
-                  <button
-                    key={skill}
-                    type="button"
-                    onClick={() => toggleSkill(skill)}
-                    className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
-                      requiredSkills.includes(skill)
-                        ? 'bg-accent text-white'
-                        : 'bg-panel text-text-secondary hover:bg-panel-2'
-                    }`}
-                  >
-                    {skill}
-                  </button>
-                ))}
+            {skillsOptions.length > 0 && (
+              <div>
+                <label className="block text-sm font-semibold text-text mb-2">
+                  Required Skills
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {skillsOptions.map(skill => (
+                    <button
+                      key={skill}
+                      type="button"
+                      onClick={() => toggleSkill(skill)}
+                      className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                        requiredSkills.includes(skill)
+                          ? 'bg-accent text-white'
+                          : 'bg-panel text-text-secondary hover:bg-panel-2'
+                      }`}
+                    >
+                      {skill}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Technician Type Selection (Only for Owners) */}
             {isOwner && (
@@ -315,7 +338,11 @@ export function DispatchModal({ isOpen, onClose, onSubmit, mode, dispatchId, sta
                 Assign to Technician <span className="text-danger">*</span>
               </label>
               <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                {availableTechnicians.length === 0 ? (
+                {usersLoading ? (
+                  <div className="text-center py-8 text-muted">
+                    Loading technicians...
+                  </div>
+                ) : availableTechnicians.length === 0 ? (
                   <div className="text-center py-8 text-muted">
                     No technicians available with the selected criteria
                   </div>
@@ -327,7 +354,7 @@ export function DispatchModal({ isOpen, onClose, onSubmit, mode, dispatchId, sta
                         technicianId === tech.id
                           ? 'border-accent bg-accent/10'
                           : 'border-border-light bg-panel hover:border-accent/50'
-                      } ${!tech.available ? 'opacity-50' : ''}`}
+                      } ${tech.available === false ? 'opacity-50' : ''}`}
                     >
                       <input
                         type="radio"
@@ -346,25 +373,37 @@ export function DispatchModal({ isOpen, onClose, onSubmit, mode, dispatchId, sta
                             }`}>
                               {tech.type === 'org' ? 'Organization' : 'Public'}
                             </span>
-                            {!tech.available && (
+                            {tech.available === false && (
                               <span className="text-xs px-2 py-0.5 rounded bg-danger/20 text-danger">Busy</span>
                             )}
                           </div>
-                          <div className="mt-1 flex items-center gap-1 text-sm">
-                            <span className="text-accent">★</span>
-                            <span className="text-text">{tech.rating.toFixed(1)}</span>
-                            <span className="text-muted mx-2">•</span>
-                            <a href={`tel:${tech.phone}`} className="text-accent hover:underline" onClick={(e) => e.stopPropagation()}>
-                              {tech.phone}
-                            </a>
-                          </div>
-                          <div className="mt-2 flex flex-wrap gap-1">
-                            {tech.skills.map(skill => (
-                              <span key={skill} className="text-xs px-2 py-1 rounded bg-panel-2 text-text-secondary">
-                                {skill}
-                              </span>
-                            ))}
-                          </div>
+                          {(Number.isFinite(tech.rating) || tech.phone) && (
+                            <div className="mt-1 flex items-center gap-1 text-sm">
+                              {Number.isFinite(tech.rating) && (
+                                <>
+                                  <span className="text-accent">*</span>
+                                  <span className="text-text">{tech.rating?.toFixed(1)}</span>
+                                </>
+                              )}
+                              {Number.isFinite(tech.rating) && tech.phone && (
+                                <span className="text-muted mx-2">|</span>
+                              )}
+                              {tech.phone && (
+                                <a href={`tel:${tech.phone}`} className="text-accent hover:underline" onClick={(e) => e.stopPropagation()}>
+                                  {tech.phone}
+                                </a>
+                              )}
+                            </div>
+                          )}
+                          {tech.skills && tech.skills.length > 0 && (
+                            <div className="mt-2 flex flex-wrap gap-1">
+                              {tech.skills.map(skill => (
+                                <span key={skill} className="text-xs px-2 py-1 rounded bg-panel-2 text-text-secondary">
+                                  {skill}
+                                </span>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </label>
@@ -425,5 +464,8 @@ export function DispatchModal({ isOpen, onClose, onSubmit, mode, dispatchId, sta
     </div>
   )
 }
+
+
+
 
 

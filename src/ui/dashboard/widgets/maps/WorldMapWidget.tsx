@@ -1,42 +1,89 @@
+import { useMemo } from 'react'
 import type { WidgetProps } from '../../types'
 import { Card } from '@/ui/components/Card'
-import { WorldChoroplethMap, type ChoroplethDatum } from '@/ui/components/WorldChoroplethMap'
+import { WorldChoroplethMap, type ChoroplethDatum, type ChoroplethRegionId } from '@/ui/components/WorldChoroplethMap'
+import { useRegionalMetrics } from '@/modules/analytics/hooks/useAnalytics'
 
 export type WorldMapConfig = {
   title?: string
   subtitle?: string
-  data: ChoroplethDatum[]
+  data?: ChoroplethDatum[]
   lowColor?: string
   highColor?: string
 }
 
-// Default mock data (Migration from dashboardConfigs.ts)
-const DEFAULT_DATA: ChoroplethDatum[] = [
-  { id: 'N_AMERICA', label: 'North America', metrics: { stations: 540, sessions: 182000, uptime: 99.4, revenueUsd: 1240000 } },
-  { id: 'EUROPE', label: 'Europe', metrics: { stations: 430, sessions: 154000, uptime: 99.1, revenueUsd: 1050000 } },
-  { id: 'AFRICA', label: 'Africa', metrics: { stations: 210, sessions: 72000, uptime: 98.6, revenueUsd: 460000 } },
-  { id: 'ASIA', label: 'Asia', metrics: { stations: 380, sessions: 141000, uptime: 99.2, revenueUsd: 980000 } },
-  { id: 'MIDDLE_EAST', label: 'Middle East', metrics: { stations: 190, sessions: 61000, uptime: 98.9, revenueUsd: 410000 } },
-]
+const REGION_IDS: ChoroplethRegionId[] = ['N_AMERICA', 'EUROPE', 'AFRICA', 'ASIA', 'MIDDLE_EAST']
+
+function normalizeRegionId(value?: string): ChoroplethRegionId | null {
+  if (!value) return null
+  const raw = value.toUpperCase().replace(/[\s-]+/g, '_')
+  if (raw === 'AMERICAS' || raw === 'NORTH_AMERICA' || raw === 'NA') return 'N_AMERICA'
+  if (raw === 'MIDDLE_EAST' || raw === 'MIDEAST') return 'MIDDLE_EAST'
+  if (REGION_IDS.includes(raw as ChoroplethRegionId)) return raw as ChoroplethRegionId
+  return null
+}
+
+function toNumber(value: unknown): number {
+  const n = Number(value)
+  return Number.isFinite(n) ? n : 0
+}
+
+function normalizeRegionMetrics(raw: any): ChoroplethDatum | null {
+  const id = normalizeRegionId(raw?.id ?? raw?.region ?? raw?.code ?? raw?.name)
+  if (!id) return null
+
+  const label = raw?.label ?? raw?.name ?? raw?.region ?? id
+  const metricsSource = raw?.metrics ?? raw?.kpis ?? raw?.stats ?? raw ?? {}
+
+  return {
+    id,
+    label,
+    metrics: {
+      stations: toNumber(metricsSource.stations ?? metricsSource.stationCount ?? metricsSource.totalStations),
+      sessions: toNumber(metricsSource.sessions ?? metricsSource.sessionCount ?? metricsSource.totalSessions),
+      uptime: toNumber(metricsSource.uptime ?? metricsSource.availability ?? metricsSource.sla),
+      revenueUsd: toNumber(metricsSource.revenueUsd ?? metricsSource.revenue ?? metricsSource.revenueUSD ?? metricsSource.revenue_usd),
+    },
+  }
+}
 
 export function WorldMapWidget({ config }: WidgetProps<WorldMapConfig>) {
-  const {
-    title = 'World Map',
-    subtitle = 'Regional metrics',
-    data = DEFAULT_DATA,
-    lowColor = '#132036',
-    highColor = '#f77f00',
-  } = config ?? {}
+  const { data: regionalMetrics, isLoading } = useRegionalMetrics() as any
+
+  const normalizedData = useMemo(() => {
+    if (config?.data && config.data.length > 0) return config.data
+
+    const source = Array.isArray(regionalMetrics)
+      ? regionalMetrics
+      : regionalMetrics?.regions ?? regionalMetrics?.data ?? []
+
+    if (!Array.isArray(source)) return []
+
+    return source
+      .map((entry) => normalizeRegionMetrics(entry))
+      .filter((entry): entry is ChoroplethDatum => Boolean(entry))
+  }, [config?.data, regionalMetrics])
+
+  const title = config?.title ?? 'World Map'
+  const subtitle = config?.subtitle ?? 'Regional metrics'
+  const lowColor = config?.lowColor ?? '#132036'
+  const highColor = config?.highColor ?? '#f77f00'
 
   return (
     <Card>
-      <WorldChoroplethMap
-        title={title}
-        subtitle={subtitle}
-        data={data}
-        lowColor={lowColor}
-        highColor={highColor}
-      />
+      {isLoading && normalizedData.length === 0 ? (
+        <div className="text-sm text-center py-8 text-muted">Loading regional metrics...</div>
+      ) : normalizedData.length === 0 ? (
+        <div className="text-sm text-center py-8 text-muted">No regional metrics available.</div>
+      ) : (
+        <WorldChoroplethMap
+          title={title}
+          subtitle={subtitle}
+          data={normalizedData}
+          lowColor={lowColor}
+          highColor={highColor}
+        />
+      )}
     </Card>
   )
 }

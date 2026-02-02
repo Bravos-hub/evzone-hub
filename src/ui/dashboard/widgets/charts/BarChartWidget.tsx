@@ -1,17 +1,31 @@
 import type { WidgetProps } from '../../types'
 import { Card } from '@/ui/components/Card'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts'
+import { useDashboard } from '@/modules/analytics/hooks/useDashboard'
 
 export type BarChartConfig = {
   title?: string
   subtitle?: string
-  values: number[]
+  values?: number[]
   color?: string
   labels?: string[]
 }
 
 export function BarChartWidget({ config }: WidgetProps<BarChartConfig>) {
-  const { title, subtitle, values = [], color = '#f77f00', labels } = config ?? {}
+  const { data: dashboard } = useDashboard()
+  const fallbackSeries = dashboard?.trends?.utilization ?? []
+  const fallbackValues = fallbackSeries.map((point) => point.utilization ?? 0)
+  const fallbackLabels = fallbackSeries.map((point) => {
+    if (point.day && point.hour !== undefined) return `${point.day} ${String(point.hour).padStart(2, '0')}:00`
+    if (point.hour !== undefined) return `${String(point.hour).padStart(2, '0')}:00`
+    return '—'
+  })
+
+  const title = config?.title
+  const subtitle = config?.subtitle
+  const color = config?.color ?? '#f77f00'
+  const values = (config?.values && config.values.length > 0) ? config.values : fallbackValues
+  const labels = (config?.labels && config.labels.length > 0) ? config.labels : fallbackLabels
 
   // Transform data for Recharts
   const data = values.map((value, index) => ({

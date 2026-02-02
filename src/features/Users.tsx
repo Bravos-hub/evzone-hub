@@ -5,6 +5,7 @@ import { useAuthStore } from '@/core/auth/authStore'
 import { getPermissionsForFeature } from '@/constants/permissions'
 import { ROLE_LABELS, ALL_ROLES } from '@/constants/roles'
 import type { Role } from '@/core/auth/types'
+import type { User } from '@/core/api/types'
 import { RolePill } from '@/ui/components/RolePill'
 import { InviteUserModal } from '@/modals/InviteUserModal'
 import { useUsers, useUpdateUser, useDeleteUser } from '@/modules/auth/hooks/useUsers'
@@ -16,7 +17,7 @@ import { StatGridSkeleton, TableSkeleton } from '@/ui/components/SkeletonCards'
 // ═══════════════════════════════════════════════════════════════════════════
 
 type UserStatus = 'Active' | 'Pending' | 'Suspended' | 'Inactive'
-type Region = 'AFRICA' | 'EUROPE' | 'AMERICAS' | 'ASIA' | 'MIDDLE_EAST' | 'ALL'
+type Region = 'AFRICA' | 'EUROPE' | 'AMERICAS' | 'ASIA' | 'MIDDLE_EAST' | 'UNKNOWN' | 'ALL'
 
 type UserRow = {
   id: string
@@ -36,18 +37,31 @@ type UserRow = {
 // ═══════════════════════════════════════════════════════════════════════════
 
 // Helper function to map API user to UserRow
-function mapUserToRow(user: any): UserRow {
+const REGION_VALUES = new Set<Region>(['AFRICA', 'EUROPE', 'AMERICAS', 'ASIA', 'MIDDLE_EAST', 'UNKNOWN', 'ALL'])
+
+function normalizeRegion(value?: string): Region {
+  if (!value) return 'UNKNOWN'
+  const normalized = value.toUpperCase().replace(/[\s-]+/g, '_')
+  if (normalized === 'AMERICA') return 'AMERICAS'
+  if (normalized === 'MIDEAST') return 'MIDDLE_EAST'
+  return REGION_VALUES.has(normalized as Region) ? (normalized as Region) : 'UNKNOWN'
+}
+
+function mapUserToRow(user: User): UserRow {
+  const createdAt = user.createdAt ? new Date(user.createdAt) : null
+  const lastSeen = user.lastSeen ? new Date(user.lastSeen) : user.updatedAt ? new Date(user.updatedAt) : null
+
   return {
     id: user.id,
     name: user.name,
     email: user.email || '',
     role: user.role as Role,
-    status: 'Active' as UserStatus, // API doesn't provide status, defaulting to Active
-    region: 'ALL' as Region, // API doesn't provide region, defaulting to ALL
-    orgId: user.orgId || 'N/A',
-    lastLogin: 'N/A', // API doesn't provide lastLogin
-    createdAt: user.createdAt || new Date().toISOString().split('T')[0],
-    mfaEnabled: false, // API doesn't provide mfaEnabled
+    status: (user.status || 'Active') as UserStatus,
+    region: normalizeRegion(user.region),
+    orgId: user.orgId || user.organizationId || user.tenantId || '—',
+    lastLogin: lastSeen && !Number.isNaN(lastSeen.getTime()) ? lastSeen.toLocaleString() : '—',
+    createdAt: createdAt && !Number.isNaN(createdAt.getTime()) ? createdAt.toISOString().split('T')[0] : '—',
+    mfaEnabled: Boolean(user.mfaEnabled),
   }
 }
 
@@ -58,6 +72,7 @@ const regions: Array<{ id: Region; label: string }> = [
   { id: 'AMERICAS', label: 'Americas' },
   { id: 'ASIA', label: 'Asia' },
   { id: 'MIDDLE_EAST', label: 'Middle East' },
+  { id: 'UNKNOWN', label: 'Unknown' },
 ]
 
 // ═══════════════════════════════════════════════════════════════════════════

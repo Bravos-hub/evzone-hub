@@ -18,7 +18,7 @@ const GENERIC_DASHBOARD: DashboardConfig = {
   kpiRow: [
     { id: 'kpi-generic', config: { title: 'Assigned Items', value: '—' } },
     { id: 'kpi-generic', config: { title: 'Open Tasks', value: '—' } },
-    { id: 'kpi-generic', config: { title: 'Recent Alerts', value: '0' } },
+    { id: 'kpi-generic', config: { title: 'Recent Alerts', value: '—' } },
   ],
   rows: [
     {
@@ -36,10 +36,10 @@ const GENERIC_DASHBOARD: DashboardConfig = {
 const ADMIN_DASHBOARD_CONFIG: DashboardConfig = {
   title: 'Admin Overview',
   kpiRow: [
-    { id: 'kpi-stations', config: { total: 1316, online: 1284, offline: 32, variant: 'total' } },
-    { id: 'kpi-stations', config: { total: 1316, online: 1284, variant: 'online' } },
-    { id: 'kpi-incidents', config: { count: 47, period: '24h' } },
-    { id: 'kpi-stations', config: { offline: 32, variant: 'offline' } },
+    { id: 'kpi-stations', config: { variant: 'total' } },
+    { id: 'kpi-stations', config: { variant: 'online' } },
+    { id: 'kpi-incidents', config: { period: '24h' } },
+    { id: 'kpi-stations', config: { variant: 'offline' } },
   ],
   rows: [
     {
@@ -48,11 +48,7 @@ const ADMIN_DASHBOARD_CONFIG: DashboardConfig = {
         { id: 'map-world', size: '3', config: { title: 'Live Hotspots', subtitle: 'Regional metrics by station density' } },
         {
           id: 'panel-alerts', size: '1', config: {
-            title: 'Vulnerabilities & Alerts', metrics: [
-              { label: 'Critical', value: 3, max: 20, color: '#ef4444' },
-              { label: 'High', value: 12, max: 50, color: '#f59e0b' },
-              { label: 'Medium', value: 28, max: 100, color: '#f77f00' },
-            ]
+            title: 'Vulnerabilities & Alerts',
           }
         },
       ],
@@ -67,10 +63,7 @@ const ADMIN_DASHBOARD_CONFIG: DashboardConfig = {
       widgets: [
         {
           id: 'panel-settlement', size: '2', config: {
-            title: 'Exchange & Settlement', exports: [
-              { label: 'Ledger export (EU)', status: 'queued', when: '3m ago' },
-              { label: 'Disputes aging', status: 'running', when: '11m ago' },
-            ]
+            title: 'Exchange & Settlement'
           }
         },
         { id: 'panel-health', size: '2', config: { title: 'System Health' } },
@@ -100,10 +93,10 @@ export const DASHBOARD_CONFIGS: Record<DashboardKey, DashboardConfig> = {
   EVZONE_OPERATOR: {
     title: 'Operator Overview',
     kpiRow: [
-      { id: 'kpi-uptime', config: { value: 99.1 } },
-      { id: 'kpi-stations', config: { offline: 16, variant: 'offline' } },
-      { id: 'kpi-generic', config: { title: 'Approvals pending', value: '36' } },
-      { id: 'kpi-sessions', config: { count: 4208, period: 'Today' } },
+      { id: 'kpi-uptime', config: {} },
+      { id: 'kpi-stations', config: { variant: 'offline' } },
+      { id: 'kpi-generic', config: { title: 'Approvals pending', value: '—' } },
+      { id: 'kpi-sessions', config: { period: 'Today' } },
     ],
     rows: [
       {
@@ -182,7 +175,7 @@ export const DASHBOARD_CONFIGS: Record<DashboardKey, DashboardConfig> = {
         sectionTitle: 'Leases & Earnings',
         widgets: [
           { id: 'panel-leases-table', size: '2', config: { title: 'Active leases', subtitle: 'Rent, term, contacts' } },
-          { id: 'chart-line', size: '2', config: { title: 'Earnings trend', values: [5200, 5400, 5800, 6100, 6240], stroke: '#03cd8c' } },
+          { id: 'chart-line', size: '2', config: { title: 'Earnings trend', stroke: '#03cd8c' } },
         ],
       },
     ],
@@ -197,7 +190,7 @@ export const DASHBOARD_CONFIGS: Record<DashboardKey, DashboardConfig> = {
       { id: 'kpi-revenue', config: { period: 'Today', trend: 'up' } },
       { id: 'kpi-swaps', config: {} },
       { id: 'kpi-sessions', config: { period: 'Today' } },
-      { id: 'kpi-uptime', config: { value: 98.8, trend: 'up' } },
+      { id: 'kpi-uptime', config: { trend: 'up' } },
     ],
     rows: [
       {
@@ -228,10 +221,10 @@ export const DASHBOARD_CONFIGS: Record<DashboardKey, DashboardConfig> = {
   STATION_ADMIN: {
     title: 'Station Admin',
     kpiRow: [
-      { id: 'kpi-stations', config: { total: 8, online: 7, variant: 'online' } },
-      { id: 'kpi-sessions', config: { count: 142, period: 'Today' } },
-      { id: 'kpi-incidents', config: { count: 3, period: 'Open' } },
-      { id: 'kpi-utilization', config: { value: 72 } },
+      { id: 'kpi-stations', config: { variant: 'online' } },
+      { id: 'kpi-sessions', config: { period: 'Today' } },
+      { id: 'kpi-incidents', config: { period: 'Open' } },
+      { id: 'kpi-utilization', config: {} },
     ],
     rows: [
       {
@@ -245,7 +238,7 @@ export const DASHBOARD_CONFIGS: Record<DashboardKey, DashboardConfig> = {
         sectionTitle: 'Team & Performance',
         widgets: [
           { id: 'panel-placeholder', size: '2', config: { title: 'Shift schedule', subtitle: 'Today\'s coverage' } },
-          { id: 'chart-bar', size: '2', config: { title: 'Daily Sessions', values: [98, 124, 112, 138], color: '#f77f00', labels: ['Mon', 'Tue', 'Wed', 'Thu'] } },
+          { id: 'chart-bar', size: '2', config: { title: 'Daily Sessions', color: '#f77f00' } },
         ],
       },
     ],
@@ -257,10 +250,10 @@ export const DASHBOARD_CONFIGS: Record<DashboardKey, DashboardConfig> = {
   STATION_OPERATOR: {
     title: 'Station Operator Dashboard',
     kpiRow: [
-      { id: 'kpi-stations', config: { total: 4, online: 4, variant: 'online' } },
-      { id: 'kpi-revenue', config: { amount: 1240, period: 'Today', trend: 'up', delta: '+12% vs avg' } },
-      { id: 'kpi-sessions', config: { count: 287, period: 'Today' } },
-      { id: 'kpi-uptime', config: { value: 98.7, trend: 'up', delta: '+0.3% vs last week' } },
+      { id: 'kpi-stations', config: { variant: 'online' } },
+      { id: 'kpi-revenue', config: { period: 'Today' } },
+      { id: 'kpi-sessions', config: { period: 'Today' } },
+      { id: 'kpi-uptime', config: {} },
     ],
     rows: [
       {
@@ -291,7 +284,7 @@ export const DASHBOARD_CONFIGS: Record<DashboardKey, DashboardConfig> = {
         sectionTitle: 'Operations & Incidents',
         widgets: [
           { id: 'list-incidents', size: '2', config: { title: 'Active Incidents' } },
-          { id: 'chart-bar', size: '2', config: { title: 'Daily Sessions', values: [145, 178, 162, 198, 187, 210, 287], color: '#f77f00', labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] } },
+          { id: 'chart-bar', size: '2', config: { title: 'Daily Sessions', color: '#f77f00' } },
         ],
       },
       {
@@ -310,10 +303,10 @@ export const DASHBOARD_CONFIGS: Record<DashboardKey, DashboardConfig> = {
   MANAGER: {
     title: 'Manager Overview',
     kpiRow: [
-      { id: 'kpi-generic', config: { title: 'Assigned stations', value: '3' } },
-      { id: 'kpi-generic', config: { title: 'Staff on shift', value: '7' } },
-      { id: 'kpi-incidents', config: { count: 3, period: 'Open' } },
-      { id: 'kpi-generic', config: { title: 'CSAT (7d)', value: '4.6 / 5', trend: 'up' } },
+      { id: 'kpi-generic', config: { title: 'Assigned stations', value: '—' } },
+      { id: 'kpi-generic', config: { title: 'Staff on shift', value: '—' } },
+      { id: 'kpi-incidents', config: { period: 'Open' } },
+      { id: 'kpi-generic', config: { title: 'CSAT (7d)', value: '—' } },
     ],
     rows: [
       {
@@ -346,10 +339,10 @@ export const DASHBOARD_CONFIGS: Record<DashboardKey, DashboardConfig> = {
   ATTENDANT: {
     title: 'Station Attendant Dashboard',
     kpiRow: [
-      { id: 'kpi-generic', config: { title: 'Assigned station', value: 'Central Hub (ST-001)' } },
-      { id: 'kpi-generic', config: { title: 'Charges today', value: '24', trend: 'up', delta: '+4 vs yesterday' } },
-      { id: 'kpi-generic', config: { title: 'Swaps today', value: '18', trend: 'up', delta: '+2 vs yesterday' } },
-      { id: 'kpi-generic', config: { title: 'Bookings today', value: '4' } },
+      { id: 'kpi-generic', config: { title: 'Assigned station', value: '—' } },
+      { id: 'kpi-generic', config: { title: 'Charges today', value: '—' } },
+      { id: 'kpi-generic', config: { title: 'Swaps today', value: '—' } },
+      { id: 'kpi-generic', config: { title: 'Bookings today', value: '—' } },
     ],
     rows: [
       {
@@ -381,10 +374,10 @@ export const DASHBOARD_CONFIGS: Record<DashboardKey, DashboardConfig> = {
   TECHNICIAN_ORG: {
     title: 'Technician — Org',
     kpiRow: [
-      { id: 'kpi-generic', config: { title: 'Jobs open', value: '6' } },
-      { id: 'kpi-generic', config: { title: 'Due today', value: '2', trend: 'down' } },
-      { id: 'kpi-generic', config: { title: 'SLA at risk', value: '1' } },
-      { id: 'kpi-generic', config: { title: 'First-time fix', value: '86%', trend: 'up' } },
+      { id: 'kpi-generic', config: { title: 'Jobs open', value: '—' } },
+      { id: 'kpi-generic', config: { title: 'Due today', value: '—' } },
+      { id: 'kpi-generic', config: { title: 'SLA at risk', value: '—' } },
+      { id: 'kpi-generic', config: { title: 'First-time fix', value: '—' } },
     ],
     rows: [
       {
@@ -418,10 +411,10 @@ export const DASHBOARD_CONFIGS: Record<DashboardKey, DashboardConfig> = {
     // ...
     title: 'Technician — Public',
     kpiRow: [
-      { id: 'kpi-generic', config: { title: 'Available jobs', value: '12' } },
-      { id: 'kpi-generic', config: { title: 'My active', value: '1' } },
-      { id: 'kpi-generic', config: { title: 'Completed (30d)', value: '18' } },
-      { id: 'kpi-generic', config: { title: 'Rating', value: '4.8 / 5', trend: 'up' } },
+      { id: 'kpi-generic', config: { title: 'Available jobs', value: '—' } },
+      { id: 'kpi-generic', config: { title: 'My active', value: '—' } },
+      { id: 'kpi-generic', config: { title: 'Completed (30d)', value: '—' } },
+      { id: 'kpi-generic', config: { title: 'Rating', value: '—' } },
     ],
     rows: [
       {
@@ -443,9 +436,9 @@ export const DASHBOARD_CONFIGS: Record<DashboardKey, DashboardConfig> = {
   CASHIER: {
     title: 'Cashier Dashboard',
     kpiRow: [
-      { id: 'kpi-generic', config: { title: 'Transactions today', value: '42' } },
-      { id: 'kpi-generic', config: { title: 'Collections', value: '$840.00' } },
-      { id: 'kpi-generic', config: { title: 'Pending', value: '3' } },
+      { id: 'kpi-generic', config: { title: 'Transactions today', value: '—' } },
+      { id: 'kpi-generic', config: { title: 'Collections', value: '—' } },
+      { id: 'kpi-generic', config: { title: 'Pending', value: '—' } },
     ],
     rows: [
       {
@@ -504,16 +497,16 @@ function generateDashboardFromPermissions(roleKey: DashboardKey): DashboardConfi
 
   // 1. Build KPIs based on access
   if (hasPermission(role, 'stations', 'access')) {
-    kpiRow.push({ id: 'kpi-stations', config: { total: '-', online: '-', variant: 'online' } })
+    kpiRow.push({ id: 'kpi-stations', config: { variant: 'online' } })
   }
   if (hasPermission(role, 'sessions', 'access')) {
-    kpiRow.push({ id: 'kpi-sessions', config: { count: '-', period: 'Today' } })
+    kpiRow.push({ id: 'kpi-sessions', config: { period: 'Today' } })
   }
   if (hasPermission(role, 'incidents', 'access')) {
-    kpiRow.push({ id: 'kpi-incidents', config: { count: '-', period: 'Open' } })
+    kpiRow.push({ id: 'kpi-incidents', config: { period: 'Open' } })
   }
   if (hasPermission(role, 'billing', 'access') || hasPermission(role, 'earnings', 'access')) {
-    kpiRow.push({ id: 'kpi-revenue', config: { amount: '-', period: 'Today' } })
+    kpiRow.push({ id: 'kpi-revenue', config: { period: 'Today' } })
   }
 
   // 2. Build Quick Actions based on permissions

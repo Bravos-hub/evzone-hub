@@ -1,23 +1,33 @@
-import React, { useState } from 'react';
+import { useEffect, useState } from 'react'
+import { useOperatorDashboard } from '@/modules/analytics/hooks/useAnalytics'
 
 /**
  * Operator Shift Handoff Widget
  */
-// Default mock context if not provided
-const DEFAULT_NOTES = 'No checks pending.';
-
 export function ShiftHandoffWidget({ config }: { config: any }) {
-    const [notes, setNotes] = useState(config?.initialNotes || DEFAULT_NOTES);
-    const [isSaving, setIsSaving] = useState(false);
-    const [lastSaved, setLastSaved] = useState<string | null>(null);
+    const { data, isLoading } = useOperatorDashboard()
+    const [notes, setNotes] = useState('')
+    const [isSaving, setIsSaving] = useState(false)
+    const [lastSaved, setLastSaved] = useState<string | null>(null)
+    const [isDirty, setIsDirty] = useState(false)
+
+    useEffect(() => {
+        if (isDirty) return
+        const initialNotes = config?.initialNotes ?? data?.handoff?.notes ?? data?.handoffNotes ?? ''
+        setNotes(initialNotes)
+    }, [config?.initialNotes, data, isDirty])
+
+    const currentShift = data?.handoff?.currentShift ?? data?.shift?.current ?? 'Unavailable'
+    const systemStatus = data?.handoff?.systemStatus ?? data?.systemStatus ?? data?.status ?? 'Unavailable'
 
     const handleSave = () => {
-        setIsSaving(true);
+        setIsSaving(true)
         setTimeout(() => {
-            setIsSaving(false);
-            setLastSaved(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-        }, 800);
-    };
+            setIsSaving(false)
+            setLastSaved(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
+            setIsDirty(false)
+        }, 500)
+    }
 
     return (
         <div className="rounded-xl bg-panel border border-white/5 p-5 shadow-sm h-full flex flex-col">
@@ -32,11 +42,11 @@ export function ShiftHandoffWidget({ config }: { config: any }) {
                     <ul className="text-[13px] space-y-3 flex-1">
                         <li className="flex items-start gap-2.5 text-text/80">
                             <span className="w-1.5 h-1.5 rounded-full bg-accent mt-1.5 flex-shrink-0" />
-                            <span>Current Shift: 08:00–16:00</span>
+                            <span>Current Shift: {isLoading ? 'Loading...' : currentShift}</span>
                         </li>
                         <li className="flex items-start gap-2.5 text-text/80">
                             <span className="w-1.5 h-1.5 rounded-full bg-ok mt-1.5 flex-shrink-0" />
-                            <span>System Status: Operational</span>
+                            <span>System Status: {isLoading ? 'Loading...' : systemStatus}</span>
                         </li>
                     </ul>
                 </div>
@@ -44,7 +54,10 @@ export function ShiftHandoffWidget({ config }: { config: any }) {
                 <div className="flex flex-col">
                     <textarea
                         value={notes}
-                        onChange={(e) => setNotes(e.target.value)}
+                        onChange={(e) => {
+                            setNotes(e.target.value)
+                            setIsDirty(true)
+                        }}
                         placeholder="Add handoff notes for the next shift..."
                         className="flex-1 w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-[13px] text-text placeholder:text-muted focus:ring-1 focus:ring-accent focus:border-accent outline-none transition-all resize-none min-h-[120px]"
                     />
@@ -69,5 +82,5 @@ export function ShiftHandoffWidget({ config }: { config: any }) {
                 </div>
             </div>
         </div>
-    );
+    )
 }

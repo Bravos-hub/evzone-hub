@@ -5,7 +5,6 @@ import { getPermissionsForFeature } from '@/constants/permissions'
 import { DispatchModal, type DispatchFormData } from '@/modals/DispatchModal'
 import { DispatchDetailModal } from '../modals/DispatchDetailModal'
 import { useDispatches, useCreateDispatch, useAssignDispatch, useUpdateDispatch } from '@/modules/dispatch/hooks/useDispatches'
-import { useStations } from '@/modules/stations/hooks/useStations'
 import { getErrorMessage } from '@/core/api/errors'
 import { auditLogger } from '@/core/utils/auditLogger'
 
@@ -57,8 +56,6 @@ export function Dispatches() {
   const createDispatchMutation = useCreateDispatch()
   const assignDispatchMutation = useAssignDispatch()
   const updateDispatchMutation = useUpdateDispatch()
-  const { data: stationsData } = useStations()
-  const stations = stationsData || []
 
   // Map API dispatches to display format
   const dispatches = useMemo(() => {

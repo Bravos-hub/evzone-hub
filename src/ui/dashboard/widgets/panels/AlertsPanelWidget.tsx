@@ -1,6 +1,8 @@
+import { useMemo } from 'react'
 import type { WidgetProps } from '../../types'
 import { Card } from '@/ui/components/Card'
 import { MiniBar } from '../charts/MiniBarWidget'
+import { useNotifications } from '@/modules/notifications/hooks/useNotifications'
 
 export type AlertMetric = {
   label: string
@@ -16,7 +18,29 @@ export type AlertsPanelConfig = {
 }
 
 export function AlertsPanelWidget({ config }: WidgetProps<AlertsPanelConfig>) {
-  const { title = 'Alerts & Vulnerabilities', subtitle, metrics = [] } = config ?? {}
+  const { data: notifications = [] } = useNotifications()
+
+  const metrics = useMemo(() => {
+    if (config?.metrics && config.metrics.length > 0) return config.metrics
+
+    const counts = { critical: 0, high: 0, medium: 0 }
+    notifications.forEach((item: any) => {
+      const sev = String(item?.metadata?.severity || '').toLowerCase()
+      if (sev === 'critical') counts.critical += 1
+      else if (sev === 'high') counts.high += 1
+      else if (sev === 'medium') counts.medium += 1
+      else if (item.kind === 'alert') counts.high += 1
+      else if (item.kind === 'warning') counts.medium += 1
+    })
+
+    return [
+      { label: 'Critical', value: counts.critical, max: Math.max(20, counts.critical), color: '#ef4444' },
+      { label: 'High', value: counts.high, max: Math.max(20, counts.high), color: '#f59e0b' },
+      { label: 'Medium', value: counts.medium, max: Math.max(20, counts.medium), color: '#f77f00' },
+    ]
+  }, [config?.metrics, notifications])
+
+  const { title = 'Alerts & Vulnerabilities', subtitle } = config ?? {}
 
   return (
     <Card className="p-0">

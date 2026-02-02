@@ -1,5 +1,7 @@
+import { useMemo } from 'react'
 import type { WidgetProps } from '../../types'
 import { Card } from '@/ui/components/Card'
+import { useRealtimeStats } from '@/modules/analytics/hooks/useAnalytics'
 
 export type SwapWorkflowStep = {
   id: string
@@ -25,7 +27,7 @@ export type SwapPayment = {
 export type SwapWorkflowConfig = {
   title?: string
   subtitle?: string
-  steps: SwapWorkflowStep[]
+  steps?: SwapWorkflowStep[]
   returnedBattery?: SwapBattery
   chargedBattery?: SwapBattery
   payment?: SwapPayment
@@ -64,32 +66,116 @@ function formatAmount(amount: number, currency: string) {
   return `${currency} ${formatted}`
 }
 
-// Default mock data (Migration from dashboardConfigs.ts)
-const DEFAULT_FLOW = {
-  title: 'Swap workflow',
-  subtitle: 'Scan batteries, assign docks, confirm payment',
-  steps: [
-    { id: 'swap-1', label: 'Scan returned battery', detail: 'BAT-1049', status: 'done' as const },
-    { id: 'swap-2', label: 'Check power and energy', detail: 'SOC 23% - 1.2 kWh', status: 'done' as const },
-    { id: 'swap-3', label: 'Assign return dock', detail: 'Dock R-07', status: 'done' as const },
-    { id: 'swap-4', label: 'Assign charged dock', detail: 'Dock C-12', status: 'active' as const },
-    { id: 'swap-5', label: 'Scan charged battery', detail: 'Waiting for scan', status: 'pending' as const },
-    { id: 'swap-6', label: 'Calculate amount and confirm payment', detail: 'UGX 9,200', status: 'pending' as const },
-  ],
-  returnedBattery: { id: 'BAT-1049', soc: 23, energyKwh: 1.2, dock: 'R-07' },
-  chargedBattery: { id: 'BAT-1107', soc: 98, energyKwh: 4.8, dock: 'C-12' },
-  payment: { amount: 9200, currency: 'UGX', method: 'Cash', status: 'pending' as const },
+function toNumber(value: unknown): number {
+  const n = Number(value)
+  return Number.isFinite(n) ? n : 0
+}
+
+function normalizeBattery(raw: any): SwapBattery | undefined {
+  if (!raw) return undefined
+  const id = raw.id ?? raw.batteryId ?? raw.code
+  if (!id) return undefined
+  return {
+    id: String(id),
+    soc: toNumber(raw.soc ?? raw.stateOfCharge),
+    energyKwh: toNumber(raw.energyKwh ?? raw.energy ?? raw.kwh),
+    dock: raw.dock ?? raw.bay ?? raw.slot,
+  }
+}
+
+function normalizePayment(raw: any): SwapPayment | undefined {
+  if (!raw) return undefined
+  const amount = toNumber(raw.amount ?? raw.total ?? raw.cost)
+  const currency = raw.currency ?? 'USD'
+  const method = raw.method ?? raw.channel ?? 'Unknown'
+  const statusRaw = String(raw.status ?? '').toLowerCase()
+  const status: SwapPayment['status'] = statusRaw.includes('paid') || statusRaw.includes('success') ? 'paid' : 'pending'
+  return { amount, currency, method, status }
+}
+
+function buildSteps(payload: any): SwapWorkflowStep[] {
+  const steps: Array<{ id: string; label: string; detail?: string; done: boolean }> = []
+
+  const returned = normalizeBattery(payload?.returnedBattery ?? payload?.batteryIn ?? payload?.batteryReturned)
+  const charged = normalizeBattery(payload?.chargedBattery ?? payload?.batteryOut ?? payload?.batteryCharged)
+  const payment = normalizePayment(payload?.payment ?? payload?.charge ?? payload)
+
+  steps.push({
+    id: 'swap-return',
+    label: 'Scan returned battery',
+    detail: returned ? returned.id : 'Waiting for scan',
+    done: Boolean(returned),
+  })
+
+  if (returned) {
+    steps.push({
+      id: 'swap-health',
+      label: 'Check power and energy',
+      detail: `SOC ${returned.soc}% - ${returned.energyKwh} kWh`,
+      done: true,
+    })
+  }
+
+  steps.push({
+    id: 'swap-return-dock',
+    label: 'Assign return dock',
+    detail: returned?.dock ? `Dock ${returned.dock}` : 'Pending assignment',
+    done: Boolean(returned?.dock),
+  })
+
+  steps.push({
+    id: 'swap-charge-dock',
+    label: 'Assign charged dock',
+    detail: charged?.dock ? `Dock ${charged.dock}` : 'Pending assignment',
+    done: Boolean(charged?.dock),
+  })
+
+  steps.push({
+    id: 'swap-charge',
+    label: 'Scan charged battery',
+    detail: charged ? charged.id : 'Waiting for scan',
+    done: Boolean(charged),
+  })
+
+  steps.push({
+    id: 'swap-payment',
+    label: 'Confirm payment',
+    detail: payment ? formatAmount(payment.amount, payment.currency) : 'Pending payment',
+    done: Boolean(payment && payment.status === 'paid'),
+  })
+
+  let activated = false
+  return steps.map((step) => {
+    if (step.done) return { id: step.id, label: step.label, detail: step.detail, status: 'done' as const }
+    if (!activated) {
+      activated = true
+      return { id: step.id, label: step.label, detail: step.detail, status: 'active' as const }
+    }
+    return { id: step.id, label: step.label, detail: step.detail, status: 'pending' as const }
+  })
 }
 
 export function SwapWorkflowWidget({ config }: WidgetProps<SwapWorkflowConfig>) {
-  const {
-    title = 'Swap session workflow',
-    subtitle = 'Scan batteries, assign docks, confirm payment',
-    steps = [],
-    returnedBattery,
-    chargedBattery,
-    payment,
-  } = config || DEFAULT_FLOW
+  const { data: realtime } = useRealtimeStats() as any
+
+  const derived = useMemo(() => {
+    const payload = realtime?.swapWorkflow ?? realtime?.swapSession ?? realtime?.swap ?? realtime?.activeSwap ?? null
+    if (!payload) return { steps: [], returnedBattery: undefined, chargedBattery: undefined, payment: undefined }
+
+    return {
+      steps: buildSteps(payload),
+      returnedBattery: normalizeBattery(payload?.returnedBattery ?? payload?.batteryIn ?? payload?.batteryReturned),
+      chargedBattery: normalizeBattery(payload?.chargedBattery ?? payload?.batteryOut ?? payload?.batteryCharged),
+      payment: normalizePayment(payload?.payment ?? payload?.charge ?? payload),
+    }
+  }, [realtime])
+
+  const title = config?.title ?? 'Swap session workflow'
+  const subtitle = config?.subtitle ?? 'Scan batteries, assign docks, confirm payment'
+  const steps = config?.steps ?? derived.steps
+  const returnedBattery = config?.returnedBattery ?? derived.returnedBattery
+  const chargedBattery = config?.chargedBattery ?? derived.chargedBattery
+  const payment = config?.payment ?? derived.payment
 
   return (
     <Card className="p-0">
