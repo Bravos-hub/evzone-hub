@@ -4,6 +4,7 @@ import { uploadImagesToCloudinary, validateImageFile } from '@/core/utils/cloudi
 import { useMe } from '@/modules/auth/hooks/useAuth'
 import { useUsers } from '@/modules/auth/hooks/useUsers'
 import { ROLE_GROUPS, isInGroup } from '@/constants/roles'
+import { geographyService } from '@/core/api/geographyService'
 
 export type SiteForm = {
     name: string
@@ -22,6 +23,8 @@ export type SiteForm = {
     amenities: Set<string>
     tags: string[]
     ownerId?: string
+    postalCode: string
+    country: string
 }
 
 const Bolt = (props: React.SVGProps<SVGSVGElement>) => (
@@ -67,6 +70,8 @@ export function AddSite({ onSuccess, onCancel, isOnboarding = false, isFirstSite
         amenities: new Set(['Security', 'Lighting']),
         tags: [],
         ownerId: '',
+        postalCode: '',
+        country: '',
     })
 
     const [tagInput, setTagInput] = useState('')
@@ -108,20 +113,63 @@ export function AddSite({ onSuccess, onCancel, isOnboarding = false, isFirstSite
             setError('Geolocation is not supported by your browser.')
             return
         }
+        setAck('Detecting location...')
         navigator.geolocation.getCurrentPosition(
-            (position) => {
+            async (position) => {
+                const lat = position.coords.latitude
+                const lng = position.coords.longitude
+
                 setForm((prev) => ({
                     ...prev,
-                    latitude: position.coords.latitude.toFixed(6),
-                    longitude: position.coords.longitude.toFixed(6),
+                    latitude: lat.toFixed(6),
+                    longitude: lng.toFixed(6),
                 }))
-                setAck('Location detected successfully.')
+
+                try {
+                    // Magic: Reverse Geocode
+                    const magic = await geographyService.reverseGeocode(lat, lng)
+                    if (magic) {
+                        setForm(prev => ({
+                            ...prev,
+                            city: magic.city || prev.city,
+                            postalCode: magic.postalCode || prev.postalCode,
+                            country: magic.countryName || prev.country,
+                            // If address is empty, maybe set a default or leave it for user
+                        }))
+                        setAck(`Detected: ${magic.city}, ${magic.countryName}`)
+                    } else {
+                        setAck('Location coordinates found.')
+                    }
+                } catch (e) {
+                    setAck('Coordinates found, but address lookup failed.')
+                }
             },
             () => {
                 setError('Unable to retrieve your location.')
             }
         )
     }
+
+    // Auto-detect on mount (IP based) if fields are empty
+    useEffect(() => {
+        const detectIp = async () => {
+            if (form.city !== 'Kampala') return // User already edited or default changed
+            try {
+                const loc = await geographyService.detectLocation()
+                if (loc) {
+                    setForm(prev => ({
+                        ...prev,
+                        city: loc.city || prev.city,
+                        postalCode: loc.postalCode || prev.postalCode,
+                        country: loc.countryName || prev.country
+                    }))
+                }
+            } catch (e) {
+                // Silent fail
+            }
+        }
+        detectIp()
+    }, [])
 
     const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!e.target.files || e.target.files.length === 0) return
@@ -250,8 +298,24 @@ export function AddSite({ onSuccess, onCancel, isOnboarding = false, isFirstSite
                         <input value={form.name} onChange={(e) => update('name', e.target.value)} className="input bg-background" placeholder="e.g. City Mall Rooftop" />
                     </label>
                     <label className="flex flex-col gap-2">
+                        <span className="text-sm font-semibold">Postal / Zip Code</span>
+                        <div className="relative">
+                            <input
+                                value={form.postalCode}
+                                onChange={(e) => update('postalCode', e.target.value)}
+                                className="input bg-background pr-8"
+                                placeholder="e.g. 10001"
+                            />
+                            {/* Optional: Add a magnifying glass icon here for lookup */}
+                        </div>
+                    </label>
+                    <label className="flex flex-col gap-2">
                         <span className="text-sm font-semibold">City</span>
                         <input value={form.city} onChange={(e) => update('city', e.target.value)} className="input bg-background" placeholder="Kampala" />
+                    </label>
+                    <label className="flex flex-col gap-2">
+                        <span className="text-sm font-semibold">Country</span>
+                        <input value={form.country} onChange={(e) => update('country', e.target.value)} className="input bg-background" placeholder="Uganda" />
                     </label>
                     <label className="flex flex-col gap-2 sm:col-span-2">
                         <span className="text-sm font-semibold">Address</span>
