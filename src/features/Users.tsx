@@ -289,10 +289,30 @@ export function Users() {
                             Act As
                           </button>
                         )}
-                        {perms.suspend && r.status === 'Active' && r.id !== user?.id && (
-                          <button className="btn danger" onClick={() => alert(`Suspend ${r.name} (demo)`)}>
-                            Suspend
-                          </button>
+                        {perms.suspend && r.id !== user?.id && (
+                          r.status === 'Suspended' ? (
+                            <button
+                              className="btn ok"
+                              onClick={() => {
+                                if (confirm(`Activate ${r.name}?`)) {
+                                  updateUserMutation.mutate({ id: r.id, data: { status: 'Active' } })
+                                }
+                              }}
+                            >
+                              Activate
+                            </button>
+                          ) : (
+                            <button
+                              className="btn danger"
+                              onClick={() => {
+                                if (confirm(`Suspend ${r.name}?`)) {
+                                  updateUserMutation.mutate({ id: r.id, data: { status: 'Suspended' } })
+                                }
+                              }}
+                            >
+                              Suspend
+                            </button>
+                          )
                         )}
                       </div>
                     </td>
@@ -306,4 +326,3 @@ export function Users() {
     </DashboardLayout>
   )
 }
-
