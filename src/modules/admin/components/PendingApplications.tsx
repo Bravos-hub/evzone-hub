@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { usePendingApplications, useApproveApplication, useRejectApplication, type UserApplication } from '../hooks/useApplications'
 import { formatDistanceToNow } from 'date-fns'
+import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 
 export function PendingApplications() {
     const { data: applications, isLoading } = usePendingApplications()
@@ -8,89 +9,95 @@ export function PendingApplications() {
 
     if (isLoading) {
         return (
-            <div className="p-8 text-center">
-                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent"></div>
-                <p className="mt-2 text-sm text-text-secondary">Loading applications...</p>
-            </div>
+            <DashboardLayout pageTitle="Pending Applications">
+                <div className="p-8 text-center">
+                    <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent"></div>
+                    <p className="mt-2 text-sm text-text-secondary">Loading applications...</p>
+                </div>
+            </DashboardLayout>
         )
     }
 
     if (!applications || applications.length === 0) {
         return (
-            <div className="rounded-lg border border-border bg-panel p-8 text-center">
-                <svg className="mx-auto h-12 w-12 text-text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                <h3 className="mt-4 text-lg font-medium text-text">No pending applications</h3>
-                <p className="mt-2 text-sm text-text-secondary">All user registrations have been processed.</p>
-            </div>
+            <DashboardLayout pageTitle="Pending Applications">
+                <div className="rounded-lg border border-border bg-panel p-8 text-center">
+                    <svg className="mx-auto h-12 w-12 text-text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <h3 className="mt-4 text-lg font-medium text-text">No pending applications</h3>
+                    <p className="mt-2 text-sm text-text-secondary">All user registrations have been processed.</p>
+                </div>
+            </DashboardLayout>
         )
     }
 
     return (
-        <div className="space-y-4">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h2 className="text-2xl font-bold text-text">Pending Applications</h2>
-                    <p className="text-sm text-text-secondary">{applications.length} application{applications.length !== 1 ? 's' : ''} awaiting review</p>
+        <DashboardLayout pageTitle="Pending Applications">
+            <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h2 className="text-2xl font-bold text-text">Pending Applications</h2>
+                        <p className="text-sm text-text-secondary">{applications.length} application{applications.length !== 1 ? 's' : ''} awaiting review</p>
+                    </div>
                 </div>
-            </div>
 
-            <div className="grid gap-4">
-                {applications.map((app) => (
-                    <div
-                        key={app.id}
-                        className="rounded-lg border border-border bg-panel p-5 transition-colors hover:bg-panel-2 cursor-pointer"
-                        onClick={() => setSelectedApp(app)}
-                    >
-                        <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                                <div className="flex items-center gap-3">
-                                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-accent/10 text-accent font-semibold">
-                                        {app.user.name.charAt(0).toUpperCase()}
+                <div className="grid gap-4">
+                    {applications.map((app) => (
+                        <div
+                            key={app.id}
+                            className="rounded-lg border border-border bg-panel p-5 transition-colors hover:bg-panel-2 cursor-pointer"
+                            onClick={() => setSelectedApp(app)}
+                        >
+                            <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-accent/10 text-accent font-semibold">
+                                            {app.user.name.charAt(0).toUpperCase()}
+                                        </div>
+                                        <div>
+                                            <h3 className="font-semibold text-text">{app.user.name}</h3>
+                                            <p className="text-sm text-text-secondary">{app.user.email}</p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <h3 className="font-semibold text-text">{app.user.name}</h3>
-                                        <p className="text-sm text-text-secondary">{app.user.email}</p>
+
+                                    <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                                        <div>
+                                            <div className="text-xs font-medium text-text-secondary uppercase tracking-wide">Role</div>
+                                            <div className="mt-1 text-sm text-text">{app.role.replace(/_/g, ' ')}</div>
+                                        </div>
+                                        <div>
+                                            <div className="text-xs font-medium text-text-secondary uppercase tracking-wide">Company</div>
+                                            <div className="mt-1 text-sm text-text">{app.companyName || 'N/A'}</div>
+                                        </div>
+                                        <div>
+                                            <div className="text-xs font-medium text-text-secondary uppercase tracking-wide">Region</div>
+                                            <div className="mt-1 text-sm text-text">{app.region}, {app.country}</div>
+                                        </div>
                                     </div>
                                 </div>
 
-                                <div className="mt-4 grid gap-2 sm:grid-cols-3">
-                                    <div>
-                                        <div className="text-xs font-medium text-text-secondary uppercase tracking-wide">Role</div>
-                                        <div className="mt-1 text-sm text-text">{app.role.replace(/_/g, ' ')}</div>
-                                    </div>
-                                    <div>
-                                        <div className="text-xs font-medium text-text-secondary uppercase tracking-wide">Company</div>
-                                        <div className="mt-1 text-sm text-text">{app.companyName || 'N/A'}</div>
-                                    </div>
-                                    <div>
-                                        <div className="text-xs font-medium text-text-secondary uppercase tracking-wide">Region</div>
-                                        <div className="mt-1 text-sm text-text">{app.region}, {app.country}</div>
-                                    </div>
+                                <div className="flex flex-col items-end gap-2">
+                                    <span className="rounded-full bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-600">
+                                        Pending Review
+                                    </span>
+                                    <span className="text-xs text-text-secondary">
+                                        {formatDistanceToNow(new Date(app.submittedAt), { addSuffix: true })}
+                                    </span>
                                 </div>
-                            </div>
-
-                            <div className="flex flex-col items-end gap-2">
-                                <span className="rounded-full bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-600">
-                                    Pending Review
-                                </span>
-                                <span className="text-xs text-text-secondary">
-                                    {formatDistanceToNow(new Date(app.submittedAt), { addSuffix: true })}
-                                </span>
                             </div>
                         </div>
-                    </div>
-                ))}
-            </div>
+                    ))}
+                </div>
 
-            {selectedApp && (
-                <ApplicationDetailsModal
-                    application={selectedApp}
-                    onClose={() => setSelectedApp(null)}
-                />
-            )}
-        </div>
+                {selectedApp && (
+                    <ApplicationDetailsModal
+                        application={selectedApp}
+                        onClose={() => setSelectedApp(null)}
+                    />
+                )}
+            </div>
+        </DashboardLayout>
     )
 }
 

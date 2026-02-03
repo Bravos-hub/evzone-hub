@@ -51,13 +51,16 @@ export function Login() {
         return
       }
 
-      if (userStatus !== 'Active') {
+      // Admins should be allowed to login regardless of status (or if their status is unset)
+      const isAdmin = response.user.role === 'SUPER_ADMIN' || response.user.role === 'EVZONE_ADMIN';
+
+      if (userStatus !== 'Active' && !isAdmin) {
         setError('Your account is not active. Please contact support.')
         setLoading(false)
         return
       }
 
-      // User is Active - proceed with normal login
+      // User is Active or Admin - proceed with normal login
       await login({ email, password })
       navigate(returnTo)
     } catch (err: any) {
