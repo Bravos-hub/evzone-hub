@@ -287,7 +287,7 @@ export function Register() {
           capability: needsCapability ? capability : undefined,
         }))
         localStorage.setItem('registrationNextStep', '2')
-        navigate(`${PATHS.AUTH.VERIFY_EMAIL}?token=pending`)
+        navigate(PATHS.AUTH.VERIFY_EMAIL)
       } else {
         setStep(3)
       }
@@ -306,7 +306,7 @@ export function Register() {
       // Save registration state before navigating to verification
       localStorage.setItem('registrationState', JSON.stringify({ form, orgId, role, plan }))
       localStorage.setItem('registrationNextStep', '3')
-      navigate(`${PATHS.AUTH.VERIFY_EMAIL}?token=pending`)
+      navigate(PATHS.AUTH.VERIFY_EMAIL)
     } catch (err: any) {
       setError(err?.message || 'Activation failed')
     } finally {
@@ -746,7 +746,11 @@ export function VerifyEmail() {
   })
 
   useEffect(() => {
-    if (token) {
+    // Only auto-verify if we have a valid UUID token (not 'pending' or empty)
+    const isValidToken = token && token !== 'pending' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)
+
+    if (isValidToken) {
+      setIsVerifying(true)
       verifyMutation.mutate({ token })
     }
   }, [token])
