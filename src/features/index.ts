@@ -31,6 +31,7 @@ export { SupportDesk } from './SupportDesk'
 export { PrivacyRequests } from './PrivacyRequests'
 export { CRM } from './CRM'
 export { StatusPage } from './StatusPage'
+export { PendingApplications } from '@/modules/admin/components/PendingApplications'
 
 // Owner Features
 export { Tariffs } from './Tariffs'

@@ -135,6 +135,7 @@ import {
   AdvancedReporting,
   StationOperatorAssignment,
   OperatorRoleManagement,
+  PendingApplications,
 } from '@/features'
 import { Sites } from '@/modules/sites/components/Sites'
 
@@ -205,7 +206,7 @@ export function AppRoutes() {
           ═══════════════════════════════════════════════════════════════════════ */}
       <Route path={PATHS.ADMIN.USERS} element={<RequireAuth><Users /></RequireAuth>} />
       <Route path={PATHS.ADMIN.USER_DETAIL(':userId')} element={<RequireAuth><UserDetail /></RequireAuth>} />
-      <Route path={PATHS.ADMIN.APPROVALS} element={<RequireAuth><Approvals /></RequireAuth>} />
+      <Route path={PATHS.ADMIN.APPROVALS} element={<RequireAuth><PendingApplications /></RequireAuth>} />
       <Route path={PATHS.ADMIN.AUDIT_LOGS} element={<RequireAuth><AuditLogs /></RequireAuth>} />
       <Route path={PATHS.ADMIN.SYSTEM_HEALTH} element={<RequireAuth><SystemHealth /></RequireAuth>} />
       <Route path={PATHS.ADMIN.GLOBAL_CONFIG} element={<RequireAuth><GlobalConfig /></RequireAuth>} />

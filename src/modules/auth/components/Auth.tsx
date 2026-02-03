@@ -27,6 +27,37 @@ export function Login() {
     setLoading(true)
 
     try {
+      const response = await authService.login({ email, password })
+
+      // Check user status before allowing login
+      const userStatus = response.user.status
+
+      if (userStatus === 'Pending') {
+        setError('Please verify your email address before logging in.')
+        setLoading(false)
+        return
+      }
+
+      if (userStatus === 'AwaitingApproval') {
+        // User verified email but not yet approved by admin
+        await login({ email, password })
+        navigate(PATHS.AUTH.AWAITING_APPROVAL)
+        return
+      }
+
+      if (userStatus === 'Rejected') {
+        setError('Your registration application was rejected. Please contact support for more information.')
+        setLoading(false)
+        return
+      }
+
+      if (userStatus !== 'Active') {
+        setError('Your account is not active. Please contact support.')
+        setLoading(false)
+        return
+      }
+
+      // User is Active - proceed with normal login
       await login({ email, password })
       navigate(returnTo)
     } catch (err: any) {
