@@ -919,4 +919,39 @@ export interface Dispatch {
   notes?: string
 }
 
+// System Health Types
+export interface ServiceHealth {
+  name: string
+  status: 'Operational' | 'Degraded' | 'Down' | 'Maintenance'
+  responseTime: number
+  uptime?: string
+  lastCheck: string
+  metadata?: Record<string, any>
+}
 
+export interface SystemHealthResponse {
+  status: 'Operational' | 'Degraded' | 'Down'
+  uptime: number
+  services: ServiceHealth[]
+  lastIncident?: string | null
+}
+
+export interface ServiceLog {
+  timestamp: string
+  level: 'error' | 'warn' | 'info' | 'debug'
+  message: string
+  context?: string
+}
+
+export interface SystemEvent {
+  id: string
+  time: string
+  severity: 'error' | 'warning' | 'info' | 'resolved'
+  message: string
+  service?: string
+}
+
+export interface RestartServiceResponse {
+  success: boolean
+  message: string
+}

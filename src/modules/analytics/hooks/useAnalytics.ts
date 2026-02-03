@@ -3,7 +3,7 @@
  * React Query hooks for analytics
  */
 
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { analyticsService } from '../services/analyticsService'
 import { queryKeys } from '@/data/queryKeys'
 
@@ -78,5 +78,34 @@ export function useSystemHealth() {
     queryKey: ['analytics', 'system-health'],
     queryFn: () => analyticsService.getSystemHealth(),
     refetchInterval: 30000,
+  })
+}
+
+export function useSystemEvents(limit?: number) {
+  return useQuery({
+    queryKey: ['analytics', 'system-events', limit],
+    queryFn: () => analyticsService.getSystemEvents(limit),
+    refetchInterval: 30000,
+  })
+}
+
+export function useServiceLogs(serviceName: string, lines?: number) {
+  return useQuery({
+    queryKey: ['analytics', 'service-logs', serviceName, lines],
+    queryFn: () => analyticsService.getServiceLogs(serviceName, lines),
+    enabled: !!serviceName,
+  })
+}
+
+export function useRestartService() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (serviceName: string) => analyticsService.restartService(serviceName),
+    onSuccess: () => {
+      // Invalidate and refetch health data
+      queryClient.invalidateQueries({ queryKey: ['analytics', 'system-health'] })
+      queryClient.invalidateQueries({ queryKey: ['analytics', 'system-events'] })
+    },
   })
 }

@@ -1,6 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { apiClient } from '../../core/api/client';
+import { useAuthStore } from '../auth/authStore';
 
 type FeatureFlagContextType = {
     flags: Record<string, boolean>;
@@ -12,8 +13,15 @@ const FeatureFlagContext = createContext<FeatureFlagContextType | undefined>(und
 
 export function FeatureFlagProvider({ children }: { children: React.ReactNode }) {
     const [flags, setFlags] = useState<Record<string, boolean>>({});
+    const user = useAuthStore((state) => state.user);
 
     const reload = async () => {
+        // Only load feature flags if user is authenticated
+        if (!user) {
+            setFlags({});
+            return;
+        }
+
         try {
             const flags = await apiClient.get<any[]>('/feature-flags');
             // Ensure we handle both direct array response and wrapped response if API changes
@@ -26,12 +34,14 @@ export function FeatureFlagProvider({ children }: { children: React.ReactNode })
             setFlags(flagMap);
         } catch (err) {
             console.error('Failed to load feature flags', err);
+            // Set empty flags on error to prevent blocking the UI
+            setFlags({});
         }
     };
 
     useEffect(() => {
         reload();
-    }, []);
+    }, [user]); // Reload when user changes (login/logout)
 
     const isEnabled = (key: string) => !!flags[key];
 

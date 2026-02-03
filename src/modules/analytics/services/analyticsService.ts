@@ -4,7 +4,13 @@
  */
 
 import { apiClient } from '@/core/api/client'
-import type { DashboardMetrics } from '@/core/api/types'
+import type {
+  DashboardMetrics,
+  SystemHealthResponse,
+  SystemEvent,
+  ServiceLog,
+  RestartServiceResponse
+} from '@/core/api/types'
 
 export const analyticsService = {
   /**
@@ -106,7 +112,30 @@ export const analyticsService = {
   /**
    * Get system health metrics
    */
-  async getSystemHealth(): Promise<unknown> {
-    return apiClient.get<unknown>('/analytics/system-health')
+  async getSystemHealth(): Promise<SystemHealthResponse> {
+    return apiClient.get<SystemHealthResponse>('/analytics/system-health')
+  },
+
+  /**
+   * Get system events
+   */
+  async getSystemEvents(limit?: number): Promise<SystemEvent[]> {
+    const params = limit ? `?limit=${limit}` : ''
+    return apiClient.get<SystemEvent[]>(`/analytics/system-health/events${params}`)
+  },
+
+  /**
+   * Restart a service (admin only)
+   */
+  async restartService(serviceName: string): Promise<RestartServiceResponse> {
+    return apiClient.post<RestartServiceResponse>(`/analytics/services/${serviceName}/restart`)
+  },
+
+  /**
+   * Get service logs
+   */
+  async getServiceLogs(serviceName: string, lines?: number): Promise<ServiceLog[]> {
+    const params = lines ? `?lines=${lines}` : ''
+    return apiClient.get<ServiceLog[]>(`/analytics/services/${serviceName}/logs${params}`)
   },
 }

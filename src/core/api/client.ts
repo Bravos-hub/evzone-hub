@@ -22,15 +22,37 @@ class ApiClient {
 
   constructor() {
     this.baseURL = API_CONFIG.baseURL;
+    this.loadTokensFromStorage();
   }
 
   /**
-   * Store tokens if the backend provides them.
-   * Cookie-based auth remains the primary mechanism.
+   * Load tokens from localStorage on initialization
+   */
+  private loadTokensFromStorage() {
+    try {
+      const accessToken = localStorage.getItem('evzone:access_token');
+      const refreshToken = localStorage.getItem('evzone:refresh_token');
+      if (accessToken && refreshToken) {
+        this.accessToken = accessToken;
+        this.refreshToken = refreshToken;
+      }
+    } catch (error) {
+      console.error('Failed to load tokens from storage:', error);
+    }
+  }
+
+  /**
+   * Store tokens and persist to localStorage
    */
   setTokens(accessToken: string, refreshToken: string, _user?: unknown) {
     this.accessToken = accessToken;
     this.refreshToken = refreshToken;
+    try {
+      localStorage.setItem('evzone:access_token', accessToken);
+      localStorage.setItem('evzone:refresh_token', refreshToken);
+    } catch (error) {
+      console.error('Failed to persist tokens to storage:', error);
+    }
   }
 
   /**
@@ -39,10 +61,16 @@ class ApiClient {
   clearAuth() {
     this.accessToken = null;
     this.refreshToken = null;
+    try {
+      localStorage.removeItem('evzone:access_token');
+      localStorage.removeItem('evzone:refresh_token');
+    } catch (error) {
+      console.error('Failed to clear tokens from storage:', error);
+    }
   }
 
   /**
-   * Refresh access token using cookie-based refresh token
+   * Refresh access token using stored refresh token
    */
   private async refreshAccessToken(): Promise<AuthResponse | null> {
     // If already refreshing, wait for that promise
@@ -52,12 +80,16 @@ class ApiClient {
 
     this.refreshPromise = (async () => {
       try {
+        // Send refresh token in request body (fallback to cookie if available)
         const response = await fetch(`${this.baseURL}/auth/refresh`, {
           method: 'POST',
-          credentials: 'include', // Send cookies
+          credentials: 'include', // Send cookies if available
           headers: {
             'Content-Type': 'application/json',
           },
+          body: JSON.stringify({
+            refreshToken: this.refreshToken,
+          }),
         });
 
         if (!response.ok) {
@@ -65,6 +97,12 @@ class ApiClient {
         }
 
         const data = (await response.json()) as AuthResponse;
+
+        // Update stored tokens with new ones
+        if (data.accessToken && data.refreshToken) {
+          this.setTokens(data.accessToken, data.refreshToken);
+        }
+
         return data;
       } catch (error) {
         // Refresh failed, dispatch event for auth store
@@ -109,6 +147,11 @@ class ApiClient {
 
     if (!headers.has('Content-Type') && !(fetchOptions.body instanceof FormData)) {
       headers.set('Content-Type', 'application/json');
+    }
+
+    // Add Authorization header if we have an access token
+    if (!skipAuth && this.accessToken) {
+      headers.set('Authorization', `Bearer ${this.accessToken}`);
     }
 
     // Make request with credentials (cookies)

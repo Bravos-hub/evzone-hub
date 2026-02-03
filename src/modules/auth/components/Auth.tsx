@@ -749,7 +749,7 @@ export function VerifyEmail() {
     if (token) {
       verifyMutation.mutate({ token })
     }
-  }, [token, verifyMutation])
+  }, [token])
 
   // Process redirection after success
   useEffect(() => {
@@ -873,5 +873,6 @@ export function VerifyEmail() {
 }
 
 export default Login
+
 
 
