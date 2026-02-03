@@ -163,7 +163,7 @@ export function AppRoutes() {
       {/* Public routes */}
       <Route path={PATHS.HOME} element={<HomeRouter />} />
       <Route path={PATHS.AUTH.LOGIN} element={<Login />} />
-      <Route path={PATHS.AUTH.PENDING_APPROVAL} element={<AccountPending />} />
+      <Route path={PATHS.AUTH.AWAITING_APPROVAL} element={<AccountPending />} />
       <Route path="/login" element={<Navigate to={PATHS.AUTH.LOGIN} replace />} />
       <Route path={PATHS.ERRORS.UNAUTHORIZED} element={<UnauthorizedPage />} />
 

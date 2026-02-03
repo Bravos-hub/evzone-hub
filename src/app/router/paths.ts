@@ -12,7 +12,7 @@ export const PATHS = {
     FORGOT_PASSWORD: '/forgot-password',
     RESET_PASSWORD: '/auth/reset-password',
     VERIFY_EMAIL: '/verify-email',
-    PENDING_APPROVAL: '/auth/pending-approval',
+    AWAITING_APPROVAL: '/awaiting-approval',
   },
   DASHBOARD: '/dashboard',
   STATIONS: {
