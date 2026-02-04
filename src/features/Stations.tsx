@@ -116,18 +116,8 @@ export function Stations() {
     if (!stationsData) return []
     return stationsData.filter((station) => {
       // We need to pass the raw API fields that might not be in the Station type yet
-      const target = { ...station, ownerId: station.ownerId }
-      const access = canAccessStation(accessContext, target, 'ANY')
-
-      if (!access) {
-        console.log(`[Stations] Denied: ${station.name}`, {
-          stationOwner: station.ownerId,
-          user: accessContext.userId,
-          stationOrg: station.orgId,
-          userOrg: accessContext.orgId
-        })
-      }
-      return access
+      const target = { ...station, ownerId: (station as any).ownerId, orgId: (station as any).orgId }
+      return canAccessStation(accessContext, target as any, 'ANY')
     })
   }, [stationsData, accessContext])
 

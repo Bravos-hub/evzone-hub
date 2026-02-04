@@ -154,7 +154,7 @@ interface ChargerForm {
   model: string
   firmware: string
   ocppId: string
-  ocppVersion: '1.6' | '2.0.1'
+  ocppVersion: '1.6' | '2.0.1' | '2.1' | '1.6s'
   networkSSID: string
   networkPassword: string
 }
@@ -538,6 +538,8 @@ export function AddCharger() {
                     >
                       <option value="1.6">OCPP 1.6J (Standard)</option>
                       <option value="2.0.1">OCPP 2.0.1 (Advanced)</option>
+                      <option value="2.1">OCPP 2.1 (Ultra-Modern)</option>
+                      <option value="1.6s">OCPP 1.6S (SOAP/Legacy)</option>
                     </select>
                     <p className="text-xs text-subtle mt-2">Select the version supported by your hardware. This determines the connection URL.</p>
                   </label>
@@ -559,7 +561,9 @@ export function AddCharger() {
                   <label className="text-xs font-bold text-subtle uppercase tracking-wider">Central System URL (CSMS)</label>
                   <div className="flex items-center gap-2 mt-1">
                     <code className="bg-black/20 p-2 rounded flex-1 font-mono text-accent break-all">
-                      wss://ocpp.evzonecharging.com/ocpp/{form.ocppVersion}
+                      {form.ocppVersion === '1.6s'
+                        ? `https://ocpp.evzonecharging.com/ocpp/1.6s`
+                        : `wss://ocpp.evzonecharging.com/ocpp/${form.ocppVersion}`}
                     </code>
                     <button className="text-xs bg-muted hover:bg-muted-hover px-2 py-1 rounded" onClick={() => toast('Copied URL')}>Copy</button>
                   </div>
