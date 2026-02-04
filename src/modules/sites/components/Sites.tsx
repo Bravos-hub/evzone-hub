@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { uploadImageToCloudinary } from '@/core/utils/cloudinary'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { useAuthStore } from '@/core/auth/authStore'
 import { getPermissionsForFeature } from '@/constants/permissions'
@@ -192,14 +193,21 @@ export function Sites() {
 
       // 2. Upload Documents if any
       if (newSite.documentFiles.length > 0) {
+
         setAck(`Creating site... Uploading ${newSite.documentFiles.length} documents...`)
         try {
           // Upload sequentially to avoid overwhelming client/server
           for (const doc of newSite.documentFiles) {
+            // Upload to Cloudinary first (auto resource type for PDFs etc)
+            const fileUrl = await uploadImageToCloudinary(doc.file, undefined, 'auto')
+
             await uploadSiteDocument.mutateAsync({
               siteId: site.id,
-              title: doc.title,
-              file: doc.file
+              name: doc.title, // Map title to name
+              type: 'DOCUMENT',
+              fileUrl: fileUrl,
+              fileSize: doc.file.size,
+              mimeType: doc.file.type
             })
           }
         } catch (docErr) {

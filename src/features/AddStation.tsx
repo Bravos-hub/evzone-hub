@@ -1,13 +1,19 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
-import { useStations, useCreateStation } from '@/modules/stations/hooks/useStations'
+import { useCreateStation } from '@/modules/stations/hooks/useStations'
 import { getErrorMessage } from '@/core/api/errors'
 import { auditLogger } from '@/core/utils/auditLogger'
 import { PATHS } from '@/app/router/paths'
 
+import { useAuthStore } from '@/core/auth/authStore'
+import { useSites } from '@/modules/sites/hooks/useSites'
+import { useTenantSites } from '@/modules/tenants/hooks/useTenantDashboard'
+import { ROLE_GROUPS, isInGroup } from '@/constants/roles'
+
 export function AddStation() {
     const navigate = useNavigate()
+    const { user } = useAuthStore()
     const [step, setStep] = useState(0)
     const [form, setForm] = useState({
         siteId: '',
@@ -18,17 +24,34 @@ export function AddStation() {
     const [error, setError] = useState('')
     const [loading, setLoading] = useState(false)
 
-    // Fetch "Sites" (using stations as proxy for now, but filtered to "Main" stations or similar)
-    // In a real implementation, we would have a separate useSites hook.
-    // We'll reuse useStations for now and pretend they are sites if they are "Active".
-    const { data: sites, isLoading: loadingSites } = useStations()
+    // Fetch User's Sites (Owned + Leased)
+    const { data: sitesData, isLoading: loadingOwned } = useSites()
+    const { data: leasedSitesData, isLoading: loadingLeased } = useTenantSites()
+
+    const loadingSites = loadingOwned || loadingLeased
+
+    // Filter and combine sites
+    const availableSites = [
+        ...(sitesData?.filter(s => {
+            if (!user) return false
+            if (isInGroup(user.role, ROLE_GROUPS.PLATFORM_ADMINS)) return true
+            return s.ownerId === user.id
+        }) || []),
+        ...(leasedSitesData?.map(lease => ({
+            id: lease.siteId,
+            name: lease.siteName,
+            address: lease.address,
+            latitude: 0, // Lease object might not have coords, fallback
+            longitude: 0
+        })) || [])
+    ]
     const createStationMutation = useCreateStation()
 
     const handleCreate = async () => {
         setLoading(true)
         setError('')
         try {
-            const selectedSite = sites?.find(s => s.id === form.siteId)
+            const selectedSite = availableSites?.find(s => s.id === form.siteId)
             if (!selectedSite) throw new Error('Selected site not found')
 
             // Create the station
@@ -36,8 +59,8 @@ export function AddStation() {
                 code: `ST-${Date.now()}`,
                 name: form.name || `${selectedSite.name} Station`,
                 address: selectedSite.address || '',
-                latitude: selectedSite.latitude || 0,
-                longitude: selectedSite.longitude || 0,
+                latitude: Number(selectedSite.latitude) || 0,
+                longitude: Number(selectedSite.longitude) || 0,
                 type: 'CHARGING',
                 tags: ['Created via Wizard'],
             })
@@ -53,7 +76,7 @@ export function AddStation() {
     }
 
     // If no sites, redirect flow
-    if (!loadingSites && (!sites || sites.length === 0)) {
+    if (!loadingSites && availableSites.length === 0) {
         return (
             <DashboardLayout pageTitle="Add Station">
                 <div className="max-w-xl mx-auto py-12 text-center">
@@ -87,7 +110,7 @@ export function AddStation() {
                                 onChange={e => setForm({ ...form, siteId: e.target.value })}
                             >
                                 <option value="">-- Choose a Site --</option>
-                                {sites?.map(s => (
+                                {availableSites.map(s => (
                                     <option key={s.id} value={s.id}>{s.name} ({s.address})</option>
                                 ))}
                             </select>

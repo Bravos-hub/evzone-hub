@@ -19,8 +19,8 @@ export function useUploadSiteDocument() {
     const queryClient = useQueryClient()
 
     return useMutation({
-        mutationFn: ({ siteId, title, file }: { siteId: string; title: string; file: File }) =>
-            siteDocumentService.upload(siteId, title, file),
+        mutationFn: ({ siteId, ...data }: { siteId: string; name: string; type: string; fileUrl: string; fileSize?: number; mimeType?: string }) =>
+            siteDocumentService.upload(siteId, data),
         onSuccess: (_, variables) => {
             queryClient.invalidateQueries({ queryKey: queryKeys.sites.documents(variables.siteId) })
         },
