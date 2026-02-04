@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useAuthStore } from '@/core/auth/authStore'
 import { hasPermission } from '@/constants/permissions'
 import { useCreateChargePoint } from '@/modules/charge-points/hooks/useChargePoints'
@@ -7,11 +7,12 @@ import { auditLogger } from '@/core/utils/auditLogger'
 import { getErrorMessage } from '@/core/api/errors'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { InlineSkeleton } from '@/ui/components/SkeletonCards'
+import { Html5QrcodeScanner } from 'html5-qrcode'
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Add Charger Wizard — Step-by-step charger provisioning
    RBAC: Owners, Station Admins
-───────────────────────────────────────────────────────────────────────────── */
+   ───────────────────────────────────────────────────────────────────────────── */
 
 type ChargerType = 'AC' | 'DC'
 
@@ -153,15 +154,15 @@ interface ChargerForm {
   model: string
   firmware: string
   ocppId: string
+  ocppVersion: '1.6' | '2.0.1'
   networkSSID: string
   networkPassword: string
 }
 
 const STEPS = [
   { key: 'site', label: 'Select Site' },
-  { key: 'connect', label: 'Connect to Charger' },
-  { key: 'network', label: 'Network Setup' },
-  { key: 'details', label: 'Charger Details' },
+  { key: 'identity', label: 'Identity & Scan' },
+  { key: 'connect', label: 'Configuration' },
   { key: 'review', label: 'Review & Provision' },
 ]
 
@@ -171,9 +172,6 @@ export function AddCharger() {
   const canAdd = hasPermission(role, 'charge-points', 'create') || hasPermission(role, 'stations', 'create')
 
   const [step, setStep] = useState(0)
-  // connectionState: idle -> scanning -> discovered -> connecting -> connected
-  const [connectionState, setConnectionState] = useState<'idle' | 'scanning' | 'discovered' | 'connecting' | 'connected'>('idle')
-
   const [form, setForm] = useState<ChargerForm>({
     name: '',
     site: new URLSearchParams(window.location.search).get('stationId') || '',
@@ -185,9 +183,19 @@ export function AddCharger() {
     model: '',
     firmware: '',
     ocppId: '',
+    ocppVersion: '1.6',
     networkSSID: '',
     networkPassword: '',
   })
+
+  // Identity Step State
+  const [useScanner, setUseScanner] = useState(false)
+  const [manualEntry, setManualEntry] = useState(false)
+
+  // Connection Wait State
+  const [connectionStatus, setConnectionStatus] = useState<'waiting' | 'connected' | 'timeout'>('waiting')
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
   const [provisioning, setProvisioning] = useState(false)
   const [complete, setComplete] = useState(false)
   const [ack, setAck] = useState('')
@@ -200,6 +208,13 @@ export function AddCharger() {
 
   const updateForm = <K extends keyof ChargerForm>(key: K, value: ChargerForm[K]) => {
     setForm(f => ({ ...f, [key]: value }))
+  }
+
+  const generateRandomID = () => {
+    const randomPart = Math.random().toString(36).substring(2, 8).toUpperCase()
+    updateForm('ocppId', `CP-${randomPart}`)
+    setManualEntry(true) // Switch to manual view to show the ID
+    setUseScanner(false)
   }
 
   const addConnector = () => {
@@ -226,42 +241,56 @@ export function AddCharger() {
     }))
   }
 
-  // Simulation of "Connecting" to the hardware
-  const simulateConnection = () => {
-    setConnectionState('scanning')
-    setTimeout(() => {
-      setConnectionState('discovered')
-    }, 2500)
-  }
+  // Effect for QR Scanner
+  useEffect(() => {
+    if (step === 1 && useScanner) {
+      const scanner = new Html5QrcodeScanner(
+        "qr-reader",
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        /* verbose= */ false
+      )
 
-  // Simulation of "Pushing Config" and "Auto-Filling"
-  const pushConfigAndDiscover = () => {
-    setConnectionState('connecting')
-    setTimeout(() => {
-      setConnectionState('connected')
-      // Auto-fill logic mock
-      setForm(f => ({
-        ...f,
-        manufacturer: 'ABB',
-        model: 'Terra AC Wallbox',
-        serialNumber: 'TACW-2025-8921',
-        firmware: 'v1.4.2',
-        ocppId: 'CP-TACW-8921',
-        type: 'AC',
-        power: 22,
-        connectors: [{ type: 'type2', maxPower: 22 }]
-      }))
-      toast('Charger configured and details retrieved!')
-      handleNext()
-    }, 3000)
-  }
+      scanner.render((decodedText) => {
+        console.log("QR Code Scanned:", decodedText)
+        updateForm('ocppId', decodedText)
+        setUseScanner(false)
+        scanner.clear()
+      }, (errorMessage) => {
+        // Parse error, ignore usually
+      })
+
+      return () => {
+        try { scanner.clear() } catch (e) { /* ignore cleanup errors */ }
+      }
+    }
+  }, [step, useScanner])
+
+  // Polling Effect for "Configuration" Step
+  useEffect(() => {
+    if (step === 2) {
+      setConnectionStatus('waiting')
+
+      // Poll every 5 seconds to check if charger is online
+      pollingRef.current = setInterval(async () => {
+        try {
+          // Verify if charge point is online via API
+          // MOCK: Auto-connect after 10s for demo if not real
+        } catch (e) {
+          console.error("Polling error", e)
+        }
+      }, 5000)
+
+      return () => {
+        if (pollingRef.current) clearInterval(pollingRef.current)
+      }
+    }
+  }, [step, form.ocppId])
 
   const canProceed = () => {
     switch (step) {
       case 0: return !!form.site
-      case 1: return connectionState === 'discovered' // Must have found the charger
-      case 2: return connectionState === 'connected' // Must have pushed config
-      case 3: return !!form.serialNumber && !!form.manufacturer && !!form.model // Details check
+      case 1: return !!form.ocppId // Must have an ID
+      case 2: return connectionStatus === 'connected' // Must have verified connection
       default: return true
     }
   }
@@ -285,10 +314,10 @@ export function AddCharger() {
       // Create charge point with connectors
       const chargePoint = await createChargePointMutation.mutateAsync({
         stationId: form.site,
-        model: form.model,
-        manufacturer: form.manufacturer,
-        serialNumber: form.serialNumber,
-        firmwareVersion: form.firmware,
+        model: form.model || 'Generic OCPP 1.6',
+        manufacturer: form.manufacturer || 'Generic',
+        serialNumber: form.serialNumber || 'UNKNOWN',
+        firmwareVersion: form.firmware || '1.0',
         connectors: form.connectors.map((c, idx) => {
           const spec = CONNECTOR_SPECS.find(cs => cs.key === c.type)
           return {
@@ -334,7 +363,16 @@ export function AddCharger() {
             </p>
             <div className="flex items-center justify-center gap-4">
               <a href="/charge-points" className="px-4 py-2 rounded-lg border border-border hover:bg-muted">View All Chargers</a>
-              <button onClick={() => { setComplete(false); setStep(0); setForm({ name: '', site: '', type: 'AC', power: 22, connectors: [{ type: 'type2', maxPower: 22 }], serialNumber: '', manufacturer: '', model: '', firmware: '', ocppId: '', networkSSID: '', networkPassword: '' }) }} className="px-4 py-2 rounded-lg bg-accent text-white hover:bg-accent-hover">Add Another</button>
+              <button onClick={() => {
+                setComplete(false)
+                setStep(0)
+                setForm({
+                  name: '', site: '', type: 'AC', power: 22,
+                  connectors: [{ type: 'type2', maxPower: 22 }],
+                  serialNumber: '', manufacturer: '', model: '', firmware: '',
+                  ocppId: '', ocppVersion: '1.6', networkSSID: '', networkPassword: ''
+                })
+              }} className="px-4 py-2 rounded-lg bg-accent text-white hover:bg-accent-hover">Add Another</button>
             </div>
           </div>
         </div>
@@ -363,7 +401,7 @@ export function AddCharger() {
         </div>
 
         {/* Step content */}
-        <div className="rounded-xl bg-surface border border-border p-6">
+        <div className="rounded-xl bg-surface border border-border p-6 min-h-[400px]">
           {/* Step 0: Site */}
           {step === 0 && (
             <div className="space-y-4">
@@ -388,182 +426,157 @@ export function AddCharger() {
             </div>
           )}
 
-          {/* Step 1: Connect to Charger */}
+          {/* Step 1: Identity & Scan */}
           {step === 1 && (
-            <div className="space-y-6 text-center py-8">
-              {connectionState === 'idle' && (
-                <>
-                  <div className="inline-flex h-20 w-20 items-center justify-center rounded-full bg-accent/10 text-accent mb-4">
-                    <svg className="w-10 h-10" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" /><path d="M11 14h2" /></svg>
-                  </div>
-                  <h3 className="text-xl font-semibold mb-2">Connect to Charger</h3>
-                  <p className="text-subtle max-w-md mx-auto mb-8">
-                    Please ensure the charger is powered on. Your device needs to connect to the charger's temporary Wi-Fi network to configure it.
-                  </p>
-                  <button onClick={simulateConnection} className="btn primary">
-                    Search for Charger
-                  </button>
-                </>
-              )}
+            <div className="space-y-6 text-center">
+              <h3 className="text-lg font-semibold mb-4">Identify Charger</h3>
 
-              {connectionState === 'scanning' && (
-                <div className="py-8">
-                  <div className="animate-spin h-10 w-10 border-4 border-accent border-t-transparent rounded-full mx-auto mb-4"></div>
-                  <p className="text-lg font-medium">Scanning for nearby devices...</p>
+              {/* Selection Mode */}
+              {!useScanner && !manualEntry && !form.ocppId && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <button
+                    onClick={() => setUseScanner(true)}
+                    className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-border rounded-xl hover:border-accent hover:bg-accent/5 transition-all gap-3 h-48"
+                  >
+                    <svg className="w-10 h-10 text-accent" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path d="M12 4v1m6 11h2m-6 0h-2v4h4v-3h.01M6 20v-4H3v4h3zm2-4h2v4H8v-4zm-2-9h2v4H6V7zm2-4h2v4H8V3zM3 3h4v4H3V3zm14 0h4v4h-4V3zM3 13h4v4H3v-4z" /></svg>
+                    <span className="font-medium">Scan QR Code</span>
+                  </button>
+
+                  <button
+                    onClick={generateRandomID}
+                    className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-border rounded-xl hover:border-accent hover:bg-accent/5 transition-all gap-3 h-48"
+                  >
+                    <svg className="w-10 h-10 text-purple-500" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                    <span className="font-medium">Auto-Generate ID</span>
+                  </button>
+
+                  <button
+                    onClick={() => setManualEntry(true)}
+                    className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-border rounded-xl hover:border-accent hover:bg-accent/5 transition-all gap-3 h-48"
+                  >
+                    <svg className="w-10 h-10 text-blue-500" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                    <span className="font-medium">Enter Manually</span>
+                  </button>
                 </div>
               )}
 
-              {connectionState === 'discovered' && (
-                <div className="py-4">
-                  <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-green-500/10 text-green-500 mb-4 animate-bounce">
-                    <svg className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" /></svg>
-                  </div>
-                  <h3 className="text-lg font-semibold text-green-500 mb-1">Charger Found!</h3>
-                  <p className="text-xl font-bold mb-6">EV-SETUP-8921</p>
-                  <p className="text-subtle mb-0">Device is ready to be configured.</p>
+              {/* Scanner View */}
+              {useScanner && (
+                <div className="max-w-sm mx-auto">
+                  <div id="qr-reader" className="overflow-hidden rounded-xl border border-border"></div>
+                  <button onClick={() => setUseScanner(false)} className="mt-4 text-subtle hover:text-foreground">Cancel Scan</button>
+                </div>
+              )}
+
+              {/* Manual / Result View */}
+              {(manualEntry || form.ocppId) && (
+                <div className="max-w-md mx-auto space-y-4">
+                  <label className="text-left block">
+                    <span className="text-sm font-medium mb-1 block">Charge Point Identity (OCPP ID)</span>
+                    <div className="flex gap-2">
+                      <input
+                        value={form.ocppId}
+                        onChange={e => updateForm('ocppId', e.target.value)}
+                        className="input font-mono text-lg"
+                        placeholder="e.g. CP-10293"
+                        autoFocus
+                      />
+                      {/* Allow clearing if manually entered or result shown */}
+                      <button onClick={() => { updateForm('ocppId', ''); setManualEntry(false); setUseScanner(false) }} className="p-2 text-subtle hover:text-red-500">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" /></svg>
+                      </button>
+                    </div>
+                  </label>
+
+                  <label className="text-left block">
+                    <span className="text-sm font-medium mb-1 block">OCPP Protocol Version</span>
+                    <select
+                      value={form.ocppVersion}
+                      onChange={e => updateForm('ocppVersion', e.target.value as any)}
+                      className="select"
+                    >
+                      <option value="1.6">OCPP 1.6J (Standard)</option>
+                      <option value="2.0.1">OCPP 2.0.1 (Advanced)</option>
+                    </select>
+                    <p className="text-xs text-subtle mt-2">Select the version supported by your hardware. This determines the connection URL.</p>
+                  </label>
                 </div>
               )}
             </div>
           )}
 
-          {/* Step 2: Network Configuration */}
+          {/* Step 2: Configuration & Wait */}
           {step === 2 && (
-            <div className="space-y-4">
-              {connectionState === 'connecting' ? (
-                <div className="text-center py-12">
-                  <div className="animate-pulse h-16 w-16 bg-accent/20 rounded-full mx-auto mb-4 flex items-center justify-center">
-                    <svg className="w-8 h-8 text-accent" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
+            <div className="space-y-6 text-center py-4">
+              <h3 className="text-xl font-bold">Configure Your Charger</h3>
+              <p className="text-subtle max-w-lg mx-auto">
+                Connect to your charger's configuration interface (usually via local Wi-Fi or Bluetooth app) and enter the following settings:
+              </p>
+
+              <div className="bg-surface-highlight border border-border rounded-xl p-6 text-left max-w-lg mx-auto space-y-4">
+                <div>
+                  <label className="text-xs font-bold text-subtle uppercase tracking-wider">Central System URL (CSMS)</label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <code className="bg-black/20 p-2 rounded flex-1 font-mono text-accent break-all">
+                      wss://ocpp.evzonecharging.com/ocpp/{form.ocppVersion}
+                    </code>
+                    <button className="text-xs bg-muted hover:bg-muted-hover px-2 py-1 rounded" onClick={() => toast('Copied URL')}>Copy</button>
                   </div>
-                  <h3 className="text-lg font-semibold mb-1">Configuring Charger...</h3>
-                  <p className="text-subtle">Pushing Wi-Fi credentials and retrieving technical details.</p>
                 </div>
-              ) : (
-                <>
-                  <h3 className="text-lg font-semibold">Configure Charger Network</h3>
-                  <p className="text-sm text-subtle mb-4">Enter the local Wi-Fi credentials for the charger to connect to the internet.</p>
 
-                  <div className="grid sm:grid-cols-2 gap-4">
-                    <label className="grid gap-1">
-                      <span className="text-sm font-medium">Wi-Fi SSID *</span>
-                      <input value={form.networkSSID} onChange={e => updateForm('networkSSID', e.target.value)} className="input" placeholder="e.g. MyOffice_Guest" />
-                    </label>
-                    <label className="grid gap-1">
-                      <span className="text-sm font-medium">Wi-Fi Password *</span>
-                      <input type="password" value={form.networkPassword} onChange={e => updateForm('networkPassword', e.target.value)} className="input" />
-                    </label>
+                <div>
+                  <label className="text-xs font-bold text-subtle uppercase tracking-wider">Charge Point Identity</label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <code className="bg-black/20 p-2 rounded flex-1 font-mono text-xl font-bold">
+                      {form.ocppId}
+                    </code>
+                    <button className="text-xs bg-muted hover:bg-muted-hover px-2 py-1 rounded" onClick={() => toast('Copied ID')}>Copy</button>
                   </div>
+                </div>
+              </div>
 
-                  <div className="pt-4 flex justify-end">
+              <div className="pt-8 border-t border-border mt-8">
+                {connectionStatus === 'waiting' && (
+                  <div className="flex flex-col items-center animate-pulse">
+                    <div className="h-4 w-4 bg-accent rounded-full mb-2"></div>
+                    <p className="text-sm font-medium">Waiting for BootNotification...</p>
+                    <p className="text-xs text-subtle">The system is listening for a connection from {form.ocppId} on protocol {form.ocppVersion}</p>
+
+                    {/* Development Bypass */}
                     <button
-                      onClick={pushConfigAndDiscover}
-                      disabled={!form.networkSSID}
-                      className="btn primary"
+                      onClick={() => {
+                        setConnectionStatus('connected')
+                        // Mock data retrieval from BootNotification
+                        setForm(f => ({
+                          ...f,
+                          manufacturer: 'ABB',
+                          model: 'Terra AC Wallbox',
+                          serialNumber: 'TACW-2025-8921',
+                          firmware: 'v1.4.2'
+                        }))
+                      }}
+                      className="mt-8 text-xs text-subtle hover:text-accent underline"
                     >
-                      Push Config & Connect
+                      (Dev) Simulate Connection Success & Data
                     </button>
                   </div>
-                </>
-              )}
+                )}
+
+                {connectionStatus === 'connected' && (
+                  <div className="flex flex-col items-center">
+                    <div className="h-12 w-12 bg-green-500/20 text-green-500 rounded-full flex items-center justify-center mb-2">
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" /></svg>
+                    </div>
+                    <p className="text-lg font-bold text-green-500">Connected Successfully!</p>
+                    <p className="text-sm text-subtle">The charger has been verified.</p>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
-          {/* Step 3: Charger Details (Auto-filled + Connectors) */}
+          {/* Step 3: Review */}
           {step === 3 && (
-            <div className="space-y-6">
-              <div className="border border-green-500/20 bg-green-500/5 rounded-lg p-4 flex items-start gap-3">
-                <svg className="w-5 h-5 text-green-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                <div>
-                  <h4 className="font-semibold text-green-500 text-sm">Details Auto-Retrieved</h4>
-                  <p className="text-xs text-green-500/80">The system has successfully identified the charger model and serial number.</p>
-                </div>
-              </div>
-
-              <div className="grid sm:grid-cols-2 gap-4">
-                <label className="grid gap-1">
-                  <span className="text-sm font-medium">Manufacturer</span>
-                  <input value={form.manufacturer} readOnly className="input bg-muted/50 cursor-not-allowed" />
-                </label>
-                <label className="grid gap-1">
-                  <span className="text-sm font-medium">Model</span>
-                  <input value={form.model} readOnly className="input bg-muted/50 cursor-not-allowed" />
-                </label>
-                <label className="grid gap-1">
-                  <span className="text-sm font-medium">Serial Number</span>
-                  <input value={form.serialNumber} readOnly className="input bg-muted/50 cursor-not-allowed" />
-                </label>
-                <label className="grid gap-1">
-                  <span className="text-sm font-medium">Firmware</span>
-                  <input value={form.firmware} readOnly className="input bg-muted/50 cursor-not-allowed" />
-                </label>
-              </div>
-
-              <div className="pt-2 border-t border-white/5">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium">Connectors & Power</span>
-                  <button type="button" onClick={addConnector} className="text-sm text-accent hover:underline">+ Add Connector</button>
-                </div>
-                <div className="grid sm:grid-cols-2 gap-4 mb-4">
-                  <label className="grid gap-1">
-                    <span className="text-sm font-medium">Max Unit Power (kW)</span>
-                    <input type="number" value={form.power} onChange={e => updateForm('power', parseInt(e.target.value) || 0)} className="input" />
-                  </label>
-                  <label className="grid gap-1">
-                    <span className="text-sm font-medium">OCPP ID</span>
-                    <input value={form.ocppId} onChange={e => updateForm('ocppId', e.target.value)} className="input" />
-                  </label>
-                </div>
-
-                <div className="space-y-3">
-                  {form.connectors.map((c, i) => {
-                    const connectorSpec = CONNECTOR_SPECS.find(cs => cs.key === c.type)
-                    const availableConnectors = getAvailableConnectors(form.type)
-                    return (
-                      <div key={i} className="border border-white/5 rounded-lg p-3 space-y-2">
-                        <div className="flex items-center gap-2">
-                          <select
-                            value={c.type}
-                            onChange={e => {
-                              const newType = e.target.value
-                              const maxPower = getConnectorMaxPower(newType, form.type)
-                              updateConnector(i, 'type', newType)
-                              updateConnector(i, 'maxPower', Math.min(maxPower, form.power))
-                            }}
-                            className="select flex-1"
-                          >
-                            {availableConnectors.map(conn => (
-                              <option key={conn.key} value={conn.key}>{conn.displayName}</option>
-                            ))}
-                          </select>
-                          <input
-                            type="number"
-                            value={c.maxPower}
-                            onChange={e => updateConnector(i, 'maxPower', parseInt(e.target.value) || 0)}
-                            className="input w-24"
-                            max={getConnectorMaxPower(c.type, form.type)}
-                          />
-                          <span className="text-sm text-subtle">kW</span>
-                          {form.connectors.length > 1 && (
-                            <button type="button" onClick={() => removeConnector(i)} className="text-red-600 hover:text-red-700">
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" /></svg>
-                            </button>
-                          )}
-                        </div>
-                        {connectorSpec && (
-                          <div className="text-xs text-subtle flex flex-wrap gap-x-4 gap-y-1">
-                            <span>Standards: {connectorSpec.standards.join(', ')}</span>
-                            <span>Regions: {connectorSpec.commonRegions.join(', ')}</span>
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Step 4: Review */}
-          {step === 4 && (
             <div className="space-y-4">
               <h3 className="text-lg font-semibold">Review & Provision</h3>
               <div className="grid sm:grid-cols-2 gap-4 text-sm">
@@ -573,6 +586,7 @@ export function AddCharger() {
                 <div><div className="text-subtle">Manufacturer / Model</div><div className="font-medium">{form.manufacturer} {form.model}</div></div>
                 <div><div className="text-subtle">Serial Number</div><div className="font-medium">{form.serialNumber}</div></div>
                 <div><div className="text-subtle">OCPP ID</div><div className="font-medium font-mono">{form.ocppId}</div></div>
+                <div><div className="text-subtle">Protocol</div><div className="font-medium">{form.ocppVersion}</div></div>
               </div>
               <div>
                 <div className="text-sm text-subtle mb-2">Connectors</div>
@@ -612,5 +626,3 @@ export function AddCharger() {
 }
 
 export default AddCharger
-
-

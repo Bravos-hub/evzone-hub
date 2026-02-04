@@ -21,6 +21,7 @@
     "d3-zoom": "^3.0.0",
     "date-fns": "^4.1.0",
     "docx-preview": "^0.3.7",
+    "html5-qrcode": "^2.3.8",
     "jspdf": "^4.0.0",
     "lottie-react": "^2.4.1",
     "maplibre-gl": "^5.17.0",
