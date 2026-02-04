@@ -53,6 +53,7 @@ export interface AuthResponse {
     organizationId?: string
     assignedStations?: string[]
     ownerCapability?: OwnerCapability
+    status?: 'Active' | 'Pending' | 'Suspended' | 'Inactive' | 'Invited' | 'AwaitingApproval' | 'Rejected'
   }
 }
 
@@ -143,6 +144,7 @@ export interface CreateStationRequest {
   capacity?: number
   parkingBays?: number
   tags?: string[]
+  siteId?: string
 }
 
 export interface UpdateStationRequest {
@@ -526,8 +528,11 @@ export interface SiteDocument {
 
 export interface UploadSiteDocumentRequest {
   siteId: string
-  title: string
-  file: File
+  name: string
+  type: string
+  fileUrl: string
+  fileSize?: number
+  mimeType?: string
 }
 
 export interface StationStats {

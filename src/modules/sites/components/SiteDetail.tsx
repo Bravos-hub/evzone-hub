@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { PATHS } from '@/app/router/paths'
 import { useSite, useUpdateSite, useSiteStats } from '@/modules/sites/hooks/useSites'
-import { getOptimizedCloudinaryUrl } from '@/core/utils/cloudinary'
+import { getOptimizedCloudinaryUrl, uploadImageToCloudinary } from '@/core/utils/cloudinary'
 import { useChargePointsByStation } from '@/modules/charge-points/hooks/useChargePoints'
 import { useMe } from '@/modules/auth/hooks/useAuth'
 import { useTenants } from '@/modules/applications/hooks/useApplications'
@@ -63,15 +63,24 @@ export function SiteDetail() {
         const file = fileInputRef.current?.files?.[0]
         if (!file || !uploadTitle) return
 
-        await uploadDocument.mutateAsync({
-            siteId: id!,
-            title: uploadTitle,
-            file
-        })
+        try {
+            const fileUrl = await uploadImageToCloudinary(file, undefined, 'auto')
 
-        setShowUploadDialog(false)
-        setUploadTitle('')
-        if (fileInputRef.current) fileInputRef.current.value = ''
+            await uploadDocument.mutateAsync({
+                siteId: id!,
+                name: uploadTitle,
+                type: 'DOCUMENT',
+                fileUrl,
+                fileSize: file.size,
+                mimeType: file.type
+            })
+
+            setShowUploadDialog(false)
+            setUploadTitle('')
+            if (fileInputRef.current) fileInputRef.current.value = ''
+        } catch (error) {
+            console.error('Upload failed:', error)
+        }
     }
 
     if (loadingSite || loadingStats || loadingCP || loadingTenants || loadingUser) {

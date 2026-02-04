@@ -10,7 +10,7 @@ export function RequireAuth({ children }: PropsWithChildren) {
 
   // Block access to dashboard/protected routes if application is still pending review
   if (user.status === 'Pending') {
-    return <Navigate to={PATHS.AUTH.PENDING_APPROVAL} replace />
+    return <Navigate to={PATHS.AUTH.AWAITING_APPROVAL} replace />
   }
 
   return <>{children}</>

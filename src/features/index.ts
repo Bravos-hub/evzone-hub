@@ -48,7 +48,7 @@ export { AdvancedReporting } from './AdvancedReporting'
 
 // Site Owner Features
 
-export { SiteDetail } from './SiteDetail'
+
 export { AddSite } from './AddSite'
 export { OwnerSteps } from './onboarding/OwnerSteps'
 export { OperatorSteps } from './onboarding/OperatorSteps'

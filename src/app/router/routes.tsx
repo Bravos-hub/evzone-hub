@@ -124,7 +124,7 @@ import {
   ManualReserve,
   OperatorAssignments,
   OperatorAvailability,
-  SiteDetail,
+
   ChargePointDetail,
   SiteApplicationForm,
   AddSite,
@@ -139,6 +139,7 @@ import {
   PendingApplications,
 } from '@/features'
 import { Sites } from '@/modules/sites/components/Sites'
+import { SiteDetail } from '@/modules/sites/components/SiteDetail'
 
 /**
  * Application Routes - Unified flat structure

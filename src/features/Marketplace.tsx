@@ -4,7 +4,7 @@ import { useAuthStore } from '@/core/auth/authStore'
 import { getPermissionsForFeature } from '@/constants/permissions'
 import { useSites } from '@/modules/sites/hooks/useSites'
 import { SiteApplicationForm } from '@/features/SiteApplicationForm'
-import { SiteDetail } from '@/features/SiteDetail'
+
 import { TextSkeleton } from '@/ui/components/SkeletonCards'
 
 type ListingKind = 'Operators' | 'Sites' | 'Technicians'

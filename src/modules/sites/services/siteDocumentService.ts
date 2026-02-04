@@ -17,6 +17,9 @@ export const siteDocumentService = {
     /**
      * Upload a document to a site
      */
+    /**
+     * Upload a document to a site
+     */
     async upload(siteId: string, data: { name: string; type: string; fileUrl: string; fileSize?: number; mimeType?: string }): Promise<SiteDocument> {
         return apiClient.post<SiteDocument>(`/sites/${siteId}/documents`, data)
     },
