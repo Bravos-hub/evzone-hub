@@ -5,6 +5,7 @@ import { useMe } from '@/modules/auth/hooks/useAuth'
 import { useUsers } from '@/modules/auth/hooks/useUsers'
 import { ROLE_GROUPS, isInGroup } from '@/constants/roles'
 import { geographyService } from '@/core/api/geographyService'
+import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 
 export type SiteForm = {
     name: string
@@ -266,8 +267,8 @@ export function AddSite({ onSuccess, onCancel, isOnboarding = false, isFirstSite
             ? 'bg-surface min-h-full w-full p-6 sm:p-8 lg:p-10'
             : 'bg-surface rounded-2xl border border-border p-8 shadow-lg'
 
-    return (
-        <div className={wrapperClassName}>
+    const formContent = (
+        <>
             <div className="mb-6">
                 <div className="flex items-center gap-3 mb-2">
                     <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-accent text-white shadow-sm">
@@ -306,7 +307,6 @@ export function AddSite({ onSuccess, onCancel, isOnboarding = false, isFirstSite
                                 className="input bg-background pr-8"
                                 placeholder="e.g. 10001"
                             />
-                            {/* Optional: Add a magnifying glass icon here for lookup */}
                         </div>
                     </label>
                     <label className="flex flex-col gap-2">
@@ -343,8 +343,6 @@ export function AddSite({ onSuccess, onCancel, isOnboarding = false, isFirstSite
                                 ))}
                             </select>
                         )}
-                        {isSiteOwner && <p className="text-[10px] text-muted mt-1">Site Owners create commercial sites for station operators.</p>}
-                        {isStationOwner && <p className="text-[10px] text-muted mt-1">Personal sites are for your own station deployment.</p>}
                     </label>
                     {form.purpose === 'Commercial' && (
                         <>
@@ -387,7 +385,6 @@ export function AddSite({ onSuccess, onCancel, isOnboarding = false, isFirstSite
                                     </option>
                                 ))}
                             </select>
-                            <p className="text-[10px] text-muted">Assign this site to a Station Owner or Site Owner.</p>
                         </label>
                     )}
                 </div>
@@ -429,21 +426,6 @@ export function AddSite({ onSuccess, onCancel, isOnboarding = false, isFirstSite
                         </label>
                     </div>
 
-                    {uploadProgress && (
-                        <div className="space-y-2">
-                            <div className="flex justify-between text-xs text-muted">
-                                <span>Uploading photo {uploadProgress.current} of {uploadProgress.total}</span>
-                                <span>{uploadProgress.percent}%</span>
-                            </div>
-                            <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
-                                <div
-                                    className="bg-accent h-full transition-all duration-300"
-                                    style={{ width: `${uploadProgress.percent}%` }}
-                                />
-                            </div>
-                        </div>
-                    )}
-
                     {form.photoUrls.length > 0 && (
                         <div className="grid grid-cols-4 gap-2">
                             {form.photoUrls.map((url, i) => (
@@ -478,85 +460,33 @@ export function AddSite({ onSuccess, onCancel, isOnboarding = false, isFirstSite
                                     }`}
                             >
                                 <input type="checkbox" className="sr-only" checked={form.amenities.has(a)} onChange={() => toggleAmenity(a)} />
-                                {form.amenities.has(a) && <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>}
                                 {a}
                             </label>
                         ))}
                     </div>
                 </fieldset>
 
-                {/* Tags */}
-                <div className="space-y-2">
-                    <label className="block text-sm font-semibold">Tags</label>
-                    <div className="flex flex-wrap gap-2 mb-2">
-                        {form.tags.map((tag, idx) => (
-                            <span key={idx} className="chip flex items-center gap-1">
-                                {tag}
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setForm(prev => ({ ...prev, tags: prev.tags.filter((_, i) => i !== idx) }))
-                                    }}
-                                    className="ml-1 hover:text-danger"
-                                >
-                                    ×
-                                </button>
-                            </span>
-                        ))}
-                    </div>
-                    <div className="flex gap-2">
-                        <input
-                            type="text"
-                            value={tagInput}
-                            onChange={(e) => setTagInput(e.target.value)}
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter' && tagInput.trim()) {
-                                    e.preventDefault()
-                                    if (!form.tags.includes(tagInput.trim())) {
-                                        setForm(prev => ({ ...prev, tags: [...prev.tags, tagInput.trim()] }))
-                                    }
-                                    setTagInput('')
-                                }
-                            }}
-                            placeholder="Type tag and press Enter"
-                            className="input flex-1"
-                        />
-                        <select
-                            value=""
-                            onChange={(e) => {
-                                if (e.target.value && !form.tags.includes(e.target.value)) {
-                                    setForm(prev => ({ ...prev, tags: [...prev.tags, e.target.value] }))
-                                }
-                                e.target.value = ''
-                            }}
-                            className="select"
-                        >
-                            <option value="">Quick add...</option>
-                            {COMMON_TAGS.filter((t: string) => !form.tags.includes(t)).map((tag: string) => (
-                                <option key={tag} value={tag}>{tag}</option>
-                            ))}
-                        </select>
-                    </div>
-                </div>
-
                 <div className="pt-6 border-t border-border flex items-center justify-between gap-4">
-                    {isOnboarding ? (
-                        <Link to="/onboarding/site-owner" className="flex-1 text-center py-3 rounded-xl border-2 border-border font-bold hover:bg-muted transition-all">
-                            Back
-                        </Link>
-                    ) : (
-                        onCancel && (
-                            <button type="button" onClick={onCancel} className="flex-1 py-3 rounded-xl border-2 border-border font-bold hover:bg-muted transition-all">
-                                Cancel
-                            </button>
-                        )
+                    {onCancel && (
+                        <button type="button" onClick={onCancel} className="flex-1 py-3 rounded-xl border-2 border-border font-bold hover:bg-muted transition-all">
+                            Cancel
+                        </button>
                     )}
                     <button type="submit" className="flex-[2] py-3 rounded-xl bg-accent text-white font-bold hover:bg-accent/90 transition-all shadow-md active:scale-[0.98]">
                         {isOnboarding ? 'Create Site & Continue' : 'Create Parking Site'}
                     </button>
                 </div>
             </form>
-        </div>
+        </>
+    )
+
+    if (isOnboarding) {
+        return <div className={wrapperClassName}>{formContent}</div>
+    }
+
+    return (
+        <DashboardLayout pageTitle="Add New Site">
+            <div className={wrapperClassName}>{formContent}</div>
+        </DashboardLayout>
     )
 }
-

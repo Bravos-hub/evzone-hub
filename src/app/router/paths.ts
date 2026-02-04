@@ -102,6 +102,7 @@ export const PATHS = {
     TENANT_DETAIL: (id: string) => `/tenants/${id}`,
     WITHDRAWALS: '/site-owner/withdrawals',
     APPLY_FOR_SITE: '/apply-for-site',
+    ADD_SITE: '/add-site',
     APPLICATION_DETAIL: (id: string) => `/site-owner/applications/${id}`,
   },
 

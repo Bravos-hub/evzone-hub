@@ -127,6 +127,7 @@ import {
   SiteDetail,
   ChargePointDetail,
   SiteApplicationForm,
+  AddSite,
   AddStation,
   AddSwapStation,
   OwnerIncidentCenter,
@@ -312,6 +313,7 @@ export function AppRoutes() {
       <Route path={PATHS.SITE_OWNER.TENANT_DETAIL(':id')} element={<RequireAuth><TenantDetail /></RequireAuth>} />
       <Route path={PATHS.SITE_OWNER.WITHDRAWALS} element={<RequireAuth><SiteOwnerWithdrawals /></RequireAuth>} />
       <Route path={PATHS.SITE_OWNER.APPLY_FOR_SITE} element={<RequireAuth><SiteApplicationForm /></RequireAuth>} />
+      <Route path={PATHS.SITE_OWNER.ADD_SITE} element={<RequireAuth><AddSite /></RequireAuth>} />
       <Route path={PATHS.SITE_OWNER.APPLICATION_DETAIL(':id')} element={<RequireAuth><SiteApplicationDetail /></RequireAuth>} />
 
       {/* Operator Tools */}
