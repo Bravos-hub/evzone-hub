@@ -11,6 +11,7 @@ export function QuickNavigationWidget() {
                 <NavButton label="Payouts" path="/payouts" />
                 <NavButton label="Incidents" path={PATHS.INCIDENTS} />
                 <NavButton label="Reports" path={PATHS.REPORTS} />
+                <NavButton label="Add Station" path="/add-station" />
             </div>
         </Card>
     )

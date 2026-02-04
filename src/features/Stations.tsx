@@ -105,15 +105,30 @@ export function Stations() {
 
   const accessContext = useMemo(() => ({
     role: user?.role,
+    userId: user?.id,
     orgId: me?.orgId || me?.organizationId,
     assignedStations: me?.assignedStations || [],
     capability: me?.ownerCapability || user?.ownerCapability,
     viewAll: perms.viewAll,
-  }), [user?.role, me?.orgId, me?.organizationId, me?.assignedStations, me?.ownerCapability, user?.ownerCapability, perms.viewAll])
+  }), [user?.role, user?.id, me?.orgId, me?.organizationId, me?.assignedStations, me?.ownerCapability, user?.ownerCapability, perms.viewAll])
 
   const accessibleStationsData = useMemo(() => {
     if (!stationsData) return []
-    return stationsData.filter((station) => canAccessStation(accessContext, station, 'ANY'))
+    return stationsData.filter((station) => {
+      // We need to pass the raw API fields that might not be in the Station type yet
+      const target = { ...station, ownerId: station.ownerId }
+      const access = canAccessStation(accessContext, target, 'ANY')
+
+      if (!access) {
+        console.log(`[Stations] Denied: ${station.name}`, {
+          stationOwner: station.ownerId,
+          user: accessContext.userId,
+          stationOrg: station.orgId,
+          userOrg: accessContext.orgId
+        })
+      }
+      return access
+    })
   }, [stationsData, accessContext])
 
   // Map API stations to Station format
@@ -228,6 +243,16 @@ export function Stations() {
           {/* Filters - Stacked on mobile */}
           {!isLoading && !accessLoading && (
             <>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-bold">Station List</h2>
+                {(user?.role === 'STATION_OWNER' || user?.role === 'STATION_ADMIN' || user?.role === 'SUPER_ADMIN') && (
+                  <button onClick={() => navigate('/add-station')} className="btn primary flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4" /></svg>
+                    Add Station
+                  </button>
+                )}
+              </div>
+
               <div className="card p-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
                   <input

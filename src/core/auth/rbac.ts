@@ -6,10 +6,12 @@ export type StationAccessTarget = {
   code?: string
   orgId?: string
   type?: string
+  ownerId?: string
 }
 
 export type StationAccessContext = {
   role?: Role
+  userId?: string
   orgId?: string
   assignedStations?: string[]
   capability?: OwnerCapability
@@ -72,6 +74,10 @@ export function canAccessStation(ctx: StationAccessContext, station?: StationAcc
   if (ctx.viewAll || ROLE_GROUPS.PLATFORM_OPS.includes(ctx.role)) return true
 
   if (ctx.role === 'STATION_OWNER') {
+    // 1. Direct Ownership (Fallback if Org is missing)
+    if (ctx.userId && station.ownerId && ctx.userId === station.ownerId) return true
+
+    // 2. Org Match
     if (!ctx.orgId || !station.orgId) return false
     return ctx.orgId === station.orgId
   }

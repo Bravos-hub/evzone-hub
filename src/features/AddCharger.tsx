@@ -1,8 +1,8 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { useAuthStore } from '@/core/auth/authStore'
 import { hasPermission } from '@/constants/permissions'
 import { useCreateChargePoint } from '@/modules/charge-points/hooks/useChargePoints'
-import { useStations } from '@/modules/stations/hooks/useStations'
+import { useStations, useStation } from '@/modules/stations/hooks/useStations'
 import { auditLogger } from '@/core/utils/auditLogger'
 import { getErrorMessage } from '@/core/api/errors'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
@@ -160,7 +160,7 @@ interface ChargerForm {
 }
 
 const STEPS = [
-  { key: 'site', label: 'Select Site' },
+  { key: 'site', label: 'Select Station' },
   { key: 'identity', label: 'Identity & Scan' },
   { key: 'connect', label: 'Configuration' },
   { key: 'review', label: 'Review & Provision' },
@@ -201,7 +201,43 @@ export function AddCharger() {
   const [ack, setAck] = useState('')
   const [error, setError] = useState('')
 
-  const { data: fetchStations, isLoading: loadingStations } = useStations()
+  const { data: allStations, isLoading: loadingStations, refetch: refetchStations } = useStations()
+
+  // Explicitly fetch the station from the URL if provided
+  // This handles cases where the main list is paginated or cached without the new station
+  const urlStationId = new URLSearchParams(window.location.search).get('stationId')
+  const { data: targetStation } = useStation(urlStationId || '')
+
+  // Debug State
+  const [showDebug, setShowDebug] = useState(false)
+
+  const myStations = useMemo(() => {
+    let stations = allStations || []
+
+    // If we have a target station from URL that isn't in the list, add it
+    if (targetStation && !stations.find(s => s.id === targetStation.id)) {
+      stations = [...stations, targetStation]
+    }
+
+    if (!user) return []
+
+    // Filter by Owner ID OR Organization ID
+    return stations.filter(s => {
+      // 1. Target Station (Always allow)
+      if (s.id === urlStationId) return true
+
+      // 2. Direct Owner Match
+      if (s.ownerId === user.id) return true
+
+      // 3. Organization Match (if station has orgId)
+      if (s.orgId && (s.orgId === user.orgId || s.orgId === user.organizationId)) return true
+
+      // 4. Super Admin sees all
+      if (user.role === 'SUPER_ADMIN') return true
+
+      return false
+    })
+  }, [allStations, targetStation, user, urlStationId])
   const createChargePointMutation = useCreateChargePoint()
 
   const toast = (m: string) => { setAck(m); setTimeout(() => setAck(''), 2000) }
@@ -356,7 +392,7 @@ export function AddCharger() {
             </div>
             <h2 className="text-2xl font-semibold mb-2">Charger Provisioned!</h2>
             <p className="text-subtle mb-4">
-              {form.name || 'Your charger'} at {fetchStations?.find(s => s.id === form.site)?.name || 'the selected site'} has been successfully provisioned.
+              {form.name || 'Your charger'} at {myStations.find(s => s.id === form.site)?.name || 'the selected station'} has been successfully provisioned.
             </p>
             <p className="text-sm text-subtle mb-6">
               OCPP ID: <code className="bg-muted px-2 py-0.5 rounded">{form.ocppId}</code>
@@ -405,18 +441,23 @@ export function AddCharger() {
           {/* Step 0: Site */}
           {step === 0 && (
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Select Installation Site</h3>
+              <h3 className="text-lg font-semibold">Select Installation Station</h3>
               <label className="grid gap-1">
-                <span className="text-sm font-medium">Site *</span>
+                <span className="text-sm font-medium">Station *</span>
                 {loadingStations ? (
                   <InlineSkeleton width="100%" height={40} />
                 ) : (
                   <select value={form.site} onChange={e => updateForm('site', e.target.value)} className="select">
-                    <option value="">Choose a site...</option>
-                    {fetchStations?.map(s => (
+                    <option value="">{myStations.length === 0 ? 'No stations found' : 'Choose a station...'}</option>
+                    {myStations.map(s => (
                       <option key={s.id} value={s.id}>{s.name}</option>
                     ))}
                   </select>
+                )}
+                {myStations.length === 0 && !loadingStations && (
+                  <div className="mt-2 text-sm text-subtle">
+                    No stations available. <a href="/add-station" className="text-accent hover:underline">Create a Station</a> first.
+                  </div>
                 )}
               </label>
               <label className="grid gap-1">
@@ -580,7 +621,7 @@ export function AddCharger() {
             <div className="space-y-4">
               <h3 className="text-lg font-semibold">Review & Provision</h3>
               <div className="grid sm:grid-cols-2 gap-4 text-sm">
-                <div><div className="text-subtle">Site</div><div className="font-medium">{form.site}</div></div>
+                <div><div className="text-subtle">Station</div><div className="font-medium">{myStations.find(s => s.id === form.site)?.name || form.site}</div></div>
                 <div><div className="text-subtle">Name</div><div className="font-medium">{form.name || '—'}</div></div>
                 <div><div className="text-subtle">Type</div><div className="font-medium">{form.type} • {form.power} kW</div></div>
                 <div><div className="text-subtle">Manufacturer / Model</div><div className="font-medium">{form.manufacturer} {form.model}</div></div>

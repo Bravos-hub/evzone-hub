@@ -63,12 +63,14 @@ export function AddStation() {
                 longitude: Number(selectedSite.longitude) || 0,
                 type: 'CHARGING',
                 siteId: form.siteId,
+                orgId: user?.orgId || user?.organizationId,
+                ownerId: user?.id
             })
 
             auditLogger.stationCreated(newStation.id, newStation.name)
 
-            // Redirect to Add Charger for this station
-            navigate(`/add-charger?stationId=${newStation.id}`)
+            // Redirect to Stations list (Decoupled flow per user request)
+            navigate(PATHS.STATIONS.ROOT)
         } catch (err) {
             setError(getErrorMessage(err))
             setLoading(false)

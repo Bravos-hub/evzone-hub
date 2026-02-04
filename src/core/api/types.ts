@@ -145,6 +145,8 @@ export interface CreateStationRequest {
   parkingBays?: number
   tags?: string[]
   siteId?: string
+  orgId?: string
+  ownerId?: string
 }
 
 export interface UpdateStationRequest {

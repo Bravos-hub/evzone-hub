@@ -32,6 +32,8 @@ export type UserProfile = {
   role: Role
   ownerCapability?: OwnerCapability
   avatarUrl?: string
+  orgId?: string
+  organizationId?: string
   status?: 'Active' | 'Pending' | 'Suspended' | 'Inactive' | 'Invited'
 }
 
