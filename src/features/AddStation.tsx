@@ -62,7 +62,7 @@ export function AddStation() {
                 latitude: Number(selectedSite.latitude) || 0,
                 longitude: Number(selectedSite.longitude) || 0,
                 type: 'CHARGING',
-                tags: ['Created via Wizard'],
+                siteId: form.siteId,
             })
 
             auditLogger.stationCreated(newStation.id, newStation.name)
