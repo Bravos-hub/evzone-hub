@@ -138,7 +138,7 @@ export { SiteApplicationForm } from './SiteApplicationForm'
 
 // Owner Features (additional)
 export { Discounts } from './Discounts'
-export { StationMap } from './StationMap'
+export { StationMap } from '@/modules/stations/components/StationMap'
 export { OwnerAlerts } from './OwnerAlerts'
 export { Operators } from './Operators'
 export { OwnerPlans } from './OwnerPlans'

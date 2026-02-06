@@ -15,6 +15,8 @@ import { useStations } from '@/modules/stations/hooks/useStations'
 import { getErrorMessage } from '@/core/api/errors'
 import Skeleton from 'react-loading-skeleton'
 import { TableSkeleton } from '@/ui/components/SkeletonCards'
+import { StationMapCanvas, type StationMapData } from '@/modules/stations/components/StationMapCanvas'
+import { API_CONFIG } from '@/core/api/config'
 
 // ... types and mock data omitted for brevity ...
 type StationType = 'Charge' | 'Swap' | 'Both'
@@ -150,6 +152,58 @@ export function Stations() {
       })
   }, [stations, q, region, status, tagFilter, accessibleStationsData])
 
+  // --- Map State & Logic ---
+  const [selectedStationId, setSelectedStationId] = useState<string | null>(null)
+  const [popupInfo, setPopupInfo] = useState<StationMapData | null>(null)
+  const [viewState, setViewState] = useState({
+    longitude: 35.0,
+    latitude: -1.0,
+    zoom: 4
+  })
+
+  const mapData = useMemo<StationMapData[]>(() => {
+    return rows.map(r => {
+      const api = accessibleStationsData.find(st => st.id === r.id) as any
+      return {
+        id: r.id,
+        name: r.name,
+        address: r.address,
+        status: api?.status || 'ACTIVE',
+        type: api?.type || 'CHARGING',
+        lat: Number(api?.latitude || 0),
+        lng: Number(api?.longitude || 0),
+        capacity: Number(api?.capacity || 0)
+      }
+    })
+  }, [rows, accessibleStationsData])
+
+  const tileUrl = useMemo(() => {
+    const base = `${API_CONFIG.baseURL}/geography/tiles/{z}/{x}/{y}.pbf`
+    const params = new URLSearchParams()
+    if (region !== 'ALL') params.append('region', region)
+    if (status !== 'All') {
+      // Map frontend status labels back to DB values
+      const dbStatus = status === 'Online' ? 'ACTIVE' : status === 'Offline' ? 'INACTIVE' : 'MAINTENANCE'
+      params.append('status', dbStatus)
+    }
+    const qs = params.toString()
+    return qs ? `${base}?${qs}` : base
+  }, [region, status])
+
+  const handleStationSelect = (id: string) => {
+    const station = mapData.find(s => s.id === id)
+    if (station) {
+      setSelectedStationId(id)
+      setPopupInfo(station)
+      setViewState(prev => ({
+        ...prev,
+        longitude: station.lng,
+        latitude: station.lat,
+        zoom: 12
+      }))
+    }
+  }
+
   // Available tabs based on permissions
   const availableTabs = useMemo(() => {
     const tabs: Array<{ id: StationsTab; label: string }> = [{ id: 'overview', label: 'Overview' }]
@@ -276,14 +330,32 @@ export function Stations() {
                 </div>
               </div>
 
-              {/* Map Section - Hidden for Site Owners/Owners */}
+              {/* Map Section - High Performance WebGL MapLibre */}
               {!['SITE_OWNER', 'STATION_OWNER'].includes(user?.role || '') && (
-                <div className="card p-0 overflow-hidden">
-                  <div className="border-b border-border-light p-4">
-                    <h3 className="font-semibold">Station Map</h3>
+                <div className="card p-0 overflow-hidden border-border-light shadow-xl">
+                  <div className="border-b border-border-light p-4 bg-white/5 flex justify-between items-center">
+                    <div>
+                      <h3 className="font-bold text-sm tracking-tight">Geospatial Distribution</h3>
+                      <p className="text-[10px] text-muted-more uppercase font-black">{rows.length} Active nodes</p>
+                    </div>
+                    <div className="flex gap-4">
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-1.5 h-1.5 rounded-full bg-ok" />
+                        <span className="text-[10px] font-bold text-muted uppercase">Live</span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="p-4">
-                    <StationsHeatMap title="Stations Map" subtitle={`${rows.length} stations`} points={mapPoints} />
+                  <div className="h-[400px] w-full">
+                    <StationMapCanvas
+                      tileUrl={tileUrl}
+                      viewState={viewState}
+                      onMove={evt => setViewState(evt.viewState)}
+                      onStationClick={s => handleStationSelect(s.id)}
+                      onClusterClick={(id, coords) => setViewState(v => ({ ...v, longitude: coords[0], latitude: coords[1], zoom: v.zoom + 2 }))}
+                      selectedStationId={selectedStationId}
+                      popupInfo={popupInfo}
+                      setPopupInfo={setPopupInfo}
+                    />
                   </div>
                 </div>
               )}
