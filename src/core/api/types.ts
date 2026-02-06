@@ -53,7 +53,7 @@ export interface AuthResponse {
     organizationId?: string
     assignedStations?: string[]
     ownerCapability?: OwnerCapability
-    status?: 'Active' | 'Pending' | 'Suspended' | 'Inactive' | 'Invited' | 'AwaitingApproval' | 'Rejected'
+    status?: 'Active' | 'Pending' | 'Suspended' | 'Inactive' | 'Invited' | 'AwaitingApproval' | 'Rejected' | 'MfaRequired'
   }
 }
 
@@ -74,7 +74,7 @@ export interface User {
   tenantId?: string
   region?: string
   ownerCapability?: OwnerCapability
-  status?: 'Active' | 'Pending' | 'Suspended' | 'Inactive' | 'Invited'
+  status?: 'Active' | 'Pending' | 'Suspended' | 'Inactive' | 'Invited' | 'MfaRequired'
   mfaEnabled?: boolean
   lastSeen?: string
   created?: string
@@ -92,7 +92,7 @@ export interface UpdateUserRequest {
   organizationId?: string
   ownerCapability?: OwnerCapability
   assignedStations?: string[]
-  status?: 'Active' | 'Pending' | 'Suspended' | 'Inactive' | 'Invited'
+  status?: 'Active' | 'Pending' | 'Suspended' | 'Inactive' | 'Invited' | 'MfaRequired'
 }
 
 // Station Types

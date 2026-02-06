@@ -6,7 +6,7 @@ import { getPermissionsForFeature } from '@/constants/permissions'
 import { ROLE_LABELS, ALL_ROLES } from '@/constants/roles'
 import type { Role } from '@/core/auth/types'
 import { RolePill } from '@/ui/components/RolePill'
-import { useUser } from '@/modules/auth/hooks/useUsers'
+import { useUser, useUpdateUser, useRequestPasswordReset, useForceLogout, useToggleMfaRequirement } from '@/modules/auth/hooks/useUsers'
 import { useUserSessions } from '@/modules/sessions/hooks/useSessions'
 import { getErrorMessage } from '@/core/api/errors'
 import { PATHS } from '@/app/router/paths'
@@ -31,6 +31,13 @@ export function UserDetail() {
   const { data: userData, isLoading, error } = useUser(userId || '')
   const { data: sessionsData } = useUserSessions(userId || '', false)
   const sessions = Array.isArray(sessionsData) ? sessionsData : (sessionsData as any)?.recent || []
+
+  const { mutateAsync: updateUser, isPending: isUpdating } = useUpdateUser()
+  const { mutateAsync: resetPassword, isPending: isResetting } = useRequestPasswordReset()
+  const { mutateAsync: forceLogout, isPending: isLoggingOut } = useForceLogout()
+  const { mutateAsync: toggleMfa, isPending: isTogglingMfa } = useToggleMfaRequirement()
+
+  const isBusy = busy || isUpdating || isResetting || isLoggingOut || isTogglingMfa
 
   // TODO: Implement audit logs API endpoint
   const auditLogs: Array<{ when: string; event: string; details: string }> = []
@@ -63,6 +70,7 @@ export function UserDetail() {
       case 'Active': return 'approved'
       case 'Pending': return 'pending'
       case 'Suspended': return 'rejected'
+      case 'MfaRequired': return 'pending'
       default: return 'sendback'
     }
   }
@@ -84,26 +92,42 @@ export function UserDetail() {
 
   async function handleSuspend() {
     if (!userData) return
-    setBusy(true)
-    await new Promise((r) => setTimeout(r, 300))
-    alert(`User ${userData.name} suspended (demo)`)
-    setBusy(false)
+    try {
+      await updateUser({ id: userData.id, data: { status: 'Suspended' } })
+      alert(`User ${userData.name} suspended`)
+    } catch (e) {
+      alert(`Failed to suspend user: ${getErrorMessage(e)}`)
+    }
   }
 
   async function handleResetPassword() {
     if (!userData) return
-    setBusy(true)
-    await new Promise((r) => setTimeout(r, 300))
-    alert(`Password reset email sent to ${userData.email} (demo)`)
-    setBusy(false)
+    try {
+      await resetPassword(userData.id)
+      alert(`Password reset email sent to ${userData.email}`)
+    } catch (e) {
+      alert(`Failed to send reset email: ${getErrorMessage(e)}`)
+    }
   }
 
   async function handleForceLogout() {
     if (!userData) return
-    setBusy(true)
-    await new Promise((r) => setTimeout(r, 300))
-    alert(`All sessions for ${userData.name} terminated (demo)`)
-    setBusy(false)
+    try {
+      await forceLogout(userData.id)
+      alert(`All sessions for ${userData.name} terminated`)
+    } catch (e) {
+      alert(`Failed to force logout: ${getErrorMessage(e)}`)
+    }
+  }
+
+  async function handleRequireMfa() {
+    if (!userData) return
+    try {
+      await toggleMfa({ id: userData.id, required: true })
+      alert(`MFA requirement enabled for ${userData.name}`)
+    } catch (e) {
+      alert(`Failed to update MFA requirement: ${getErrorMessage(e)}`)
+    }
   }
 
   return (
@@ -136,7 +160,7 @@ export function UserDetail() {
         <div className="card">
           <div className="text-xs text-muted">MFA Status</div>
           <div className="text-lg font-semibold">
-            {userData.mfaEnabled ? (
+            {userData.mfaEnabled || userData.status === 'MfaRequired' ? (
               <span className="text-ok">Enabled</span>
             ) : (
               <span className="text-warn">Disabled</span>
@@ -210,7 +234,7 @@ export function UserDetail() {
               )}
             </div>
             {perms.edit && (
-              <button className="btn secondary mt-4" onClick={() => alert('Edit role (demo)')}>
+              <button className="btn secondary mt-4" onClick={() => alert('Change role (demo)')}>
                 Change Role
               </button>
             )}
@@ -224,22 +248,22 @@ export function UserDetail() {
             <h3 className="font-semibold text-text mb-3">Security Actions</h3>
             <div className="flex flex-wrap gap-2">
               {perms.edit && (
-                <button className="btn secondary" onClick={handleResetPassword} disabled={busy}>
+                <button className="btn secondary" onClick={handleResetPassword} disabled={isBusy}>
                   Reset Password
                 </button>
               )}
               {perms.edit && (
-                <button className="btn secondary" onClick={handleForceLogout} disabled={busy}>
+                <button className="btn secondary" onClick={handleForceLogout} disabled={isBusy}>
                   Force Logout
                 </button>
               )}
               {perms.impersonate && userData.id !== currentUser?.id && (
-                <button className="btn secondary" onClick={handleImpersonate} disabled={busy}>
+                <button className="btn secondary" onClick={handleImpersonate} disabled={isBusy}>
                   Impersonate
                 </button>
               )}
               {perms.suspend && userData.status === 'Active' && userData.id !== currentUser?.id && (
-                <button className="btn danger" onClick={handleSuspend} disabled={busy}>
+                <button className="btn danger" onClick={handleSuspend} disabled={isBusy}>
                   Suspend User
                 </button>
               )}
@@ -249,12 +273,12 @@ export function UserDetail() {
             <h3 className="font-semibold text-text mb-3">MFA Configuration</h3>
             <div className="flex items-center justify-between">
               <span className="text-muted">Two-Factor Authentication</span>
-              <span className={userData.mfaEnabled ? 'text-ok font-semibold' : 'text-warn font-semibold'}>
-                {userData.mfaEnabled ? 'Enabled' : 'Disabled'}
+              <span className={userData.mfaEnabled || userData.status === 'MfaRequired' ? 'text-ok font-semibold' : 'text-warn font-semibold'}>
+                {userData.mfaEnabled || userData.status === 'MfaRequired' ? 'Enabled' : 'Disabled'}
               </span>
             </div>
-            {perms.edit && !userData.mfaEnabled && (
-              <button className="btn secondary mt-3" onClick={() => alert('Require MFA (demo)')}>
+            {perms.edit && userData.status !== 'MfaRequired' && !userData.mfaEnabled && (
+              <button className="btn secondary mt-3" onClick={handleRequireMfa} disabled={isBusy}>
                 Require MFA
               </button>
             )}
@@ -345,4 +369,3 @@ export function UserDetail() {
     </DashboardLayout>
   )
 }
-

@@ -114,6 +114,24 @@ export const userService = {
   async invite(data: InviteUserRequest): Promise<void> {
     return apiClient.post<void>('/users/invite', data)
   },
+  /**
+   * Security Action: Request password reset email
+   */
+  async requestPasswordReset(id: string): Promise<void> {
+    return apiClient.post<void>(`/users/${id}/reset-password`)
+  },
+  /**
+   * Security Action: Force logout (revoke sessions)
+   */
+  async forceLogout(id: string): Promise<void> {
+    return apiClient.post<void>(`/users/${id}/force-logout`)
+  },
+  /**
+   * Security Action: Toggle MFA requirement
+   */
+  async toggleMfaRequirement(id: string, required: boolean): Promise<void> {
+    return apiClient.post<void>(`/users/${id}/mfa-requirement`, { required })
+  },
 }
 
 

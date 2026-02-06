@@ -86,3 +86,30 @@ export function useInviteUser() {
     },
   })
 }
+
+export function useRequestPasswordReset() {
+  return useMutation({
+    mutationFn: (id: string) => userService.requestPasswordReset(id),
+  })
+}
+
+export function useForceLogout() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => userService.forceLogout(id),
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.detail(id) })
+    },
+  })
+}
+
+export function useToggleMfaRequirement() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, required }: { id: string; required: boolean }) =>
+      userService.toggleMfaRequirement(id, required),
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.detail(id) })
+    },
+  })
+}
