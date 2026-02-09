@@ -44,7 +44,8 @@ export function ChargePointDetail() {
     const [isEditing, setIsEditing] = useState(false)
     const [editForm, setEditForm] = useState({
         model: '',
-        maxCapacityKw: 0,
+        power: 0,
+        type: 'CCS2',
         ocppId: '',
     })
 
@@ -58,7 +59,8 @@ export function ChargePointDetail() {
         if (!cp) return
         setEditForm({
             model: cp.model,
-            maxCapacityKw: cp.maxCapacityKw || 50,
+            power: cp.power || cp.maxCapacityKw || 50,
+            type: cp.type || 'CCS2',
             ocppId: cp.ocppId || '',
         })
         setIsEditing(true)
@@ -69,7 +71,8 @@ export function ChargePointDetail() {
             id: id!,
             data: {
                 model: editForm.model,
-                maxCapacityKw: editForm.maxCapacityKw,
+                power: editForm.power,
+                type: editForm.type,
                 ocppId: editForm.ocppId,
             }
         })
@@ -171,16 +174,33 @@ export function ChargePointDetail() {
                                 )}
                             </div>
                             <div className="space-y-1">
-                                <label className="text-xs text-muted uppercase font-bold">Maximum Capacity (kW)</label>
+                                <label className="text-xs text-muted uppercase font-bold">Type</label>
+                                {isEditing ? (
+                                    <select
+                                        className="select w-full"
+                                        value={editForm.type}
+                                        onChange={e => setEditForm({ ...editForm, type: e.target.value })}
+                                    >
+                                        <option value="CCS2">CCS2</option>
+                                        <option value="CHAdeMO">CHAdeMO</option>
+                                        <option value="Type2">Type 2</option>
+                                        <option value="GBT">GB/T</option>
+                                    </select>
+                                ) : (
+                                    <div className="text-lg font-medium">{cp.type || 'CCS2'}</div>
+                                )}
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-xs text-muted uppercase font-bold">Power (kW)</label>
                                 {isEditing ? (
                                     <input
                                         type="number"
                                         className="input w-full"
-                                        value={editForm.maxCapacityKw}
-                                        onChange={e => setEditForm({ ...editForm, maxCapacityKw: parseInt(e.target.value) })}
+                                        value={editForm.power}
+                                        onChange={e => setEditForm({ ...editForm, power: parseFloat(e.target.value) })}
                                     />
                                 ) : (
-                                    <div className="text-lg font-medium">{cp.maxCapacityKw || 50} kW</div>
+                                    <div className="text-lg font-medium">{cp.power || cp.maxCapacityKw || 50} kW</div>
                                 )}
                             </div>
                             <div className="space-y-1">
@@ -359,4 +379,3 @@ export function ChargePointDetail() {
         </DashboardLayout>
     )
 }
-

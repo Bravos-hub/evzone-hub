@@ -114,6 +114,12 @@ export interface Station {
   contractType?: 'FIXED' | 'REVENUE_SHARE' | 'HYBRID'
   revenueShare?: number // Percentage
   tags?: string[]
+  // New Fields
+  rating?: number
+  price?: number
+  amenities?: string[]
+  images?: string[]
+  open247?: boolean
   createdAt: string
   updatedAt: string
 }
@@ -147,6 +153,12 @@ export interface CreateStationRequest {
   siteId?: string
   orgId?: string
   ownerId?: string
+  // New Fields
+  rating?: number
+  price?: number
+  amenities?: string     // JSON string
+  images?: string        // JSON string
+  open247?: boolean
 }
 
 export interface UpdateStationRequest {
@@ -199,6 +211,9 @@ export interface ChargePoint {
   ocppStatus?: string
   lastHeartbeat?: string
   ocppId?: string
+  // New Fields
+  type?: string
+  power?: number
 }
 
 export interface CreateChargePointRequest {
@@ -211,7 +226,13 @@ export interface CreateChargePointRequest {
     type: string
     powerType: 'AC' | 'DC'
     maxPowerKw: number
+    // New Fields
+    connectorType?: string // e.g. CCS2, Type2
+    power?: number // Same as maxPowerKw? Let's keep consistent
   }>
+  // New Fields
+  type?: string
+  power?: number
   ocppId?: string
 }
 
@@ -231,7 +252,11 @@ export interface UpdateChargePointRequest {
     maxPowerKw: number
     status?: 'Available' | 'Occupied' | 'Faulted' | 'Reserved'
   }>
+  // New Fields
+  type?: string
+  power?: number
 }
+
 
 // Booking Types
 export interface Booking {

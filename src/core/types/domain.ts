@@ -152,6 +152,8 @@ export interface ChargePoint {
   parkingBays?: string[] // Bay IDs
   ocppStatus?: 'Available' | 'Preparing' | 'Charging' | 'SuspendedEVSE' | 'SuspendedEV' | 'Finishing' | 'Reserved' | 'Unavailable' | 'Faulted'
   lastHeartbeat?: Date
+  type?: string
+  power?: number
 }
 
 export interface Connector {
