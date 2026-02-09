@@ -159,6 +159,8 @@ export interface CreateStationRequest {
   amenities?: string     // JSON string
   images?: string        // JSON string
   open247?: boolean
+  phone?: string
+  bookingFee?: number
 }
 
 export interface UpdateStationRequest {
@@ -172,6 +174,8 @@ export interface UpdateStationRequest {
   operatorId?: string
   contractType?: 'FIXED' | 'REVENUE_SHARE' | 'HYBRID'
   revenueShare?: number
+  phone?: string
+  bookingFee?: number
 }
 
 // Charge Point Types

@@ -29,7 +29,9 @@ export function AddStation() {
         rating: 5,
         amenities: '',
         images: [] as string[],
-        open247: true
+        open247: true,
+        phone: '',
+        bookingFee: 0
     })
     const [error, setError] = useState('')
     const [loading, setLoading] = useState(false)
@@ -110,7 +112,9 @@ export function AddStation() {
                 rating: form.rating,
                 open247: form.open247,
                 amenities: JSON.stringify(form.amenities.split(',').map(s => s.trim()).filter(Boolean)),
-                images: JSON.stringify(form.images)
+                images: JSON.stringify(form.images),
+                phone: form.phone,
+                bookingFee: form.bookingFee
             })
 
             auditLogger.stationCreated(newStation.id, newStation.name)
@@ -179,6 +183,15 @@ export function AddStation() {
                                 />
                             </div>
                             <div>
+                                <label className="label">Contact Phone</label>
+                                <input
+                                    className="input w-full"
+                                    placeholder="+256 700 000 000"
+                                    value={form.phone}
+                                    onChange={e => setForm({ ...form, phone: e.target.value })}
+                                />
+                            </div>
+                            <div>
                                 <label className="label">Price per kWh ($)</label>
                                 <input
                                     type="number"
@@ -187,6 +200,17 @@ export function AddStation() {
                                     placeholder="0.00"
                                     value={form.price}
                                     onChange={e => setForm({ ...form, price: parseFloat(e.target.value) })}
+                                />
+                            </div>
+                            <div>
+                                <label className="label">Booking Fee ($)</label>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    className="input w-full"
+                                    placeholder="0.00"
+                                    value={form.bookingFee}
+                                    onChange={e => setForm({ ...form, bookingFee: parseFloat(e.target.value) })}
                                 />
                             </div>
                             <div>
