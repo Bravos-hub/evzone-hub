@@ -27,40 +27,6 @@ export function Login() {
     setLoading(true)
 
     try {
-      const response = await authService.login({ email, password })
-
-      // Check user status before allowing login
-      const userStatus = response.user.status
-
-      if (userStatus === 'Pending') {
-        setError('Please verify your email address before logging in.')
-        setLoading(false)
-        return
-      }
-
-      if (userStatus === 'AwaitingApproval') {
-        // User verified email but not yet approved by admin
-        await login({ email, password })
-        navigate(PATHS.AUTH.AWAITING_APPROVAL)
-        return
-      }
-
-      if (userStatus === 'Rejected') {
-        setError('Your registration application was rejected. Please contact support for more information.')
-        setLoading(false)
-        return
-      }
-
-      // Admins should be allowed to login regardless of status (or if their status is unset)
-      const isAdmin = response.user.role === 'SUPER_ADMIN' || response.user.role === 'EVZONE_ADMIN';
-
-      if (userStatus !== 'Active' && !isAdmin) {
-        setError('Your account is not active. Please contact support.')
-        setLoading(false)
-        return
-      }
-
-      // User is Active or Admin - proceed with normal login
       await login({ email, password })
       navigate(returnTo)
     } catch (err: any) {
@@ -321,7 +287,7 @@ export function Register() {
           capability: needsCapability ? capability : undefined,
         }))
         localStorage.setItem('registrationNextStep', '2')
-        navigate(PATHS.AUTH.VERIFY_EMAIL)
+        navigate(`${PATHS.AUTH.VERIFY_EMAIL}?token=pending`)
       } else {
         setStep(3)
       }
@@ -340,7 +306,7 @@ export function Register() {
       // Save registration state before navigating to verification
       localStorage.setItem('registrationState', JSON.stringify({ form, orgId, role, plan }))
       localStorage.setItem('registrationNextStep', '3')
-      navigate(PATHS.AUTH.VERIFY_EMAIL)
+      navigate(`${PATHS.AUTH.VERIFY_EMAIL}?token=pending`)
     } catch (err: any) {
       setError(err?.message || 'Activation failed')
     } finally {
@@ -780,11 +746,7 @@ export function VerifyEmail() {
   })
 
   useEffect(() => {
-    // Only auto-verify if we have a valid UUID token (not 'pending' or empty)
-    const isValidToken = token && token !== 'pending' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)
-
-    if (isValidToken) {
-      setIsVerifying(true)
+    if (token) {
       verifyMutation.mutate({ token })
     }
   }, [token])
