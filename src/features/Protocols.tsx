@@ -42,10 +42,11 @@ const normalizeStations = (data: unknown): Station[] => {
   return (data as any)?.data || []
 }
 
-const csmsUrlFor = (ver: string) => {
+const csmsUrlFor = (ver: string, chargeBoxId?: string) => {
   const base = API_CONFIG.baseURL.replace(/^http/, 'ws')
   const trimmed = base.replace(/\/api\/v\d+\/?$/, '')
-  return `${trimmed}/ocpp/${ver === '1.6J' ? '1.6' : '2.0.1'}`
+  const versionPath = ver === '1.6J' ? '1.6' : ver === '2.1' ? '2.1' : '2.0.1'
+  return chargeBoxId ? `${trimmed}/ocpp/${versionPath}/${chargeBoxId}` : `${trimmed}/ocpp/${versionPath}`
 }
 
 export function Protocols() {
@@ -225,7 +226,7 @@ export function Protocols() {
                       <td>{r.hb}</td>
                       <td className="text-right">
                         <div className="inline-flex items-center gap-2">
-                          <button className="btn secondary" onClick={() => copy(csmsUrlFor(r.ver), 'CSMS URL copied')}>
+                          <button className="btn secondary" onClick={() => copy(csmsUrlFor(r.ver, r.chargeBoxId), 'CSMS URL copied')}>
                             CSMS URL
                           </button>
                           <button className="btn secondary" onClick={() => copy(r.chargeBoxId, 'ChargeBoxId copied')}>
@@ -237,7 +238,7 @@ export function Protocols() {
                               copy(
                                 JSON.stringify(
                                   {
-                                    CSMS: csmsUrlFor(r.ver),
+                                    CSMS: csmsUrlFor(r.ver, r.chargeBoxId),
                                     ChargeBoxId: r.chargeBoxId,
                                     OcppVersion: r.ver,
                                     hardware: { make: r.make, model: r.model },

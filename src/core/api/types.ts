@@ -206,6 +206,7 @@ export interface ChargePoint {
   stationId: string
   model: string
   manufacturer: string
+  vendor?: string
   serialNumber: string
   firmwareVersion: string
   status: 'Online' | 'Degraded' | 'Offline' | 'Maintenance'
@@ -218,6 +219,14 @@ export interface ChargePoint {
   // New Fields
   type?: string
   power?: number
+  createdAt?: string
+  updatedAt?: string
+  ocppCredentials?: {
+    username: string
+    password: string
+    wsUrl: string
+    subprotocol: 'ocpp1.6' | 'ocpp2.0.1' | 'ocpp2.1'
+  }
 }
 
 export interface CreateChargePointRequest {
@@ -238,6 +247,7 @@ export interface CreateChargePointRequest {
   type?: string
   power?: number
   ocppId?: string
+  ocppVersion?: '1.6' | '2.0.1' | '2.1'
 }
 
 export interface UpdateChargePointRequest {

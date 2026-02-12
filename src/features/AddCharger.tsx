@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useMemo } from 'react'
 import { useAuthStore } from '@/core/auth/authStore'
 import { hasPermission } from '@/constants/permissions'
 import { useCreateChargePoint } from '@/modules/charge-points/hooks/useChargePoints'
+import { chargePointService } from '@/modules/charge-points/services/chargePointService'
 import { useStations, useStation } from '@/modules/stations/hooks/useStations'
 import { auditLogger } from '@/core/utils/auditLogger'
 import { getErrorMessage } from '@/core/api/errors'
@@ -15,6 +16,21 @@ import { Html5QrcodeScanner } from 'html5-qrcode'
    ───────────────────────────────────────────────────────────────────────────── */
 
 type ChargerType = 'AC' | 'DC'
+type OcppVersion = '1.6' | '2.0.1' | '2.1'
+
+type OcppCredentials = {
+  username: string
+  password: string
+  wsUrl: string
+  subprotocol: 'ocpp1.6' | 'ocpp2.0.1' | 'ocpp2.1'
+}
+
+type BootProof = {
+  updatedAt?: string
+  model?: string
+  vendor?: string
+  firmwareVersion?: string
+}
 
 interface ConnectorSpec {
   key: string
@@ -143,6 +159,14 @@ const getConnectorMaxPower = (connectorKey: string, chargerType: ChargerType): n
   return chargerType === 'DC' ? 150 : 22
 }
 
+const versionSubprotocol = (version: OcppVersion): OcppCredentials['subprotocol'] => {
+  if (version === '2.0.1') return 'ocpp2.0.1'
+  if (version === '2.1') return 'ocpp2.1'
+  return 'ocpp1.6'
+}
+
+const wsUrlFor = (version: OcppVersion, ocppId: string) => `wss://ocpp.evzonecharging.com/ocpp/${version}/${ocppId}`
+
 interface ChargerForm {
   name: string
   site: string
@@ -154,7 +178,7 @@ interface ChargerForm {
   model: string
   firmware: string
   ocppId: string
-  ocppVersion: '1.6' | '2.0.1' | '2.1' | '1.6s'
+  ocppVersion: OcppVersion
   networkSSID: string
   networkPassword: string
 }
@@ -163,7 +187,7 @@ const STEPS = [
   { key: 'site', label: 'Select Station' },
   { key: 'identity', label: 'Identity & Scan' },
   { key: 'connect', label: 'Configuration' },
-  { key: 'review', label: 'Review & Provision' },
+  { key: 'review', label: 'Review & Finish' },
 ]
 
 export function AddCharger() {
@@ -195,21 +219,23 @@ export function AddCharger() {
   // Connection Wait State
   const [connectionStatus, setConnectionStatus] = useState<'waiting' | 'connected' | 'timeout'>('waiting')
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const [provisioning, setProvisioning] = useState(false)
   const [complete, setComplete] = useState(false)
   const [ack, setAck] = useState('')
   const [error, setError] = useState('')
+  const [pollingNonce, setPollingNonce] = useState(0)
+  const [provisionedChargePointId, setProvisionedChargePointId] = useState('')
+  const [credentials, setCredentials] = useState<OcppCredentials | null>(null)
+  const [bootProof, setBootProof] = useState<BootProof | null>(null)
 
-  const { data: allStations, isLoading: loadingStations, refetch: refetchStations } = useStations()
+  const { data: allStations, isLoading: loadingStations } = useStations()
 
   // Explicitly fetch the station from the URL if provided
   // This handles cases where the main list is paginated or cached without the new station
   const urlStationId = new URLSearchParams(window.location.search).get('stationId')
   const { data: targetStation } = useStation(urlStationId || '')
-
-  // Debug State
-  const [showDebug, setShowDebug] = useState(false)
 
   const myStations = useMemo(() => {
     let stations = allStations || []
@@ -246,6 +272,33 @@ export function AddCharger() {
     setForm(f => ({ ...f, [key]: value }))
   }
 
+  const resetWizard = () => {
+    setStep(0)
+    setConnectionStatus('waiting')
+    setProvisionedChargePointId('')
+    setCredentials(null)
+    setBootProof(null)
+    setPollingNonce(0)
+    setError('')
+    setUseScanner(false)
+    setManualEntry(false)
+    setForm({
+      name: '',
+      site: '',
+      type: 'AC',
+      power: 22,
+      connectors: [{ type: 'type2', maxPower: 22 }],
+      serialNumber: '',
+      manufacturer: '',
+      model: '',
+      firmware: '',
+      ocppId: '',
+      ocppVersion: '1.6',
+      networkSSID: '',
+      networkPassword: '',
+    })
+  }
+
   const generateRandomID = () => {
     const randomPart = Math.random().toString(36).substring(2, 8).toUpperCase()
     updateForm('ocppId', `CP-${randomPart}`)
@@ -253,85 +306,162 @@ export function AddCharger() {
     setUseScanner(false)
   }
 
-  const addConnector = () => {
-    const available = getAvailableConnectors(form.type)
-    const defaultConnector = available[0]?.key || 'type2'
-    const defaultPower = getConnectorMaxPower(defaultConnector, form.type)
-    setForm(f => ({
-      ...f,
-      connectors: [...f.connectors, { type: defaultConnector, maxPower: Math.min(defaultPower, f.power) }]
-    }))
-  }
-
-  const removeConnector = (idx: number) => {
-    setForm(f => ({
-      ...f,
-      connectors: f.connectors.filter((_, i) => i !== idx)
-    }))
-  }
-
-  const updateConnector = (idx: number, field: 'type' | 'maxPower', value: any) => {
-    setForm(f => ({
-      ...f,
-      connectors: f.connectors.map((c, i) => i === idx ? { ...c, [field]: value } : c)
-    }))
-  }
-
   // Effect for QR Scanner
   useEffect(() => {
-    if (step === 1 && useScanner) {
+    if (step === 1 && useScanner && !provisionedChargePointId) {
       const scanner = new Html5QrcodeScanner(
-        "qr-reader",
+        'qr-reader',
         { fps: 10, qrbox: { width: 250, height: 250 } },
-        /* verbose= */ false
+        false
       )
 
       scanner.render((decodedText) => {
-        console.log("QR Code Scanned:", decodedText)
         updateForm('ocppId', decodedText)
         setUseScanner(false)
         scanner.clear()
-      }, (errorMessage) => {
-        // Parse error, ignore usually
+      }, () => {
+        // Ignore scanner parse noise
       })
 
       return () => {
-        try { scanner.clear() } catch (e) { /* ignore cleanup errors */ }
+        try { scanner.clear() } catch { /* noop */ }
       }
     }
-  }, [step, useScanner])
+  }, [step, useScanner, provisionedChargePointId])
 
-  // Polling Effect for "Configuration" Step
+  // Polling effect for real BootNotification proof
   useEffect(() => {
-    if (step === 2) {
-      setConnectionStatus('waiting')
+    if (step !== 2 || !provisionedChargePointId || !form.ocppId) {
+      return
+    }
 
-      // Poll every 5 seconds to check if charger is online
-      pollingRef.current = setInterval(async () => {
-        try {
-          // Verify if charge point is online via API
-          // MOCK: Auto-connect after 10s for demo if not real
-        } catch (e) {
-          console.error("Polling error", e)
-        }
-      }, 5000)
+    let disposed = false
+    setConnectionStatus('waiting')
 
-      return () => {
-        if (pollingRef.current) clearInterval(pollingRef.current)
+    const clearTimers = () => {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current)
+        pollingRef.current = null
+      }
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current)
+        timeoutRef.current = null
       }
     }
-  }, [step, form.ocppId])
+
+    const pollConnection = async () => {
+      try {
+        const chargePoint = await chargePointService.getByOcppId(form.ocppId)
+        if (!chargePoint || disposed) return
+
+        if (String(chargePoint.status || '').toLowerCase() === 'online') {
+          clearTimers()
+          setConnectionStatus('connected')
+          setBootProof({
+            updatedAt: chargePoint.updatedAt,
+            model: chargePoint.model,
+            vendor: chargePoint.vendor || chargePoint.manufacturer,
+            firmwareVersion: chargePoint.firmwareVersion,
+          })
+          setForm(f => ({
+            ...f,
+            model: chargePoint.model || f.model,
+            manufacturer: chargePoint.vendor || chargePoint.manufacturer || f.manufacturer,
+            firmware: chargePoint.firmwareVersion || f.firmware,
+            serialNumber: chargePoint.serialNumber || f.serialNumber,
+          }))
+        }
+      } catch {
+        // keep waiting; timeout handles surfaced failure
+      }
+    }
+
+    void pollConnection()
+    pollingRef.current = setInterval(() => {
+      void pollConnection()
+    }, 3000)
+
+    timeoutRef.current = setTimeout(() => {
+      if (disposed) return
+      setConnectionStatus(prev => prev === 'connected' ? prev : 'timeout')
+      clearTimers()
+    }, 120000)
+
+    return () => {
+      disposed = true
+      clearTimers()
+    }
+  }, [step, form.ocppId, provisionedChargePointId, pollingNonce])
 
   const canProceed = () => {
     switch (step) {
       case 0: return !!form.site
-      case 1: return !!form.ocppId // Must have an ID
-      case 2: return connectionStatus === 'connected' // Must have verified connection
+      case 1: return !!form.ocppId
+      case 2: return connectionStatus === 'connected'
       default: return true
     }
   }
 
-  const handleNext = () => {
+  const copyText = async (text: string, successMessage: string) => {
+    try {
+      await navigator.clipboard.writeText(text)
+      toast(successMessage)
+    } catch {
+      setError('Copy failed. Please copy manually.')
+    }
+  }
+
+  const startProvisioning = async () => {
+    setProvisioning(true)
+    setError('')
+    try {
+      const chargePoint = await createChargePointMutation.mutateAsync({
+        stationId: form.site,
+        model: form.model || 'Generic OCPP Charger',
+        manufacturer: form.manufacturer || 'Generic',
+        serialNumber: form.serialNumber || 'UNKNOWN',
+        firmwareVersion: form.firmware || '1.0',
+        connectors: form.connectors.map((c) => {
+          const spec = CONNECTOR_SPECS.find(cs => cs.key === c.type)
+          return {
+            type: spec?.displayName || c.type,
+            powerType: form.type,
+            maxPowerKw: c.maxPower,
+          }
+        }),
+        ocppId: form.ocppId,
+        ocppVersion: form.ocppVersion,
+      })
+
+      const oneTimeCredentials: OcppCredentials = chargePoint.ocppCredentials || {
+        username: form.ocppId,
+        password: '',
+        wsUrl: wsUrlFor(form.ocppVersion, form.ocppId),
+        subprotocol: versionSubprotocol(form.ocppVersion),
+      }
+
+      setProvisionedChargePointId(chargePoint.id)
+      setCredentials(oneTimeCredentials)
+      setBootProof(null)
+      setConnectionStatus('waiting')
+      setPollingNonce(prev => prev + 1)
+      auditLogger.chargePointCreated(chargePoint.id, form.site)
+      return true
+    } catch (err) {
+      setError(getErrorMessage(err))
+      return false
+    } finally {
+      setProvisioning(false)
+    }
+  }
+
+  const handleNext = async () => {
+    if (step === 1 && !provisionedChargePointId) {
+      const ok = await startProvisioning()
+      if (ok) setStep(2)
+      return
+    }
+
     if (step < STEPS.length - 1) {
       setStep(s => s + 1)
     }
@@ -343,35 +473,15 @@ export function AddCharger() {
     }
   }
 
-  const handleProvision = async () => {
-    setProvisioning(true)
+  const handleFinish = () => {
+    setComplete(true)
+    toast('Onboarding completed successfully')
+  }
+
+  const retryConnectionCheck = () => {
     setError('')
-    try {
-      // Create charge point with connectors
-      const chargePoint = await createChargePointMutation.mutateAsync({
-        stationId: form.site,
-        model: form.model || 'Generic OCPP 1.6',
-        manufacturer: form.manufacturer || 'Generic',
-        serialNumber: form.serialNumber || 'UNKNOWN',
-        firmwareVersion: form.firmware || '1.0',
-        connectors: form.connectors.map((c, idx) => {
-          const spec = CONNECTOR_SPECS.find(cs => cs.key === c.type)
-          return {
-            type: spec?.displayName || c.type,
-            powerType: form.type,
-            maxPowerKw: c.maxPower,
-          }
-        }),
-        ocppId: form.ocppId,
-      })
-      auditLogger.chargePointCreated(chargePoint.id, form.site)
-      setProvisioning(false)
-      setComplete(true)
-      toast('Charger provisioned successfully!')
-    } catch (err) {
-      setError(getErrorMessage(err))
-      setProvisioning(false)
-    }
+    setConnectionStatus('waiting')
+    setPollingNonce(prev => prev + 1)
   }
 
   if (!canAdd) {
@@ -390,25 +500,16 @@ export function AddCharger() {
             <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-accent/10 text-accent mb-4">
               <svg className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" /></svg>
             </div>
-            <h2 className="text-2xl font-semibold mb-2">Charger Provisioned!</h2>
+            <h2 className="text-2xl font-semibold mb-2">Charger Onboarded</h2>
             <p className="text-subtle mb-4">
-              {form.name || 'Your charger'} at {myStations.find(s => s.id === form.site)?.name || 'the selected station'} has been successfully provisioned.
+              {form.name || 'Your charger'} at {myStations.find(s => s.id === form.site)?.name || 'the selected station'} is fully connected.
             </p>
             <p className="text-sm text-subtle mb-6">
               OCPP ID: <code className="bg-muted px-2 py-0.5 rounded">{form.ocppId}</code>
             </p>
             <div className="flex items-center justify-center gap-4">
               <a href="/charge-points" className="px-4 py-2 rounded-lg border border-border hover:bg-muted">View All Chargers</a>
-              <button onClick={() => {
-                setComplete(false)
-                setStep(0)
-                setForm({
-                  name: '', site: '', type: 'AC', power: 22,
-                  connectors: [{ type: 'type2', maxPower: 22 }],
-                  serialNumber: '', manufacturer: '', model: '', firmware: '',
-                  ocppId: '', ocppVersion: '1.6', networkSSID: '', networkPassword: ''
-                })
-              }} className="px-4 py-2 rounded-lg bg-accent text-white hover:bg-accent-hover">Add Another</button>
+              <button onClick={() => { setComplete(false); resetWizard() }} className="px-4 py-2 rounded-lg bg-accent text-white hover:bg-accent-hover">Add Another</button>
             </div>
           </div>
         </div>
@@ -473,7 +574,7 @@ export function AddCharger() {
               <h3 className="text-lg font-semibold mb-4">Identify Charger</h3>
 
               {/* Selection Mode */}
-              {!useScanner && !manualEntry && !form.ocppId && (
+              {!useScanner && !manualEntry && !form.ocppId && !provisionedChargePointId && (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <button
                     onClick={() => setUseScanner(true)}
@@ -502,7 +603,7 @@ export function AddCharger() {
               )}
 
               {/* Scanner View */}
-              {useScanner && (
+              {useScanner && !provisionedChargePointId && (
                 <div className="max-w-sm mx-auto">
                   <div id="qr-reader" className="overflow-hidden rounded-xl border border-border"></div>
                   <button onClick={() => setUseScanner(false)} className="mt-4 text-subtle hover:text-foreground">Cancel Scan</button>
@@ -510,7 +611,7 @@ export function AddCharger() {
               )}
 
               {/* Manual / Result View */}
-              {(manualEntry || form.ocppId) && (
+              {(manualEntry || form.ocppId || provisionedChargePointId) && (
                 <div className="max-w-md mx-auto space-y-4">
                   <label className="text-left block">
                     <span className="text-sm font-medium mb-1 block">Charge Point Identity (OCPP ID)</span>
@@ -521,27 +622,32 @@ export function AddCharger() {
                         className="input font-mono text-lg"
                         placeholder="e.g. CP-10293"
                         autoFocus
+                        disabled={!!provisionedChargePointId}
                       />
-                      {/* Allow clearing if manually entered or result shown */}
-                      <button onClick={() => { updateForm('ocppId', ''); setManualEntry(false); setUseScanner(false) }} className="p-2 text-subtle hover:text-red-500">
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" /></svg>
-                      </button>
+                      {!provisionedChargePointId && (
+                        <button onClick={() => { updateForm('ocppId', ''); setManualEntry(false); setUseScanner(false) }} className="p-2 text-subtle hover:text-red-500">
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                      )}
                     </div>
+                    {provisionedChargePointId && (
+                      <p className="text-xs text-amber-600 mt-2">OCPP ID is locked after provisioning. Add another charger to use a different ID.</p>
+                    )}
                   </label>
 
                   <label className="text-left block">
                     <span className="text-sm font-medium mb-1 block">OCPP Protocol Version</span>
                     <select
                       value={form.ocppVersion}
-                      onChange={e => updateForm('ocppVersion', e.target.value as any)}
+                      onChange={e => updateForm('ocppVersion', e.target.value as OcppVersion)}
                       className="select"
+                      disabled={!!provisionedChargePointId}
                     >
                       <option value="1.6">OCPP 1.6J (Standard)</option>
                       <option value="2.0.1">OCPP 2.0.1 (Advanced)</option>
                       <option value="2.1">OCPP 2.1 (Ultra-Modern)</option>
-                      <option value="1.6s">OCPP 1.6S (SOAP/Legacy)</option>
                     </select>
-                    <p className="text-xs text-subtle mt-2">Select the version supported by your hardware. This determines the connection URL.</p>
+                    <p className="text-xs text-subtle mt-2">Select the version supported by your hardware. This determines URL and subprotocol.</p>
                   </label>
                 </div>
               )}
@@ -553,7 +659,7 @@ export function AddCharger() {
             <div className="space-y-6 text-center py-4">
               <h3 className="text-xl font-bold">Configure Your Charger</h3>
               <p className="text-subtle max-w-lg mx-auto">
-                Connect to your charger's configuration interface (usually via local Wi-Fi or Bluetooth app) and enter the following settings:
+                Connect to your charger and configure these exact OCPP settings. The portal verifies live BootNotification from your device.
               </p>
 
               <div className="bg-surface-highlight border border-border rounded-xl p-6 text-left max-w-lg mx-auto space-y-4">
@@ -561,21 +667,41 @@ export function AddCharger() {
                   <label className="text-xs font-bold text-subtle uppercase tracking-wider">Central System URL (CSMS)</label>
                   <div className="flex items-center gap-2 mt-1">
                     <code className="bg-black/20 p-2 rounded flex-1 font-mono text-accent break-all">
-                      {form.ocppVersion === '1.6s'
-                        ? `https://ocpp.evzonecharging.com/ocpp/1.6s`
-                        : `wss://ocpp.evzonecharging.com/ocpp/${form.ocppVersion}`}
+                      {credentials?.wsUrl || wsUrlFor(form.ocppVersion, form.ocppId)}
                     </code>
-                    <button className="text-xs bg-muted hover:bg-muted-hover px-2 py-1 rounded" onClick={() => toast('Copied URL')}>Copy</button>
+                    <button className="text-xs bg-muted hover:bg-muted-hover px-2 py-1 rounded" onClick={() => copyText(credentials?.wsUrl || wsUrlFor(form.ocppVersion, form.ocppId), 'Copied URL')}>Copy</button>
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-subtle uppercase tracking-wider">Charge Point Identity</label>
+                  <label className="text-xs font-bold text-subtle uppercase tracking-wider">Subprotocol</label>
                   <div className="flex items-center gap-2 mt-1">
-                    <code className="bg-black/20 p-2 rounded flex-1 font-mono text-xl font-bold">
-                      {form.ocppId}
+                    <code className="bg-black/20 p-2 rounded flex-1 font-mono text-accent break-all">
+                      {credentials?.subprotocol || versionSubprotocol(form.ocppVersion)}
                     </code>
-                    <button className="text-xs bg-muted hover:bg-muted-hover px-2 py-1 rounded" onClick={() => toast('Copied ID')}>Copy</button>
+                    <button className="text-xs bg-muted hover:bg-muted-hover px-2 py-1 rounded" onClick={() => copyText(credentials?.subprotocol || versionSubprotocol(form.ocppVersion), 'Copied subprotocol')}>Copy</button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-subtle uppercase tracking-wider">OCPP Username</label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <code className="bg-black/20 p-2 rounded flex-1 font-mono text-accent break-all">
+                      {credentials?.username || form.ocppId}
+                    </code>
+                    <button className="text-xs bg-muted hover:bg-muted-hover px-2 py-1 rounded" onClick={() => copyText(credentials?.username || form.ocppId, 'Copied username')}>Copy</button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-subtle uppercase tracking-wider">OCPP Password (One-time)</label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <code className="bg-black/20 p-2 rounded flex-1 font-mono text-accent break-all">
+                      {credentials?.password || 'Returned by backend after provisioning'}
+                    </code>
+                    {credentials?.password && (
+                      <button className="text-xs bg-muted hover:bg-muted-hover px-2 py-1 rounded" onClick={() => copyText(credentials.password, 'Copied password')}>Copy</button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -585,25 +711,18 @@ export function AddCharger() {
                   <div className="flex flex-col items-center animate-pulse">
                     <div className="h-4 w-4 bg-accent rounded-full mb-2"></div>
                     <p className="text-sm font-medium">Waiting for BootNotification...</p>
-                    <p className="text-xs text-subtle">The system is listening for a connection from {form.ocppId} on protocol {form.ocppVersion}</p>
+                    <p className="text-xs text-subtle">Listening for {form.ocppId} on OCPP {form.ocppVersion}. Polling every 3 seconds for up to 120 seconds.</p>
+                  </div>
+                )}
 
-                    {/* Development Bypass */}
-                    <button
-                      onClick={() => {
-                        setConnectionStatus('connected')
-                        // Mock data retrieval from BootNotification
-                        setForm(f => ({
-                          ...f,
-                          manufacturer: 'ABB',
-                          model: 'Terra AC Wallbox',
-                          serialNumber: 'TACW-2025-8921',
-                          firmware: 'v1.4.2'
-                        }))
-                      }}
-                      className="mt-8 text-xs text-subtle hover:text-accent underline"
-                    >
-                      (Dev) Simulate Connection Success & Data
-                    </button>
+                {connectionStatus === 'timeout' && (
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="h-12 w-12 bg-amber-500/20 text-amber-600 rounded-full flex items-center justify-center">
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 8v4m0 4h.01M3.055 11a9 9 0 1117.89 0 9 9 0 01-17.89 0z" /></svg>
+                    </div>
+                    <p className="text-lg font-bold text-amber-600">Connection Timed Out</p>
+                    <p className="text-sm text-subtle">No online signal received yet. Verify URL, subprotocol, username, and password, then retry.</p>
+                    <button onClick={retryConnectionCheck} className="btn secondary">Retry Connection Check</button>
                   </div>
                 )}
 
@@ -612,8 +731,14 @@ export function AddCharger() {
                     <div className="h-12 w-12 bg-green-500/20 text-green-500 rounded-full flex items-center justify-center mb-2">
                       <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" /></svg>
                     </div>
-                    <p className="text-lg font-bold text-green-500">Connected Successfully!</p>
-                    <p className="text-sm text-subtle">The charger has been verified.</p>
+                    <p className="text-lg font-bold text-green-500">BootNotification Received</p>
+                    <p className="text-sm text-subtle">The charger is online and verified by the backend.</p>
+                    <div className="mt-4 text-left text-xs text-subtle bg-muted/40 border border-border rounded-lg p-3 w-full max-w-lg">
+                      <div>Proof timestamp: {bootProof?.updatedAt ? new Date(bootProof.updatedAt).toLocaleString() : '-'}</div>
+                      <div>Vendor: {bootProof?.vendor || '-'}</div>
+                      <div>Model: {bootProof?.model || '-'}</div>
+                      <div>Firmware: {bootProof?.firmwareVersion || '-'}</div>
+                    </div>
                   </div>
                 )}
               </div>
@@ -623,15 +748,16 @@ export function AddCharger() {
           {/* Step 3: Review */}
           {step === 3 && (
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Review & Provision</h3>
+              <h3 className="text-lg font-semibold">Review & Finish</h3>
               <div className="grid sm:grid-cols-2 gap-4 text-sm">
                 <div><div className="text-subtle">Station</div><div className="font-medium">{myStations.find(s => s.id === form.site)?.name || form.site}</div></div>
-                <div><div className="text-subtle">Name</div><div className="font-medium">{form.name || '—'}</div></div>
-                <div><div className="text-subtle">Type</div><div className="font-medium">{form.type} • {form.power} kW</div></div>
-                <div><div className="text-subtle">Manufacturer / Model</div><div className="font-medium">{form.manufacturer} {form.model}</div></div>
-                <div><div className="text-subtle">Serial Number</div><div className="font-medium">{form.serialNumber}</div></div>
+                <div><div className="text-subtle">Name</div><div className="font-medium">{form.name || '-'}</div></div>
+                <div><div className="text-subtle">Type</div><div className="font-medium">{form.type} | {form.power} kW</div></div>
+                <div><div className="text-subtle">Manufacturer / Model</div><div className="font-medium">{form.manufacturer || '-'} {form.model || ''}</div></div>
+                <div><div className="text-subtle">Serial Number</div><div className="font-medium">{form.serialNumber || '-'}</div></div>
                 <div><div className="text-subtle">OCPP ID</div><div className="font-medium font-mono">{form.ocppId}</div></div>
                 <div><div className="text-subtle">Protocol</div><div className="font-medium">{form.ocppVersion}</div></div>
+                <div><div className="text-subtle">Backend Record ID</div><div className="font-medium font-mono">{provisionedChargePointId || '-'}</div></div>
               </div>
               <div>
                 <div className="text-sm text-subtle mb-2">Connectors</div>
@@ -640,7 +766,7 @@ export function AddCharger() {
                     const spec = CONNECTOR_SPECS.find(cs => cs.key === c.type)
                     return (
                       <span key={i} className="text-xs px-2 py-1 rounded-full bg-accent/10 text-accent">
-                        {spec?.displayName || c.type} • {c.maxPower} kW
+                        {spec?.displayName || c.type} | {c.maxPower} kW
                       </span>
                     )
                   })}
@@ -656,12 +782,12 @@ export function AddCharger() {
             Back
           </button>
           {step < STEPS.length - 1 ? (
-            <button onClick={handleNext} disabled={!canProceed()} className={`px-6 py-2 rounded-lg font-medium ${canProceed() ? 'bg-accent text-white hover:bg-accent-hover' : 'bg-gray-300 cursor-not-allowed'}`}>
-              Next
+            <button onClick={() => { void handleNext() }} disabled={!canProceed() || provisioning} className={`px-6 py-2 rounded-lg font-medium ${(canProceed() && !provisioning) ? 'bg-accent text-white hover:bg-accent-hover' : 'bg-gray-300 cursor-not-allowed'}`}>
+              {step === 1 && provisioning ? 'Provisioning...' : 'Next'}
             </button>
           ) : (
-            <button onClick={handleProvision} disabled={provisioning} className="px-6 py-2 rounded-lg bg-accent text-white font-medium hover:bg-accent-hover disabled:opacity-50">
-              {provisioning ? 'Provisioning...' : 'Provision Charger'}
+            <button onClick={handleFinish} className="px-6 py-2 rounded-lg bg-accent text-white font-medium hover:bg-accent-hover">
+              Finish Setup
             </button>
           )}
         </div>

@@ -28,6 +28,13 @@ export const chargePointService = {
   },
 
   /**
+   * Get charge point by OCPP ID
+   */
+  async getByOcppId(ocppId: string): Promise<ChargePoint | null> {
+    return apiClient.get<ChargePoint | null>(`/charge-points/by-ocpp/${encodeURIComponent(ocppId)}`)
+  },
+
+  /**
    * Get charge points by station ID
    */
   async getByStationId(stationId: string): Promise<ChargePoint[]> {

@@ -143,6 +143,7 @@ export interface ChargePoint {
   stationId: StationId
   model: string
   manufacturer: string
+  vendor?: string
   serialNumber: string
   firmwareVersion: string
   ocppId?: string // OCPP Identity
@@ -154,6 +155,14 @@ export interface ChargePoint {
   lastHeartbeat?: Date
   type?: string
   power?: number
+  createdAt?: string
+  updatedAt?: string
+  ocppCredentials?: {
+    username: string
+    password: string
+    wsUrl: string
+    subprotocol: 'ocpp1.6' | 'ocpp2.0.1' | 'ocpp2.1'
+  }
 }
 
 export interface Connector {
