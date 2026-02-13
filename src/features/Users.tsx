@@ -26,7 +26,8 @@ type UserRow = {
   role: Role
   status: UserStatus
   region: Region
-  orgId: string
+  organizationName: string
+  organizationId: string
   lastLogin: string
   createdAt: string
   mfaEnabled: boolean
@@ -58,7 +59,10 @@ function mapUserToRow(user: User): UserRow {
     role: user.role as Role,
     status: (user.status || 'Active') as UserStatus,
     region: normalizeRegion(user.region),
-    orgId: user.orgId || user.organizationId || user.tenantId || '—',
+    organizationName:
+      user.organization?.name ||
+      (user.orgId || user.organizationId || user.tenantId ? 'Unresolved organization' : 'Unassigned'),
+    organizationId: user.organization?.id || user.orgId || user.organizationId || user.tenantId || '',
     lastLogin: lastSeen && !Number.isNaN(lastSeen.getTime()) ? lastSeen.toLocaleString() : '—',
     createdAt: createdAt && !Number.isNaN(createdAt.getTime()) ? createdAt.toISOString().split('T')[0] : '—',
     mfaEnabled: Boolean(user.mfaEnabled),
@@ -110,13 +114,13 @@ export function Users() {
   }, [usersData])
 
   const orgs = useMemo(() => {
-    const set = new Set(rows.map((r) => r.orgId))
+    const set = new Set(rows.map((r) => r.organizationName))
     return ['All', ...Array.from(set)]
   }, [rows])
 
   const filtered = useMemo(() => {
     return rows.filter((r) => {
-      const okQ = !q || (r.id + ' ' + r.name + ' ' + r.email + ' ' + r.orgId).toLowerCase().includes(q.toLowerCase())
+      const okQ = !q || (r.id + ' ' + r.name + ' ' + r.email + ' ' + r.organizationName + ' ' + r.organizationId).toLowerCase().includes(q.toLowerCase())
       const okRole = role === 'All' || r.role === role
       const okStatus = status === 'All' || r.status === status
       const okRegion = region === 'ALL' || r.region === region
@@ -238,7 +242,7 @@ export function Users() {
                 <th>User</th>
                 <th>Email</th>
                 <th>Role</th>
-                <th>Org</th>
+                <th>Organization</th>
                 <th>Region</th>
                 <th>Status</th>
                 <th>Last Login</th>
@@ -266,7 +270,10 @@ export function Users() {
                     <td>
                       <RolePill role={r.role} />
                     </td>
-                    <td>{r.orgId}</td>
+                    <td>
+                      <div>{r.organizationName}</div>
+                      {r.organizationId && <div className="text-xs text-muted">{r.organizationId}</div>}
+                    </td>
                     <td>{r.region}</td>
                     <td>
                       <span className={`pill ${statusColor(r.status)}`}>{r.status}</span>

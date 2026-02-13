@@ -216,7 +216,22 @@ export function UserDetail() {
             <div className="space-y-3">
               <div>
                 <div className="text-xs text-muted">Organization</div>
-                <div className="font-medium">{userData.organizationId || 'N/A'}</div>
+                <div className="font-medium">{userData.organization?.name || 'Unassigned'}</div>
+                {userData.organizationId && (
+                  <div className="text-xs text-muted mt-1">ID: {userData.organizationId}</div>
+                )}
+              </div>
+              <div>
+                <div className="text-xs text-muted">Type</div>
+                <div className="font-medium">{userData.organization?.type || 'N/A'}</div>
+              </div>
+              <div>
+                <div className="text-xs text-muted">City</div>
+                <div className="font-medium">{userData.organization?.city || 'N/A'}</div>
+              </div>
+              <div>
+                <div className="text-xs text-muted">Address</div>
+                <div className="font-medium">{userData.organization?.address || 'N/A'}</div>
               </div>
               <div>
                 <div className="text-xs text-muted">Region</div>

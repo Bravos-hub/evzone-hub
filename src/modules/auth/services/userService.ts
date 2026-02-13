@@ -13,6 +13,7 @@ export type UserListFilters = {
   role?: string
   status?: string
   region?: string
+  zoneId?: string
 }
 
 function normalizeMe(user: User): User {
@@ -83,6 +84,7 @@ export const userService = {
     if (filters?.role) params.append('role', filters.role)
     if (filters?.status) params.append('status', filters.status)
     if (filters?.region) params.append('region', filters.region)
+    if (filters?.zoneId) params.append('zoneId', filters.zoneId)
 
     const queryString = params.toString()
     const url = queryString ? `/users?${queryString}` : '/users'

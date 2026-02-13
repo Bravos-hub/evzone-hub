@@ -34,6 +34,8 @@ export type UserProfile = {
   avatarUrl?: string
   orgId?: string
   organizationId?: string
+  region?: string
+  zoneId?: string
   status?: 'Active' | 'Pending' | 'Suspended' | 'Inactive' | 'Invited'
 }
 

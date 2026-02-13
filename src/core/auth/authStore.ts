@@ -101,6 +101,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       ownerCapability: user.ownerCapability,
       orgId: user.orgId,
       organizationId: user.organizationId,
+      region: user.region,
+      zoneId: user.zoneId,
       avatarUrl: user.email
         ? `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(user.email)}`
         : 'https://api.dicebear.com/7.x/avataaars/svg?seed=User',

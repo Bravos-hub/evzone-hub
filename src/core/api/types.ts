@@ -20,6 +20,7 @@ export interface RegisterRequest {
   role?: string
   country?: string
   region?: string
+  zoneId?: string
   subscribedPackage?: string
   accountType?: 'COMPANY' | 'INDIVIDUAL'
   companyName?: string
@@ -38,6 +39,8 @@ export interface InviteUserRequest {
   assignedStations?: string[]
   orgId?: string
   organizationId?: string
+  region?: string
+  zoneId?: string
   password?: string
 }
 
@@ -51,6 +54,8 @@ export interface AuthResponse {
     role: string
     orgId?: string
     organizationId?: string
+    region?: string
+    zoneId?: string
     assignedStations?: string[]
     ownerCapability?: OwnerCapability
     status?: 'Active' | 'Pending' | 'Suspended' | 'Inactive' | 'Invited' | 'AwaitingApproval' | 'Rejected' | 'MfaRequired'
@@ -82,6 +87,7 @@ export interface User {
   tenantId?: string
   country?: string
   region?: string
+  zoneId?: string
   postalCode?: string
   subscribedPackage?: string
   ownerCapability?: OwnerCapability

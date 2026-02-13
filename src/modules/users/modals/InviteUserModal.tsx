@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ALL_ROLES, ROLE_LABELS, CAPABILITY_LABELS } from '@/constants/roles'
 import type { OwnerCapability, Role } from '@/core/auth/types'
 import { Card } from '@/ui/components/Card'
-import { useInviteUser } from '@/modules/auth/hooks/useUsers'
+import { useInviteUser, useUser } from '@/modules/auth/hooks/useUsers'
 import { getErrorMessage } from '@/core/api/errors'
+import { useAuthStore } from '@/core/auth/authStore'
 
 type InviteUserModalProps = {
   isOpen: boolean
@@ -11,9 +12,13 @@ type InviteUserModalProps = {
 }
 
 export function InviteUserModal({ isOpen, onClose }: InviteUserModalProps) {
+  const { user: authUser } = useAuthStore()
+  const { data: inviter } = useUser(authUser?.id || '')
   const [email, setEmail] = useState('')
   const [role, setRole] = useState<Role>('STATION_OWNER')
   const [ownerCapability, setOwnerCapability] = useState<OwnerCapability>('BOTH')
+  const [region, setRegion] = useState('')
+  const [zoneId, setZoneId] = useState('')
   const [error, setError] = useState('')
   const [ack, setAck] = useState('')
   const [password, setPassword] = useState('')
@@ -21,9 +26,15 @@ export function InviteUserModal({ isOpen, onClose }: InviteUserModalProps) {
 
   const inviteUser = useInviteUser()
 
-  if (!isOpen) return null
-
   const showCapability = role === 'STATION_OWNER' || role === 'STATION_OPERATOR'
+
+  useEffect(() => {
+    if (!isOpen) return
+    if (!region && inviter?.region) setRegion(inviter.region)
+    if (!zoneId && inviter?.zoneId) setZoneId(inviter.zoneId)
+  }, [isOpen, inviter?.region, inviter?.zoneId, region, zoneId])
+
+  if (!isOpen) return null
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -55,10 +66,17 @@ export function InviteUserModal({ isOpen, onClose }: InviteUserModalProps) {
       return
     }
 
+    if (!region.trim() && !zoneId.trim()) {
+      setError('Region or Zone ID is required')
+      return
+    }
+
     inviteUser.mutate({
       email: email.trim(),
       role,
       ownerCapability: showCapability ? ownerCapability : undefined,
+      region: region.trim() || undefined,
+      zoneId: zoneId.trim() || undefined,
       password,
     }, {
       onSuccess: () => {
@@ -67,6 +85,8 @@ export function InviteUserModal({ isOpen, onClose }: InviteUserModalProps) {
           setEmail('')
           setRole('STATION_OWNER')
           setOwnerCapability('BOTH')
+          setRegion(inviter?.region || '')
+          setZoneId(inviter?.zoneId || '')
           setPassword('')
           setConfirmPassword('')
           setAck('')
@@ -83,6 +103,8 @@ export function InviteUserModal({ isOpen, onClose }: InviteUserModalProps) {
     setEmail('')
     setRole('STATION_OWNER')
     setOwnerCapability('BOTH')
+    setRegion(inviter?.region || '')
+    setZoneId(inviter?.zoneId || '')
     setError('')
     setAck('')
     setPassword('')
@@ -152,6 +174,33 @@ export function InviteUserModal({ isOpen, onClose }: InviteUserModalProps) {
                 </select>
               </div>
             )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-text mb-1">
+                  Region *
+                </label>
+                <input
+                  type="text"
+                  value={region}
+                  onChange={(e) => setRegion(e.target.value)}
+                  placeholder="e.g. AFRICA"
+                  className="input w-full"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-text mb-1">
+                  Zone ID
+                </label>
+                <input
+                  type="text"
+                  value={zoneId}
+                  onChange={(e) => setZoneId(e.target.value)}
+                  placeholder="Optional, preferred when known"
+                  className="input w-full"
+                />
+              </div>
+            </div>
 
             <div>
               <label className="block text-sm font-medium text-text mb-1">

@@ -148,9 +148,21 @@ export const marketplaceDetailsService = {
     }
 
     const user = await apiClient.get<User & Record<string, unknown>>(`/users/${listing.id}`)
-    const [documents, organization, availability] = await Promise.all([
+    const embeddedOrganization = user.organization
+      ? ({
+          id: user.organization.id,
+          name: user.organization.name,
+          type: user.organization.type,
+          city: user.organization.city || undefined,
+          address: user.organization.address || undefined,
+          logoUrl: user.organization.logoUrl || undefined,
+          createdAt: user.createdAt || '',
+          updatedAt: user.updatedAt,
+        } satisfies Organization)
+      : null
+    const [documents, organizationFallback, availability] = await Promise.all([
       fetchGenericDocuments('USER', listing.id),
-      fetchOrganization(user.organizationId),
+      embeddedOrganization ? Promise.resolve(null) : fetchOrganization(user.organizationId),
       listing.kind === 'Technicians' ? fetchTechnicianAvailability(listing.id) : Promise.resolve(null),
     ])
 
@@ -158,7 +170,7 @@ export const marketplaceDetailsService = {
       kind: listing.kind,
       listing,
       entity: user,
-      organization,
+      organization: embeddedOrganization || organizationFallback,
       documents,
       rating: resolveRating(user),
       status: (availability?.status || user.status || null) as string | null,
