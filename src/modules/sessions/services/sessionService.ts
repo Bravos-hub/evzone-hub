@@ -32,8 +32,22 @@ export const sessionService = {
    * Get sessions for a station
    */
   async getByStation(stationId: string, activeOnly?: boolean): Promise<{ active: ChargingSession[]; recent?: ChargingSession[] } | ChargingSession[]> {
-    const query = activeOnly ? '?active=true' : ''
-    return apiClient.get<{ active: ChargingSession[]; recent?: ChargingSession[] } | ChargingSession[]>(`/sessions/station/${stationId}${query}`)
+    const params = new URLSearchParams({ stationId })
+    if (activeOnly) params.append('status', 'ACTIVE')
+
+    try {
+      const historyResponse = await apiClient.get<{ sessions?: ChargingSession[] } | ChargingSession[]>(
+        `/sessions/history/all?${params.toString()}`
+      )
+      if (Array.isArray(historyResponse)) return historyResponse
+      return Array.isArray(historyResponse?.sessions) ? historyResponse.sessions : []
+    } catch {
+      // Backward compatibility for older API versions
+      const query = activeOnly ? '?active=true' : ''
+      return apiClient.get<{ active: ChargingSession[]; recent?: ChargingSession[] } | ChargingSession[]>(
+        `/sessions/station/${stationId}${query}`
+      )
+    }
   },
 
   /**

@@ -25,10 +25,11 @@ export function StationDetail() {
 
   const accessContext = useMemo(() => ({
     role: user?.role || authUser?.role,
+    userId: user?.id || authUser?.id,
     orgId: user?.orgId || user?.organizationId,
     assignedStations: user?.assignedStations || [],
     capability: user?.ownerCapability || authUser?.ownerCapability,
-  }), [user?.role, authUser?.role, user?.orgId, user?.organizationId, user?.assignedStations, user?.ownerCapability, authUser?.ownerCapability])
+  }), [user?.role, authUser?.role, user?.id, authUser?.id, user?.orgId, user?.organizationId, user?.assignedStations, user?.ownerCapability, authUser?.ownerCapability])
 
   const canManage = useMemo(() => {
     if (!user || !station) return false
@@ -226,7 +227,7 @@ export function StationDetail() {
                     <td>{cp.manufacturer}</td>
                     <td>{cp.model}</td>
                     <td><StationStatusPill status={cp.status} /></td>
-                    <td>{cp.connectors.length}</td>
+                    <td>{Array.isArray(cp.connectors) ? cp.connectors.length : 0}</td>
                     <td className="text-right">
                       {canManage ? (
                         <button

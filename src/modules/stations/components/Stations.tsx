@@ -276,12 +276,15 @@ export function Stations() {
                         </td>
                       </tr>
                     ) : (
-                      rows.map(r => (
+                      rows.map(r => {
+                        const primaryStationLabel = r.name && r.name.trim() ? r.name : r.id
+                        const showSecondaryId = Boolean(r.name && r.name.trim() && r.name !== r.id)
+                        return (
                         <tr key={r.id} className="hover:bg-white/5 transition-colors">
                           <td className="px-6 py-4"><input type="checkbox" className="rounded border-white/10 bg-white/5" /></td>
                           <td className="px-6 py-4">
-                            <div className="font-bold text-text">{r.id}</div>
-                            <div className="text-xs text-muted leading-tight">{r.name}</div>
+                            <div className="font-bold text-text">{primaryStationLabel}</div>
+                            {showSecondaryId && <div className="text-xs text-muted leading-tight">ID: {r.id}</div>}
                           </td>
                           <td className="px-6 py-4">
                             <div className="text-muted font-medium">{r.region}</div>
@@ -325,7 +328,8 @@ export function Stations() {
                             </button>
                           </td>
                         </tr>
-                      ))
+                        )
+                      })
                     )}
                   </tbody>
                 </table>
