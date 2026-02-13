@@ -71,14 +71,29 @@ export interface User {
   role: Role
   orgId?: string
   organizationId?: string
+  organization?: {
+    id: string
+    name: string
+    type: 'COMPANY' | 'INDIVIDUAL'
+    city?: string | null
+    address?: string | null
+    logoUrl?: string | null
+  }
   tenantId?: string
+  country?: string
   region?: string
+  postalCode?: string
+  subscribedPackage?: string
   ownerCapability?: OwnerCapability
   status?: 'Active' | 'Pending' | 'Suspended' | 'Inactive' | 'Invited' | 'MfaRequired'
   mfaEnabled?: boolean
   lastSeen?: string
   created?: string
   assignedStations?: string[]
+  _count?: {
+    ownedStations?: number
+    operatedStations?: number
+  }
   createdAt: string
   updatedAt: string
 }
@@ -505,12 +520,25 @@ export interface Site {
   leaseType?: LeaseType
   expectedMonthlyPrice?: number
   expectedFootfall?: Footfall
+  leaseDetails?: SiteLeaseDetails & { status?: string }
   latitude?: number
   longitude?: number
   photos: string[]
   amenities: string[]
   tags: string[]
   ownerId: string
+  organizationId?: string | null
+  owner?: {
+    id: string
+    name: string
+    email?: string | null
+    phone?: string | null
+    region?: string | null
+  }
+  verificationStatus?: string
+  documentsVerified?: boolean
+  documentsVerifiedAt?: string
+  documentsVerifiedBy?: string | null
   status: SiteStatus
   createdAt: string
   updatedAt: string

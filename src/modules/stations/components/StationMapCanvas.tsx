@@ -29,6 +29,8 @@ interface StationMapCanvasProps {
     onMove: (evt: any) => void
     onStationClick: (station: StationMapData) => void
     onClusterClick: (clusterId: number, coordinates: [number, number], sourceId: string) => void
+    onBoundsChanged?: (bounds: { north: number; south: number; east: number; west: number }) => void
+    onMapReady?: (map: maplibregl.Map) => void
     selectedStationId?: string | null
     popupInfo: StationMapData | null
     setPopupInfo: (info: StationMapData | null) => void
@@ -46,6 +48,8 @@ export function StationMapCanvas({
     onMove,
     onStationClick,
     onClusterClick,
+    onBoundsChanged,
+    onMapReady,
     selectedStationId,
     popupInfo,
     setPopupInfo,
@@ -152,12 +156,33 @@ export function StationMapCanvas({
         }
     }, [onClusterClick, onStationClick])
 
+    const emitBounds = useCallback(() => {
+        if (!onBoundsChanged) return
+        const map = mapRef.current?.getMap()
+        if (!map) return
+
+        const bounds = map.getBounds()
+        onBoundsChanged({
+            north: bounds.getNorth(),
+            south: bounds.getSouth(),
+            east: bounds.getEast(),
+            west: bounds.getWest()
+        })
+    }, [onBoundsChanged])
+
     return (
         <section className="card overflow-hidden relative min-h-[400px] border border-border-light h-full w-full bg-black/20">
             <Map
                 ref={mapRef}
                 {...viewState}
                 onMove={onMove}
+                onMoveEnd={emitBounds}
+                onLoad={() => {
+                    const map = mapRef.current?.getMap()
+                    if (!map) return
+                    onMapReady?.(map)
+                    emitBounds()
+                }}
                 mapStyle="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
                 interactiveLayerIds={['clusters', 'unclustered-point']}
                 onClick={onMapClick}

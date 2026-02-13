@@ -6,7 +6,14 @@
 import { apiClient } from '@/core/api/client'
 import { DEMO_MODE } from '@/core/api/config'
 import { ApiException } from '@/core/api/errors'
-import type { User, UpdateUserRequest, PaginatedResponse, InviteUserRequest } from '@/core/api/types'
+import type { User, UpdateUserRequest, InviteUserRequest } from '@/core/api/types'
+
+export type UserListFilters = {
+  q?: string
+  role?: string
+  status?: string
+  region?: string
+}
 
 function normalizeMe(user: User): User {
   const orgId = user.orgId || user.organizationId
@@ -70,8 +77,16 @@ export const userService = {
   /**
    * Get all users (admin only)
    */
-  async getAll(): Promise<User[]> {
-    return apiClient.get<User[]>('/users')
+  async getAll(filters?: UserListFilters): Promise<User[]> {
+    const params = new URLSearchParams()
+    if (filters?.q) params.append('q', filters.q)
+    if (filters?.role) params.append('role', filters.role)
+    if (filters?.status) params.append('status', filters.status)
+    if (filters?.region) params.append('region', filters.region)
+
+    const queryString = params.toString()
+    const url = queryString ? `/users?${queryString}` : '/users'
+    return apiClient.get<User[]>(url)
   },
 
   /**

@@ -4,7 +4,14 @@
  */
 
 import { apiClient } from '@/core/api/client'
-import type { Site, CreateSiteRequest, UpdateSiteRequest } from '@/core/api/types'
+import type { Site, CreateSiteRequest, UpdateSiteRequest, SitePurpose } from '@/core/api/types'
+
+export type SiteListFilters = {
+    status?: string
+    city?: string
+    myOnly?: boolean
+    purpose?: SitePurpose
+}
 
 export const siteService = {
     /**
@@ -18,11 +25,12 @@ export const siteService = {
     /**
      * Get all sites with optional filters
      */
-    async getSites(filters?: { status?: string; city?: string; myOnly?: boolean }): Promise<Site[]> {
+    async getSites(filters?: SiteListFilters): Promise<Site[]> {
         const params = new URLSearchParams()
         if (filters?.status) params.append('status', filters.status)
         if (filters?.city) params.append('city', filters.city)
         if (filters?.myOnly) params.append('myOnly', 'true')
+        if (filters?.purpose) params.append('purpose', filters.purpose)
 
         const queryString = params.toString()
         const url = queryString ? `/sites?${queryString}` : '/sites'

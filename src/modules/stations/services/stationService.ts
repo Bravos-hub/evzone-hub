@@ -6,16 +6,33 @@
 import { apiClient } from '@/core/api/client'
 import type { Station, CreateStationRequest, UpdateStationRequest, SwapBay, SwapBayInput, Battery, BatteryInput, SwapsTodayMetric, StationStats } from '@/core/api/types'
 
+export interface StationQuery {
+  status?: string
+  orgId?: string
+  limit?: number
+  offset?: number
+  north?: number
+  south?: number
+  east?: number
+  west?: number
+  q?: string
+}
+
 export const stationService = {
   /**
    * Get all stations
    */
-  async getAll(query?: { status?: string; orgId?: string; limit?: number; offset?: number }): Promise<Station[]> {
+  async getAll(query?: StationQuery): Promise<Station[]> {
     const params = new URLSearchParams()
     if (query?.status) params.append('status', query.status)
     if (query?.orgId) params.append('orgId', query.orgId)
     if (query?.limit) params.append('limit', query.limit.toString())
     if (query?.offset) params.append('offset', query.offset.toString())
+    if (Number.isFinite(query?.north)) params.append('north', String(query?.north))
+    if (Number.isFinite(query?.south)) params.append('south', String(query?.south))
+    if (Number.isFinite(query?.east)) params.append('east', String(query?.east))
+    if (Number.isFinite(query?.west)) params.append('west', String(query?.west))
+    if (query?.q?.trim()) params.append('q', query.q.trim())
 
     const queryString = params.toString()
     return apiClient.get<Station[]>(`/stations${queryString ? `?${queryString}` : ''}`)

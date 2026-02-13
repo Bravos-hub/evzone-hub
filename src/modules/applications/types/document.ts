@@ -5,7 +5,7 @@
 export interface Document {
     id: string
     category: DocumentCategory
-    entityType: 'SITE' | 'APPLICATION' | 'TENANT'
+    entityType: 'SITE' | 'APPLICATION' | 'TENANT' | 'USER'
     entityId: string
     fileName: string
     fileUrl: string
@@ -29,6 +29,7 @@ export type DocumentStatus =
     | 'VERIFIED'
     | 'REJECTED'
     | 'EXPIRED'
+    | 'INFO_REQUESTED'
 
 export type DocumentCategory =
     // Site Owner Documents
@@ -82,5 +83,5 @@ export interface DocumentUploadRequest {
 export interface DocumentListFilters {
     status?: DocumentStatus
     category?: DocumentCategory
-    entityType?: 'SITE' | 'APPLICATION' | 'TENANT'
+    entityType?: 'SITE' | 'APPLICATION' | 'TENANT' | 'USER'
 }

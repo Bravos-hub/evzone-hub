@@ -12,6 +12,7 @@ export const queryKeys = {
   // Users
   users: {
     all: ['users'] as const,
+    list: (filters?: Record<string, unknown>) => ['users', filters] as const,
     detail: (id: string) => ['users', id] as const,
     vehicles: (id: string) => ['users', id, 'vehicles'] as const,
     sessions: (id: string) => ['users', id, 'sessions'] as const,
@@ -90,6 +91,11 @@ export const queryKeys = {
   tariffs: {
     all: (filters?: Record<string, unknown>) => ['tariffs', filters] as const,
     detail: (id: string) => ['tariffs', id] as const,
+  },
+
+  // Marketplace
+  marketplace: {
+    detail: (kind?: string, id?: string) => ['marketplace', 'details', kind ?? 'none', id ?? 'none'] as const,
   },
 } as const
 

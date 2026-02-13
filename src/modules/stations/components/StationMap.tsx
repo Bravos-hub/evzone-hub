@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useCallback } from 'react'
+import { useState, useMemo, useRef, useCallback, useEffect } from 'react'
 import { useAuthStore } from '@/core/auth/authStore'
 import { hasPermission } from '@/constants/permissions'
 import { useStations } from '../hooks/useStations'
@@ -9,44 +9,129 @@ import { StationListPanel } from './StationListPanel'
 import { mapApiStationToMapData } from '../utils/geo'
 import { API_CONFIG } from '@/core/api/config'
 
+type MapBounds = {
+  north: number
+  south: number
+  east: number
+  west: number
+}
+
+const BOUNDS_FETCH_DEBOUNCE_MS = 500
+
 export function StationMap() {
   const { user } = useAuthStore()
   const role = user?.role ?? 'STATION_OWNER'
   const canView = hasPermission(role, 'stations', 'view')
 
-  // 1. Data Fetching
-  const { data: apiStations, isLoading, error } = useStations()
-
-  // 2. Local State
+  // 1. Local State
   const [q, setQ] = useState('')
   const [statusFilter, setStatusFilter] = useState('All')
   const [typeFilter, setTypeFilter] = useState('All')
   const [selectedStationId, setSelectedStationId] = useState<string | null>(null)
   const [popupInfo, setPopupInfo] = useState<StationMapData | null>(null)
   const [showCoverage, setShowCoverage] = useState(false)
+  const [mapBounds, setMapBounds] = useState<MapBounds | null>(null)
+  const [debouncedBounds, setDebouncedBounds] = useState<MapBounds | null>(null)
   const [viewState, setViewState] = useState({
     longitude: 35.0,
     latitude: -1.0,
     zoom: 4
   })
+  const boundsFetchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // 3. Derived Data (Normalized & Filtered)
+  // 2. Debounced viewport bounds (Discover-style)
+  useEffect(() => {
+    if (!mapBounds) return
+    if (boundsFetchTimeoutRef.current) {
+      clearTimeout(boundsFetchTimeoutRef.current)
+    }
+
+    boundsFetchTimeoutRef.current = setTimeout(() => {
+      setDebouncedBounds(mapBounds)
+    }, BOUNDS_FETCH_DEBOUNCE_MS)
+  }, [mapBounds])
+
+  useEffect(() => {
+    return () => {
+      if (boundsFetchTimeoutRef.current) {
+        clearTimeout(boundsFetchTimeoutRef.current)
+      }
+    }
+  }, [])
+
+  const searchQuery = q.trim()
+  const normalizedSearchQuery = searchQuery.toLowerCase()
+
+  // 3. Viewport data fetch
+  const boundsQuery = useMemo(() => {
+    if (!debouncedBounds) return undefined
+    return {
+      north: debouncedBounds.north,
+      south: debouncedBounds.south,
+      east: debouncedBounds.east,
+      west: debouncedBounds.west,
+    }
+  }, [debouncedBounds])
+
+  const {
+    data: apiStations,
+    isLoading: isViewportStationsLoading,
+    error: viewportError,
+  } = useStations(boundsQuery, { enabled: !!debouncedBounds })
+
+  // 4. Derived Data (Normalized & Filtered)
   const allMapStations = useMemo(() =>
-    (apiStations || []).map(s => mapApiStationToMapData(s as ApiStation)),
+    (apiStations || []).map((s) => mapApiStationToMapData(s as ApiStation)),
     [apiStations]
   )
 
-  const filteredStations = useMemo(() =>
+  const locallyFilteredStations = useMemo(() =>
     allMapStations
-      .filter(s => !q ||
-        s.name.toLowerCase().includes(q.toLowerCase()) ||
-        s.address.toLowerCase().includes(q.toLowerCase()) ||
-        s.id.toLowerCase().includes(q.toLowerCase())
+      .filter((s) => !normalizedSearchQuery ||
+        s.name.toLowerCase().includes(normalizedSearchQuery) ||
+        s.address.toLowerCase().includes(normalizedSearchQuery) ||
+        s.id.toLowerCase().includes(normalizedSearchQuery)
       )
-      .filter(s => statusFilter === 'All' || s.status === statusFilter)
-      .filter(s => typeFilter === 'All' || s.type === typeFilter),
-    [allMapStations, q, statusFilter, typeFilter]
+      .filter((s) => statusFilter === 'All' || s.status === statusFilter)
+      .filter((s) => typeFilter === 'All' || s.type === typeFilter),
+    [allMapStations, normalizedSearchQuery, statusFilter, typeFilter]
   )
+
+  // Discover-style global search fallback when the viewport has no local matches.
+  const shouldGlobalSearch = searchQuery.length > 0 && locallyFilteredStations.length === 0
+
+  const {
+    data: globalSearchStationsData,
+    isLoading: isGlobalSearchLoading,
+    error: globalSearchError,
+  } = useStations(
+    shouldGlobalSearch ? { q: searchQuery } : undefined,
+    { enabled: shouldGlobalSearch }
+  )
+
+  const globalSearchStations = useMemo(() =>
+    (globalSearchStationsData || []).map((s) => mapApiStationToMapData(s as ApiStation))
+      .filter((s) => statusFilter === 'All' || s.status === statusFilter)
+      .filter((s) => typeFilter === 'All' || s.type === typeFilter)
+      .filter((s) =>
+        s.name.toLowerCase().includes(normalizedSearchQuery) ||
+        s.address.toLowerCase().includes(normalizedSearchQuery) ||
+        s.id.toLowerCase().includes(normalizedSearchQuery)
+      ),
+    [globalSearchStationsData, statusFilter, typeFilter, normalizedSearchQuery]
+  )
+
+  const filteredStations = shouldGlobalSearch ? globalSearchStations : locallyFilteredStations
+  const totalVisibleSourceCount = shouldGlobalSearch ? globalSearchStations.length : allMapStations.length
+  const isLoading = !debouncedBounds || isViewportStationsLoading || (shouldGlobalSearch && isGlobalSearchLoading)
+  const error = viewportError || globalSearchError
+
+  const stationsById = useMemo(() => {
+    const stationMap = new Map<string, StationMapData>()
+    allMapStations.forEach((station) => stationMap.set(station.id, station))
+    globalSearchStations.forEach((station) => stationMap.set(station.id, station))
+    return stationMap
+  }, [allMapStations, globalSearchStations])
 
   const tileUrl = useMemo(() => {
     const base = `${API_CONFIG.baseURL}/geography/tiles/{z}/{x}/{y}.pbf`
@@ -57,34 +142,38 @@ export function StationMap() {
     return qs ? `${base}?${qs}` : base
   }, [statusFilter, typeFilter])
 
-  // 4. Stats Calculations
+  // 5. Stats Calculations
   const stats = useMemo(() => {
     const total = filteredStations.length || 1
-    const activeCount = filteredStations.filter(s => s.status === 'ACTIVE').length
-    const inactiveCount = filteredStations.filter(s => s.status === 'INACTIVE').length
+    const activeCount = filteredStations.filter((s) => s.status === 'ACTIVE').length
+    const inactiveCount = filteredStations.filter((s) => s.status === 'INACTIVE').length
     return {
       avgHealth: Math.round((activeCount / total) * 100),
       openIncidents: inactiveCount
     }
   }, [filteredStations])
 
-  // 5. Handlers
-  const handleStationSelect = useCallback((id: string) => {
-    const station = allMapStations.find(s => s.id === id)
-    if (station) {
-      setSelectedStationId(id)
-      setPopupInfo(station)
-      setViewState(prev => ({
-        ...prev,
-        longitude: station.lng,
-        latitude: station.lat,
-        zoom: 14
-      }))
-    }
-  }, [allMapStations])
+  // 6. Handlers
+  const handleBoundsChanged = useCallback((bounds: MapBounds) => {
+    setMapBounds(bounds)
+  }, [])
 
-  const handleClusterClick = useCallback((clusterId: number, coordinates: [number, number], sourceId: string) => {
-    setViewState(prev => ({
+  const handleStationSelect = useCallback((id: string) => {
+    const station = stationsById.get(id)
+    if (!station) return
+
+    setSelectedStationId(id)
+    setPopupInfo(station)
+    setViewState((prev) => ({
+      ...prev,
+      longitude: station.lng,
+      latitude: station.lat,
+      zoom: 14
+    }))
+  }, [stationsById])
+
+  const handleClusterClick = useCallback((_: number, coordinates: [number, number], __: string) => {
+    setViewState((prev) => ({
       ...prev,
       longitude: coordinates[0],
       latitude: coordinates[1],
@@ -94,13 +183,12 @@ export function StationMap() {
 
   if (!canView) return (
     <div className="flex items-center justify-center p-20 bg-panel rounded-2xl border border-dashed border-border-light text-muted font-medium">
-      🔒 Access Restricted: Insufficient permissions to view the stations map.
+      Access Restricted: Insufficient permissions to view the stations map.
     </div>
   )
 
   if (error) return (
     <div className="card bg-danger/5 border-danger/20 p-8 text-center">
-      <div className="text-3xl mb-3">⚠️</div>
       <h3 className="text-danger font-bold text-lg">Infrastructure Link Failed</h3>
       <p className="text-muted text-sm mt-1">{error instanceof Error ? error.message : 'Unable to connect to spatial data services.'}</p>
     </div>
@@ -115,7 +203,7 @@ export function StationMap() {
             Stations Explorer <span className="text-accent text-sm font-mono bg-accent/10 px-2 py-0.5 rounded-full">v2.0 (WebGL)</span>
           </h1>
           <p className="text-sm text-muted font-medium mt-1">
-            Visualizing {filteredStations.length} of {allMapStations.length} hyper-connected assets
+            Visualizing {filteredStations.length} of {totalVisibleSourceCount} hyper-connected assets
           </p>
         </div>
 
@@ -176,8 +264,9 @@ export function StationMap() {
           <StationMapCanvas
             tileUrl={tileUrl}
             viewState={viewState}
-            onMove={evt => setViewState(evt.viewState)}
-            onStationClick={s => handleStationSelect(s.id)}
+            onMove={(evt) => setViewState(evt.viewState)}
+            onBoundsChanged={handleBoundsChanged}
+            onStationClick={(s) => handleStationSelect(s.id)}
             onClusterClick={handleClusterClick}
             selectedStationId={selectedStationId}
             popupInfo={popupInfo}

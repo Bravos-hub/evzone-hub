@@ -5,10 +5,11 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { siteService } from '../services/siteService'
+import type { SiteListFilters } from '../services/siteService'
 import { queryKeys } from '@/data/queryKeys'
 import type { CreateSiteRequest, UpdateSiteRequest } from '@/core/api/types'
 
-export function useSites(filters?: { status?: string; city?: string; myOnly?: boolean }) {
+export function useSites(filters?: SiteListFilters) {
   return useQuery({
     queryKey: queryKeys.sites.all(filters),
     queryFn: () => siteService.getSites(filters),
