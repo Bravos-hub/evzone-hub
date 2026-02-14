@@ -162,6 +162,10 @@ export interface ChargePoint {
     password: string
     wsUrl: string
     subprotocol: 'ocpp1.6' | 'ocpp2.0.1' | 'ocpp2.1'
+    authProfile?: 'basic' | 'mtls_bootstrap' | 'mtls'
+    bootstrapExpiresAt?: string
+    requiresClientCertificate?: boolean
+    mtlsInstructions?: string
   }
 }
 

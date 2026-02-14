@@ -7,6 +7,18 @@ import { apiClient } from '@/core/api/client'
 import type { ChargePoint } from '@/core/types/domain'
 import type { CreateChargePointRequest, UpdateChargePointRequest } from '@/core/api/types'
 
+export type ChargePointSecurityState = {
+  chargePointId: string
+  ocppId: string
+  authProfile: 'basic' | 'mtls_bootstrap' | 'mtls'
+  bootstrapEnabled: boolean
+  bootstrapExpiresAt?: string
+  allowedIps: string[]
+  allowedCidrs: string[]
+  requiresClientCertificate: boolean
+  certificatesCount: number
+}
+
 export const chargePointService = {
   /**
    * Get all charge points
@@ -67,5 +79,30 @@ export const chargePointService = {
    */
   async reboot(id: string): Promise<void> {
     return apiClient.post<void>(`/charge-points/${id}/reboot`)
+  },
+
+  async getSecurity(id: string): Promise<ChargePointSecurityState> {
+    return apiClient.get<ChargePointSecurityState>(`/charge-points/${id}/security`)
+  },
+
+  async bindCertificate(
+    id: string,
+    data: { fingerprint: string; subject?: string; validFrom?: string; validTo?: string }
+  ): Promise<{
+    status: string
+    chargePointId: string
+    ocppId: string
+    fingerprint: string
+    authProfile: 'mtls'
+    requiresClientCertificate: boolean
+  }> {
+    return apiClient.post(`/charge-points/${id}/security/certificate-bind`, data)
+  },
+
+  async updateBootstrap(
+    id: string,
+    data: { enabled: boolean; ttlMinutes?: number; allowedIps?: string[]; allowedCidrs?: string[] }
+  ): Promise<ChargePointSecurityState> {
+    return apiClient.patch<ChargePointSecurityState>(`/charge-points/${id}/security/bootstrap`, data)
   },
 }

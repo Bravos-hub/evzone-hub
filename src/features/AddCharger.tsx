@@ -17,12 +17,17 @@ import { Html5QrcodeScanner } from 'html5-qrcode'
 
 type ChargerType = 'AC' | 'DC'
 type OcppVersion = '1.6' | '2.0.1' | '2.1'
+type AuthProfile = 'basic' | 'mtls_bootstrap'
 
 type OcppCredentials = {
   username: string
   password: string
   wsUrl: string
   subprotocol: 'ocpp1.6' | 'ocpp2.0.1' | 'ocpp2.1'
+  authProfile?: 'basic' | 'mtls_bootstrap' | 'mtls'
+  bootstrapExpiresAt?: string
+  requiresClientCertificate?: boolean
+  mtlsInstructions?: string
 }
 
 type BootProof = {
@@ -166,6 +171,15 @@ const versionSubprotocol = (version: OcppVersion): OcppCredentials['subprotocol'
 }
 
 const wsUrlFor = (version: OcppVersion, ocppId: string) => `wss://ocpp.evzonecharging.com/ocpp/${version}/${ocppId}`
+const splitAllowlist = (value: string): string[] =>
+  Array.from(
+    new Set(
+      value
+        .split(/[\n,]+/)
+        .map(entry => entry.trim())
+        .filter(Boolean)
+    )
+  )
 
 interface ChargerForm {
   name: string
@@ -179,6 +193,10 @@ interface ChargerForm {
   firmware: string
   ocppId: string
   ocppVersion: OcppVersion
+  authProfile: AuthProfile
+  allowedIpsText: string
+  allowedCidrsText: string
+  bootstrapTtlMinutes: number | ''
   networkSSID: string
   networkPassword: string
 }
@@ -208,6 +226,10 @@ export function AddCharger() {
     firmware: '',
     ocppId: '',
     ocppVersion: '1.6',
+    authProfile: 'basic',
+    allowedIpsText: '',
+    allowedCidrsText: '',
+    bootstrapTtlMinutes: 30,
     networkSSID: '',
     networkPassword: '',
   })
@@ -229,6 +251,8 @@ export function AddCharger() {
   const [provisionedChargePointId, setProvisionedChargePointId] = useState('')
   const [credentials, setCredentials] = useState<OcppCredentials | null>(null)
   const [bootProof, setBootProof] = useState<BootProof | null>(null)
+  const [certificateFingerprint, setCertificateFingerprint] = useState('')
+  const [bindingCertificate, setBindingCertificate] = useState(false)
 
   const { data: allStations, isLoading: loadingStations } = useStations()
 
@@ -272,6 +296,15 @@ export function AddCharger() {
     setForm(f => ({ ...f, [key]: value }))
   }
 
+  const bootstrapAllowedIps = useMemo(() => splitAllowlist(form.allowedIpsText), [form.allowedIpsText])
+  const bootstrapAllowedCidrs = useMemo(() => splitAllowlist(form.allowedCidrsText), [form.allowedCidrsText])
+  const bootstrapExpiresAt = credentials?.bootstrapExpiresAt || ''
+  const bootstrapRemainingMs = bootstrapExpiresAt ? Date.parse(bootstrapExpiresAt) - Date.now() : 0
+  const bootstrapExpired = Boolean(bootstrapExpiresAt) && bootstrapRemainingMs <= 0
+  const bootstrapMinutesLeft = bootstrapExpiresAt
+    ? Math.max(0, Math.ceil(Math.max(0, bootstrapRemainingMs) / 60000))
+    : 0
+
   const resetWizard = () => {
     setStep(0)
     setConnectionStatus('waiting')
@@ -294,9 +327,15 @@ export function AddCharger() {
       firmware: '',
       ocppId: '',
       ocppVersion: '1.6',
+      authProfile: 'basic',
+      allowedIpsText: '',
+      allowedCidrsText: '',
+      bootstrapTtlMinutes: 30,
       networkSSID: '',
       networkPassword: '',
     })
+    setCertificateFingerprint('')
+    setBindingCertificate(false)
   }
 
   const generateRandomID = () => {
@@ -396,7 +435,12 @@ export function AddCharger() {
   const canProceed = () => {
     switch (step) {
       case 0: return !!form.site
-      case 1: return !!form.ocppId
+      case 1:
+        if (!form.ocppId) return false
+        if (form.authProfile === 'mtls_bootstrap') {
+          return bootstrapAllowedIps.length > 0 || bootstrapAllowedCidrs.length > 0
+        }
+        return true
       case 2: return connectionStatus === 'connected'
       default: return true
     }
@@ -414,6 +458,15 @@ export function AddCharger() {
   const startProvisioning = async () => {
     setProvisioning(true)
     setError('')
+    if (
+      form.authProfile === 'mtls_bootstrap'
+      && bootstrapAllowedIps.length === 0
+      && bootstrapAllowedCidrs.length === 0
+    ) {
+      setProvisioning(false)
+      setError('For mTLS onboarding, provide at least one allowed IP or CIDR.')
+      return false
+    }
     try {
       const chargePoint = await createChargePointMutation.mutateAsync({
         stationId: form.site,
@@ -431,6 +484,13 @@ export function AddCharger() {
         }),
         ocppId: form.ocppId,
         ocppVersion: form.ocppVersion,
+        authProfile: form.authProfile,
+        bootstrapTtlMinutes:
+          form.authProfile === 'mtls_bootstrap' && form.bootstrapTtlMinutes !== ''
+            ? Number(form.bootstrapTtlMinutes)
+            : undefined,
+        allowedIps: form.authProfile === 'mtls_bootstrap' ? bootstrapAllowedIps : undefined,
+        allowedCidrs: form.authProfile === 'mtls_bootstrap' ? bootstrapAllowedCidrs : undefined,
       })
 
       const oneTimeCredentials: OcppCredentials = chargePoint.ocppCredentials || {
@@ -438,6 +498,7 @@ export function AddCharger() {
         password: '',
         wsUrl: wsUrlFor(form.ocppVersion, form.ocppId),
         subprotocol: versionSubprotocol(form.ocppVersion),
+        authProfile: form.authProfile,
       }
 
       setProvisionedChargePointId(chargePoint.id)
@@ -482,6 +543,31 @@ export function AddCharger() {
     setError('')
     setConnectionStatus('waiting')
     setPollingNonce(prev => prev + 1)
+  }
+
+  const handleManualCertificateBind = async () => {
+    if (!provisionedChargePointId || !certificateFingerprint.trim()) {
+      setError('Enter certificate fingerprint before submitting.')
+      return
+    }
+    setBindingCertificate(true)
+    setError('')
+    try {
+      const response = await chargePointService.bindCertificate(provisionedChargePointId, {
+        fingerprint: certificateFingerprint.trim(),
+      })
+      setCredentials(prev =>
+        prev
+          ? { ...prev, authProfile: response.authProfile, requiresClientCertificate: true }
+          : prev
+      )
+      setCertificateFingerprint('')
+      toast('Certificate fingerprint bound. Reconnect charger with client certificate.')
+    } catch (err) {
+      setError(getErrorMessage(err))
+    } finally {
+      setBindingCertificate(false)
+    }
   }
 
   if (!canAdd) {
@@ -649,6 +735,61 @@ export function AddCharger() {
                     </select>
                     <p className="text-xs text-subtle mt-2">Select the version supported by your hardware. This determines URL and subprotocol.</p>
                   </label>
+
+                  <label className="text-left block">
+                    <span className="text-sm font-medium mb-1 block">Onboarding Profile</span>
+                    <select
+                      value={form.authProfile}
+                      onChange={e => updateForm('authProfile', e.target.value as AuthProfile)}
+                      className="select"
+                      disabled={!!provisionedChargePointId}
+                    >
+                      <option value="basic">Password (Basic)</option>
+                      <option value="mtls_bootstrap">No password field (mTLS onboarding)</option>
+                    </select>
+                  </label>
+
+                  {form.authProfile === 'mtls_bootstrap' && (
+                    <>
+                      <label className="text-left block">
+                        <span className="text-sm font-medium mb-1 block">Allowed Source IPs *</span>
+                        <textarea
+                          value={form.allowedIpsText}
+                          onChange={e => updateForm('allowedIpsText', e.target.value)}
+                          className="input min-h-[90px]"
+                          placeholder="e.g. 41.90.12.10, 41.90.12.11"
+                          disabled={!!provisionedChargePointId}
+                        />
+                      </label>
+
+                      <label className="text-left block">
+                        <span className="text-sm font-medium mb-1 block">Allowed CIDRs *</span>
+                        <textarea
+                          value={form.allowedCidrsText}
+                          onChange={e => updateForm('allowedCidrsText', e.target.value)}
+                          className="input min-h-[90px]"
+                          placeholder="e.g. 41.90.12.0/24"
+                          disabled={!!provisionedChargePointId}
+                        />
+                        <p className="text-xs text-subtle mt-2">
+                          Provide at least one IP or CIDR. Bootstrap is temporary and IP-restricted.
+                        </p>
+                      </label>
+
+                      <label className="text-left block">
+                        <span className="text-sm font-medium mb-1 block">Bootstrap TTL (minutes)</span>
+                        <input
+                          type="number"
+                          min={1}
+                          max={120}
+                          value={form.bootstrapTtlMinutes}
+                          onChange={e => updateForm('bootstrapTtlMinutes', e.target.value === '' ? '' : Number(e.target.value))}
+                          className="input"
+                          disabled={!!provisionedChargePointId}
+                        />
+                      </label>
+                    </>
+                  )}
                 </div>
               )}
             </div>
@@ -683,27 +824,56 @@ export function AddCharger() {
                   </div>
                 </div>
 
-                <div>
-                  <label className="text-xs font-bold text-subtle uppercase tracking-wider">OCPP Username</label>
-                  <div className="flex items-center gap-2 mt-1">
-                    <code className="bg-black/20 p-2 rounded flex-1 font-mono text-accent break-all">
-                      {credentials?.username || form.ocppId}
-                    </code>
-                    <button className="text-xs bg-muted hover:bg-muted-hover px-2 py-1 rounded" onClick={() => copyText(credentials?.username || form.ocppId, 'Copied username')}>Copy</button>
-                  </div>
-                </div>
+                {form.authProfile === 'basic' ? (
+                  <>
+                    <div>
+                      <label className="text-xs font-bold text-subtle uppercase tracking-wider">OCPP Username</label>
+                      <div className="flex items-center gap-2 mt-1">
+                        <code className="bg-black/20 p-2 rounded flex-1 font-mono text-accent break-all">
+                          {credentials?.username || form.ocppId}
+                        </code>
+                        <button className="text-xs bg-muted hover:bg-muted-hover px-2 py-1 rounded" onClick={() => copyText(credentials?.username || form.ocppId, 'Copied username')}>Copy</button>
+                      </div>
+                    </div>
 
-                <div>
-                  <label className="text-xs font-bold text-subtle uppercase tracking-wider">OCPP Password (One-time)</label>
-                  <div className="flex items-center gap-2 mt-1">
-                    <code className="bg-black/20 p-2 rounded flex-1 font-mono text-accent break-all">
-                      {credentials?.password || 'Returned by backend after provisioning'}
-                    </code>
-                    {credentials?.password && (
-                      <button className="text-xs bg-muted hover:bg-muted-hover px-2 py-1 rounded" onClick={() => copyText(credentials.password, 'Copied password')}>Copy</button>
-                    )}
-                  </div>
-                </div>
+                    <div>
+                      <label className="text-xs font-bold text-subtle uppercase tracking-wider">OCPP Password (One-time)</label>
+                      <div className="flex items-center gap-2 mt-1">
+                        <code className="bg-black/20 p-2 rounded flex-1 font-mono text-accent break-all">
+                          {credentials?.password || 'Returned by backend after provisioning'}
+                        </code>
+                        {credentials?.password && (
+                          <button className="text-xs bg-muted hover:bg-muted-hover px-2 py-1 rounded" onClick={() => copyText(credentials.password, 'Copied password')}>Copy</button>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="text-xs text-subtle">
+                      Authentication profile: <span className="font-semibold text-foreground">No-password bootstrap (temporary)</span>
+                    </div>
+                    <div className="text-xs text-subtle">
+                      Bootstrap expiry:
+                      {' '}
+                      {bootstrapExpiresAt ? new Date(bootstrapExpiresAt).toLocaleString() : 'not provided'}
+                      {!bootstrapExpired && bootstrapExpiresAt && (
+                        <span>{` (${bootstrapMinutesLeft} min left)`}</span>
+                      )}
+                      {bootstrapExpired && <span className="text-amber-600"> (expired)</span>}
+                    </div>
+                    <div className="text-xs text-subtle">
+                      Allowlist:
+                      {' '}
+                      {bootstrapAllowedIps.length + bootstrapAllowedCidrs.length > 0
+                        ? `${bootstrapAllowedIps.length} IP(s), ${bootstrapAllowedCidrs.length} CIDR(s)`
+                        : 'configured at provisioning'}
+                    </div>
+                    <div className="text-xs text-subtle">
+                      {credentials?.mtlsInstructions || 'Complete mTLS certificate binding after first online proof.'}
+                    </div>
+                  </>
+                )}
               </div>
 
               <div className="pt-8 border-t border-border mt-8">
@@ -712,6 +882,12 @@ export function AddCharger() {
                     <div className="h-4 w-4 bg-accent rounded-full mb-2"></div>
                     <p className="text-sm font-medium">Waiting for BootNotification...</p>
                     <p className="text-xs text-subtle">Listening for {form.ocppId} on OCPP {form.ocppVersion}. Polling every 3 seconds for up to 120 seconds.</p>
+                    {form.authProfile === 'mtls_bootstrap' && bootstrapExpiresAt && (
+                      <p className="text-xs text-subtle mt-2">
+                        Bootstrap window closes at {new Date(bootstrapExpiresAt).toLocaleTimeString()}.
+                        {!bootstrapExpired ? ` ${bootstrapMinutesLeft} minute(s) remaining.` : ' Bootstrap has expired.'}
+                      </p>
+                    )}
                   </div>
                 )}
 
@@ -721,7 +897,13 @@ export function AddCharger() {
                       <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 8v4m0 4h.01M3.055 11a9 9 0 1117.89 0 9 9 0 01-17.89 0z" /></svg>
                     </div>
                     <p className="text-lg font-bold text-amber-600">Connection Timed Out</p>
-                    <p className="text-sm text-subtle">No online signal received yet. Verify URL, subprotocol, username, and password, then retry.</p>
+                    <p className="text-sm text-subtle">
+                      {form.authProfile === 'mtls_bootstrap'
+                        ? bootstrapExpired
+                          ? 'Bootstrap window expired. Re-arm bootstrap or reprovision, then reconnect from an allowed IP/CIDR.'
+                          : 'No online signal yet. Verify URL, subprotocol, and that charger source IP matches your bootstrap allowlist.'
+                        : 'No online signal received yet. Verify URL, subprotocol, username, and password, then retry.'}
+                    </p>
                     <button onClick={retryConnectionCheck} className="btn secondary">Retry Connection Check</button>
                   </div>
                 )}
@@ -739,6 +921,25 @@ export function AddCharger() {
                       <div>Model: {bootProof?.model || '-'}</div>
                       <div>Firmware: {bootProof?.firmwareVersion || '-'}</div>
                     </div>
+                    {form.authProfile === 'mtls_bootstrap' && (
+                      <div className="mt-4 text-left text-xs text-subtle bg-muted/40 border border-border rounded-lg p-3 w-full max-w-lg space-y-2">
+                        <div className="font-semibold text-foreground">Manual mTLS certificate bind (fallback)</div>
+                        <div>Use this when charger cannot run CSR/SignCertificate flow.</div>
+                        <input
+                          value={certificateFingerprint}
+                          onChange={(e) => setCertificateFingerprint(e.target.value)}
+                          className="input font-mono"
+                          placeholder="Certificate fingerprint (SHA-256 hex)"
+                        />
+                        <button
+                          onClick={handleManualCertificateBind}
+                          className="btn secondary"
+                          disabled={bindingCertificate}
+                        >
+                          {bindingCertificate ? 'Binding...' : 'Bind Certificate Fingerprint'}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -757,6 +958,7 @@ export function AddCharger() {
                 <div><div className="text-subtle">Serial Number</div><div className="font-medium">{form.serialNumber || '-'}</div></div>
                 <div><div className="text-subtle">OCPP ID</div><div className="font-medium font-mono">{form.ocppId}</div></div>
                 <div><div className="text-subtle">Protocol</div><div className="font-medium">{form.ocppVersion}</div></div>
+                <div><div className="text-subtle">Auth Profile</div><div className="font-medium">{form.authProfile === 'basic' ? 'Basic' : 'mTLS bootstrap'}</div></div>
                 <div><div className="text-subtle">Backend Record ID</div><div className="font-medium font-mono">{provisionedChargePointId || '-'}</div></div>
               </div>
               <div>
