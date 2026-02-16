@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { useSearchParams, useNavigate } from 'react-router-dom'
+import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import { AddSite, OwnerSteps, OperatorSteps, TechnicianSteps } from '@/features'
 import { PATHS } from '@/app/router/paths'
 
@@ -78,7 +78,7 @@ export function Onboarding() {
             </span>
             <h1 className="text-lg font-bold">Get Started with EVzone</h1>
           </div>
-          <a href={PATHS.AUTH.LOGIN} className="px-3 py-2 rounded-lg border border-border hover:bg-muted">Sign in</a>
+          <Link to={PATHS.AUTH.LOGIN} className="px-3 py-2 rounded-lg border border-border hover:bg-muted">Sign in</Link>
         </div>
       </header>
 
@@ -202,8 +202,8 @@ export function Onboarding() {
               You'll receive an email notification once your account is approved.
             </p>
             <div className="flex items-center justify-center gap-4">
-              <a href="/" className="px-4 py-2 rounded-lg border border-border hover:bg-muted">Back to Home</a>
-              <a href={PATHS.AUTH.LOGIN} className="px-4 py-2 rounded-lg bg-accent text-white hover:bg-accent-hover">Sign In</a>
+              <Link to={PATHS.HOME} className="px-4 py-2 rounded-lg border border-border hover:bg-muted">Back to Home</Link>
+              <Link to={PATHS.AUTH.LOGIN} className="px-4 py-2 rounded-lg bg-accent text-white hover:bg-accent-hover">Sign In</Link>
             </div>
           </div>
         )}
@@ -214,8 +214,8 @@ export function Onboarding() {
         <div className="max-w-5xl mx-auto px-4 text-sm text-subtle flex items-center justify-between">
           <div>© {new Date().getFullYear()} EVzone. All rights reserved.</div>
           <div className="flex items-center gap-4">
-            <a href="/legal-privacy" className="hover:text-fg">Privacy</a>
-            <a href="/legal-terms" className="hover:text-fg">Terms</a>
+            <Link to={PATHS.LEGAL.PRIVACY} className="hover:text-fg">Privacy</Link>
+            <Link to={PATHS.LEGAL.TERMS} className="hover:text-fg">Terms</Link>
           </div>
         </div>
       </footer>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
 import { useAuthStore } from '@/core/auth/authStore'
 import { PATHS } from '@/app/router/paths'
@@ -136,7 +136,7 @@ export function Login() {
                     <input type="checkbox" className="rounded border-border" />
                     <span>Remember me</span>
                   </label>
-                  <a href={PATHS.AUTH.FORGOT_PASSWORD} className="text-accent hover:underline">Forgot password?</a>
+                  <Link to={PATHS.AUTH.FORGOT_PASSWORD} className="text-accent hover:underline">Forgot password?</Link>
                 </div>
 
                 <button
@@ -149,7 +149,7 @@ export function Login() {
               </form>
 
               <p className="mt-5 text-center text-sm text-[var(--evz-muted)]">
-                Don't have an account? <a href={PATHS.AUTH.REGISTER} className="text-accent hover:underline">Get started</a>
+                Don't have an account? <Link to={PATHS.AUTH.REGISTER} className="text-accent hover:underline">Get started</Link>
               </p>
             </div>
           </section>
@@ -680,7 +680,7 @@ export function ForgotPassword() {
           <p className="text-subtle mb-6">
             We've sent a password reset link to <strong>{email}</strong>
           </p>
-          <a href={PATHS.AUTH.LOGIN} className="text-accent hover:underline">Back to sign in</a>
+          <Link to={PATHS.AUTH.LOGIN} className="text-accent hover:underline">Back to sign in</Link>
         </div>
       </div>
     )
@@ -716,7 +716,7 @@ export function ForgotPassword() {
         </form>
 
         <p className="text-center text-sm text-subtle mt-4">
-          <a href={PATHS.AUTH.LOGIN} className="text-accent hover:underline">Back to sign in</a>
+          <Link to={PATHS.AUTH.LOGIN} className="text-accent hover:underline">Back to sign in</Link>
         </p>
       </div>
     </div>
@@ -863,9 +863,9 @@ export function VerifyEmail() {
           >
             {resending ? 'Sending...' : 'Resend verification email'}
           </button>
-          <a href={PATHS.AUTH.LOGIN} className="block text-accent hover:underline text-sm">
+          <Link to={PATHS.AUTH.LOGIN} className="block text-accent hover:underline text-sm">
             Back to sign in
-          </a>
+          </Link>
         </div>
       </div>
     </div>
@@ -873,6 +873,5 @@ export function VerifyEmail() {
 }
 
 export default Login
-
 
 
