@@ -1,8 +1,9 @@
 import { create } from 'zustand';
 import type { OwnerCapability, Role, UserProfile } from './types';
-import type { AuthResponse } from '@/core/api/types';
+import type { AuthResponse, User } from '@/core/api/types';
 import { ROLE_GROUPS } from '@/constants/roles';
 import { authService } from '@/modules/auth/services/authService';
+import { userService } from '@/modules/auth/services/userService';
 
 const LS_KEY = 'evzone:session';
 const LS_IMP_KEY = 'evzone:impersonator';
@@ -25,18 +26,33 @@ type AuthState = {
   refreshUser: () => Promise<void>;
 };
 
+type UserLike = Pick<
+  AuthResponse['user'],
+  'id' | 'name' | 'role' | 'ownerCapability' | 'orgId' | 'organizationId' | 'region' | 'zoneId' | 'avatarUrl'
+> | Pick<
+  User,
+  'id' | 'name' | 'role' | 'ownerCapability' | 'orgId' | 'organizationId' | 'region' | 'zoneId' | 'avatarUrl'
+>;
+
+function toUserProfile(user: UserLike): UserProfile {
+  return {
+    id: user.id,
+    name: user.name,
+    role: user.role as Role,
+    ownerCapability: user.ownerCapability,
+    orgId: user.orgId,
+    organizationId: user.organizationId,
+    region: user.region,
+    zoneId: user.zoneId,
+    avatarUrl: user.avatarUrl,
+  };
+}
+
 function load(): UserProfile | null {
   try {
     const raw = localStorage.getItem(LS_KEY);
     if (!raw) return null;
-    const user = JSON.parse(raw) as UserProfile;
-    // Inject mock avatar if missing
-    if (!user.avatarUrl) {
-      user.avatarUrl = user.role
-        ? `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.role}`
-        : 'https://api.dicebear.com/7.x/avataaars/svg?seed=User';
-    }
-    return user;
+    return JSON.parse(raw) as UserProfile;
   } catch {
     return null;
   }
@@ -94,19 +110,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   loginWithUser: (user) => {
-    const userProfile: UserProfile = {
-      id: user.id,
-      name: user.name,
-      role: user.role as Role,
-      ownerCapability: user.ownerCapability,
-      orgId: user.orgId,
-      organizationId: user.organizationId,
-      region: user.region,
-      zoneId: user.zoneId,
-      avatarUrl: user.email
-        ? `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(user.email)}`
-        : 'https://api.dicebear.com/7.x/avataaars/svg?seed=User',
-    };
+    const userProfile = toUserProfile(user);
     save(userProfile);
     saveImpersonator(null);
     saveReturnTo(null);
@@ -115,6 +119,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   loginWithResponse: (response) => {
     get().loginWithUser(response.user);
+    void get().refreshUser();
   },
 
   logout: async () => {
@@ -133,9 +138,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   refreshUser: async () => {
-    // Reload from storage
-    const user = load();
-    set({ user });
+    if (get().impersonator) return;
+
+    try {
+      const me = await userService.getMe();
+      const userProfile = toUserProfile(me);
+      save(userProfile);
+      set({ user: userProfile });
+    } catch (error) {
+      console.warn('Failed to refresh user profile from backend:', error);
+    }
   },
 
   startImpersonation: (target, returnTo) => {

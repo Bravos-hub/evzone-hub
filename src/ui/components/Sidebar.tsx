@@ -30,6 +30,22 @@ function findActiveParentPaths(items: MenuItem[], pathname: string): string[] {
     .map((item) => item.path)
 }
 
+function toTitleCaseName(value?: string): string {
+  const normalized = (value ?? '').trim().replace(/\s+/g, ' ')
+  if (!normalized) return 'Guest'
+
+  return normalized
+    .split(' ')
+    .map((word) => `${word.charAt(0).toUpperCase()}${word.slice(1).toLowerCase()}`)
+    .join(' ')
+}
+
+function initialsFromName(value: string): string {
+  const parts = value.trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return 'G'
+  return parts.slice(0, 2).map((part) => part.charAt(0).toUpperCase()).join('')
+}
+
 /** Icon component that renders Feather-style icons */
 function Icon({ name, className }: { name?: string; className?: string }) {
   const props = {
@@ -116,6 +132,8 @@ export function Sidebar({ items: overrideItems, onClose }: SidebarProps) {
 
   // Use override items if provided, otherwise filter by role
   const menuItems = overrideItems ?? getMenuItemsForRole(user?.role)
+  const displayName = toTitleCaseName(user?.name)
+  const profileInitials = initialsFromName(displayName)
   const [openParents, setOpenParents] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
@@ -275,14 +293,18 @@ export function Sidebar({ items: overrideItems, onClose }: SidebarProps) {
       </nav>
 
       {/* Footer */}
-      <div className="px-6 py-6 border-t border-white/5 bg-bg-secondary">
+      <div className="px-6 py-6 border-t border-border bg-bg-secondary">
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-full bg-panel/50 border border-white/5 flex items-center justify-center text-accent font-bold">
-            {user?.name?.[0].toUpperCase() ?? 'U'}
+          <div className="w-10 h-10 rounded-full bg-panel/50 border border-border flex items-center justify-center text-accent font-bold overflow-hidden">
+            {user?.avatarUrl ? (
+              <img src={user.avatarUrl} alt={displayName} className="w-full h-full object-cover" />
+            ) : (
+              <span>{profileInitials}</span>
+            )}
           </div>
           <div className="min-w-0">
-            <div className="text-sm font-bold text-white truncate">{user?.name ?? 'Guest'}</div>
-            <div className="text-[11px] font-bold text-muted uppercase tracking-wider">
+            <div className="text-sm font-bold text-text truncate">{displayName}</div>
+            <div className="text-[11px] font-bold text-text-secondary uppercase tracking-wider">
               {user?.role === 'STATION_OWNER'
                 ? (user.ownerCapability === 'BOTH'
                   ? 'Hybrid Station Owner'
