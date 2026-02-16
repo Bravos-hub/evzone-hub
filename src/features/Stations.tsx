@@ -72,16 +72,6 @@ function mapApiStationToStation(apiStation: any): Station {
   }
 }
 
-const regions: Array<{ id: Region | 'ALL'; label: string }> = [
-  { id: 'ALL', label: 'All Regions' },
-  { id: 'AFRICA', label: 'Africa' },
-  { id: 'EUROPE', label: 'Europe' },
-  { id: 'AMERICAS', label: 'Americas' },
-  { id: 'ASIA', label: 'Asia' },
-  { id: 'MIDDLE_EAST', label: 'Middle East' },
-  { id: 'UNKNOWN', label: 'Unknown' },
-]
-
 export function Stations() {
   const navigate = useNavigate()
   const location = useLocation()
@@ -99,11 +89,6 @@ export function Stations() {
     if (path.includes('/bookings')) return 'bookings'
     return 'overview'
   }, [location.pathname])
-
-  const [q, setQ] = useState('')
-  const [region, setRegion] = useState<Region | 'ALL'>('ALL')
-  const [status, setStatus] = useState<StationStatus | 'All'>('All')
-  const [tagFilter, setTagFilter] = useState<string>('All')
 
   const accessContext = useMemo(() => ({
     role: user?.role,
@@ -128,29 +113,7 @@ export function Stations() {
     return accessibleStationsData.map(mapApiStationToStation)
   }, [accessibleStationsData])
 
-  // Get all unique tags from stations
-  const allTags = useMemo(() => {
-    const tags = new Set<string>()
-    stations.forEach(s => {
-      const apiStation = accessibleStationsData.find((st: any) => st.id === s.id)
-      if (apiStation?.tags) {
-        apiStation.tags.forEach((tag: string) => tags.add(tag))
-      }
-    })
-    return Array.from(tags).sort()
-  }, [stations, accessibleStationsData])
-
-  const rows = useMemo(() => {
-    return stations
-      .filter(s => (region === 'ALL' ? true : s.region === region))
-      .filter(s => (status === 'All' ? true : s.status === status))
-      .filter(s => (q ? (s.name + ' ' + s.id + ' ' + s.country).toLowerCase().includes(q.toLowerCase()) : true))
-      .filter(s => {
-        if (tagFilter === 'All') return true
-        const apiStation = accessibleStationsData.find((st: any) => st.id === s.id)
-        return apiStation?.tags?.includes(tagFilter) || false
-      })
-  }, [stations, q, region, status, tagFilter, accessibleStationsData])
+  const rows = useMemo(() => stations, [stations])
 
   // --- Map State & Logic ---
   const [selectedStationId, setSelectedStationId] = useState<string | null>(null)
@@ -177,18 +140,7 @@ export function Stations() {
     })
   }, [rows, accessibleStationsData])
 
-  const tileUrl = useMemo(() => {
-    const base = `${API_CONFIG.baseURL}/geography/tiles/{z}/{x}/{y}.pbf`
-    const params = new URLSearchParams()
-    if (region !== 'ALL') params.append('region', region)
-    if (status !== 'All') {
-      // Map frontend status labels back to DB values
-      const dbStatus = status === 'Online' ? 'ACTIVE' : status === 'Offline' ? 'INACTIVE' : 'MAINTENANCE'
-      params.append('status', dbStatus)
-    }
-    const qs = params.toString()
-    return qs ? `${base}?${qs}` : base
-  }, [region, status])
+  const tileUrl = `${API_CONFIG.baseURL}/geography/tiles/{z}/{x}/{y}.pbf`
 
   const handleStationSelect = (id: string) => {
     const station = mapData.find(s => s.id === id)
@@ -295,39 +247,6 @@ export function Stations() {
                     Add Station
                   </button>
                 )}
-              </div>
-
-              <div className="card p-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
-                  <input
-                    value={q}
-                    onChange={(e) => setQ(e.target.value)}
-                    placeholder="Search..."
-                    className="input sm:col-span-2 lg:col-span-1"
-                  />
-                  <select className="select" value={region} onChange={e => setRegion(e.target.value as any)}>
-                    <option value="ALL">All Regions</option>
-                    {regions.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
-                  </select>
-                  <select className="select" value={status} onChange={e => setStatus(e.target.value as any)}>
-                    <option value="All">All Status</option>
-                    <option value="Online">Online</option>
-                    <option value="Offline">Offline</option>
-                    <option value="Degraded">Degraded</option>
-                  </select>
-                  <select className="select" value={tagFilter} onChange={e => setTagFilter(e.target.value)}>
-                    <option value="All">All Tags</option>
-                    {allTags.map(tag => (
-                      <option key={tag} value={tag}>{tag}</option>
-                    ))}
-                  </select>
-                  <select className="select">
-                    <option>All Orgs</option>
-                  </select>
-                  <select className="select">
-                    <option>Last 7d</option>
-                  </select>
-                </div>
               </div>
 
               {/* Map Section - High Performance WebGL MapLibre */}
