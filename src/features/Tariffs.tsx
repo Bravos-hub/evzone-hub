@@ -2,10 +2,9 @@ import { useMemo, useState } from 'react'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { useAuthStore } from '@/core/auth/authStore'
 import { getPermissionsForFeature } from '@/constants/permissions'
-import { useTariffs, useCreateTariff, useUpdateTariff, useDeleteTariff } from '@/modules/finance/billing/useTariffs'
-import { useStations } from '@/modules/stations/hooks/useStations'
+import { useTariffs, useCreateTariff, useUpdateTariff } from '@/modules/finance/billing/useTariffs'
 import { getErrorMessage } from '@/core/api/errors'
-import type { Tariff, TariffType } from '@/core/types/domain'
+import type { Tariff } from '@/core/types/domain'
 import { TariffEditor } from './tariffs/TariffEditor'
 import { StatGridSkeleton, TableSkeleton } from '@/ui/components/SkeletonCards'
 
@@ -31,25 +30,14 @@ export function Tariffs() {
   const { user } = useAuthStore()
   const perms = getPermissionsForFeature(user?.role, 'tariffs')
 
-  const [q, setQ] = useState('')
-  const [typeFilter, setTypeFilter] = useState<TariffType | 'All'>('All')
-  const [showInactive, setShowInactive] = useState(false)
   const [showEditor, setShowEditor] = useState(false)
   const [editingTariff, setEditingTariff] = useState<Tariff | undefined>(undefined)
 
-  const { data: tariffsData, isLoading, error } = useTariffs({ status: showInactive ? undefined : 'active' })
+  const { data: tariffsData, isLoading, error } = useTariffs({ status: 'active' })
   const createTariffMutation = useCreateTariff()
   const updateTariffMutation = useUpdateTariff()
-  const deleteTariffMutation = useDeleteTariff()
 
   const tariffs = useMemo(() => tariffsData || [], [tariffsData])
-
-  const filtered = useMemo(() => {
-    return tariffs
-      .filter((t) => (q ? t.name.toLowerCase().includes(q.toLowerCase()) : true))
-      .filter((t) => (typeFilter === 'All' ? true : t.type === typeFilter))
-      .filter((t) => (showInactive ? true : t.active))
-  }, [tariffs, q, typeFilter, showInactive])
 
   const handleCreate = (data: any) => {
     createTariffMutation.mutate(data, {
@@ -113,24 +101,6 @@ export function Tariffs() {
         </div>
       )}
 
-      {/* Filters */}
-      <div className="card mb-4">
-        <div className="flex items-center gap-3">
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search tariffs" className="input flex-1" />
-          <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value as TariffType | 'All')} className="select">
-            <option value="All">All Types</option>
-            <option value="Fixed">Fixed</option>
-            <option value="Time-based">Time-based</option>
-            <option value="Energy-based">Energy-based</option>
-            <option value="Dynamic">Dynamic</option>
-          </select>
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} className="h-4 w-4" />
-            Show inactive
-          </label>
-        </div>
-      </div>
-
       {/* Actions */}
       {perms.edit && (
         <div className="mb-4">
@@ -156,7 +126,7 @@ export function Tariffs() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((t) => (
+              {tariffs.map((t) => (
                 <tr key={t.id}>
                   <td className="font-semibold text-text">{t.name}</td>
                   <td><span className="chip">{t.type}</span></td>
