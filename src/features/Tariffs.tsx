@@ -15,6 +15,11 @@ import { StatGridSkeleton, TableSkeleton } from '@/ui/components/SkeletonCards'
 
 // Removed local types in favor of domain types
 
+function getTariffBaseRate(tariff: Tariff): number {
+  const firstElement = tariff.elements?.[0]
+  return firstElement?.pricePerKwh || firstElement?.pricePerMinute || 0
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════════════════
@@ -102,7 +107,7 @@ export function Tariffs() {
           <div className="card">
             <div className="text-xs text-muted">Avg Rate</div>
             <div className="text-xl font-bold text-accent">
-              ${tariffs.length > 0 ? (tariffs.reduce((a, t) => a + (t.elements[0]?.pricePerKwh || 0), 0) / tariffs.length).toFixed(2) : '0.00'}
+              ${tariffs.length > 0 ? (tariffs.reduce((a, t) => a + getTariffBaseRate(t), 0) / tariffs.length).toFixed(2) : '0.00'}
             </div>
           </div>
         </div>
@@ -156,7 +161,7 @@ export function Tariffs() {
                   <td className="font-semibold text-text">{t.name}</td>
                   <td><span className="chip">{t.type}</span></td>
                   <td><span className="chip">{t.paymentModel}</span></td>
-                  <td>${(t.elements[0]?.pricePerKwh || t.elements[0]?.pricePerMinute || 0).toFixed(2)}</td>
+                  <td>${getTariffBaseRate(t).toFixed(2)}</td>
                   <td>{t.applicableStations?.length || 0}</td>
                   <td>
                     <span className={`pill ${t.active ? 'approved' : 'rejected'}`}>
