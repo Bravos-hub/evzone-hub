@@ -1,4 +1,5 @@
-import { NavLink, useNavigate } from 'react-router-dom'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { matchPath, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import clsx from 'clsx'
 import { useAuthStore } from '@/core/auth/authStore'
 import { getMenuItemsForRole, type MenuItem } from '@/constants/menuItems'
@@ -10,6 +11,64 @@ type SidebarProps = {
   items?: MenuItem[]
   /** Mobile: Close trigger */
   onClose?: () => void
+}
+
+type MenuSectionGroup = {
+  section: string
+  items: MenuItem[]
+}
+
+function isRouteActive(pathname: string, menuPath: string, exact = false): boolean {
+  if (!menuPath || menuPath.startsWith('#')) return false
+  if (exact) {
+    return Boolean(matchPath({ path: menuPath, end: true }, pathname))
+  }
+  return Boolean(
+    matchPath({ path: menuPath, end: true }, pathname) ||
+    matchPath({ path: `${menuPath}/*`, end: false }, pathname)
+  )
+}
+
+function isMenuItemActive(item: MenuItem, pathname: string): boolean {
+  if (isRouteActive(pathname, item.path, item.path === PATHS.DASHBOARD)) {
+    return true
+  }
+  return item.children?.some((child) => isRouteActive(pathname, child.path)) ?? false
+}
+
+function groupMenuItems(items: MenuItem[]): MenuSectionGroup[] {
+  const groups: MenuSectionGroup[] = []
+  const sectionIndex = new Map<string, number>()
+
+  items.forEach((item) => {
+    const section = item.section ?? 'Other'
+    const existingIndex = sectionIndex.get(section)
+
+    if (existingIndex === undefined) {
+      sectionIndex.set(section, groups.length)
+      groups.push({ section, items: [item] })
+      return
+    }
+
+    groups[existingIndex].items.push(item)
+  })
+
+  return groups
+}
+
+function findActiveSection(groups: MenuSectionGroup[], pathname: string): string | null {
+  for (const group of groups) {
+    if (group.items.some((item) => isMenuItemActive(item, pathname))) {
+      return group.section
+    }
+  }
+  return null
+}
+
+function findActiveParentPaths(items: MenuItem[], pathname: string): string[] {
+  return items
+    .filter((item) => item.children?.some((child) => isRouteActive(pathname, child.path)))
+    .map((item) => item.path)
 }
 
 /** Icon component that renders Feather-style icons */
@@ -93,9 +152,58 @@ function Icon({ name, className }: { name?: string; className?: string }) {
 export function Sidebar({ items: overrideItems, onClose }: SidebarProps) {
   const { user, logout } = useAuthStore()
   const nav = useNavigate()
+  const location = useLocation()
+  const navRef = useRef<HTMLElement | null>(null)
 
   // Use override items if provided, otherwise filter by role
   const menuItems = overrideItems ?? getMenuItemsForRole(user?.role)
+  const groupedMenuItems = useMemo(() => groupMenuItems(menuItems), [menuItems])
+  const activeSection = useMemo(
+    () => findActiveSection(groupedMenuItems, location.pathname),
+    [groupedMenuItems, location.pathname],
+  )
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>(() =>
+    activeSection ? { [activeSection]: true } : {},
+  )
+  const [openParents, setOpenParents] = useState<Record<string, boolean>>({})
+
+  useEffect(() => {
+    if (!activeSection) return
+    setOpenSections((prev) =>
+      prev[activeSection] ? prev : { ...prev, [activeSection]: true },
+    )
+  }, [activeSection])
+
+  useEffect(() => {
+    const activeParentPaths = findActiveParentPaths(menuItems, location.pathname)
+    if (activeParentPaths.length === 0) return
+
+    setOpenParents((prev) => {
+      const next = { ...prev }
+      let changed = false
+
+      activeParentPaths.forEach((path) => {
+        if (!next[path]) {
+          next[path] = true
+          changed = true
+        }
+      })
+
+      return changed ? next : prev
+    })
+  }, [menuItems, location.pathname])
+
+  useEffect(() => {
+    const navElement = navRef.current
+    if (!navElement) return
+
+    const rafId = window.requestAnimationFrame(() => {
+      const activeLink = navElement.querySelector('[aria-current="page"]') as HTMLElement | null
+      activeLink?.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' })
+    })
+
+    return () => window.cancelAnimationFrame(rafId)
+  }, [location.pathname, openSections, openParents])
 
   return (
     <aside className="w-[280px] h-full flex-shrink-0 border-r border-white/5 p-0 bg-bg-secondary flex flex-col overflow-hidden shadow-lg">
@@ -114,35 +222,150 @@ export function Sidebar({ items: overrideItems, onClose }: SidebarProps) {
       </div>
 
       {/* Navigation */}
-      <nav className="flex flex-col gap-1.5 p-4 flex-1 overflow-y-auto overflow-x-hidden min-h-0 scrollbar-hide">
-        {menuItems.map((item) => (
-          <NavLink
-            key={item.path}
-            to={item.path}
-            onClick={onClose}
-            className={({ isActive }) =>
-              clsx(
-                'py-3 px-4 text-[14px] font-semibold transition-all duration-200 flex items-center gap-3.5',
-                isActive
-                  ? 'text-white bg-accent shadow-[0_4px_12px_rgba(247,127,0,0.25)] rounded-xl'
-                  : 'text-text-secondary hover:text-text hover:bg-white/5 dark:hover:bg-white/5 rounded-xl'
-              )
-            }
-            end={item.path === '/dashboard'}
-          >
-            {({ isActive }) => (
-              <>
-                <Icon name={item.icon} className={clsx("flex-shrink-0", isActive ? "text-white" : "text-muted")} />
-                <span className="truncate">{item.label}</span>
-                {item.badge !== undefined && item.badge > 0 && (
-                  <span className="ml-auto px-2 py-0.5 text-[10px] rounded-full bg-accent text-white font-bold">
-                    {item.badge}
-                  </span>
-                )}
-              </>
-            )}
-          </NavLink>
-        ))}
+      <nav ref={navRef} className="flex flex-col gap-3 p-4 flex-1 overflow-y-auto overflow-x-hidden min-h-0 scrollbar-hide">
+        {groupedMenuItems.map((group) => {
+          const sectionIsOpen = openSections[group.section] ?? false
+
+          return (
+            <section key={group.section} className="flex flex-col gap-1.5">
+              <button
+                type="button"
+                onClick={() =>
+                  setOpenSections((prev) => ({
+                    ...prev,
+                    [group.section]: !sectionIsOpen,
+                  }))
+                }
+                className="flex items-center justify-between px-2 py-1 text-[11px] uppercase tracking-[0.14em] text-muted hover:text-text transition-colors"
+              >
+                <span>{group.section}</span>
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className={clsx('transition-transform duration-200', sectionIsOpen && 'rotate-180')}
+                >
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </button>
+
+              {sectionIsOpen && (
+                <div className="flex flex-col gap-1.5">
+                  {group.items.map((item) => {
+                    if (item.divider) {
+                      return <div key={`divider-${group.section}-${item.path}`} className="h-px bg-white/5 my-1" />
+                    }
+
+                    const childIsActive = item.children?.some((child) =>
+                      isRouteActive(location.pathname, child.path),
+                    ) ?? false
+
+                    if (item.children && item.children.length > 0) {
+                      const isParentOpen = openParents[item.path] ?? childIsActive
+
+                      return (
+                        <div key={item.path} className="flex flex-col gap-1">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setOpenParents((prev) => ({
+                                ...prev,
+                                [item.path]: !isParentOpen,
+                              }))
+                            }
+                            className={clsx(
+                              'py-3 px-4 text-[14px] font-semibold transition-all duration-200 flex items-center gap-3.5 rounded-xl',
+                              childIsActive
+                                ? 'text-white bg-accent shadow-[0_4px_12px_rgba(247,127,0,0.25)]'
+                                : 'text-text-secondary hover:text-text hover:bg-white/5 dark:hover:bg-white/5'
+                            )}
+                          >
+                            <Icon name={item.icon} className={clsx('flex-shrink-0', childIsActive ? 'text-white' : 'text-muted')} />
+                            <span className="truncate">{item.label}</span>
+                            {item.badge !== undefined && item.badge > 0 && (
+                              <span className="ml-auto px-2 py-0.5 text-[10px] rounded-full bg-accent text-white font-bold">
+                                {item.badge}
+                              </span>
+                            )}
+                            <svg
+                              width="14"
+                              height="14"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              className={clsx('ml-auto transition-transform duration-200', isParentOpen && 'rotate-180')}
+                            >
+                              <polyline points="6 9 12 15 18 9" />
+                            </svg>
+                          </button>
+
+                          {isParentOpen && (
+                            <div className="ml-8 flex flex-col gap-1">
+                              {item.children.map((child) => (
+                                <NavLink
+                                  key={child.path}
+                                  to={child.path}
+                                  onClick={onClose}
+                                  className={({ isActive }) =>
+                                    clsx(
+                                      'py-2.5 px-3 text-[13px] font-semibold transition-all duration-200 flex items-center gap-2 rounded-lg',
+                                      isActive
+                                        ? 'text-white bg-accent/90 shadow-[0_4px_10px_rgba(247,127,0,0.2)]'
+                                        : 'text-text-secondary hover:text-text hover:bg-white/5'
+                                    )
+                                  }
+                                >
+                                  {child.label}
+                                </NavLink>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    }
+
+                    return (
+                      <NavLink
+                        key={item.path}
+                        to={item.path}
+                        onClick={onClose}
+                        className={({ isActive }) =>
+                          clsx(
+                            'py-3 px-4 text-[14px] font-semibold transition-all duration-200 flex items-center gap-3.5',
+                            isActive
+                              ? 'text-white bg-accent shadow-[0_4px_12px_rgba(247,127,0,0.25)] rounded-xl'
+                              : 'text-text-secondary hover:text-text hover:bg-white/5 dark:hover:bg-white/5 rounded-xl'
+                          )
+                        }
+                        end={item.path === PATHS.DASHBOARD}
+                      >
+                        {({ isActive }) => (
+                          <>
+                            <Icon name={item.icon} className={clsx('flex-shrink-0', isActive ? 'text-white' : 'text-muted')} />
+                            <span className="truncate">{item.label}</span>
+                            {item.badge !== undefined && item.badge > 0 && (
+                              <span className="ml-auto px-2 py-0.5 text-[10px] rounded-full bg-accent text-white font-bold">
+                                {item.badge}
+                              </span>
+                            )}
+                          </>
+                        )}
+                      </NavLink>
+                    )
+                  })}
+                </div>
+              )}
+            </section>
+          )
+        })}
       </nav>
 
       {/* Footer */}
