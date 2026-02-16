@@ -14,17 +14,23 @@ export type UserListFilters = {
   status?: string
   region?: string
   zoneId?: string
+  orgId?: string
+  organizationId?: string
+}
+
+export function resolveUserOrgId(user?: Partial<User> | null): string | undefined {
+  if (!user) return undefined
+  return user.organization?.id || user.orgId || user.organizationId || user.tenantId || undefined
 }
 
 function normalizeMe(user: User): User {
-  const orgId = user.orgId || user.organizationId
-  const organizationId = user.organizationId || user.orgId
+  const resolvedOrgId = resolveUserOrgId(user)
   const assignedStations = user.assignedStations ?? []
 
   return {
     ...user,
-    orgId,
-    organizationId,
+    orgId: resolvedOrgId,
+    organizationId: resolvedOrgId,
     assignedStations,
   }
 }
@@ -85,6 +91,8 @@ export const userService = {
     if (filters?.status) params.append('status', filters.status)
     if (filters?.region) params.append('region', filters.region)
     if (filters?.zoneId) params.append('zoneId', filters.zoneId)
+    if (filters?.orgId) params.append('orgId', filters.orgId)
+    if (filters?.organizationId) params.append('organizationId', filters.organizationId)
 
     const queryString = params.toString()
     const url = queryString ? `/users?${queryString}` : '/users'
