@@ -101,6 +101,7 @@ export { TechRequests } from './TechRequests'
 
 // Add Charger Wizard
 export { AddCharger } from './AddCharger'
+export { AddStationEntry } from './AddStationEntry'
 export { AddStation } from './AddStation'
 export { AddSwapStation } from './AddSwapStation'
 

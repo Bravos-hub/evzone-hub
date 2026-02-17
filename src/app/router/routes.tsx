@@ -129,6 +129,7 @@ import {
   ChargePointDetail,
   SiteApplicationForm,
   AddSite,
+  AddStationEntry,
   AddStation,
   AddSwapStation,
   OwnerIncidentCenter,
@@ -291,9 +292,11 @@ export function AppRoutes() {
 
       {/* Owner Tools */}
       <Route path={PATHS.OWNER.TECH_REQUESTS} element={<RequireAuth><TechRequests /></RequireAuth>} />
+      <Route path={PATHS.OWNER.ADD_STATION_ENTRY} element={<RequireAuth><AddStationEntry /></RequireAuth>} />
+      <Route path={PATHS.OWNER.ADD_CHARGE_STATION} element={<RequireAuth><AddStation /></RequireAuth>} />
       <Route path={PATHS.OWNER.ADD_CHARGER} element={<RequireAuth><AddCharger /></RequireAuth>} />
       <Route path={PATHS.OWNER.ADD_SWAP_STATION} element={<RequireAuth><AddSwapStation /></RequireAuth>} />
-      <Route path="/add-station" element={<RequireAuth><AddStation /></RequireAuth>} />
+      <Route path="/add-station/swap" element={<Navigate to={PATHS.OWNER.ADD_SWAP_STATION} replace />} />
       <Route path={PATHS.OWNER.EXPANSION_TRACKER} element={<RequireAuth><ApplicationTracker /></RequireAuth>} />
       <Route path={PATHS.OWNER.LEASE_COMPLIANCE} element={<RequireAuth><LeaseCompliance /></RequireAuth>} />
 

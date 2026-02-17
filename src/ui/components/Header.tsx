@@ -29,7 +29,7 @@ export function Header({ title, onMenuClick }: { title?: string; onMenuClick?: (
 
   const createItems = useMemo(() => {
     const fallback = '/stations'
-    const addStation = '/add-station'
+    const addStation = PATHS.OWNER.ADD_STATION_ENTRY
     const addChargePoint = PATHS.OWNER.ADD_CHARGER
     const addSwapStation = PATHS.OWNER.ADD_SWAP_STATION
     const requestTechnician =

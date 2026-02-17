@@ -70,6 +70,8 @@ export const PATHS = {
     PRICING_RECIPES: '/pricing-recipes',
     LOAD_POLICY: '/load-policy',
     TECH_REQUESTS: '/tech-requests',
+    ADD_STATION_ENTRY: '/add-station',
+    ADD_CHARGE_STATION: '/add-station/charge',
     ADD_CHARGER: '/add-charger',
     ADD_SWAP_STATION: '/add-swap-station',
     OPS: '/owner-ops',

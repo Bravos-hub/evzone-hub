@@ -17,6 +17,12 @@ import Skeleton from 'react-loading-skeleton'
 import { TableSkeleton } from '@/ui/components/SkeletonCards'
 import { StationMapCanvas, type StationMapData } from '@/modules/stations/components/StationMapCanvas'
 import { API_CONFIG } from '@/core/api/config'
+import { PATHS } from '@/app/router/paths'
+import {
+  canCreateChargeStation,
+  canCreateSwapStation,
+  resolveViewerContext,
+} from '@/modules/stations/utils/stationCreationPolicy'
 
 // ... types and mock data omitted for brevity ...
 type StationType = 'Charge' | 'Swap' | 'Both'
@@ -182,6 +188,11 @@ export function Stations() {
 
   const needsScope = user?.role === 'STATION_OWNER' || user?.role === 'STATION_OPERATOR'
   const accessLoading = needsScope && meLoading
+  const stationCreationContext = useMemo(() => resolveViewerContext(user, me), [user, me])
+  const showAddStationButton =
+    stationCreationContext.requiresOwnerCapabilityChoice ||
+    canCreateChargeStation(stationCreationContext) ||
+    canCreateSwapStation(stationCreationContext)
 
   if (!perms.access) {
     return (
@@ -241,8 +252,8 @@ export function Stations() {
             <>
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-bold">Station List</h2>
-                {(user?.role === 'STATION_OWNER' || user?.role === 'STATION_ADMIN' || user?.role === 'SUPER_ADMIN') && (
-                  <button onClick={() => navigate('/add-station')} className="btn primary flex items-center gap-2">
+                {showAddStationButton && (
+                  <button onClick={() => navigate(PATHS.OWNER.ADD_STATION_ENTRY)} className="btn primary flex items-center gap-2">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4" /></svg>
                     Add Station
                   </button>

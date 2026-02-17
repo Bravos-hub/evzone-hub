@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { useCreateStation } from '@/modules/stations/hooks/useStations'
 import { getErrorMessage } from '@/core/api/errors'
@@ -7,9 +7,15 @@ import { auditLogger } from '@/core/utils/auditLogger'
 import { PATHS } from '@/app/router/paths'
 
 import { useAuthStore } from '@/core/auth/authStore'
+import { useMe } from '@/modules/auth/hooks/useAuth'
 import { useSites } from '@/modules/sites/hooks/useSites'
 import { useTenantSites } from '@/modules/tenants/hooks/useTenantDashboard'
 import { ROLE_GROUPS, isInGroup } from '@/constants/roles'
+import {
+    canCreateChargeStation,
+    canCreateSwapStation,
+    resolveViewerContext,
+} from '@/modules/stations/utils/stationCreationPolicy'
 
 import { apiClient } from '@/core/api/client'
 
@@ -17,8 +23,15 @@ import { apiClient } from '@/core/api/client'
 
 export function AddStation() {
     const navigate = useNavigate()
+    const location = useLocation()
     const { user } = useAuthStore()
-    const [step, setStep] = useState(0)
+    const { data: me, isLoading: meLoading } = useMe()
+    const stationCreationContext = useMemo(() => resolveViewerContext(user, me), [user, me])
+    const canCreateCharge = canCreateChargeStation(stationCreationContext)
+    const canCreateSwap = canCreateSwapStation(stationCreationContext)
+    const viewerOrgId = me?.orgId || me?.organizationId || user?.orgId || user?.organizationId
+
+    const [ack, setAck] = useState('')
     const [form, setForm] = useState({
         siteId: '',
         name: '',
@@ -36,6 +49,34 @@ export function AddStation() {
     const [error, setError] = useState('')
     const [loading, setLoading] = useState(false)
     const [uploadingImage, setUploadingImage] = useState(false)
+
+    useEffect(() => {
+        const notice = (location.state as { notice?: string } | null)?.notice
+        if (!notice) return
+        setAck(notice)
+        const timer = window.setTimeout(() => setAck(''), 2200)
+        return () => window.clearTimeout(timer)
+    }, [location.state])
+
+    useEffect(() => {
+        if (meLoading) return
+        if (canCreateCharge) return
+
+        if (stationCreationContext.requiresOwnerCapabilityChoice) {
+            navigate(PATHS.OWNER.ADD_STATION_ENTRY, {
+                replace: true,
+                state: { notice: 'Choose station type before continuing.' },
+            })
+            return
+        }
+
+        if (canCreateSwap) {
+            navigate(PATHS.OWNER.ADD_SWAP_STATION, {
+                replace: true,
+                state: { notice: 'Your account can only add swap stations. Redirected.' },
+            })
+        }
+    }, [canCreateCharge, canCreateSwap, meLoading, navigate, stationCreationContext.requiresOwnerCapabilityChoice])
 
     // Fetch User's Sites (Owned + Leased)
     const { data: sitesData, isLoading: loadingOwned } = useSites()
@@ -105,7 +146,7 @@ export function AddStation() {
                 longitude: Number(selectedSite.longitude) || 0,
                 type: 'CHARGING',
                 siteId: form.siteId,
-                orgId: user?.orgId || user?.organizationId,
+                orgId: viewerOrgId,
                 ownerId: user?.id,
                 // New Fields
                 price: form.price,
@@ -125,6 +166,24 @@ export function AddStation() {
             setError(getErrorMessage(err))
             setLoading(false)
         }
+    }
+
+    const isRedirecting = !meLoading && !canCreateCharge && (stationCreationContext.requiresOwnerCapabilityChoice || canCreateSwap)
+
+    if (isRedirecting) {
+        return (
+            <DashboardLayout pageTitle="Add Station">
+                <div className="p-8 text-center text-subtle">Redirecting to the correct station wizard...</div>
+            </DashboardLayout>
+        )
+    }
+
+    if (!meLoading && !canCreateCharge) {
+        return (
+            <DashboardLayout pageTitle="Add Station">
+                <div className="p-8 text-center text-subtle">No permission to add charge stations.</div>
+            </DashboardLayout>
+        )
     }
 
     // If no sites, redirect flow
@@ -150,6 +209,7 @@ export function AddStation() {
                 <div className="card">
                     <h2 className="text-xl font-bold mb-6">Add Station Wizard</h2>
 
+                    {ack && <div className="bg-accent/10 text-accent p-3 rounded mb-4">{ack}</div>}
                     {error && <div className="bg-red-50 text-red-700 p-3 rounded mb-4">{error}</div>}
 
                     <div className="space-y-4">

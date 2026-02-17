@@ -1,5 +1,5 @@
 ﻿import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { PATHS } from '@/app/router/paths'
 import { getErrorMessage } from '@/core/api/errors'
@@ -7,9 +7,14 @@ import { useCreateStation, useStations, useUpsertSwapBays, useUpsertStationBatte
 import { useProviderRelationships, useProviders, useRequestProviderRelationship } from '@/modules/integrations/useProviders'
 import { auditLogger } from '@/core/utils/auditLogger'
 import { useAuthStore } from '@/core/auth/authStore'
-import { getPermissionsForFeature } from '@/constants/permissions'
+import { useMe } from '@/modules/auth/hooks/useAuth'
 import { InlineSkeleton } from '@/ui/components/SkeletonCards'
 import type { ProviderRelationship, SwapProvider } from '@/core/api/types'
+import {
+  canCreateChargeStation,
+  canCreateSwapStation,
+  resolveViewerContext,
+} from '@/modules/stations/utils/stationCreationPolicy'
 
 type VehicleType = 'BIKE' | 'CAR' | 'MIXED'
 type HardwareMode = 'COMPUTERIZED' | 'MANUAL'
@@ -108,9 +113,13 @@ function providerUnavailableReason(provider: SwapProvider, relationship?: Provid
 
 export function AddSwapStation() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { user } = useAuthStore()
-  const perms = getPermissionsForFeature(user?.role, 'swapStations')
-  const ownerOrgId = user?.orgId || user?.organizationId
+  const { data: me, isLoading: meLoading } = useMe()
+  const stationCreationContext = useMemo(() => resolveViewerContext(user, me), [user, me])
+  const canCreateCharge = canCreateChargeStation(stationCreationContext)
+  const canCreateSwap = canCreateSwapStation(stationCreationContext)
+  const ownerOrgId = me?.orgId || me?.organizationId || user?.orgId || user?.organizationId
 
   const [step, setStep] = useState(0)
   const [ack, setAck] = useState('')
@@ -118,6 +127,34 @@ export function AddSwapStation() {
   const [loading, setLoading] = useState(false)
   const [connectState, setConnectState] = useState<'idle' | 'connecting' | 'connected'>('idle')
   const [scanValue, setScanValue] = useState('')
+
+  useEffect(() => {
+    const notice = (location.state as { notice?: string } | null)?.notice
+    if (!notice) return
+    setAck(notice)
+    const timer = window.setTimeout(() => setAck(''), 2200)
+    return () => window.clearTimeout(timer)
+  }, [location.state])
+
+  useEffect(() => {
+    if (meLoading) return
+    if (canCreateSwap) return
+
+    if (stationCreationContext.requiresOwnerCapabilityChoice) {
+      navigate(PATHS.OWNER.ADD_STATION_ENTRY, {
+        replace: true,
+        state: { notice: 'Choose station type before continuing.' },
+      })
+      return
+    }
+
+    if (canCreateCharge) {
+      navigate(PATHS.OWNER.ADD_CHARGE_STATION, {
+        replace: true,
+        state: { notice: 'Your account can only add charge stations. Redirected.' },
+      })
+    }
+  }, [canCreateCharge, canCreateSwap, meLoading, navigate, stationCreationContext.requiresOwnerCapabilityChoice])
 
   const [form, setForm] = useState<SwapStationForm>({
     siteId: '',
@@ -378,7 +415,17 @@ export function AddSwapStation() {
     }
   }
 
-  if (!perms.create) {
+  const isRedirecting = !meLoading && !canCreateSwap && (stationCreationContext.requiresOwnerCapabilityChoice || canCreateCharge)
+
+  if (isRedirecting) {
+    return (
+      <DashboardLayout pageTitle="Add Swap Station">
+        <div className="p-8 text-center text-subtle">Redirecting to the correct station wizard...</div>
+      </DashboardLayout>
+    )
+  }
+
+  if (!meLoading && !canCreateSwap) {
     return (
       <DashboardLayout pageTitle="Add Swap Station">
         <div className="p-8 text-center text-subtle">No permission to add swap stations.</div>

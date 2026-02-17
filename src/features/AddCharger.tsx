@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { useAuthStore } from '@/core/auth/authStore'
 import { hasPermission } from '@/constants/permissions'
+import { PATHS } from '@/app/router/paths'
 import { useCreateChargePoint } from '@/modules/charge-points/hooks/useChargePoints'
 import { chargePointService } from '@/modules/charge-points/services/chargePointService'
 import { useStations, useStation } from '@/modules/stations/hooks/useStations'
@@ -643,7 +644,7 @@ export function AddCharger() {
                 )}
                 {myStations.length === 0 && !loadingStations && (
                   <div className="mt-2 text-sm text-subtle">
-                    No stations available. <a href="/add-station" className="text-accent hover:underline">Create a Station</a> first.
+                    No stations available. <a href={PATHS.OWNER.ADD_STATION_ENTRY} className="text-accent hover:underline">Create a Station</a> first.
                   </div>
                 )}
               </label>
