@@ -3,13 +3,16 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { PATHS } from '@/app/router/paths'
 import { getErrorMessage } from '@/core/api/errors'
-import { useCreateStation, useStations, useUpsertSwapBays, useUpsertStationBatteries } from '@/modules/stations/hooks/useStations'
+import { useCreateStation, useUpsertSwapBays, useUpsertStationBatteries } from '@/modules/stations/hooks/useStations'
 import { useProviderRelationships, useProviders, useRequestProviderRelationship } from '@/modules/integrations/useProviders'
 import { auditLogger } from '@/core/utils/auditLogger'
 import { useAuthStore } from '@/core/auth/authStore'
 import { useMe } from '@/modules/auth/hooks/useAuth'
+import { useSites } from '@/modules/sites/hooks/useSites'
+import { useApplications } from '@/modules/applications/hooks/useApplications'
 import { InlineSkeleton } from '@/ui/components/SkeletonCards'
 import type { ProviderRelationship, SwapProvider } from '@/core/api/types'
+import { buildAccessibleSites } from '@/modules/sites/utils/accessibleSites'
 import {
   canCreateChargeStation,
   canCreateSwapStation,
@@ -119,7 +122,10 @@ export function AddSwapStation() {
   const stationCreationContext = useMemo(() => resolveViewerContext(user, me), [user, me])
   const canCreateCharge = canCreateChargeStation(stationCreationContext)
   const canCreateSwap = canCreateSwapStation(stationCreationContext)
-  const ownerOrgId = me?.orgId || me?.organizationId || user?.orgId || user?.organizationId
+  const viewerOrgId = me?.orgId || me?.organizationId || user?.orgId || user?.organizationId
+  const ownerOrgId = viewerOrgId
+  const viewerId = me?.id || user?.id
+  const scopeToOwner = user?.role === 'STATION_OWNER'
 
   const [step, setStep] = useState(0)
   const [ack, setAck] = useState('')
@@ -127,6 +133,7 @@ export function AddSwapStation() {
   const [loading, setLoading] = useState(false)
   const [connectState, setConnectState] = useState<'idle' | 'connecting' | 'connected'>('idle')
   const [scanValue, setScanValue] = useState('')
+  const [siteSearch, setSiteSearch] = useState('')
 
   useEffect(() => {
     const notice = (location.state as { notice?: string } | null)?.notice
@@ -171,7 +178,8 @@ export function AddSwapStation() {
     bays: [],
   })
 
-  const { data: sites, isLoading: loadingSites } = useStations()
+  const { data: sitesData, isLoading: loadingSites } = useSites()
+  const { data: applicationsData, isLoading: loadingApplications } = useApplications()
   const { data: providers, isLoading: loadingProviders } = useProviders()
   const { data: relationships } = useProviderRelationships(ownerOrgId ? { ownerOrgId } : { my: true })
   const requestRelationshipMutation = useRequestProviderRelationship()
@@ -179,13 +187,47 @@ export function AddSwapStation() {
   const upsertSwapBaysMutation = useUpsertSwapBays()
   const upsertStationBatteriesMutation = useUpsertStationBatteries()
 
+  const accessibleSites = useMemo(
+    () =>
+      buildAccessibleSites({
+        sites: sitesData || [],
+        applications: applicationsData || [],
+        viewerId,
+        viewerOrgId,
+        scopeToOwner,
+      }),
+    [applicationsData, scopeToOwner, sitesData, viewerId, viewerOrgId]
+  )
+  const loadingSiteOptions = loadingSites || loadingApplications
+  const normalizedSiteSearch = siteSearch.trim().toLowerCase()
+  const filteredAccessibleSites = useMemo(() => {
+    if (!normalizedSiteSearch) return accessibleSites
+    return accessibleSites.filter((site) =>
+      `${site.name} ${site.address}`.toLowerCase().includes(normalizedSiteSearch)
+    )
+  }, [accessibleSites, normalizedSiteSearch])
+  const ownedSiteOptions = useMemo(
+    () => filteredAccessibleSites.filter((site) => site.source === 'OWNED'),
+    [filteredAccessibleSites]
+  )
+  const rentedSiteOptions = useMemo(
+    () => filteredAccessibleSites.filter((site) => site.source === 'RENTED'),
+    [filteredAccessibleSites]
+  )
+
   const selectedSite = useMemo(() => {
-    return sites?.find((site) => site.id === form.siteId)
-  }, [sites, form.siteId])
+    return accessibleSites.find((site) => site.id === form.siteId)
+  }, [accessibleSites, form.siteId])
 
   const selectedProvider = useMemo(() => {
     return providers?.find((provider) => provider.id === form.providerId)
   }, [providers, form.providerId])
+
+  useEffect(() => {
+    if (form.siteId || loadingSiteOptions) return
+    if (accessibleSites.length !== 1) return
+    setForm((prev) => ({ ...prev, siteId: accessibleSites[0].id }))
+  }, [accessibleSites, form.siteId, loadingSiteOptions])
 
   const relationshipByProvider = useMemo(() => {
     const map = new Map<string, ProviderRelationship>()
@@ -355,9 +397,12 @@ export function AddSwapStation() {
         code: `SW-${Date.now()}`,
         name: form.name,
         address: selectedSite.address || '',
-        latitude: selectedSite.latitude || 0,
-        longitude: selectedSite.longitude || 0,
+        latitude: selectedSite.latitude ?? 0,
+        longitude: selectedSite.longitude ?? 0,
         type: 'SWAP',
+        siteId: form.siteId,
+        orgId: viewerOrgId,
+        ownerId: user?.id,
         providerId: form.providerId,
         capacity: form.bayCount,
         parkingBays: form.bayCount,
@@ -433,13 +478,15 @@ export function AddSwapStation() {
     )
   }
 
-  if (!loadingSites && (!sites || sites.length === 0)) {
+  if (!loadingSiteOptions && accessibleSites.length === 0) {
     return (
       <DashboardLayout pageTitle="Add Swap Station">
         <div className="max-w-xl mx-auto py-12 text-center">
           <div className="bg-surface border border-border rounded-xl p-8">
             <h2 className="text-xl font-bold mb-4">No Sites Available</h2>
-            <p className="text-subtle mb-6">You need to have at least one Site before you can add a Swap Station.</p>
+            <p className="text-subtle mb-6">
+              You need at least one owned site or an active signed rental (LEASE_SIGNED/COMPLETED) before adding a swap station.
+            </p>
             <button onClick={() => navigate(PATHS.SITE_OWNER.APPLY_FOR_SITE)} className="btn primary w-full">
               Apply for a Site / Add Site
             </button>
@@ -483,27 +530,59 @@ export function AddSwapStation() {
               <h3 className="text-lg font-semibold">Station Basics</h3>
               <label className="grid gap-1">
                 <span className="text-sm font-medium">Site *</span>
-                {loadingSites ? (
+                {loadingSiteOptions ? (
                   <InlineSkeleton width="100%" height={40} />
                 ) : (
-                  <select
-                    value={form.siteId}
-                    onChange={(e) => updateForm('siteId', e.target.value)}
-                    className="select"
-                  >
-                    <option value="">Choose a site...</option>
-                    {sites?.map((site) => (
-                      <option key={site.id} value={site.id}>
-                        {site.name}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="space-y-2">
+                    <input
+                      value={siteSearch}
+                      onChange={(e) => setSiteSearch(e.target.value)}
+                      placeholder="Search site by name or address..."
+                      className="input"
+                    />
+                    <div className="text-xs text-subtle">
+                      Showing {filteredAccessibleSites.length} of {accessibleSites.length} accessible sites
+                    </div>
+                    <select
+                      value={form.siteId}
+                      onChange={(e) => updateForm('siteId', e.target.value)}
+                      className="select"
+                    >
+                      <option value="">Choose a site...</option>
+                      {ownedSiteOptions.length > 0 && (
+                        <optgroup label="Owned Sites">
+                          {ownedSiteOptions.map((site) => (
+                            <option key={site.id} value={site.id}>
+                              {site.name} {site.address ? `(${site.address})` : ''}
+                            </option>
+                          ))}
+                        </optgroup>
+                      )}
+                      {rentedSiteOptions.length > 0 && (
+                        <optgroup label="Rented Sites">
+                          {rentedSiteOptions.map((site) => (
+                            <option key={site.id} value={site.id}>
+                              {site.name} {site.address ? `(${site.address})` : ''}
+                            </option>
+                          ))}
+                        </optgroup>
+                      )}
+                    </select>
+                    {filteredAccessibleSites.length === 0 && (
+                      <div className="text-xs text-subtle">No matching sites found for your search.</div>
+                    )}
+                  </div>
                 )}
               </label>
 
               {selectedSite && (
                 <div className="rounded-lg border border-white/5 bg-panel/40 p-4 text-sm">
-                  <div className="font-medium text-text mb-1">Site location (inherited)</div>
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <div className="font-medium text-text">Site location (inherited)</div>
+                    <span className="text-[11px] px-2 py-0.5 rounded border border-white/10 bg-white/5 uppercase tracking-wide">
+                      {selectedSite.source === 'OWNED' ? 'Owned' : 'Rented'}
+                    </span>
+                  </div>
                   <div className="text-subtle">{selectedSite.address || 'No address on record'}</div>
                   <div className="text-subtle">
                     Lat: {selectedSite.latitude ?? 0}, Lng: {selectedSite.longitude ?? 0}
