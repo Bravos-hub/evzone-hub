@@ -130,6 +130,11 @@ export const PATHS = {
     CUSTOM_ROLES: '/settings/custom-roles',
   },
 
+  // Swap Provider Portal
+  PROVIDER: {
+    DASHBOARD: '/provider/dashboard',
+  },
+
   // Misc
   SETTING: '/settings',
   WALLET: '/wallet',

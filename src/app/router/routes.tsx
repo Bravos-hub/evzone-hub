@@ -18,6 +18,7 @@ import {
   Stations,
   StationDetail,
   SwapProviders,
+  ProviderPortal,
   SwapStations,
   Sessions,
   Incidents,
@@ -248,6 +249,7 @@ export function AppRoutes() {
           ═══════════════════════════════════════════════════════════════════════ */}
       <Route path={PATHS.OWNER.TARIFFS} element={<RequireAuth><Tariffs /></RequireAuth>} />
       <Route path={PATHS.OWNER.PROVIDERS} element={<RequireAuth><SwapProviders /></RequireAuth>} />
+      <Route path={PATHS.PROVIDER.DASHBOARD} element={<RequireAuth><ProviderPortal /></RequireAuth>} />
       <Route path={PATHS.STATIONS.CHARGE_POINTS} element={<RequireAuth><ChargePoints /></RequireAuth>} />
       <Route path={PATHS.OWNER.EARNINGS} element={<RequireAuth><Earnings /></RequireAuth>} />
       <Route path={PATHS.OWNER.BOOKING_LEDGER} element={<RequireAuth><BookingLedger /></RequireAuth>} />
@@ -372,6 +374,7 @@ export function AppRoutes() {
       <Route path="/admin/*" element={<Navigate to={PATHS.DASHBOARD} replace />} />
       <Route path="/operator" element={<Navigate to={PATHS.DASHBOARD} replace />} />
       <Route path="/operator/*" element={<Navigate to={PATHS.DASHBOARD} replace />} />
+      <Route path="/provider/*" element={<Navigate to={PATHS.PROVIDER.DASHBOARD} replace />} />
       <Route path="/owner/*" element={<Navigate to={PATHS.DASHBOARD} replace />} />
       <Route path="/site-owner/*" element={<Navigate to={PATHS.DASHBOARD} replace />} />
       <Route path="/station-admin/*" element={<Navigate to={PATHS.DASHBOARD} replace />} />

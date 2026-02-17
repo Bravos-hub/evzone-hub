@@ -37,6 +37,7 @@ export { PendingApplications } from '@/modules/admin/components/PendingApplicati
 export { Tariffs } from './Tariffs'
 export { ChargePoints } from './ChargePoints'
 export { SwapProviders } from './SwapProviders'
+export { ProviderPortal } from './ProviderPortal'
 export { SwapStations } from './SwapStations'
 export { SmartCharging } from './SmartCharging'
 export { Earnings } from './Earnings'

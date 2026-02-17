@@ -4,6 +4,8 @@ export type Role =
   | 'SUPER_ADMIN'
   | 'EVZONE_ADMIN'
   | 'EVZONE_OPERATOR'
+  | 'SWAP_PROVIDER_ADMIN'
+  | 'SWAP_PROVIDER_OPERATOR'
   | 'SITE_OWNER'
   | 'STATION_OPERATOR'
   | 'STATION_ADMIN'
@@ -32,6 +34,7 @@ export type UserProfile = {
   role: Role
   ownerCapability?: OwnerCapability
   avatarUrl?: string
+  providerId?: string
   orgId?: string
   organizationId?: string
   region?: string

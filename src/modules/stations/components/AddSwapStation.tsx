@@ -1,14 +1,15 @@
-import { useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { PATHS } from '@/app/router/paths'
 import { getErrorMessage } from '@/core/api/errors'
 import { useCreateStation, useStations, useUpsertSwapBays, useUpsertStationBatteries } from '@/modules/stations/hooks/useStations'
-import { useProviders } from '@/modules/integrations/useProviders'
+import { useProviderRelationships, useProviders, useRequestProviderRelationship } from '@/modules/integrations/useProviders'
 import { auditLogger } from '@/core/utils/auditLogger'
 import { useAuthStore } from '@/core/auth/authStore'
 import { getPermissionsForFeature } from '@/constants/permissions'
 import { InlineSkeleton } from '@/ui/components/SkeletonCards'
+import type { ProviderRelationship, SwapProvider } from '@/core/api/types'
 
 type VehicleType = 'BIKE' | 'CAR' | 'MIXED'
 type HardwareMode = 'COMPUTERIZED' | 'MANUAL'
@@ -52,10 +53,64 @@ const buildBays = (count: number, existing: SwapBay[]) => {
   }))
 }
 
+type NormalizedProviderStatus = 'DRAFT' | 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED' | 'SUSPENDED'
+type NormalizedRelationshipStatus = 'REQUESTED' | 'PROVIDER_ACCEPTED' | 'DOCS_PENDING' | 'ADMIN_APPROVED' | 'ACTIVE' | 'SUSPENDED' | 'TERMINATED' | 'NONE'
+
+function normalizeProviderStatus(status?: string): NormalizedProviderStatus {
+  const normalized = (status ?? '').toUpperCase()
+  if (normalized === 'ACTIVE') return 'APPROVED'
+  if (normalized === 'PENDING') return 'PENDING_REVIEW'
+  if (normalized === 'INACTIVE') return 'SUSPENDED'
+  if (normalized === 'REJECTED') return 'REJECTED'
+  if (normalized === 'SUSPENDED') return 'SUSPENDED'
+  if (normalized === 'APPROVED') return 'APPROVED'
+  if (normalized === 'PENDING_REVIEW') return 'PENDING_REVIEW'
+  return 'DRAFT'
+}
+
+function normalizeRelationshipStatus(status?: string): NormalizedRelationshipStatus {
+  const normalized = (status ?? '').toUpperCase()
+  if (!normalized) return 'NONE'
+  if (normalized === 'REQUESTED') return 'REQUESTED'
+  if (normalized === 'PROVIDER_ACCEPTED') return 'PROVIDER_ACCEPTED'
+  if (normalized === 'DOCS_PENDING') return 'DOCS_PENDING'
+  if (normalized === 'ADMIN_APPROVED') return 'ADMIN_APPROVED'
+  if (normalized === 'ACTIVE') return 'ACTIVE'
+  if (normalized === 'SUSPENDED') return 'SUSPENDED'
+  if (normalized === 'TERMINATED') return 'TERMINATED'
+  return 'NONE'
+}
+
+function providerUnavailableReason(provider: SwapProvider, relationship?: ProviderRelationship): string {
+  const providerStatus = normalizeProviderStatus(provider.status)
+  if (providerStatus !== 'APPROVED') return 'Provider is not approved by platform admin.'
+
+  const relationshipStatus = normalizeRelationshipStatus(relationship?.status)
+  switch (relationshipStatus) {
+    case 'ACTIVE':
+      return ''
+    case 'REQUESTED':
+      return 'Contract request pending provider response.'
+    case 'PROVIDER_ACCEPTED':
+      return 'Provider accepted; waiting for documents.'
+    case 'DOCS_PENDING':
+      return 'Required two-sided documents are still pending.'
+    case 'ADMIN_APPROVED':
+      return 'Awaiting relationship activation.'
+    case 'SUSPENDED':
+      return 'Relationship is suspended by admin.'
+    case 'TERMINATED':
+      return 'Relationship was terminated.'
+    default:
+      return 'No active provider contract for your organization.'
+  }
+}
+
 export function AddSwapStation() {
   const navigate = useNavigate()
   const { user } = useAuthStore()
   const perms = getPermissionsForFeature(user?.role, 'swapStations')
+  const ownerOrgId = user?.orgId || user?.organizationId
 
   const [step, setStep] = useState(0)
   const [ack, setAck] = useState('')
@@ -81,6 +136,8 @@ export function AddSwapStation() {
 
   const { data: sites, isLoading: loadingSites } = useStations()
   const { data: providers, isLoading: loadingProviders } = useProviders()
+  const { data: relationships } = useProviderRelationships(ownerOrgId ? { ownerOrgId } : { my: true })
+  const requestRelationshipMutation = useRequestProviderRelationship()
   const createStationMutation = useCreateStation()
   const upsertSwapBaysMutation = useUpsertSwapBays()
   const upsertStationBatteriesMutation = useUpsertStationBatteries()
@@ -92,6 +149,53 @@ export function AddSwapStation() {
   const selectedProvider = useMemo(() => {
     return providers?.find((provider) => provider.id === form.providerId)
   }, [providers, form.providerId])
+
+  const relationshipByProvider = useMemo(() => {
+    const map = new Map<string, ProviderRelationship>()
+    ;(relationships ?? []).forEach((relationship) => {
+      const existing = map.get(relationship.providerId)
+      if (!existing) {
+        map.set(relationship.providerId, relationship)
+        return
+      }
+
+      const existingTime = new Date(existing.updatedAt ?? existing.createdAt).getTime()
+      const nextTime = new Date(relationship.updatedAt ?? relationship.createdAt).getTime()
+      if (nextTime >= existingTime) {
+        map.set(relationship.providerId, relationship)
+      }
+    })
+    return map
+  }, [relationships])
+
+  const eligibleProviders = useMemo(() => {
+    return (providers ?? []).filter((provider) => {
+      if (normalizeProviderStatus(provider.status) !== 'APPROVED') return false
+      const relationshipStatus = normalizeRelationshipStatus(relationshipByProvider.get(provider.id)?.status)
+      return relationshipStatus === 'ACTIVE'
+    })
+  }, [providers, relationshipByProvider])
+
+  const unavailableProviders = useMemo(() => {
+    return (providers ?? [])
+      .map((provider) => {
+        const relationship = relationshipByProvider.get(provider.id)
+        const reason = providerUnavailableReason(provider, relationship)
+        if (!reason) return null
+        const relationshipStatus = normalizeRelationshipStatus(relationship?.status)
+        const canRequest = relationshipStatus === 'NONE' && normalizeProviderStatus(provider.status) === 'APPROVED'
+        return { provider, reason, canRequest }
+      })
+      .filter((entry): entry is { provider: SwapProvider; reason: string; canRequest: boolean } => entry !== null)
+  }, [providers, relationshipByProvider])
+
+  useEffect(() => {
+    if (!form.providerId) return
+    const stillEligible = eligibleProviders.some((provider) => provider.id === form.providerId)
+    if (!stillEligible) {
+      setForm((prev) => ({ ...prev, providerId: '' }))
+    }
+  }, [eligibleProviders, form.providerId])
 
   const toast = (message: string) => {
     setAck(message)
@@ -260,6 +364,20 @@ export function AddSwapStation() {
     }
   }
 
+  const requestProviderPartnership = async (providerId: string) => {
+    if (!ownerOrgId) {
+      setError('Your account has no organization ID. Contact admin to complete organization setup.')
+      return
+    }
+
+    try {
+      await requestRelationshipMutation.mutateAsync({ providerId, ownerOrgId })
+      toast('Provider partnership request submitted.')
+    } catch (err) {
+      setError(getErrorMessage(err))
+    }
+  }
+
   if (!perms.create) {
     return (
       <DashboardLayout pageTitle="Add Swap Station">
@@ -370,18 +488,47 @@ export function AddSwapStation() {
                   {loadingProviders ? (
                     <InlineSkeleton width="100%" height={40} />
                   ) : (
-                    <select
-                      value={form.providerId}
-                      onChange={(e) => updateForm('providerId', e.target.value)}
-                      className="select"
-                    >
-                      <option value="">Choose a provider...</option>
-                      {providers?.map((provider) => (
-                        <option key={provider.id} value={provider.id}>
-                          {provider.name}
-                        </option>
-                      ))}
-                    </select>
+                    <div className="space-y-2">
+                      <select
+                        value={form.providerId}
+                        onChange={(e) => updateForm('providerId', e.target.value)}
+                        className="select"
+                      >
+                        <option value="">Choose an active contracted provider...</option>
+                        {eligibleProviders.map((provider) => (
+                          <option key={provider.id} value={provider.id}>
+                            {provider.name}
+                          </option>
+                        ))}
+                      </select>
+                      {eligibleProviders.length === 0 && (
+                        <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-xs text-yellow-700">
+                          No active provider contracts found for your organization. Request a provider below.
+                        </div>
+                      )}
+                      {unavailableProviders.length > 0 && (
+                        <div className="space-y-1 max-h-28 overflow-y-auto pr-1">
+                          {unavailableProviders.slice(0, 4).map(({ provider, reason, canRequest }) => (
+                            <div key={provider.id} className="flex items-center justify-between gap-2 rounded-md border border-border bg-panel/30 px-2 py-1.5">
+                              <div className="min-w-0">
+                                <div className="text-xs font-semibold text-text truncate">{provider.name}</div>
+                                <div className="text-[11px] text-subtle truncate">{reason}</div>
+                              </div>
+                              {canRequest && (
+                                <button
+                                  type="button"
+                                  className="px-2 py-1 text-[11px] rounded border border-accent/40 text-accent hover:bg-accent hover:text-white transition-colors disabled:opacity-60"
+                                  onClick={() => requestProviderPartnership(provider.id)}
+                                  disabled={requestRelationshipMutation.isPending}
+                                >
+                                  Request
+                                </button>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   )}
                 </label>
               </div>
@@ -659,3 +806,4 @@ export function AddSwapStation() {
     </DashboardLayout>
   )
 }
+

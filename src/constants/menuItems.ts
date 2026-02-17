@@ -103,11 +103,12 @@ const NEW_PORTED_FEATURES = section('New Ported Features', [
   { path: PATHS.ROAMING, label: 'Roaming', icon: 'globe', roles: ROLE_GROUPS.PLATFORM_ADMINS },
   { path: PATHS.REGULATORY, label: 'Regulatory', icon: 'shield', roles: ROLE_GROUPS.PLATFORM_ADMINS },
   { path: PATHS.UTILITY, label: 'Utility', icon: 'grid', roles: ROLE_GROUPS.PLATFORM_ADMINS },
-  { path: PATHS.OWNER.PROVIDERS, label: 'Swapping Providers', icon: 'share-2', roles: [...ROLE_GROUPS.PLATFORM_ADMINS, 'STATION_OWNER'] },
+  { path: PATHS.OWNER.PROVIDERS, label: 'Swapping Providers', icon: 'share-2', roles: ROLE_GROUPS.PLATFORM_OPS },
   { path: PATHS.OWNER.PARTNERS, label: 'Partners', icon: 'users', roles: ROLE_GROUPS.PLATFORM_ADMINS },
 ])
 
 const USER_TOOLS = section('User Tools', [
+  { path: PATHS.PROVIDER.DASHBOARD, label: 'Provider Portal', icon: 'briefcase', roles: ROLE_GROUPS.PROVIDER_ROLES },
   { path: PATHS.WALLET, label: 'Wallet', icon: 'credit-card', roles: ['STATION_OPERATOR', 'SITE_OWNER', 'TECHNICIAN_ORG', 'TECHNICIAN_PUBLIC', 'STATION_OWNER'] },
   { path: PATHS.SETTING, label: 'Settings', icon: 'settings', roles: 'ALL' },
 ])
@@ -206,6 +207,9 @@ function generateMenuFromPermissions(role: Role): MenuItem[] {
   }
   if (hasPermission(role, 'reports', 'access')) {
     addToSection('Financial', { path: PATHS.REPORTS, label: 'Reports', icon: 'file-text', roles: [role] })
+  }
+  if (hasPermission(role, 'swapProviders', 'access')) {
+    addToSection('Platform Admin', { path: PATHS.OWNER.PROVIDERS, label: 'Swapping Providers', icon: 'share-2', roles: [role] })
   }
   if (hasPermission(role, 'wallet', 'access')) {
     addToSection('User Tools', { path: PATHS.WALLET, label: 'Wallet', icon: 'credit-card', roles: [role] })

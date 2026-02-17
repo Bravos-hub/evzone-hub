@@ -53,6 +53,7 @@ export interface AuthResponse {
     email?: string
     avatarUrl?: string
     role: string
+    providerId?: string
     orgId?: string
     organizationId?: string
     region?: string
@@ -75,6 +76,7 @@ export interface User {
   avatarUrl?: string
   phone?: string
   role: Role
+  providerId?: string
   orgId?: string
   organizationId?: string
   organization?: {
@@ -110,6 +112,7 @@ export interface UpdateUserRequest {
   email?: string
   phone?: string
   role?: string
+  providerId?: string
   orgId?: string
   organizationId?: string
   ownerCapability?: OwnerCapability
@@ -148,17 +151,152 @@ export interface Station {
 
 export type ProviderStandard = 'Gogoro G2' | 'NIO BaaS' | 'Zembo Standard' | 'Spiro S1' | 'BatterySmart' | 'Universal'
 
+export type SwapProviderStatus = 'DRAFT' | 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED' | 'SUSPENDED'
+export type ProviderRelationshipStatus =
+  | 'REQUESTED'
+  | 'PROVIDER_ACCEPTED'
+  | 'DOCS_PENDING'
+  | 'ADMIN_APPROVED'
+  | 'ACTIVE'
+  | 'SUSPENDED'
+  | 'TERMINATED'
+
+export type ProviderDocumentType =
+  | 'INCORPORATION'
+  | 'TAX_COMPLIANCE'
+  | 'INSURANCE'
+  | 'BATTERY_SAFETY_CERTIFICATION'
+  | 'RECYCLING_COMPLIANCE'
+  | 'TECHNICAL_CONFORMANCE'
+  | 'COMMERCIAL_AGREEMENT'
+  | 'SOP_ACKNOWLEDGEMENT'
+  | 'SITE_COMPATIBILITY_DECLARATION'
+
+export type ProviderDocumentStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
+
+export interface ProviderDocument {
+  id: string
+  providerId?: string
+  relationshipId?: string
+  ownerOrgId?: string
+  type: ProviderDocumentType
+  name: string
+  fileUrl: string
+  uploadedAt: string
+  uploadedBy?: string
+  status: ProviderDocumentStatus
+  rejectionReason?: string
+}
+
+export interface ProviderRelationship {
+  id: string
+  providerId: string
+  providerName?: string
+  ownerOrgId: string
+  ownerOrgName?: string
+  status: ProviderRelationshipStatus
+  createdAt: string
+  updatedAt?: string
+  requestedBy?: string
+  providerRespondedAt?: string
+  adminApprovedAt?: string
+  notes?: string
+  documents?: ProviderDocument[]
+}
+
+export interface ProviderSettlementSummary {
+  currency: string
+  period?: { start: string; end: string }
+  totals: {
+    gross: number
+    providerFee: number
+    platformFee: number
+    adjustments: number
+    receivables: number
+    paid: number
+    pending: number
+    netPayable: number
+  }
+  rows: Array<{
+    id: string
+    relationshipId?: string
+    providerId: string
+    ownerOrgId?: string
+    stationId?: string
+    sessionId?: string
+    amount: number
+    providerFee: number
+    platformFee: number
+    adjustment: number
+    net: number
+    status: 'PENDING' | 'PAID' | 'DISPUTED'
+    createdAt: string
+  }>
+}
+
 export interface SwapProvider {
   id: string
   name: string
   logoUrl?: string
+  legalName?: string
+  registrationNumber?: string
+  taxId?: string
+  contactEmail?: string
+  contactPhone?: string
   region: string
+  regions?: string[]
+  countries?: string[]
+  organizationId?: string
   standard: ProviderStandard
   batteriesSupported: string[]
+  supportedStationTypes?: Array<'CHARGING' | 'SWAP' | 'BOTH'>
+  protocolCapabilities?: string[]
+  feeModel?: string
+  settlementTerms?: string
   stationCount: number
   website?: string
-  status: 'Active' | 'Pending' | 'Inactive'
+  status: SwapProviderStatus | 'Active' | 'Pending' | 'Inactive'
+  statusReason?: string
+  approvedAt?: string
+  suspendedAt?: string
+  requiredDocuments?: ProviderDocumentType[]
+  documents?: ProviderDocument[]
   partnerSince: string
+}
+
+export interface CreateSwapProviderRequest {
+  name: string
+  legalName?: string
+  registrationNumber?: string
+  taxId?: string
+  contactEmail?: string
+  contactPhone?: string
+  region: string
+  regions?: string[]
+  countries?: string[]
+  standard: ProviderStandard
+  batteriesSupported: string[]
+  supportedStationTypes?: Array<'CHARGING' | 'SWAP' | 'BOTH'>
+  protocolCapabilities?: string[]
+  feeModel?: string
+  settlementTerms?: string
+  website?: string
+}
+
+export interface UpdateSwapProviderRequest extends Partial<CreateSwapProviderRequest> {
+  statusReason?: string
+}
+
+export interface CreateProviderDocumentRequest {
+  type: ProviderDocumentType
+  name: string
+  fileUrl: string
+}
+
+export interface CreateProviderRelationshipRequest {
+  providerId: string
+  ownerOrgId: string
+  notes?: string
 }
 
 export interface CreateStationRequest {

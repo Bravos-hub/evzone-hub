@@ -134,6 +134,53 @@ export const DASHBOARD_CONFIGS: Record<DashboardKey, DashboardConfig> = {
   // ─────────────────────────────────────────────────────────────────────────
   // SITE OWNER DASHBOARD
   // ─────────────────────────────────────────────────────────────────────────
+  SWAP_PROVIDER_ADMIN: {
+    title: 'Provider Dashboard',
+    kpiRow: [
+      { id: 'kpi-generic', config: { title: 'Active Contracts', value: '—' } },
+      { id: 'kpi-generic', config: { title: 'Pending Requests', value: '—' } },
+      { id: 'kpi-generic', config: { title: 'Open Compliance Items', value: '—' } },
+      { id: 'kpi-generic', config: { title: 'Net Payable', value: '—' } },
+    ],
+    rows: [
+      {
+        sectionTitle: 'Provider Operations',
+        widgets: [
+          {
+            id: 'panel-quick-actions',
+            size: '2',
+            config: {
+              title: 'Quick Actions',
+              actions: [
+                { label: 'Open Provider Portal', path: '/provider/dashboard', variant: 'primary' },
+                { label: 'Review Contracts', path: '/provider/dashboard', variant: 'secondary' },
+                { label: 'Compliance Docs', path: '/provider/dashboard', variant: 'secondary' },
+              ],
+            },
+          },
+          { id: 'panel-placeholder', size: '2', config: { title: 'Settlement Snapshot', subtitle: 'Receivables, paid and pending' } },
+        ],
+      },
+    ],
+  },
+
+  SWAP_PROVIDER_OPERATOR: {
+    title: 'Provider Operations',
+    kpiRow: [
+      { id: 'kpi-generic', config: { title: 'Assigned Contracts', value: '—' } },
+      { id: 'kpi-generic', config: { title: 'Pending Responses', value: '—' } },
+      { id: 'kpi-generic', config: { title: 'Compliance To-Do', value: '—' } },
+      { id: 'kpi-generic', config: { title: 'Stations Linked', value: '—' } },
+    ],
+    rows: [
+      {
+        widgets: [
+          { id: 'panel-placeholder', size: 'full', config: { title: 'Provider Ops Board', subtitle: 'Contracts, docs and settlement statements' } },
+        ],
+      },
+    ],
+  },
+
   SITE_OWNER: {
     title: 'Site Owner Overview',
     kpiRow: [

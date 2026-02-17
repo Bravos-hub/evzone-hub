@@ -364,6 +364,15 @@ export const PERMISSIONS: Record<string, FeaturePermissions> = {
     create: ROLE_GROUPS.PLATFORM_ADMINS,
   },
 
+  swapProviders: {
+    access: ROLE_GROUPS.PLATFORM_OPS,
+    viewAll: ROLE_GROUPS.PLATFORM_OPS,
+    create: ROLE_GROUPS.PLATFORM_ADMINS,
+    edit: ROLE_GROUPS.PLATFORM_ADMINS,
+    approve: ROLE_GROUPS.PLATFORM_OPS,
+    suspend: ROLE_GROUPS.PLATFORM_OPS,
+  },
+
   settings: {
     access: 'ALL',
     edit: 'ALL',

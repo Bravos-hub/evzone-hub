@@ -28,10 +28,10 @@ type AuthState = {
 
 type UserLike = Pick<
   AuthResponse['user'],
-  'id' | 'name' | 'role' | 'ownerCapability' | 'orgId' | 'organizationId' | 'region' | 'zoneId' | 'avatarUrl'
+  'id' | 'name' | 'role' | 'ownerCapability' | 'providerId' | 'orgId' | 'organizationId' | 'region' | 'zoneId' | 'avatarUrl'
 > | Pick<
   User,
-  'id' | 'name' | 'role' | 'ownerCapability' | 'orgId' | 'organizationId' | 'region' | 'zoneId' | 'avatarUrl'
+  'id' | 'name' | 'role' | 'ownerCapability' | 'providerId' | 'orgId' | 'organizationId' | 'region' | 'zoneId' | 'avatarUrl'
 >;
 
 function toUserProfile(user: UserLike): UserProfile {
@@ -40,6 +40,7 @@ function toUserProfile(user: UserLike): UserProfile {
     name: user.name,
     role: user.role as Role,
     ownerCapability: user.ownerCapability,
+    providerId: user.providerId,
     orgId: user.orgId,
     organizationId: user.organizationId,
     region: user.region,

@@ -5,6 +5,8 @@ export const ALL_ROLES: Role[] = [
   'SUPER_ADMIN',
   'EVZONE_ADMIN',
   'EVZONE_OPERATOR',
+  'SWAP_PROVIDER_ADMIN',
+  'SWAP_PROVIDER_OPERATOR',
   'STATION_OPERATOR',
   'SITE_OWNER',
 
@@ -22,6 +24,8 @@ export const ROLE_LABELS: Record<Role, string> = {
   SUPER_ADMIN: 'Super Admin',
   EVZONE_ADMIN: 'EVzone Admin',
   EVZONE_OPERATOR: 'EVzone Ops',
+  SWAP_PROVIDER_ADMIN: 'Swap Provider Admin',
+  SWAP_PROVIDER_OPERATOR: 'Swap Provider Operator',
   STATION_OPERATOR: 'Station Operator',
   SITE_OWNER: 'Site Owner',
 
@@ -49,6 +53,9 @@ export const ROLE_GROUPS = {
   /** Platform operators with regional/operational access */
   PLATFORM_OPS: ['SUPER_ADMIN', 'EVZONE_ADMIN', 'EVZONE_OPERATOR'] as Role[],
 
+  /** Swap provider roles */
+  PROVIDER_ROLES: ['SWAP_PROVIDER_ADMIN', 'SWAP_PROVIDER_OPERATOR'] as Role[],
+
   /** Station managers (owners, admins, managers) */
   STATION_MANAGERS: ['STATION_OPERATOR', 'STATION_ADMIN', 'MANAGER', 'STATION_OWNER'] as Role[],
 
@@ -69,6 +76,8 @@ export const ROLE_GROUPS = {
     'SUPER_ADMIN',
     'EVZONE_ADMIN',
     'EVZONE_OPERATOR',
+    'SWAP_PROVIDER_ADMIN',
+    'SWAP_PROVIDER_OPERATOR',
     'SITE_OWNER',
 
     'STATION_ADMIN',

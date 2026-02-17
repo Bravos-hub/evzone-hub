@@ -9,6 +9,8 @@ export function HomeRouter() {
     case 'SUPER_ADMIN': return <Navigate to="/dashboard" replace />
     case 'EVZONE_ADMIN': return <Navigate to="/admin" replace />
     case 'EVZONE_OPERATOR': return <Navigate to="/operator" replace />
+    case 'SWAP_PROVIDER_ADMIN': return <Navigate to="/provider/dashboard" replace />
+    case 'SWAP_PROVIDER_OPERATOR': return <Navigate to="/provider/dashboard" replace />
     case 'SITE_OWNER': return <Navigate to="/site-owner" replace />
     case 'STATION_OWNER':
       return user.ownerCapability === 'SWAP'
