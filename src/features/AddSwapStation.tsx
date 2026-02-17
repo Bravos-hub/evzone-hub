@@ -108,7 +108,7 @@ function providerUnavailableReason(provider: SwapProvider, relationship?: Provid
     case 'SUSPENDED':
       return 'Relationship is suspended by admin.'
     case 'TERMINATED':
-      return 'Relationship was terminated.'
+      return 'Relationship was terminated. You can submit a new request.'
     default:
       return 'No active provider contract for your organization.'
   }
@@ -180,8 +180,17 @@ export function AddSwapStation() {
 
   const { data: sitesData, isLoading: loadingSites } = useSites()
   const { data: applicationsData, isLoading: loadingApplications } = useApplications()
-  const { data: providers, isLoading: loadingProviders } = useProviders()
-  const { data: relationships } = useProviderRelationships(ownerOrgId ? { ownerOrgId } : { my: true })
+  const {
+    data: providers,
+    isLoading: loadingProviders,
+    error: providersError,
+    refetch: refetchProviders,
+  } = useProviders()
+  const {
+    data: relationships,
+    error: relationshipsError,
+    refetch: refetchRelationships,
+  } = useProviderRelationships(ownerOrgId ? { ownerOrgId } : { my: true })
   const requestRelationshipMutation = useRequestProviderRelationship()
   const createStationMutation = useCreateStation()
   const upsertSwapBaysMutation = useUpsertSwapBays()
@@ -256,17 +265,22 @@ export function AddSwapStation() {
   }, [providers, relationshipByProvider])
 
   const unavailableProviders = useMemo(() => {
-    return (providers ?? [])
+    const entries = (providers ?? [])
       .map((provider) => {
         const relationship = relationshipByProvider.get(provider.id)
         const reason = providerUnavailableReason(provider, relationship)
         if (!reason) return null
         const relationshipStatus = normalizeRelationshipStatus(relationship?.status)
-        const canRequest = relationshipStatus === 'NONE' && normalizeProviderStatus(provider.status) === 'APPROVED'
+        const canRequest =
+          (relationshipStatus === 'NONE' || relationshipStatus === 'TERMINATED') &&
+          normalizeProviderStatus(provider.status) === 'APPROVED'
         return { provider, reason, canRequest }
       })
       .filter((entry): entry is { provider: SwapProvider; reason: string; canRequest: boolean } => entry !== null)
+    return entries.sort((a, b) => Number(b.canRequest) - Number(a.canRequest))
   }, [providers, relationshipByProvider])
+
+  const providerQueryError = providersError || relationshipsError
 
   useEffect(() => {
     if (!form.providerId) return
@@ -632,9 +646,29 @@ export function AddSwapStation() {
                           No active provider contracts found for your organization. Request a provider below.
                         </div>
                       )}
+                      {providerQueryError && (
+                        <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-700 space-y-2">
+                          <div>Could not load provider partnership data: {getErrorMessage(providerQueryError)}</div>
+                          <button
+                            type="button"
+                            className="px-2 py-1 rounded border border-red-500/40 text-red-700 hover:bg-red-500/10"
+                            onClick={() => {
+                              void refetchProviders()
+                              void refetchRelationships()
+                            }}
+                          >
+                            Retry loading providers
+                          </button>
+                        </div>
+                      )}
+                      {!providerQueryError && !loadingProviders && (providers ?? []).length === 0 && (
+                        <div className="rounded-lg border border-border bg-panel/30 px-3 py-2 text-xs text-subtle">
+                          No providers are currently visible to this account yet.
+                        </div>
+                      )}
                       {unavailableProviders.length > 0 && (
                         <div className="space-y-1 max-h-28 overflow-y-auto pr-1">
-                          {unavailableProviders.slice(0, 4).map(({ provider, reason, canRequest }) => (
+                          {unavailableProviders.slice(0, 6).map(({ provider, reason, canRequest }) => (
                             <div key={provider.id} className="flex items-center justify-between gap-2 rounded-md border border-border bg-panel/30 px-2 py-1.5">
                               <div className="min-w-0">
                                 <div className="text-xs font-semibold text-text truncate">{provider.name}</div>
