@@ -115,16 +115,6 @@ const USER_TOOLS = section('User Tools', [
 
 const OWNER_TOOLS = section('Owner Tools', [
   { path: PATHS.OWNER.TECH_REQUESTS, label: 'Tech Requests', icon: 'tool', roles: ['STATION_OPERATOR', 'STATION_ADMIN', 'STATION_OWNER'] },
-  {
-    path: '#expansion',
-    label: 'Expansion',
-    icon: 'trending-up',
-    roles: ['STATION_OWNER'],
-    children: [
-      { path: PATHS.OWNER.EXPANSION_TRACKER, label: 'Tracker', roles: ['STATION_OWNER'] },
-      { path: PATHS.OWNER.LEASE_COMPLIANCE, label: 'Lease & Compliance', roles: ['STATION_OWNER'] },
-    ],
-  },
 ])
 
 /** Main sidebar menu items - dynamically filtered based on role */

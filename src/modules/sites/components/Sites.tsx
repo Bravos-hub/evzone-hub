@@ -80,6 +80,7 @@ export function Sites() {
   const { user } = useAuthStore()
   const navigate = useNavigate()
   const perms = getPermissionsForFeature(user?.role, 'sites')
+  const canAccessExpansionShortcuts = user?.role === 'STATION_OWNER' || user?.role === 'STATION_ADMIN'
 
   // DATA HOOKS
   const { data: sitesData, isLoading: loadingSites, error: sitesError } = useSites()
@@ -345,7 +346,25 @@ export function Sites() {
               <button className="btn primary whitespace-nowrap" onClick={() => setIsAdding(true)}>+ Add Site</button>
             )}
             {activeTab === 'Rented' && (
-              <button className="btn primary whitespace-nowrap" onClick={() => navigate(PATHS.SITE_OWNER.APPLY_FOR_SITE)}>Browse Sites</button>
+              <>
+                {canAccessExpansionShortcuts && (
+                  <>
+                    <button
+                      className="btn primary whitespace-nowrap"
+                      onClick={() => navigate(PATHS.OWNER.EXPANSION_TRACKER)}
+                    >
+                      Expansion Tracker
+                    </button>
+                    <button
+                      className="btn secondary whitespace-nowrap"
+                      onClick={() => navigate(PATHS.OWNER.LEASE_COMPLIANCE)}
+                    >
+                      Lease & Compliance
+                    </button>
+                  </>
+                )}
+                <button className="btn secondary whitespace-nowrap" onClick={() => navigate(PATHS.SITE_OWNER.APPLY_FOR_SITE)}>Browse Sites</button>
+              </>
             )}
           </div>
         </div>
@@ -526,4 +545,3 @@ function StatusPill({ status }: { status: string }) {
         'pending'
   return <span className={`pill ${color}`}>{clean}</span>
 }
-

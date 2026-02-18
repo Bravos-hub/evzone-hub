@@ -1,5 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
-import { RequireAuth } from './guards'
+import { RequireAuth, RequireRole } from './guards'
 import { ForgotPasswordPage } from '@/pages/auth/ForgotPasswordPage'
 import { ResetPasswordPage } from '@/pages/auth/ResetPasswordPage'
 import { UnauthorizedPage } from '@/pages/errors/UnauthorizedPage'
@@ -297,8 +297,26 @@ export function AppRoutes() {
       <Route path={PATHS.OWNER.ADD_CHARGER} element={<RequireAuth><AddCharger /></RequireAuth>} />
       <Route path={PATHS.OWNER.ADD_SWAP_STATION} element={<RequireAuth><AddSwapStation /></RequireAuth>} />
       <Route path="/add-station/swap" element={<Navigate to={PATHS.OWNER.ADD_SWAP_STATION} replace />} />
-      <Route path={PATHS.OWNER.EXPANSION_TRACKER} element={<RequireAuth><ApplicationTracker /></RequireAuth>} />
-      <Route path={PATHS.OWNER.LEASE_COMPLIANCE} element={<RequireAuth><LeaseCompliance /></RequireAuth>} />
+      <Route
+        path={PATHS.OWNER.EXPANSION_TRACKER}
+        element={(
+          <RequireAuth>
+            <RequireRole roles={['STATION_OWNER', 'STATION_ADMIN']}>
+              <ApplicationTracker />
+            </RequireRole>
+          </RequireAuth>
+        )}
+      />
+      <Route
+        path={PATHS.OWNER.LEASE_COMPLIANCE}
+        element={(
+          <RequireAuth>
+            <RequireRole roles={['STATION_OWNER', 'STATION_ADMIN']}>
+              <LeaseCompliance />
+            </RequireRole>
+          </RequireAuth>
+        )}
+      />
 
 
       {/* Operator Tools */}
