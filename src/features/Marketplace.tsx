@@ -3,6 +3,7 @@ import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { useAuthStore } from '@/core/auth/authStore'
 import { getErrorMessage } from '@/core/api/errors'
 import { ROLE_GROUPS } from '@/constants/roles'
+import { useSearchParams } from 'react-router-dom'
 import { useSites } from '@/modules/sites/hooks/useSites'
 import { useUsers } from '@/modules/auth/hooks/useUsers'
 import { useMe } from '@/modules/auth/hooks/useAuth'
@@ -31,6 +32,14 @@ import type { MarketplaceSummaryListing } from '@/features/marketplace/types'
 type ListingKind = 'Operators' | 'Sites' | 'Technicians'
 type MarketplaceTab = 'LISTINGS' | 'PROVIDERS'
 type ViewMode = 'LIST' | 'APPLY'
+
+function parseListingKindParam(value: string | null): ListingKind | 'All' {
+  const normalized = value?.trim().toLowerCase()
+  if (normalized === 'all') return 'All'
+  if (normalized === 'operators') return 'Operators'
+  if (normalized === 'technicians') return 'Technicians'
+  return 'Sites'
+}
 
 type BaseListing = MarketplaceSummaryListing
 
@@ -132,6 +141,8 @@ function complianceBlockerCount(status?: { missingCritical: string[]; expiredCri
 const isSiteListing = (listing: ListingsMarketplaceListing): listing is SiteListing => listing.kind === 'Sites'
 
 export function Marketplace() {
+  const [searchParams] = useSearchParams()
+  const kindParam = searchParams.get('kind')
   const { user } = useAuthStore()
   const { data: me } = useMe()
 
@@ -180,7 +191,7 @@ export function Marketplace() {
   const updateRelationshipComplianceProfileMutation = useUpdateRelationshipComplianceProfile()
 
   const [tab, setTab] = useState<MarketplaceTab>('LISTINGS')
-  const [kind, setKind] = useState<ListingKind | 'All'>('Sites')
+  const [kind, setKind] = useState<ListingKind | 'All'>(() => parseListingKindParam(kindParam))
   const [region, setRegion] = useState<'ALL' | string>('ALL')
   const [q, setQ] = useState('')
 
@@ -210,6 +221,10 @@ export function Marketplace() {
       setTab('LISTINGS')
     }
   }, [canSeeProvidersTab, tab])
+
+  useEffect(() => {
+    setKind(parseListingKindParam(kindParam))
+  }, [kindParam])
 
   useEffect(() => {
     if (!providerAck) return

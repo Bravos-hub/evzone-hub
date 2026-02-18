@@ -98,7 +98,6 @@ export function Sites() {
   const [isAdding, setIsAdding] = useState(false)
   const [editingSiteId, setEditingSiteId] = useState<string | null>(null)
   const [selectedApp, setSelectedApp] = useState<Application | null>(null)
-  const [q, setQ] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
   const [ack, setAck] = useState('')
 
@@ -172,10 +171,10 @@ export function Sites() {
   }, [myApplications])
 
   // Filter for display
-  const filteredOwned = useMemo(() => ownedSites.filter(s => q ? (s.name + ' ' + s.address).toLowerCase().includes(q.toLowerCase()) : true), [ownedSites, q])
-  const filteredLeased = useMemo(() => (leasedSitesData || []).filter(s => q ? (s.siteName + ' ' + s.address).toLowerCase().includes(q.toLowerCase()) : true), [leasedSitesData, q])
-  const filteredApps = useMemo(() => myApplications.filter(a => q ? (a.operator?.name + ' ' + a.site?.name).toLowerCase().includes(q.toLowerCase()) : true), [myApplications, q])
-  const filteredTenants = useMemo(() => myTenants.filter(t => q ? (t.operator?.name + ' ' + t.site?.name).toLowerCase().includes(q.toLowerCase()) : true), [myTenants, q])
+  const filteredOwned = useMemo(() => ownedSites, [ownedSites])
+  const filteredLeased = useMemo(() => leasedSitesData || [], [leasedSitesData])
+  const filteredApps = useMemo(() => myApplications, [myApplications])
+  const filteredTenants = useMemo(() => myTenants, [myTenants])
 
 
   const handleAddSite = async (newSite: SiteForm) => {
@@ -335,13 +334,7 @@ export function Sites() {
             ))}
           </div>
 
-          <div className="flex gap-2 w-full sm:w-auto">
-            <input
-              className="input w-full sm:w-64"
-              placeholder="Search..."
-              value={q}
-              onChange={e => setQ(e.target.value)}
-            />
+          <div className="flex flex-wrap gap-2 w-full sm:w-auto sm:justify-end">
             {activeTab === 'Owned' && perms.create && (
               <button className="btn primary whitespace-nowrap" onClick={() => setIsAdding(true)}>+ Add Site</button>
             )}
@@ -363,7 +356,12 @@ export function Sites() {
                     </button>
                   </>
                 )}
-                <button className="btn secondary whitespace-nowrap" onClick={() => navigate(PATHS.SITE_OWNER.APPLY_FOR_SITE)}>Browse Sites</button>
+                <button
+                  className="btn secondary whitespace-nowrap"
+                  onClick={() => navigate(`${PATHS.MARKETPLACE}?kind=Sites`)}
+                >
+                  Browse Sites
+                </button>
               </>
             )}
           </div>
