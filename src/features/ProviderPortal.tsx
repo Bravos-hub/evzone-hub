@@ -3,8 +3,11 @@ import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { Card } from '@/ui/components/Card'
 import { useAuthStore } from '@/core/auth/authStore'
 import { getErrorMessage } from '@/core/api/errors'
+import { ProviderCompliancePanel } from '@/modules/integrations/components/ProviderCompliancePanel'
 import {
+  useProviderComplianceStatus,
   useProviderRelationships,
+  useProviderRequirements,
   useProviderSettlementSummary,
   useRespondToProviderRelationship,
   useProviderDocuments,
@@ -22,7 +25,19 @@ export function ProviderPortal() {
   const { data: relationships = [], isLoading: relationshipsLoading, error: relationshipsError } = useProviderRelationships({ my: true })
   const { data: settlement, isLoading: settlementLoading } = useProviderSettlementSummary({ my: true })
   const { data: documents = [] } = useProviderDocuments({ my: true })
+  const { data: requirements = [] } = useProviderRequirements({ appliesTo: 'PROVIDER' })
   const respondMutation = useRespondToProviderRelationship()
+
+  const currentProviderId = useMemo(() => {
+    if (user?.providerId) return user.providerId
+    if (relationships.length > 0) return relationships[0].providerId
+    const providerDoc = documents.find((doc) => doc.providerId)
+    return providerDoc?.providerId || ''
+  }, [documents, relationships, user?.providerId])
+
+  const { data: complianceStatus } = useProviderComplianceStatus(currentProviderId, {
+    enabled: Boolean(currentProviderId),
+  })
 
   const pendingRequests = useMemo(
     () => relationships.filter((item) => item.status === 'REQUESTED'),
@@ -32,6 +47,26 @@ export function ProviderPortal() {
     () => relationships.filter((item) => item.status === 'ACTIVE').length,
     [relationships],
   )
+
+  const remediationItems = useMemo(() => {
+    if (!complianceStatus) return []
+    const missingCritical = complianceStatus.missingCritical.map((code) => ({
+      id: `critical-${code}`,
+      label: requirements.find((item) => item.requirementCode === code)?.title || code,
+      severity: 'critical' as const,
+    }))
+    const missingRecommended = complianceStatus.missingRecommended.map((code) => ({
+      id: `recommended-${code}`,
+      label: requirements.find((item) => item.requirementCode === code)?.title || code,
+      severity: 'recommended' as const,
+    }))
+    const expiring = complianceStatus.expiringSoon.map((doc) => ({
+      id: `expiring-${doc.id}`,
+      label: `${doc.name}${doc.expiryDate ? ` (expires ${doc.expiryDate})` : ''}`,
+      severity: 'warning' as const,
+    }))
+    return [...missingCritical, ...missingRecommended, ...expiring]
+  }, [complianceStatus, requirements])
 
   if (!isProviderUser) {
     return (
@@ -73,9 +108,9 @@ export function ProviderPortal() {
             </div>
           </Card>
           <Card className="p-4">
-            <div className="text-xs uppercase tracking-wider text-text-secondary">Pending Docs</div>
+            <div className="text-xs uppercase tracking-wider text-text-secondary">Compliance Blockers</div>
             <div className="mt-2 text-2xl font-black text-text">
-              {loading ? '...' : documents.filter((doc) => doc.status !== 'APPROVED').length}
+              {loading ? '...' : (complianceStatus?.missingCritical.length || 0) + (complianceStatus?.expiredCritical.length || 0)}
             </div>
           </Card>
         </div>
@@ -117,18 +152,37 @@ export function ProviderPortal() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <Card className="p-5">
             <h3 className="text-base font-black text-text mb-3">Compliance</h3>
-            {documents.length === 0 ? (
-              <div className="text-sm text-text-secondary">No compliance documents uploaded yet.</div>
-            ) : (
-              <div className="space-y-2">
-                {documents.map((doc) => (
-                  <div key={doc.id} className="flex items-center justify-between text-sm rounded-lg bg-panel/30 border border-border px-3 py-2">
-                    <span className="text-text">{doc.type}</span>
-                    <span className="text-text-secondary">{doc.status}</span>
-                  </div>
-                ))}
-              </div>
-            )}
+            <ProviderCompliancePanel compliance={complianceStatus} requirements={requirements} compact />
+            <div className="mt-4">
+              <div className="text-xs uppercase tracking-wide text-text-secondary mb-2">Remediation Queue</div>
+              {remediationItems.length === 0 ? (
+                <div className="text-sm text-text-secondary">No remediation items pending.</div>
+              ) : (
+                <div className="space-y-2">
+                  {remediationItems.slice(0, 8).map((item) => (
+                    <div key={item.id} className="flex items-center justify-between text-sm rounded-lg bg-panel/30 border border-border px-3 py-2">
+                      <span className="text-text">{item.label}</span>
+                      <span className="text-xs text-text-secondary uppercase">{item.severity}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="mt-4">
+              <div className="text-xs uppercase tracking-wide text-text-secondary mb-2">Uploaded Documents</div>
+              {documents.length === 0 ? (
+                <div className="text-sm text-text-secondary">No compliance documents uploaded yet.</div>
+              ) : (
+                <div className="space-y-2">
+                  {documents.slice(0, 6).map((doc) => (
+                    <div key={doc.id} className="flex items-center justify-between text-sm rounded-lg bg-panel/30 border border-border px-3 py-2">
+                      <span className="text-text">{doc.requirementCode || doc.type}</span>
+                      <span className="text-text-secondary">{doc.verificationStatus || doc.status}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </Card>
 
           <Card className="p-5">
@@ -157,4 +211,3 @@ export function ProviderPortal() {
     </DashboardLayout>
   )
 }
-

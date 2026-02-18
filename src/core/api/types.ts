@@ -173,6 +173,63 @@ export type ProviderDocumentType =
   | 'SITE_COMPATIBILITY_DECLARATION'
 
 export type ProviderDocumentStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
+export type ProviderDocumentVerificationStatus = 'UNVERIFIED' | 'VERIFIED' | 'REJECTED'
+export type ProviderComplianceCategory =
+  | 'CORPORATE'
+  | 'SAFETY'
+  | 'TRACEABILITY'
+  | 'INTEROPERABILITY'
+  | 'OPERATIONS'
+  | 'INSURANCE'
+  | 'ENVIRONMENT'
+  | 'CYBER'
+  | 'SITE_PERMITS'
+  | 'COMMERCIAL'
+
+export type ProviderComplianceGate = 'KYB' | 'SAFETY' | 'OPERATIONS' | 'INTEGRATION'
+export type ProviderRequirementScope = 'PROVIDER' | 'STATION_OWNER'
+
+export interface ProviderRequirementCondition {
+  key: string
+  operator: 'eq' | 'gte' | 'lte' | 'exists'
+  value?: string | number | boolean
+  description?: string
+}
+
+export interface ProviderRequirementDefinition {
+  requirementCode: string
+  title: string
+  description?: string
+  gate: ProviderComplianceGate
+  category: ProviderComplianceCategory
+  isCritical: boolean
+  acceptedDocTypes: ProviderDocumentType[]
+  conditions?: ProviderRequirementCondition[]
+  appliesTo: ProviderRequirementScope
+}
+
+export interface ProviderGateStatus {
+  gate: ProviderComplianceGate
+  required: number
+  met: number
+  criticalRequired: number
+  criticalMet: number
+  missingCritical: string[]
+  missingRecommended: string[]
+  status: 'PASS' | 'WARN' | 'BLOCKED'
+}
+
+export interface ProviderComplianceStatus {
+  providerId: string
+  evaluatedAt: string
+  gateStatuses: ProviderGateStatus[]
+  missingCritical: string[]
+  missingRecommended: string[]
+  expiringSoon: ProviderDocument[]
+  expiredCritical: ProviderDocument[]
+  overallState: 'READY' | 'WARN' | 'BLOCKED'
+  blockerReasonCodes?: string[]
+}
 
 export interface ProviderDocument {
   id: string
@@ -180,12 +237,26 @@ export interface ProviderDocument {
   relationshipId?: string
   ownerOrgId?: string
   type: ProviderDocumentType
+  requirementCode?: string
+  category?: ProviderComplianceCategory
   name: string
   fileUrl: string
+  issuer?: string
+  documentNumber?: string
+  issueDate?: string
+  expiryDate?: string
+  coveredModels?: string[]
+  coveredSites?: string[]
+  version?: string
+  verificationStatus?: ProviderDocumentVerificationStatus
   uploadedAt: string
   uploadedBy?: string
   status: ProviderDocumentStatus
+  reviewedBy?: string
+  reviewedAt?: string
+  reviewNotes?: string
   rejectionReason?: string
+  metadata?: Record<string, unknown>
 }
 
 export interface ProviderRelationship {
@@ -291,6 +362,23 @@ export interface CreateProviderDocumentRequest {
   type: ProviderDocumentType
   name: string
   fileUrl: string
+  requirementCode?: string
+  category?: ProviderComplianceCategory
+  issuer?: string
+  documentNumber?: string
+  issueDate?: string
+  expiryDate?: string
+  coveredModels?: string[]
+  coveredSites?: string[]
+  version?: string
+  metadata?: Record<string, unknown>
+}
+
+export interface ReviewProviderDocumentRequest {
+  status: ProviderDocumentStatus
+  reviewedBy?: string
+  reviewNotes?: string
+  rejectionReason?: string
 }
 
 export interface CreateProviderRelationshipRequest {

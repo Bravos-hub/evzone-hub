@@ -10,6 +10,8 @@ import type {
     CreateProviderDocumentRequest,
     CreateProviderRelationshipRequest,
     CreateSwapProviderRequest,
+    ProviderDocumentStatus,
+    ProviderRequirementScope,
     UpdateSwapProviderRequest,
 } from '@/core/api/types'
 import type { ProviderListFilters } from './providerService'
@@ -46,6 +48,21 @@ export function useProviderDocuments(filters?: { providerId?: string; relationsh
     return useQuery({
         queryKey: queryKeys.providers.documents(filters),
         queryFn: () => providerService.listDocuments(filters),
+    })
+}
+
+export function useProviderRequirements(filters?: { appliesTo?: ProviderRequirementScope }) {
+    return useQuery({
+        queryKey: queryKeys.providers.requirements(filters),
+        queryFn: () => providerService.getRequirementCatalog(filters),
+    })
+}
+
+export function useProviderComplianceStatus(providerId: string, options?: QueryOptions) {
+    return useQuery({
+        queryKey: queryKeys.providers.compliance(providerId),
+        queryFn: () => providerService.getComplianceStatus(providerId),
+        enabled: (options?.enabled ?? true) && !!providerId,
     })
 }
 
@@ -137,8 +154,42 @@ export function useUploadProviderDocument() {
     return useMutation({
         mutationFn: (data: CreateProviderDocumentRequest & { providerId?: string; relationshipId?: string }) =>
             providerService.uploadDocument(data),
-        onSuccess: () => {
+        onSuccess: (result) => {
             queryClient.invalidateQueries({ queryKey: queryKeys.providers.documents() })
+            if (result.providerId) {
+                queryClient.invalidateQueries({ queryKey: queryKeys.providers.compliance(result.providerId) })
+            }
+        },
+    })
+}
+
+export function useReviewProviderDocument() {
+    const queryClient = useQueryClient()
+    return useMutation({
+        mutationFn: ({
+            id,
+            status,
+            reviewNotes,
+            rejectionReason,
+            reviewedBy,
+        }: {
+            id: string
+            status: ProviderDocumentStatus
+            reviewNotes?: string
+            rejectionReason?: string
+            reviewedBy?: string
+        }) =>
+            providerService.reviewDocument(id, {
+                status,
+                reviewNotes,
+                rejectionReason,
+                reviewedBy,
+            }),
+        onSuccess: (result) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.providers.documents() })
+            if (result.providerId) {
+                queryClient.invalidateQueries({ queryKey: queryKeys.providers.compliance(result.providerId) })
+            }
         },
     })
 }

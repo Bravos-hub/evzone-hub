@@ -8,12 +8,17 @@ import type {
     CreateProviderDocumentRequest,
     CreateProviderRelationshipRequest,
     CreateSwapProviderRequest,
+    ProviderComplianceStatus,
     ProviderDocument,
+    ProviderRequirementDefinition,
+    ProviderRequirementScope,
     ProviderRelationship,
+    ReviewProviderDocumentRequest,
     ProviderSettlementSummary,
     SwapProvider,
     UpdateSwapProviderRequest,
 } from '@/core/api/types'
+import { evaluateProviderCompliance, getFallbackProviderRequirements } from './providerCompliance'
 
 export type ProviderListFilters = {
     region?: string
@@ -45,6 +50,10 @@ type DocumentFilters = {
     providerId?: string
     relationshipId?: string
     my?: boolean
+}
+
+type RequirementFilters = {
+    appliesTo?: ProviderRequirementScope
 }
 
 const appendQueryValue = (params: URLSearchParams, key: string, value?: string | boolean) => {
@@ -115,8 +124,47 @@ export const providerService = {
         return apiClient.post<ProviderDocument>('/provider-documents', data)
     },
 
+    async reviewDocument(id: string, data: ReviewProviderDocumentRequest): Promise<ProviderDocument> {
+        try {
+            return await apiClient.patch<ProviderDocument>(`/provider-documents/${id}`, data)
+        } catch {
+            return apiClient.post<ProviderDocument>(`/provider-documents/${id}/review`, data)
+        }
+    },
+
     async deleteDocument(id: string): Promise<void> {
         return apiClient.delete<void>(`/provider-documents/${id}`)
+    },
+
+    async getRequirementCatalog(filters?: RequirementFilters): Promise<ProviderRequirementDefinition[]> {
+        const params = new URLSearchParams()
+        appendQueryValue(params, 'appliesTo', filters?.appliesTo)
+        const queryString = params.toString()
+        try {
+            return await apiClient.get<ProviderRequirementDefinition[]>(
+                `/provider-requirements${queryString ? `?${queryString}` : ''}`,
+            )
+        } catch {
+            return getFallbackProviderRequirements(filters?.appliesTo || 'PROVIDER')
+        }
+    },
+
+    async getComplianceStatus(providerId: string): Promise<ProviderComplianceStatus> {
+        try {
+            return await apiClient.get<ProviderComplianceStatus>(`/providers/${providerId}/compliance-status`)
+        } catch {
+            const [provider, documents, requirements] = await Promise.all([
+                this.getById(providerId).catch(() => null),
+                this.listDocuments({ providerId }).catch(() => []),
+                this.getRequirementCatalog({ appliesTo: 'PROVIDER' }),
+            ])
+            return evaluateProviderCompliance({
+                providerId,
+                provider,
+                documents,
+                requirements,
+            })
+        }
     },
 
     async getRelationships(filters?: RelationshipFilters): Promise<ProviderRelationship[]> {

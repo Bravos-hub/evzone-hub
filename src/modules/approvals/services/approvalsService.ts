@@ -1,7 +1,14 @@
 import { apiClient as api } from '@/core/api/client';
+import type { ProviderComplianceStatus } from '@/core/api/types';
 
 export type ApprovalType = 'KYC' | 'ACCESS_REQUEST' | 'DOCUMENT_VERIFICATION' | 'TENANT_APPLICATION';
 export type ApprovalStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+
+export type ApprovalDetails = {
+    providerId?: string;
+    complianceStatus?: ProviderComplianceStatus;
+    [key: string]: any;
+};
 
 export type ApprovalItem = {
     id: string;
@@ -9,7 +16,7 @@ export type ApprovalItem = {
     applicantId: string;
     applicantName: string;
     resourceId?: string;
-    details: any;
+    details: ApprovalDetails;
     status: ApprovalStatus;
     submittedAt: string;
     reviewedAt?: string;

@@ -1,11 +1,21 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { Card } from '@/ui/components/Card'
 import { getErrorMessage } from '@/core/api/errors'
 import { useAuthStore } from '@/core/auth/authStore'
 import { getPermissionsForFeature } from '@/constants/permissions'
 import { logAuditEvent } from '@/core/utils/auditLogger'
-import type { ProviderDocumentType, ProviderStandard } from '@/core/api/types'
+import type {
+  ProviderComplianceGate,
+  ProviderComplianceStatus,
+  ProviderDocument,
+  ProviderDocumentStatus,
+  ProviderDocumentType,
+  ProviderRequirementDefinition,
+  ProviderStandard,
+} from '@/core/api/types'
+import { ProviderCompliancePanel } from '@/modules/integrations/components/ProviderCompliancePanel'
+import { evaluateProviderCompliance } from '@/modules/integrations/providerCompliance'
 import {
   normalizeProviderStatus,
   type NormalizedProviderStatus,
@@ -14,10 +24,13 @@ import {
   useApproveProvider,
   useApproveProviderRelationship,
   useCreateProvider,
+  useProviderComplianceStatus,
   useProviderDocuments,
+  useProviderRequirements,
   useProviderRelationships,
   useProviders,
   useRejectProvider,
+  useReviewProviderDocument,
   useSubmitProviderForReview,
   useSuspendProvider,
   useSuspendProviderRelationship,
@@ -37,6 +50,7 @@ const DOC_TYPES: ProviderDocumentType[] = [
 ]
 
 type TabKey = 'directory' | 'queue' | 'compliance' | 'contracts'
+const GATE_ORDER: ProviderComplianceGate[] = ['KYB', 'SAFETY', 'OPERATIONS', 'INTEGRATION']
 
 function statusColor(status: NormalizedProviderStatus): string {
   if (status === 'APPROVED') return 'bg-green-500/10 text-green-500'
@@ -45,6 +59,28 @@ function statusColor(status: NormalizedProviderStatus): string {
   if (status === 'REJECTED') return 'bg-rose-500/10 text-rose-500'
   if (status === 'UNKNOWN') return 'bg-slate-500/10 text-slate-500'
   return 'bg-blue-500/10 text-blue-500'
+}
+
+function verificationState(document: ProviderDocument): 'UNVERIFIED' | 'VERIFIED' | 'REJECTED' {
+  if (document.verificationStatus) return document.verificationStatus
+  if (document.status === 'APPROVED') return 'VERIFIED'
+  if (document.status === 'REJECTED') return 'REJECTED'
+  return 'UNVERIFIED'
+}
+
+function verificationStateClass(status: 'UNVERIFIED' | 'VERIFIED' | 'REJECTED'): string {
+  if (status === 'VERIFIED') return 'bg-green-500/10 text-green-500'
+  if (status === 'REJECTED') return 'bg-rose-500/10 text-rose-500'
+  return 'bg-amber-500/10 text-amber-500'
+}
+
+function requirementTitle(code: string, requirements: ProviderRequirementDefinition[]): string {
+  return requirements.find((item) => item.requirementCode === code)?.title || code
+}
+
+function complianceBlockerCount(status?: ProviderComplianceStatus): number {
+  if (!status) return 0
+  return status.missingCritical.length + status.expiredCritical.length
 }
 
 export function SwapProviders() {
@@ -58,6 +94,9 @@ export function SwapProviders() {
   const [q, setQ] = useState('')
   const [regionFilter, setRegionFilter] = useState('All')
   const [statusFilter, setStatusFilter] = useState('All')
+  const [selectedProviderId, setSelectedProviderId] = useState('')
+  const [reviewError, setReviewError] = useState('')
+  const [reviewNotes, setReviewNotes] = useState<Record<string, string>>({})
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [createForm, setCreateForm] = useState({
     name: '',
@@ -73,9 +112,15 @@ export function SwapProviders() {
   })
   const [docForm, setDocForm] = useState({
     providerId: '',
+    requirementCode: '',
     type: 'INCORPORATION' as ProviderDocumentType,
     name: '',
     fileUrl: '',
+    issuer: '',
+    documentNumber: '',
+    issueDate: '',
+    expiryDate: '',
+    version: '',
   })
 
   const createProviderMutation = useCreateProvider()
@@ -84,6 +129,7 @@ export function SwapProviders() {
   const rejectProviderMutation = useRejectProvider()
   const suspendProviderMutation = useSuspendProvider()
   const uploadDocumentMutation = useUploadProviderDocument()
+  const reviewDocumentMutation = useReviewProviderDocument()
   const approveRelationshipMutation = useApproveProviderRelationship()
   const suspendRelationshipMutation = useSuspendProviderRelationship()
 
@@ -91,8 +137,12 @@ export function SwapProviders() {
     region: regionFilter !== 'All' ? regionFilter : undefined,
     status: statusFilter !== 'All' ? statusFilter : undefined,
   })
+  const { data: requirements = [] } = useProviderRequirements({ appliesTo: 'PROVIDER' })
   const { data: relationships = [], isLoading: relationshipsLoading } = useProviderRelationships()
   const { data: documents = [], isLoading: documentsLoading } = useProviderDocuments()
+  const { data: selectedComplianceRemote } = useProviderComplianceStatus(selectedProviderId, {
+    enabled: Boolean(selectedProviderId),
+  })
 
   const filteredProviders = useMemo(() => {
     return providers.filter((provider) => {
@@ -117,6 +167,60 @@ export function SwapProviders() {
     () => filteredProviders.filter((provider) => normalizeProviderStatus(provider.status) === 'PENDING_REVIEW'),
     [filteredProviders],
   )
+
+  const documentsByProvider = useMemo(() => {
+    return documents.reduce<Map<string, ProviderDocument[]>>((acc, document) => {
+      const providerId = document.providerId || 'unknown'
+      if (!acc.has(providerId)) {
+        acc.set(providerId, [])
+      }
+      acc.get(providerId)?.push(document)
+      return acc
+    }, new Map<string, ProviderDocument[]>())
+  }, [documents])
+
+  const complianceByProvider = useMemo(() => {
+    return providers.reduce<Map<string, ProviderComplianceStatus>>((acc, provider) => {
+      const providerDocuments = documentsByProvider.get(provider.id) || []
+      acc.set(
+        provider.id,
+        evaluateProviderCompliance({
+          providerId: provider.id,
+          provider,
+          documents: providerDocuments,
+          requirements,
+        }),
+      )
+      return acc
+    }, new Map<string, ProviderComplianceStatus>())
+  }, [providers, documentsByProvider, requirements])
+
+  const selectedCompliance = selectedComplianceRemote || complianceByProvider.get(selectedProviderId) || null
+  const selectedProviderDocuments = selectedProviderId ? documentsByProvider.get(selectedProviderId) || [] : []
+  const requirementIndex = useMemo(
+    () => new Map(requirements.map((requirement) => [requirement.requirementCode, requirement])),
+    [requirements],
+  )
+  const checklistByGate = useMemo(() => {
+    return GATE_ORDER.map((gate) => ({
+      gate,
+      requirements: requirements.filter((item) => item.gate === gate),
+    }))
+  }, [requirements])
+
+  useEffect(() => {
+    if (!selectedProviderId && providers.length > 0) {
+      const initialProviderId = providers[0].id
+      setSelectedProviderId(initialProviderId)
+      setDocForm((prev) => ({ ...prev, providerId: initialProviderId }))
+      return
+    }
+    if (selectedProviderId && providers.length > 0 && !providers.some((provider) => provider.id === selectedProviderId)) {
+      const fallbackProviderId = providers[0].id
+      setSelectedProviderId(fallbackProviderId)
+      setDocForm((prev) => ({ ...prev, providerId: fallbackProviderId }))
+    }
+  }, [providers, selectedProviderId])
 
   if (!perms.access) {
     return (
@@ -181,10 +285,57 @@ export function SwapProviders() {
     await uploadDocumentMutation.mutateAsync({
       providerId: docForm.providerId,
       type: docForm.type,
+      requirementCode: docForm.requirementCode || undefined,
       name: docForm.name.trim(),
       fileUrl: docForm.fileUrl.trim(),
+      issuer: docForm.issuer.trim() || undefined,
+      documentNumber: docForm.documentNumber.trim() || undefined,
+      issueDate: docForm.issueDate || undefined,
+      expiryDate: docForm.expiryDate || undefined,
+      version: docForm.version.trim() || undefined,
+      metadata: {
+        source: 'provider-compliance-v1',
+      },
     })
-    setDocForm((prev) => ({ ...prev, name: '', fileUrl: '' }))
+    setDocForm((prev) => ({
+      ...prev,
+      name: '',
+      fileUrl: '',
+      issuer: '',
+      documentNumber: '',
+      issueDate: '',
+      expiryDate: '',
+      version: '',
+    }))
+  }
+
+  const handleApproveProvider = async (providerId: string, providerName: string) => {
+    const compliance = complianceByProvider.get(providerId)
+    if (compliance && complianceBlockerCount(compliance) > 0) return
+    await approveProviderMutation.mutateAsync({ id: providerId })
+    logAuditEvent({
+      category: 'Config',
+      action: 'Provider approved',
+      target: providerId,
+      details: providerName,
+    })
+  }
+
+  const handleReviewDocument = async (document: ProviderDocument, status: ProviderDocumentStatus) => {
+    const notes = (reviewNotes[document.id] || '').trim()
+    if (status === 'REJECTED' && !notes) {
+      setReviewError('Rejection requires review notes.')
+      return
+    }
+    setReviewError('')
+    await reviewDocumentMutation.mutateAsync({
+      id: document.id,
+      status,
+      reviewedBy: user?.id,
+      reviewNotes: notes || undefined,
+      rejectionReason: status === 'REJECTED' ? notes : undefined,
+    })
+    setReviewNotes((prev) => ({ ...prev, [document.id]: '' }))
   }
 
   return (
@@ -274,6 +425,8 @@ export function SwapProviders() {
             ) : (
               filteredProviders.map((provider) => {
                 const status = normalizeProviderStatus(provider.status)
+                const compliance = complianceByProvider.get(provider.id)
+                const blockerCount = complianceBlockerCount(compliance)
                 return (
                   <Card key={provider.id} className="p-5 space-y-4 border-white/5 bg-white/5">
                     <div className="flex items-start justify-between">
@@ -293,6 +446,11 @@ export function SwapProviders() {
                         <div className="text-text-secondary uppercase tracking-wide">Stations</div>
                         <div className="text-text font-semibold mt-1">{provider.stationCount.toLocaleString()}</div>
                       </div>
+                    </div>
+
+                    <div className="text-xs text-text-secondary">
+                      Compliance: {compliance?.overallState || 'READY'}
+                      {blockerCount > 0 ? ` · ${blockerCount} blocker(s)` : ''}
                     </div>
 
                     <div className="flex flex-wrap gap-1.5">
@@ -323,16 +481,9 @@ export function SwapProviders() {
                         <>
                           <button
                             className="px-3 py-1.5 rounded-lg text-xs font-bold bg-green-600 text-white disabled:opacity-60"
-                            disabled={approveProviderMutation.isPending}
-                            onClick={async () => {
-                              await approveProviderMutation.mutateAsync({ id: provider.id })
-                              logAuditEvent({
-                                category: 'Config',
-                                action: 'Provider approved',
-                                target: provider.id,
-                                details: provider.name,
-                              })
-                            }}
+                            disabled={approveProviderMutation.isPending || blockerCount > 0}
+                            title={blockerCount > 0 ? 'Resolve critical compliance blockers before approval.' : undefined}
+                            onClick={() => handleApproveProvider(provider.id, provider.name)}
                           >
                             Approve
                           </button>
@@ -349,7 +500,12 @@ export function SwapProviders() {
                         <button
                           className="px-3 py-1.5 rounded-lg text-xs font-bold bg-red-600 text-white disabled:opacity-60"
                           disabled={suspendProviderMutation.isPending}
-                          onClick={() => suspendProviderMutation.mutate({ id: provider.id, reason: 'Suspended by platform ops' })}
+                          onClick={() =>
+                            suspendProviderMutation.mutate({
+                              id: provider.id,
+                              reason: compliance?.expiredCritical.length ? 'DOC_EXPIRED_CRITICAL' : 'Suspended by platform ops',
+                            })
+                          }
                         >
                           Suspend
                         </button>
@@ -369,72 +525,241 @@ export function SwapProviders() {
               <p className="text-sm text-text-secondary">No providers pending review.</p>
             ) : (
               <div className="space-y-2">
-                {queueProviders.map((provider) => (
-                  <div key={provider.id} className="flex items-center justify-between border border-border rounded-lg p-3">
-                    <div>
-                      <div className="font-semibold text-text">{provider.name}</div>
-                      <div className="text-xs text-text-secondary">{provider.region} • {provider.standard}</div>
+                {queueProviders.map((provider) => {
+                  const compliance = complianceByProvider.get(provider.id)
+                  const blockerCount = complianceBlockerCount(compliance)
+                  return (
+                    <div key={provider.id} className="flex items-center justify-between border border-border rounded-lg p-3">
+                      <div>
+                        <div className="font-semibold text-text">{provider.name}</div>
+                        <div className="text-xs text-text-secondary">{provider.region} • {provider.standard}</div>
+                        <div className="text-xs text-text-secondary">
+                          Compliance: {compliance?.overallState || 'READY'}
+                          {blockerCount > 0 ? ` · ${blockerCount} critical blocker(s)` : ''}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {canApprove && (
+                          <button
+                            className="px-3 py-1.5 rounded-lg text-xs font-bold bg-green-600 text-white disabled:opacity-60"
+                            disabled={approveProviderMutation.isPending || blockerCount > 0}
+                            title={blockerCount > 0 ? 'Provider has unresolved critical compliance gaps.' : undefined}
+                            onClick={() => handleApproveProvider(provider.id, provider.name)}
+                          >
+                            Approve
+                          </button>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      {canApprove && (
-                        <button className="px-3 py-1.5 rounded-lg text-xs font-bold bg-green-600 text-white" onClick={() => approveProviderMutation.mutate({ id: provider.id })}>
-                          Approve
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </Card>
         )}
 
         {tab === 'compliance' && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <Card className="p-5">
-              <h3 className="text-lg font-black text-text mb-3">Upload Compliance Document</h3>
-              <div className="space-y-3">
-                <select className="select" value={docForm.providerId} onChange={(e) => setDocForm((s) => ({ ...s, providerId: e.target.value }))}>
+          <div className="space-y-4">
+            <Card className="p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <div className="text-xs uppercase tracking-wide text-text-secondary">Selected Provider</div>
+                <select
+                  className="select"
+                  value={selectedProviderId}
+                  onChange={(e) => {
+                    setSelectedProviderId(e.target.value)
+                    setDocForm((prev) => ({ ...prev, providerId: e.target.value }))
+                  }}
+                >
                   <option value="">Choose Provider</option>
                   {providers.map((provider) => (
                     <option key={provider.id} value={provider.id}>{provider.name}</option>
                   ))}
                 </select>
-                <select className="select" value={docForm.type} onChange={(e) => setDocForm((s) => ({ ...s, type: e.target.value as ProviderDocumentType }))}>
-                  {DOC_TYPES.map((type) => (
-                    <option key={type} value={type}>{type}</option>
-                  ))}
-                </select>
-                <input className="input" placeholder="Document name" value={docForm.name} onChange={(e) => setDocForm((s) => ({ ...s, name: e.target.value }))} />
-                <input className="input" placeholder="File URL" value={docForm.fileUrl} onChange={(e) => setDocForm((s) => ({ ...s, fileUrl: e.target.value }))} />
-                <button
-                  className="px-4 py-2 rounded-lg bg-accent text-white font-semibold disabled:opacity-60"
-                  disabled={uploadDocumentMutation.isPending}
-                  onClick={handleUploadDocument}
-                >
-                  Upload
-                </button>
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-xs">
+                <div className="rounded-lg border border-border px-3 py-2">
+                  <div className="text-text-secondary">Critical</div>
+                  <div className="font-semibold text-text">
+                    {selectedCompliance
+                      ? selectedCompliance.gateStatuses.reduce((total, item) => total + item.criticalMet, 0)
+                      : 0}
+                    /
+                    {selectedCompliance
+                      ? selectedCompliance.gateStatuses.reduce((total, item) => total + item.criticalRequired, 0)
+                      : 0}
+                  </div>
+                </div>
+                <div className="rounded-lg border border-border px-3 py-2">
+                  <div className="text-text-secondary">Recommended</div>
+                  <div className="font-semibold text-text">
+                    {selectedCompliance ? selectedCompliance.missingRecommended.length : 0} missing
+                  </div>
+                </div>
+                <div className="rounded-lg border border-border px-3 py-2">
+                  <div className="text-text-secondary">Expiring</div>
+                  <div className="font-semibold text-text">{selectedCompliance?.expiringSoon.length || 0}</div>
+                </div>
               </div>
             </Card>
 
-            <Card className="p-5">
-              <h3 className="text-lg font-black text-text mb-3">Documents</h3>
-              {documentsLoading ? (
-                <p className="text-sm text-text-secondary">Loading documents...</p>
-              ) : documents.length === 0 ? (
-                <p className="text-sm text-text-secondary">No documents uploaded yet.</p>
-              ) : (
-                <div className="space-y-2 max-h-[360px] overflow-y-auto pr-1">
-                  {documents.map((doc) => (
-                    <div key={doc.id} className="rounded-lg border border-border p-3 text-sm">
-                      <div className="font-semibold text-text">{doc.name}</div>
-                      <div className="text-xs text-text-secondary">{doc.type}</div>
-                      <div className="text-xs text-text-secondary mt-1">{doc.status}</div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <Card className="p-5">
+                <h3 className="text-lg font-black text-text mb-3">Upload Compliance Document</h3>
+                <div className="space-y-3">
+                  <select
+                    className="select"
+                    value={docForm.requirementCode}
+                    onChange={(e) => {
+                      const requirementCode = e.target.value
+                      const requirement = requirementIndex.get(requirementCode)
+                      setDocForm((prev) => ({
+                        ...prev,
+                        requirementCode,
+                        type: requirement?.acceptedDocTypes[0] || prev.type,
+                        name: requirement ? requirement.title : prev.name,
+                      }))
+                    }}
+                  >
+                    <option value="">Select Requirement</option>
+                    {requirements.map((requirement) => (
+                      <option key={requirement.requirementCode} value={requirement.requirementCode}>
+                        {requirement.gate} • {requirement.title}
+                      </option>
+                    ))}
+                  </select>
+                  <select className="select" value={docForm.type} onChange={(e) => setDocForm((s) => ({ ...s, type: e.target.value as ProviderDocumentType }))}>
+                    {DOC_TYPES.map((type) => (
+                      <option key={type} value={type}>{type}</option>
+                    ))}
+                  </select>
+                  <input className="input" placeholder="Document name" value={docForm.name} onChange={(e) => setDocForm((s) => ({ ...s, name: e.target.value }))} />
+                  <input className="input" placeholder="File URL" value={docForm.fileUrl} onChange={(e) => setDocForm((s) => ({ ...s, fileUrl: e.target.value }))} />
+                  <input className="input" placeholder="Issuer" value={docForm.issuer} onChange={(e) => setDocForm((s) => ({ ...s, issuer: e.target.value }))} />
+                  <input className="input" placeholder="Document number" value={docForm.documentNumber} onChange={(e) => setDocForm((s) => ({ ...s, documentNumber: e.target.value }))} />
+                  <div className="grid grid-cols-2 gap-2">
+                    <input className="input" type="date" value={docForm.issueDate} onChange={(e) => setDocForm((s) => ({ ...s, issueDate: e.target.value }))} />
+                    <input className="input" type="date" value={docForm.expiryDate} onChange={(e) => setDocForm((s) => ({ ...s, expiryDate: e.target.value }))} />
+                  </div>
+                  <input className="input" placeholder="Version" value={docForm.version} onChange={(e) => setDocForm((s) => ({ ...s, version: e.target.value }))} />
+                  <button
+                    className="px-4 py-2 rounded-lg bg-accent text-white font-semibold disabled:opacity-60"
+                    disabled={uploadDocumentMutation.isPending || !docForm.providerId}
+                    onClick={handleUploadDocument}
+                  >
+                    Upload
+                  </button>
+                </div>
+              </Card>
+
+              <Card className="p-5">
+                <h3 className="text-lg font-black text-text mb-3">Compliance Gates</h3>
+                <ProviderCompliancePanel compliance={selectedCompliance} requirements={requirements} />
+              </Card>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <Card className="p-5">
+                <h3 className="text-lg font-black text-text mb-3">Gate Checklist</h3>
+                <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
+                  {checklistByGate.map((group) => (
+                    <div key={group.gate} className="rounded-lg border border-border p-3">
+                      <div className="text-xs uppercase tracking-wide text-text-secondary mb-2">{group.gate}</div>
+                      <div className="space-y-2">
+                        {group.requirements.map((requirement) => {
+                          const isCriticalMissing = selectedCompliance?.missingCritical.includes(requirement.requirementCode)
+                          const isRecommendedMissing = selectedCompliance?.missingRecommended.includes(requirement.requirementCode)
+                          const state = isCriticalMissing ? 'MISSING_CRITICAL' : isRecommendedMissing ? 'MISSING' : 'MET'
+                          const stateClass = state === 'MET'
+                            ? 'bg-green-500/10 text-green-500'
+                            : state === 'MISSING'
+                              ? 'bg-amber-500/10 text-amber-500'
+                              : 'bg-red-500/10 text-red-500'
+                          return (
+                            <div key={requirement.requirementCode} className="flex items-start justify-between gap-3 text-sm">
+                              <div>
+                                <div className="font-medium text-text">{requirement.title}</div>
+                                <div className="text-xs text-text-secondary">{requirement.acceptedDocTypes.join(', ')}</div>
+                              </div>
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${stateClass}`}>
+                                {state === 'MISSING_CRITICAL' ? 'CRITICAL GAP' : state}
+                              </span>
+                            </div>
+                          )
+                        })}
+                      </div>
                     </div>
                   ))}
                 </div>
-              )}
-            </Card>
+              </Card>
+
+              <Card className="p-5">
+                <h3 className="text-lg font-black text-text mb-3">Documents</h3>
+                {reviewError && (
+                  <div className="mb-3 rounded-lg border border-red-500/20 bg-red-500/5 px-3 py-2 text-sm text-red-500">
+                    {reviewError}
+                  </div>
+                )}
+                {documentsLoading ? (
+                  <p className="text-sm text-text-secondary">Loading documents...</p>
+                ) : selectedProviderDocuments.length === 0 ? (
+                  <p className="text-sm text-text-secondary">No documents uploaded yet.</p>
+                ) : (
+                  <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
+                    {selectedProviderDocuments.map((doc) => {
+                      const verification = verificationState(doc)
+                      return (
+                        <div key={doc.id} className="rounded-lg border border-border p-3 text-sm space-y-2">
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <div className="font-semibold text-text">{doc.name}</div>
+                              <div className="text-xs text-text-secondary">
+                                {doc.requirementCode ? requirementTitle(doc.requirementCode, requirements) : doc.type}
+                              </div>
+                              <div className="text-xs text-text-secondary mt-1">
+                                {doc.issueDate ? `Issue: ${doc.issueDate}` : 'Issue date not set'}
+                                {doc.expiryDate ? ` • Expiry: ${doc.expiryDate}` : ''}
+                              </div>
+                            </div>
+                            <span className={`px-2 py-1 rounded text-[10px] font-semibold ${verificationStateClass(verification)}`}>
+                              {verification}
+                            </span>
+                          </div>
+
+                          {canApprove && (
+                            <div className="space-y-2">
+                              <textarea
+                                className="w-full rounded-lg border border-border bg-panel px-2 py-1 text-xs text-text"
+                                rows={2}
+                                placeholder="Reviewer notes"
+                                value={reviewNotes[doc.id] || ''}
+                                onChange={(e) => setReviewNotes((prev) => ({ ...prev, [doc.id]: e.target.value }))}
+                              />
+                              <div className="flex gap-2">
+                                <button
+                                  className="px-2 py-1 rounded-lg text-xs font-semibold bg-green-600 text-white disabled:opacity-60"
+                                  disabled={reviewDocumentMutation.isPending}
+                                  onClick={() => handleReviewDocument(doc, 'APPROVED')}
+                                >
+                                  Verify
+                                </button>
+                                <button
+                                  className="px-2 py-1 rounded-lg text-xs font-semibold bg-rose-600 text-white disabled:opacity-60"
+                                  disabled={reviewDocumentMutation.isPending}
+                                  onClick={() => handleReviewDocument(doc, 'REJECTED')}
+                                >
+                                  Reject
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </Card>
+            </div>
           </div>
         )}
 
@@ -458,7 +783,7 @@ export function SwapProviders() {
                       {canApprove && relationship.status === 'DOCS_PENDING' && (
                         <button
                           className="px-3 py-1.5 rounded-lg text-xs font-bold bg-green-600 text-white disabled:opacity-60"
-                          disabled={approveRelationshipMutation.isPending}
+                          disabled={approveRelationshipMutation.isPending || complianceBlockerCount(complianceByProvider.get(relationship.providerId)) > 0}
                           onClick={() => approveRelationshipMutation.mutate({ id: relationship.id })}
                         >
                           Approve

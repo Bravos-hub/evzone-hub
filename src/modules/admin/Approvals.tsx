@@ -6,6 +6,8 @@ import { ROLE_LABELS } from '@/constants/roles'
 import type { Role } from '@/core/auth/types'
 import { useApprovals, useApproveKyc, useRejectKyc, useApproveApplication, useRejectApplication } from '@/modules/approvals/hooks/useApprovals'
 import type { ApprovalType } from '@/modules/approvals/services/approvalsService'
+import { ProviderCompliancePanel } from '@/modules/integrations/components/ProviderCompliancePanel'
+import { useProviderComplianceStatus, useProviderRequirements } from '@/modules/integrations/useProviders'
 import { TextSkeleton } from '@/ui/components/SkeletonCards'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -228,6 +230,14 @@ function ReviewDrawer({
   onReject: () => void
   perms: Record<string, boolean>
 }) {
+  const providerId =
+    typeof approval.details?.providerId === 'string'
+      ? approval.details.providerId
+      : ''
+  const { data: requirements = [] } = useProviderRequirements({ appliesTo: 'PROVIDER' })
+  const { data: complianceStatus } = useProviderComplianceStatus(providerId, { enabled: Boolean(providerId) })
+  const payloadCompliance = approval.details?.complianceStatus
+
   return (
     <div className="fixed inset-0 z-50 flex">
       <div className="flex-1 bg-black/30" onClick={onClose} />
@@ -256,6 +266,15 @@ function ReviewDrawer({
               <div className="font-semibold">{approval.details.email}</div>
             </div>
           )}
+        </div>
+
+        <div className="panel">
+          <div className="text-xs text-muted mb-2">Provider Compliance</div>
+          <ProviderCompliancePanel
+            compliance={payloadCompliance || complianceStatus}
+            requirements={requirements}
+            compact
+          />
         </div>
 
         <div className="panel">

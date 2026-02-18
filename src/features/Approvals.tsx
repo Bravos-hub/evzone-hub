@@ -3,8 +3,11 @@ import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { useAuthStore } from '@/core/auth/authStore'
 import { getPermissionsForFeature } from '@/constants/permissions'
 import { useApprovals, useApproveApplication, useRejectApplication, useApproveKyc, useRejectKyc } from '@/modules/approvals/hooks/useApprovals'
+import { ProviderCompliancePanel } from '@/modules/integrations/components/ProviderCompliancePanel'
+import { useProviderComplianceStatus, useProviderRequirements } from '@/modules/integrations/useProviders'
 import { ROLE_LABELS } from '@/constants/roles'
 import type { Role } from '@/core/auth/types'
+import type { ProviderComplianceStatus } from '@/core/api/types'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -24,6 +27,8 @@ type Application = {
   submittedAt: string
   status: ApprovalStatus
   notes: string
+  providerId?: string
+  complianceStatus?: unknown
   docs: Array<{ id: string; name: string; type: string; url: string }>
 }
 
@@ -79,6 +84,10 @@ export function Approvals() {
       submittedAt: new Date(item.submittedAt).toLocaleString(),
       status: (item.status === 'PENDING' ? 'Pending' : item.status === 'APPROVED' ? 'Approved' : 'Rejected') as ApprovalStatus, // Map backend UPPERCASE to Title Case
       notes: item.reviewNotes || '',
+      providerId: typeof item.details?.providerId === 'string'
+        ? item.details.providerId
+        : (typeof item.details?.provider?.id === 'string' ? item.details.provider.id : undefined),
+      complianceStatus: item.details?.complianceStatus,
       docs: item.details?.docs || [],
       originalType: item.type, // Keep track for actions
       applicantId: item.applicantId
@@ -262,6 +271,12 @@ function ReviewDrawer({
   onSendBack: () => void
   perms: Record<string, boolean>
 }) {
+  const providerId = application.providerId || ''
+  const { data: requirementCatalog = [] } = useProviderRequirements({ appliesTo: 'PROVIDER' })
+  const { data: liveCompliance } = useProviderComplianceStatus(providerId, { enabled: Boolean(providerId) })
+  const payloadCompliance = application.complianceStatus as ProviderComplianceStatus | undefined
+  const compliance = payloadCompliance || liveCompliance
+
   return (
     <div className="fixed inset-0 z-50 flex">
       <div className="flex-1 bg-black/30" onClick={onClose} />
@@ -310,6 +325,17 @@ function ReviewDrawer({
             </ul>
           )}
         </div>
+
+        {(providerId || compliance) && (
+          <div className="panel">
+            <div className="text-xs text-muted mb-2">Provider Compliance Snapshot</div>
+            <ProviderCompliancePanel
+              compliance={compliance}
+              requirements={requirementCatalog}
+              compact
+            />
+          </div>
+        )}
 
         {application.notes && (
           <div className="panel">
