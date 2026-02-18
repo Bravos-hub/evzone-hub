@@ -457,7 +457,7 @@ export function AddSwapStation() {
 
   if (isRedirecting) {
     return (
-      <DashboardLayout pageTitle="Add Swap Station">
+      <DashboardLayout pageTitle="Add Swap Station" contentClassName="p-0 lg:p-0">
         <div className="p-8 text-center text-subtle">Redirecting to the correct station wizard...</div>
       </DashboardLayout>
     )
@@ -465,7 +465,7 @@ export function AddSwapStation() {
 
   if (!meLoading && !canCreateSwap) {
     return (
-      <DashboardLayout pageTitle="Add Swap Station">
+      <DashboardLayout pageTitle="Add Swap Station" contentClassName="p-0 lg:p-0">
         <div className="p-8 text-center text-subtle">No permission to add swap stations.</div>
       </DashboardLayout>
     )
@@ -473,7 +473,7 @@ export function AddSwapStation() {
 
   if (!loadingSiteOptions && accessibleSites.length === 0) {
     return (
-      <DashboardLayout pageTitle="Add Swap Station">
+      <DashboardLayout pageTitle="Add Swap Station" contentClassName="p-0 lg:p-0">
         <div className="max-w-xl mx-auto py-12 text-center">
           <div className="bg-surface border border-border rounded-xl p-8">
             <h2 className="text-xl font-bold mb-4">No Sites Available</h2>
@@ -490,32 +490,10 @@ export function AddSwapStation() {
   }
 
   return (
-    <DashboardLayout pageTitle="Add Swap Station">
-      <div className="max-w-3xl mx-auto space-y-6">
+    <DashboardLayout pageTitle="Add Swap Station" contentClassName="p-0 lg:p-0">
+      <div className="w-full space-y-4">
         {ack && <div className="rounded-lg bg-accent/10 text-accent px-4 py-2 text-sm">{ack}</div>}
         {error && <div className="rounded-lg bg-red-50 border border-red-200 text-red-700 px-4 py-2 text-sm">{error}</div>}
-
-        <div className="flex items-center justify-between mb-8">
-          {STEPS.map((s, i) => (
-            <div key={s.key} className="flex items-center">
-              <div
-                className={`flex items-center justify-center h-8 w-8 rounded-full text-sm font-medium ${
-                  i < step ? 'bg-accent text-white' : i === step ? 'bg-accent text-white ring-4 ring-accent/20' : 'bg-muted text-subtle'
-                }`}
-              >
-                {i < step ? (
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                    <path d="M20 6L9 17l-5-5" />
-                  </svg>
-                ) : (
-                  i + 1
-                )}
-              </div>
-              <span className={`ml-2 text-sm ${i <= step ? 'font-medium' : 'text-subtle'}`}>{s.label}</span>
-              {i < STEPS.length - 1 && <div className={`mx-4 h-0.5 w-12 ${i < step ? 'bg-accent' : 'bg-border'}`} />}
-            </div>
-          ))}
-        </div>
 
         <div className="rounded-xl bg-surface border border-border p-6">
           {step === 0 && (
