@@ -7,6 +7,7 @@ import { ProviderCompliancePanel } from '@/modules/integrations/components/Provi
 import {
   useProviderComplianceStatus,
   useProviderRelationships,
+  useRelationshipComplianceStatuses,
   useProviderRequirements,
   useProviderSettlementSummary,
   useRespondToProviderRelationship,
@@ -16,6 +17,11 @@ import {
 function formatCurrency(value?: number, currency = 'USD'): string {
   if (typeof value !== 'number' || Number.isNaN(value)) return 'N/A'
   return new Intl.NumberFormat(undefined, { style: 'currency', currency, maximumFractionDigits: 2 }).format(value)
+}
+
+function complianceBlockerCount(status?: { missingCritical: string[]; expiredCritical: Array<{ id: string }> }): number {
+  if (!status) return 0
+  return status.missingCritical.length + status.expiredCritical.length
 }
 
 export function ProviderPortal() {
@@ -43,9 +49,23 @@ export function ProviderPortal() {
     () => relationships.filter((item) => item.status === 'REQUESTED'),
     [relationships],
   )
+  const relationshipIds = useMemo(() => relationships.map((item) => item.id), [relationships])
+  const { data: relationshipComplianceStatuses = [] } = useRelationshipComplianceStatuses(relationshipIds, {
+    enabled: relationshipIds.length > 0,
+  })
+  const relationshipComplianceById = useMemo(() => {
+    return relationshipComplianceStatuses.reduce<Map<string, (typeof relationshipComplianceStatuses)[number]>>((acc, status) => {
+      if (status.targetId) acc.set(status.targetId, status)
+      return acc
+    }, new Map())
+  }, [relationshipComplianceStatuses])
   const activeContracts = useMemo(
     () => relationships.filter((item) => item.status === 'ACTIVE').length,
     [relationships],
+  )
+  const relationshipBlockers = useMemo(
+    () => relationshipComplianceStatuses.reduce((total, status) => total + complianceBlockerCount(status), 0),
+    [relationshipComplianceStatuses],
   )
 
   const remediationItems = useMemo(() => {
@@ -110,7 +130,7 @@ export function ProviderPortal() {
           <Card className="p-4">
             <div className="text-xs uppercase tracking-wider text-text-secondary">Compliance Blockers</div>
             <div className="mt-2 text-2xl font-black text-text">
-              {loading ? '...' : (complianceStatus?.missingCritical.length || 0) + (complianceStatus?.expiredCritical.length || 0)}
+              {loading ? '...' : complianceBlockerCount(complianceStatus) + relationshipBlockers}
             </div>
           </Card>
         </div>
@@ -126,6 +146,11 @@ export function ProviderPortal() {
                   <div>
                     <div className="font-bold text-text">{request.ownerOrgName || request.ownerOrgId}</div>
                     <div className="text-xs text-text-secondary">Requested {new Date(request.createdAt).toLocaleString()}</div>
+                    {relationshipComplianceById.get(request.id) && (
+                      <div className="text-xs text-text-secondary">
+                        Relationship compliance: {relationshipComplianceById.get(request.id)?.overallState}
+                      </div>
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
                     <button
@@ -165,6 +190,26 @@ export function ProviderPortal() {
                       <span className="text-xs text-text-secondary uppercase">{item.severity}</span>
                     </div>
                   ))}
+                </div>
+              )}
+            </div>
+            <div className="mt-4">
+              <div className="text-xs uppercase tracking-wide text-text-secondary mb-2">Relationship Compliance</div>
+              {relationships.length === 0 ? (
+                <div className="text-sm text-text-secondary">No relationships available.</div>
+              ) : (
+                <div className="space-y-2">
+                  {relationships.slice(0, 6).map((relationship) => {
+                    const status = relationshipComplianceById.get(relationship.id)
+                    return (
+                      <div key={relationship.id} className="flex items-center justify-between text-sm rounded-lg bg-panel/30 border border-border px-3 py-2">
+                        <span className="text-text">{relationship.ownerOrgName || relationship.ownerOrgId}</span>
+                        <span className="text-text-secondary">
+                          {status ? `${status.overallState} · ${complianceBlockerCount(status)} blocker(s)` : 'Pending evaluation'}
+                        </span>
+                      </div>
+                    )
+                  })}
                 </div>
               )}
             </div>

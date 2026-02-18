@@ -88,7 +88,12 @@ export const queryKeys = {
     documents: (filters?: Record<string, unknown>) => ['providers', 'documents', filters] as const,
     requirements: (filters?: Record<string, unknown>) => ['providers', 'requirements', filters] as const,
     compliance: (providerId: string) => ['providers', providerId, 'compliance'] as const,
+    complianceStatuses: (providerIds: string[]) => ['providers', 'compliance-statuses', ...providerIds] as const,
     relationships: (filters?: Record<string, unknown>) => ['providers', 'relationships', filters] as const,
+    relationshipCompliance: (relationshipId: string) => ['providers', 'relationships', relationshipId, 'compliance'] as const,
+    relationshipComplianceStatuses: (relationshipIds: string[]) =>
+      ['providers', 'relationships', 'compliance-statuses', ...relationshipIds] as const,
+    compliancePolicy: ['providers', 'compliance-policy'] as const,
     settlements: (filters?: Record<string, unknown>) => ['providers', 'settlements', filters] as const,
     eligible: (ownerOrgId?: string) => ['providers', 'eligible', ownerOrgId ?? 'none'] as const,
   },

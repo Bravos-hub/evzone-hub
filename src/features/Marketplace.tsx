@@ -10,9 +10,13 @@ import { SiteApplicationForm } from '@/features/SiteApplicationForm'
 import { TextSkeleton } from '@/ui/components/SkeletonCards'
 import { MarketplaceDetailsDrawer } from '@/features/marketplace/components/MarketplaceDetailsDrawer'
 import {
+  useProviderRequirements,
+  useRelationshipComplianceStatuses,
   useProviderRelationships,
   useProviders,
   useRequestProviderRelationship,
+  useUploadProviderDocument,
+  useUpdateRelationshipComplianceProfile,
 } from '@/modules/integrations/useProviders'
 import {
   humanizeProviderStatus,
@@ -21,7 +25,7 @@ import {
   type NormalizedProviderStatus,
   type NormalizedRelationshipStatus,
 } from '@/modules/integrations/providerStatus'
-import type { ProviderRelationship, Site, SwapProvider, User } from '@/core/api/types'
+import type { ProviderDocumentType, ProviderRelationship, Site, SwapProvider, User } from '@/core/api/types'
 import type { MarketplaceSummaryListing } from '@/features/marketplace/types'
 
 type ListingKind = 'Operators' | 'Sites' | 'Technicians'
@@ -54,6 +58,9 @@ type ProviderListing = BaseListing & {
   kind: 'Providers'
   providerStatus: NormalizedProviderStatus
   relationshipStatus: ProviderRelationshipBadgeStatus
+  relationshipId?: string
+  relationshipComplianceState?: 'READY' | 'WARN' | 'BLOCKED'
+  relationshipBlockers: number
   standard: string
   stationCount: number
   batteriesSupported: string[]
@@ -110,6 +117,18 @@ function relationshipStatusBadgeClass(status: ProviderRelationshipBadgeStatus): 
   return 'bg-slate-100 text-slate-700'
 }
 
+function relationshipComplianceBadgeClass(status?: 'READY' | 'WARN' | 'BLOCKED'): string {
+  if (status === 'READY') return 'bg-emerald-100 text-emerald-700'
+  if (status === 'WARN') return 'bg-amber-100 text-amber-700'
+  if (status === 'BLOCKED') return 'bg-red-100 text-red-700'
+  return 'bg-slate-100 text-slate-700'
+}
+
+function complianceBlockerCount(status?: { missingCritical: string[]; expiredCritical: Array<{ id: string }> }): number {
+  if (!status) return 0
+  return status.missingCritical.length + status.expiredCritical.length
+}
+
 const isSiteListing = (listing: ListingsMarketplaceListing): listing is SiteListing => listing.kind === 'Sites'
 
 export function Marketplace() {
@@ -150,7 +169,15 @@ export function Marketplace() {
     error: relationshipsError,
     refetch: refetchRelationships,
   } = useProviderRelationships(ownerOrgId ? { ownerOrgId } : undefined, { enabled: shouldLoadRelationships })
+  const relationshipIds = useMemo(() => relationships.map((relationship) => relationship.id), [relationships])
+  const {
+    data: relationshipComplianceStatuses = [],
+    isLoading: relationshipComplianceLoading,
+  } = useRelationshipComplianceStatuses(relationshipIds, { enabled: relationshipIds.length > 0 })
+  const { data: stationOwnerRequirements = [] } = useProviderRequirements({ appliesTo: 'STATION_OWNER' })
   const requestProviderRelationshipMutation = useRequestProviderRelationship()
+  const uploadProviderDocumentMutation = useUploadProviderDocument()
+  const updateRelationshipComplianceProfileMutation = useUpdateRelationshipComplianceProfile()
 
   const [tab, setTab] = useState<MarketplaceTab>('LISTINGS')
   const [kind, setKind] = useState<ListingKind | 'All'>('Sites')
@@ -166,6 +193,17 @@ export function Marketplace() {
   const [selectedListing, setSelectedListing] = useState<MarketplaceSummaryListing | null>(null)
   const [providerAck, setProviderAck] = useState('')
   const [providerActionError, setProviderActionError] = useState('')
+  const [showQuickSubmitModal, setShowQuickSubmitModal] = useState(false)
+  const [quickSubmitProviderName, setQuickSubmitProviderName] = useState('')
+  const [quickSubmitForm, setQuickSubmitForm] = useState({
+    relationshipId: '',
+    requirementCode: '',
+    type: 'SITE_COMPATIBILITY_DECLARATION' as ProviderDocumentType,
+    name: '',
+    file: null as File | null,
+    storedEnergyKwh: '',
+  })
+  const [quickSubmitFileInputKey, setQuickSubmitFileInputKey] = useState(0)
 
   useEffect(() => {
     if (!canSeeProvidersTab && tab === 'PROVIDERS') {
@@ -239,18 +277,28 @@ export function Marketplace() {
     return map
   }, [relationships, shouldLoadRelationships])
 
+  const relationshipComplianceById = useMemo(() => {
+    return relationshipComplianceStatuses.reduce<Map<string, (typeof relationshipComplianceStatuses)[number]>>((acc, status) => {
+      if (status.targetId) acc.set(status.targetId, status)
+      return acc
+    }, new Map())
+  }, [relationshipComplianceStatuses])
+
   const providerListings = useMemo<ProviderListing[]>(() => {
     if (!canSeeProvidersTab) return []
 
     return (providers as SwapProvider[]).map((provider) => {
       const providerStatus = normalizeProviderStatus(provider.status)
+      const relationship = relationshipByProvider.get(provider.id)
       let relationshipStatus: ProviderRelationshipBadgeStatus = 'N/A'
 
       if (ownerOrgId) {
         relationshipStatus = relationshipsError
           ? 'UNKNOWN'
-          : normalizeRelationshipStatus(relationshipByProvider.get(provider.id)?.status)
+          : normalizeRelationshipStatus(relationship?.status)
       }
+      const relationshipCompliance = relationship ? relationshipComplianceById.get(relationship.id) : undefined
+      const relationshipBlockers = complianceBlockerCount(relationshipCompliance)
 
       const canRequest =
         canRequestPartnership &&
@@ -267,13 +315,24 @@ export function Marketplace() {
         region: normalizeRegion(provider.region),
         providerStatus,
         relationshipStatus,
+        relationshipId: relationship?.id,
+        relationshipComplianceState: relationshipCompliance?.overallState,
+        relationshipBlockers,
         standard: provider.standard,
         stationCount: provider.stationCount,
         batteriesSupported: provider.batteriesSupported || [],
         canRequest,
       }
     })
-  }, [canRequestPartnership, canSeeProvidersTab, ownerOrgId, providers, relationshipByProvider, relationshipsError])
+  }, [
+    canRequestPartnership,
+    canSeeProvidersTab,
+    ownerOrgId,
+    providers,
+    relationshipByProvider,
+    relationshipComplianceById,
+    relationshipsError,
+  ])
 
   const listingRegionOptions = useMemo(() => {
     const uniqueRegions = Array.from(new Set(listings.map((listing) => listing.region))).sort()
@@ -311,7 +370,8 @@ export function Marketplace() {
   }, [providerListings, providerQuery, providerRegionFilter, providerStatusFilter, relationshipStatusFilter])
 
   const listingsLoading = sitesLoading || operatorsLoading || techniciansLoading
-  const providersLoadingState = providersLoading || (shouldLoadRelationships && relationshipsLoading)
+  const providersLoadingState =
+    providersLoading || (shouldLoadRelationships && (relationshipsLoading || relationshipComplianceLoading))
   const providerQueryError = providersError || (shouldLoadRelationships ? relationshipsError : null)
 
   const handleApply = (siteId: string) => {
@@ -345,6 +405,60 @@ export function Marketplace() {
       setProviderAck(`Partnership request sent to ${provider.name}.`)
     } catch (err) {
       setProviderActionError(getErrorMessage(err))
+    }
+  }
+
+  const openQuickSubmit = (provider: ProviderListing) => {
+    if (!provider.relationshipId) return
+    const defaultRequirement = stationOwnerRequirements[0]
+    setQuickSubmitProviderName(provider.name)
+    setQuickSubmitFileInputKey((prev) => prev + 1)
+    setQuickSubmitForm({
+      relationshipId: provider.relationshipId,
+      requirementCode: defaultRequirement?.requirementCode || '',
+      type: (defaultRequirement?.acceptedDocTypes?.[0] as ProviderDocumentType | undefined) || 'SITE_COMPATIBILITY_DECLARATION',
+      name: defaultRequirement?.title || '',
+      file: null,
+      storedEnergyKwh: '',
+    })
+    setProviderActionError('')
+    setShowQuickSubmitModal(true)
+  }
+
+  const submitQuickRelationshipPack = async () => {
+    if (!quickSubmitForm.relationshipId || !quickSubmitForm.file || !quickSubmitForm.name.trim()) {
+      setProviderActionError('Relationship, file, and document name are required for quick submit.')
+      return
+    }
+
+    const storedEnergy = quickSubmitForm.storedEnergyKwh.trim()
+    try {
+      if (storedEnergy) {
+        await updateRelationshipComplianceProfileMutation.mutateAsync({
+          id: quickSubmitForm.relationshipId,
+          data: {
+            complianceProfile: {
+              storedEnergyKwh: Number(storedEnergy),
+            },
+          },
+        })
+      }
+
+      await uploadProviderDocumentMutation.mutateAsync({
+        relationshipId: quickSubmitForm.relationshipId,
+        type: quickSubmitForm.type,
+        requirementCode: quickSubmitForm.requirementCode || undefined,
+        name: quickSubmitForm.name.trim(),
+        file: quickSubmitForm.file,
+        metadata: {
+          source: 'marketplace-quick-submit',
+        },
+      })
+
+      setShowQuickSubmitModal(false)
+      setProviderAck(`Submitted relationship compliance pack for ${quickSubmitProviderName}.`)
+    } catch (error) {
+      setProviderActionError(getErrorMessage(error))
     }
   }
 
@@ -639,6 +753,12 @@ export function Marketplace() {
                       <span className={`px-2 py-0.5 rounded-full text-xs ${relationshipStatusBadgeClass(provider.relationshipStatus)}`}>
                         Relationship: {humanizeStatus(provider.relationshipStatus)}
                       </span>
+                      {provider.relationshipId && (
+                        <span className={`px-2 py-0.5 rounded-full text-xs ${relationshipComplianceBadgeClass(provider.relationshipComplianceState)}`}>
+                          Compliance: {provider.relationshipComplianceState || 'PENDING'}
+                          {provider.relationshipBlockers > 0 ? ` (${provider.relationshipBlockers})` : ''}
+                        </span>
+                      )}
                     </div>
 
                     <div className="grid grid-cols-2 gap-2 text-xs">
@@ -684,6 +804,14 @@ export function Marketplace() {
                           {requestProviderRelationshipMutation.isPending ? 'Requesting...' : 'Request Partnership'}
                         </button>
                       )}
+                      {canRequestPartnership && ownerOrgId && provider.relationshipId && provider.relationshipStatus !== 'TERMINATED' && (
+                        <button
+                          className="btn secondary flex-1"
+                          onClick={() => openQuickSubmit(provider)}
+                        >
+                          Submit Docs
+                        </button>
+                      )}
                       {canRequestPartnership && !ownerOrgId && (
                         <button className="btn secondary flex-1 opacity-60 cursor-not-allowed" disabled>
                           Request Partnership
@@ -697,6 +825,104 @@ export function Marketplace() {
           </>
         )}
       </div>
+
+      {showQuickSubmitModal && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+          <div className="w-full max-w-lg rounded-xl bg-white p-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-bold text-slate-900">Quick Submit Relationship Pack</h3>
+              <button
+                type="button"
+                className="text-sm text-slate-500 hover:text-slate-800"
+                onClick={() => setShowQuickSubmitModal(false)}
+              >
+                Close
+              </button>
+            </div>
+            <div className="text-sm text-slate-600">Provider: {quickSubmitProviderName || 'Unknown'}</div>
+
+            <select
+              className="select w-full"
+              value={quickSubmitForm.requirementCode}
+              onChange={(e) => {
+                const requirementCode = e.target.value
+                const requirement = stationOwnerRequirements.find((item) => item.requirementCode === requirementCode)
+                setQuickSubmitForm((prev) => ({
+                  ...prev,
+                  requirementCode,
+                  type: (requirement?.acceptedDocTypes?.[0] as ProviderDocumentType | undefined) || prev.type,
+                  name: requirement?.title || prev.name,
+                }))
+              }}
+            >
+              <option value="">Select station-owner requirement</option>
+              {stationOwnerRequirements.map((requirement) => (
+                <option key={requirement.requirementCode} value={requirement.requirementCode}>
+                  {requirement.title}
+                </option>
+              ))}
+            </select>
+
+            <select
+              className="select w-full"
+              value={quickSubmitForm.type}
+              onChange={(e) =>
+                setQuickSubmitForm((prev) => ({
+                  ...prev,
+                  type: e.target.value as ProviderDocumentType,
+                }))
+              }
+            >
+              <option value="SITE_COMPATIBILITY_DECLARATION">SITE_COMPATIBILITY_DECLARATION</option>
+              <option value="TECHNICAL_CONFORMANCE">TECHNICAL_CONFORMANCE</option>
+              <option value="SOP_ACKNOWLEDGEMENT">SOP_ACKNOWLEDGEMENT</option>
+              <option value="INSURANCE">INSURANCE</option>
+              <option value="COMMERCIAL_AGREEMENT">COMMERCIAL_AGREEMENT</option>
+            </select>
+
+            <input
+              className="input w-full"
+              value={quickSubmitForm.name}
+              onChange={(e) => setQuickSubmitForm((prev) => ({ ...prev, name: e.target.value }))}
+              placeholder="Document name"
+            />
+            <input
+              key={quickSubmitFileInputKey}
+              className="input w-full"
+              type="file"
+              onChange={(e) => setQuickSubmitForm((prev) => ({ ...prev, file: e.target.files?.[0] || null }))}
+            />
+            <input
+              className="input w-full"
+              value={quickSubmitForm.storedEnergyKwh}
+              onChange={(e) => setQuickSubmitForm((prev) => ({ ...prev, storedEnergyKwh: e.target.value }))}
+              placeholder="Stored energy kWh (optional, for HK DG profile checks)"
+            />
+
+            <div className="flex items-center justify-end gap-2">
+              <button
+                type="button"
+                className="btn secondary"
+                onClick={() => setShowQuickSubmitModal(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn primary"
+                disabled={uploadProviderDocumentMutation.isPending || updateRelationshipComplianceProfileMutation.isPending}
+                onClick={() => {
+                  void submitQuickRelationshipPack()
+                }}
+              >
+                {uploadProviderDocumentMutation.isPending || updateRelationshipComplianceProfileMutation.isPending
+                  ? 'Submitting...'
+                  : 'Submit Pack'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <MarketplaceDetailsDrawer
         listing={selectedListing}

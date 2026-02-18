@@ -15,7 +15,6 @@ import type {
   ProviderStandard,
 } from '@/core/api/types'
 import { ProviderCompliancePanel } from '@/modules/integrations/components/ProviderCompliancePanel'
-import { evaluateProviderCompliance } from '@/modules/integrations/providerCompliance'
 import {
   normalizeProviderStatus,
   type NormalizedProviderStatus,
@@ -24,9 +23,10 @@ import {
   useApproveProvider,
   useApproveProviderRelationship,
   useCreateProvider,
-  useProviderComplianceStatus,
+  useProviderComplianceStatuses,
   useProviderDocuments,
   useProviderRequirements,
+  useRelationshipComplianceStatuses,
   useProviderRelationships,
   useProviders,
   useRejectProvider,
@@ -115,13 +115,14 @@ export function SwapProviders() {
     requirementCode: '',
     type: 'INCORPORATION' as ProviderDocumentType,
     name: '',
-    fileUrl: '',
+    file: null as File | null,
     issuer: '',
     documentNumber: '',
     issueDate: '',
     expiryDate: '',
     version: '',
   })
+  const [docFileInputKey, setDocFileInputKey] = useState(0)
 
   const createProviderMutation = useCreateProvider()
   const submitForReviewMutation = useSubmitProviderForReview()
@@ -140,8 +141,13 @@ export function SwapProviders() {
   const { data: requirements = [] } = useProviderRequirements({ appliesTo: 'PROVIDER' })
   const { data: relationships = [], isLoading: relationshipsLoading } = useProviderRelationships()
   const { data: documents = [], isLoading: documentsLoading } = useProviderDocuments()
-  const { data: selectedComplianceRemote } = useProviderComplianceStatus(selectedProviderId, {
-    enabled: Boolean(selectedProviderId),
+  const providerIds = useMemo(() => providers.map((provider) => provider.id), [providers])
+  const relationshipIds = useMemo(() => relationships.map((relationship) => relationship.id), [relationships])
+  const { data: providerComplianceStatuses = [] } = useProviderComplianceStatuses(providerIds, {
+    enabled: providerIds.length > 0,
+  })
+  const { data: relationshipComplianceStatuses = [] } = useRelationshipComplianceStatuses(relationshipIds, {
+    enabled: relationshipIds.length > 0,
   })
 
   const filteredProviders = useMemo(() => {
@@ -180,22 +186,20 @@ export function SwapProviders() {
   }, [documents])
 
   const complianceByProvider = useMemo(() => {
-    return providers.reduce<Map<string, ProviderComplianceStatus>>((acc, provider) => {
-      const providerDocuments = documentsByProvider.get(provider.id) || []
-      acc.set(
-        provider.id,
-        evaluateProviderCompliance({
-          providerId: provider.id,
-          provider,
-          documents: providerDocuments,
-          requirements,
-        }),
-      )
+    return providerComplianceStatuses.reduce<Map<string, ProviderComplianceStatus>>((acc, status) => {
+      acc.set(status.providerId, status)
       return acc
     }, new Map<string, ProviderComplianceStatus>())
-  }, [providers, documentsByProvider, requirements])
+  }, [providerComplianceStatuses])
 
-  const selectedCompliance = selectedComplianceRemote || complianceByProvider.get(selectedProviderId) || null
+  const relationshipComplianceById = useMemo(() => {
+    return relationshipComplianceStatuses.reduce<Map<string, ProviderComplianceStatus>>((acc, status) => {
+      if (status.targetId) acc.set(status.targetId, status)
+      return acc
+    }, new Map<string, ProviderComplianceStatus>())
+  }, [relationshipComplianceStatuses])
+
+  const selectedCompliance = complianceByProvider.get(selectedProviderId) || null
   const selectedProviderDocuments = selectedProviderId ? documentsByProvider.get(selectedProviderId) || [] : []
   const requirementIndex = useMemo(
     () => new Map(requirements.map((requirement) => [requirement.requirementCode, requirement])),
@@ -281,26 +285,27 @@ export function SwapProviders() {
   }
 
   const handleUploadDocument = async () => {
-    if (!docForm.providerId || !docForm.fileUrl.trim() || !docForm.name.trim()) return
+    if (!docForm.providerId || !docForm.file || !docForm.name.trim()) return
     await uploadDocumentMutation.mutateAsync({
       providerId: docForm.providerId,
       type: docForm.type,
       requirementCode: docForm.requirementCode || undefined,
       name: docForm.name.trim(),
-      fileUrl: docForm.fileUrl.trim(),
       issuer: docForm.issuer.trim() || undefined,
       documentNumber: docForm.documentNumber.trim() || undefined,
       issueDate: docForm.issueDate || undefined,
       expiryDate: docForm.expiryDate || undefined,
       version: docForm.version.trim() || undefined,
       metadata: {
-        source: 'provider-compliance-v1',
+        source: 'provider-compliance-v2',
       },
+      file: docForm.file,
     })
+    setDocFileInputKey((prev) => prev + 1)
     setDocForm((prev) => ({
       ...prev,
       name: '',
-      fileUrl: '',
+      file: null,
       issuer: '',
       documentNumber: '',
       issueDate: '',
@@ -634,7 +639,19 @@ export function SwapProviders() {
                     ))}
                   </select>
                   <input className="input" placeholder="Document name" value={docForm.name} onChange={(e) => setDocForm((s) => ({ ...s, name: e.target.value }))} />
-                  <input className="input" placeholder="File URL" value={docForm.fileUrl} onChange={(e) => setDocForm((s) => ({ ...s, fileUrl: e.target.value }))} />
+                  <input
+                    key={docFileInputKey}
+                    className="input"
+                    type="file"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0] || null
+                      setDocForm((s) => ({
+                        ...s,
+                        file,
+                        name: s.name || file?.name || s.name,
+                      }))
+                    }}
+                  />
                   <input className="input" placeholder="Issuer" value={docForm.issuer} onChange={(e) => setDocForm((s) => ({ ...s, issuer: e.target.value }))} />
                   <input className="input" placeholder="Document number" value={docForm.documentNumber} onChange={(e) => setDocForm((s) => ({ ...s, documentNumber: e.target.value }))} />
                   <div className="grid grid-cols-2 gap-2">
@@ -772,35 +789,52 @@ export function SwapProviders() {
               <p className="text-sm text-text-secondary">No owner-provider relationships found.</p>
             ) : (
               <div className="space-y-2">
-                {relationships.map((relationship) => (
-                  <div key={relationship.id} className="rounded-lg border border-border p-3 flex flex-col md:flex-row md:items-center justify-between gap-3">
-                    <div>
-                      <div className="font-semibold text-text">{relationship.ownerOrgName || relationship.ownerOrgId}</div>
-                      <div className="text-xs text-text-secondary">Provider {relationship.providerName || relationship.providerId}</div>
-                      <div className="text-xs text-text-secondary">{relationship.status}</div>
+                {relationships.map((relationship) => {
+                  const providerCompliance = complianceByProvider.get(relationship.providerId)
+                  const relationshipCompliance = relationshipComplianceById.get(relationship.id)
+                  const providerBlockers = complianceBlockerCount(providerCompliance)
+                  const relationshipBlockers = complianceBlockerCount(relationshipCompliance)
+
+                  return (
+                    <div key={relationship.id} className="rounded-lg border border-border p-3 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                      <div>
+                        <div className="font-semibold text-text">{relationship.ownerOrgName || relationship.ownerOrgId}</div>
+                        <div className="text-xs text-text-secondary">Provider {relationship.providerName || relationship.providerId}</div>
+                        <div className="text-xs text-text-secondary">
+                          {relationship.status}
+                          {relationshipCompliance
+                            ? ` · Relationship Compliance ${relationshipCompliance.overallState}${relationshipBlockers > 0 ? ` (${relationshipBlockers} blocker(s))` : ''}`
+                            : ''}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {canApprove && relationship.status === 'DOCS_PENDING' && (
+                          <button
+                            className="px-3 py-1.5 rounded-lg text-xs font-bold bg-green-600 text-white disabled:opacity-60"
+                            disabled={approveRelationshipMutation.isPending || providerBlockers > 0 || relationshipBlockers > 0}
+                            title={
+                              providerBlockers > 0 || relationshipBlockers > 0
+                                ? 'Resolve provider and relationship compliance blockers before approval.'
+                                : undefined
+                            }
+                            onClick={() => approveRelationshipMutation.mutate({ id: relationship.id })}
+                          >
+                            Approve
+                          </button>
+                        )}
+                        {canSuspend && relationship.status === 'ACTIVE' && (
+                          <button
+                            className="px-3 py-1.5 rounded-lg text-xs font-bold bg-red-600 text-white disabled:opacity-60"
+                            disabled={suspendRelationshipMutation.isPending}
+                            onClick={() => suspendRelationshipMutation.mutate({ id: relationship.id })}
+                          >
+                            Suspend
+                          </button>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      {canApprove && relationship.status === 'DOCS_PENDING' && (
-                        <button
-                          className="px-3 py-1.5 rounded-lg text-xs font-bold bg-green-600 text-white disabled:opacity-60"
-                          disabled={approveRelationshipMutation.isPending || complianceBlockerCount(complianceByProvider.get(relationship.providerId)) > 0}
-                          onClick={() => approveRelationshipMutation.mutate({ id: relationship.id })}
-                        >
-                          Approve
-                        </button>
-                      )}
-                      {canSuspend && relationship.status === 'ACTIVE' && (
-                        <button
-                          className="px-3 py-1.5 rounded-lg text-xs font-bold bg-red-600 text-white disabled:opacity-60"
-                          disabled={suspendRelationshipMutation.isPending}
-                          onClick={() => suspendRelationshipMutation.mutate({ id: relationship.id })}
-                        >
-                          Suspend
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </Card>

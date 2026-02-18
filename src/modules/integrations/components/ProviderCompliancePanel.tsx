@@ -40,6 +40,7 @@ export function ProviderCompliancePanel({ compliance, requirements = [], compact
           Missing recommended: {compliance.missingRecommended.length}
         </span>
         <span className="text-xs text-text-secondary">Expiring soon: {compliance.expiringSoon.length}</span>
+        <span className="text-xs text-text-secondary">Policy warnings: {compliance.policyWarnings?.length || 0}</span>
       </div>
 
       <div className={`grid gap-2 ${compact ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'}`}>
@@ -66,7 +67,17 @@ export function ProviderCompliancePanel({ compliance, requirements = [], compact
           </ul>
         </div>
       )}
+
+      {(compliance.pendingActivation?.length || 0) > 0 && (
+        <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2">
+          <div className="text-xs font-semibold uppercase tracking-wide text-amber-500 mb-1">Pending Activation</div>
+          <ul className="text-sm text-text space-y-1">
+            {(compliance.pendingActivation || []).slice(0, compact ? 3 : 6).map((code) => (
+              <li key={code}>{requirementTitle(code, requirements)}</li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   )
 }
-

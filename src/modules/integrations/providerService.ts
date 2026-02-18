@@ -5,9 +5,11 @@
 
 import { apiClient } from '@/core/api/client'
 import type {
+    CompliancePolicyRecord,
     CreateProviderDocumentRequest,
     CreateProviderRelationshipRequest,
     CreateSwapProviderRequest,
+    ProviderCompliancePolicy,
     ProviderComplianceStatus,
     ProviderDocument,
     ProviderRequirementDefinition,
@@ -16,9 +18,10 @@ import type {
     ReviewProviderDocumentRequest,
     ProviderSettlementSummary,
     SwapProvider,
+    UpdateComplianceProfileRequest,
+    UploadProviderDocumentRequest,
     UpdateSwapProviderRequest,
 } from '@/core/api/types'
-import { evaluateProviderCompliance, getFallbackProviderRequirements } from './providerCompliance'
 
 export type ProviderListFilters = {
     region?: string
@@ -120,16 +123,32 @@ export const providerService = {
         return apiClient.get<ProviderDocument[]>(`/provider-documents${queryString ? `?${queryString}` : ''}`)
     },
 
-    async uploadDocument(data: CreateProviderDocumentRequest & { providerId?: string; relationshipId?: string }): Promise<ProviderDocument> {
+    async uploadDocument(data: UploadProviderDocumentRequest): Promise<ProviderDocument> {
+        const formData = new FormData()
+        formData.append('file', data.file)
+        formData.append('type', data.type)
+        formData.append('name', data.name)
+        if (data.providerId) formData.append('providerId', data.providerId)
+        if (data.relationshipId) formData.append('relationshipId', data.relationshipId)
+        if (data.requirementCode) formData.append('requirementCode', data.requirementCode)
+        if (data.category) formData.append('category', data.category)
+        if (data.issuer) formData.append('issuer', data.issuer)
+        if (data.documentNumber) formData.append('documentNumber', data.documentNumber)
+        if (data.issueDate) formData.append('issueDate', data.issueDate)
+        if (data.expiryDate) formData.append('expiryDate', data.expiryDate)
+        if (data.version) formData.append('version', data.version)
+        if (data.coveredModels?.length) formData.append('coveredModels', data.coveredModels.join(','))
+        if (data.coveredSites?.length) formData.append('coveredSites', data.coveredSites.join(','))
+        if (data.metadata) formData.append('metadata', JSON.stringify(data.metadata))
+        return apiClient.post<ProviderDocument>('/provider-documents/upload', formData)
+    },
+
+    async uploadDocumentLegacy(data: CreateProviderDocumentRequest & { providerId?: string; relationshipId?: string }): Promise<ProviderDocument> {
         return apiClient.post<ProviderDocument>('/provider-documents', data)
     },
 
     async reviewDocument(id: string, data: ReviewProviderDocumentRequest): Promise<ProviderDocument> {
-        try {
-            return await apiClient.patch<ProviderDocument>(`/provider-documents/${id}`, data)
-        } catch {
-            return apiClient.post<ProviderDocument>(`/provider-documents/${id}/review`, data)
-        }
+        return apiClient.patch<ProviderDocument>(`/provider-documents/${id}`, data)
     },
 
     async deleteDocument(id: string): Promise<void> {
@@ -140,31 +159,22 @@ export const providerService = {
         const params = new URLSearchParams()
         appendQueryValue(params, 'appliesTo', filters?.appliesTo)
         const queryString = params.toString()
-        try {
-            return await apiClient.get<ProviderRequirementDefinition[]>(
-                `/provider-requirements${queryString ? `?${queryString}` : ''}`,
-            )
-        } catch {
-            return getFallbackProviderRequirements(filters?.appliesTo || 'PROVIDER')
-        }
+        return apiClient.get<ProviderRequirementDefinition[]>(
+            `/provider-requirements${queryString ? `?${queryString}` : ''}`,
+        )
     },
 
     async getComplianceStatus(providerId: string): Promise<ProviderComplianceStatus> {
-        try {
-            return await apiClient.get<ProviderComplianceStatus>(`/providers/${providerId}/compliance-status`)
-        } catch {
-            const [provider, documents, requirements] = await Promise.all([
-                this.getById(providerId).catch(() => null),
-                this.listDocuments({ providerId }).catch(() => []),
-                this.getRequirementCatalog({ appliesTo: 'PROVIDER' }),
-            ])
-            return evaluateProviderCompliance({
-                providerId,
-                provider,
-                documents,
-                requirements,
-            })
+        return apiClient.get<ProviderComplianceStatus>(`/providers/${providerId}/compliance-status`)
+    },
+
+    async getComplianceStatuses(providerIds: string[]): Promise<ProviderComplianceStatus[]> {
+        const params = new URLSearchParams()
+        if (providerIds.length > 0) {
+            params.set('providerIds', providerIds.join(','))
         }
+        const queryString = params.toString()
+        return apiClient.get<ProviderComplianceStatus[]>(`/providers/compliance-statuses${queryString ? `?${queryString}` : ''}`)
     },
 
     async getRelationships(filters?: RelationshipFilters): Promise<ProviderRelationship[]> {
@@ -195,6 +205,37 @@ export const providerService = {
 
     async terminateRelationship(id: string, reason?: string): Promise<ProviderRelationship> {
         return apiClient.post<ProviderRelationship>(`/provider-relationships/${id}/terminate`, reason ? { reason } : {})
+    },
+
+    async getRelationshipComplianceStatus(relationshipId: string): Promise<ProviderComplianceStatus> {
+        return apiClient.get<ProviderComplianceStatus>(`/provider-relationships/${relationshipId}/compliance-status`)
+    },
+
+    async getRelationshipComplianceStatuses(relationshipIds: string[]): Promise<ProviderComplianceStatus[]> {
+        const params = new URLSearchParams()
+        if (relationshipIds.length > 0) {
+            params.set('relationshipIds', relationshipIds.join(','))
+        }
+        const queryString = params.toString()
+        return apiClient.get<ProviderComplianceStatus[]>(
+            `/provider-relationships/compliance-statuses${queryString ? `?${queryString}` : ''}`,
+        )
+    },
+
+    async updateProviderComplianceProfile(id: string, data: UpdateComplianceProfileRequest): Promise<SwapProvider> {
+        return apiClient.patch<SwapProvider>(`/providers/${id}/compliance-profile`, data)
+    },
+
+    async updateRelationshipComplianceProfile(id: string, data: UpdateComplianceProfileRequest): Promise<ProviderRelationship> {
+        return apiClient.patch<ProviderRelationship>(`/provider-relationships/${id}/compliance-profile`, data)
+    },
+
+    async getCompliancePolicy(): Promise<CompliancePolicyRecord> {
+        return apiClient.get<CompliancePolicyRecord>('/compliance-policies/provider')
+    },
+
+    async updateCompliancePolicy(data: Partial<ProviderCompliancePolicy>): Promise<CompliancePolicyRecord> {
+        return apiClient.patch<CompliancePolicyRecord>('/compliance-policies/provider', data)
     },
 
     async getSettlementSummary(filters?: SettlementFilters): Promise<ProviderSettlementSummary> {

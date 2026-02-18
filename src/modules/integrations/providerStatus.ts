@@ -19,9 +19,6 @@ export type NormalizedRelationshipStatus =
 
 export function normalizeProviderStatus(status?: string): NormalizedProviderStatus {
   const normalized = (status ?? '').toUpperCase().trim()
-  if (normalized === 'ACTIVE') return 'APPROVED'
-  if (normalized === 'PENDING') return 'PENDING_REVIEW'
-  if (normalized === 'INACTIVE') return 'SUSPENDED'
   if (normalized === 'REJECTED') return 'REJECTED'
   if (normalized === 'SUSPENDED') return 'SUSPENDED'
   if (normalized === 'APPROVED') return 'APPROVED'
@@ -48,4 +45,3 @@ export function humanizeProviderStatus(status: string): string {
   if (status === 'UNKNOWN') return 'Unknown'
   return status.replace(/_/g, ' ')
 }
-

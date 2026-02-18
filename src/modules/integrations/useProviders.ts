@@ -7,11 +7,13 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { providerService } from './providerService'
 import { queryKeys } from '@/data/queryKeys'
 import type {
-    CreateProviderDocumentRequest,
+    ProviderCompliancePolicy,
     CreateProviderRelationshipRequest,
     CreateSwapProviderRequest,
     ProviderDocumentStatus,
     ProviderRequirementScope,
+    UpdateComplianceProfileRequest,
+    UploadProviderDocumentRequest,
     UpdateSwapProviderRequest,
 } from '@/core/api/types'
 import type { ProviderListFilters } from './providerService'
@@ -66,6 +68,14 @@ export function useProviderComplianceStatus(providerId: string, options?: QueryO
     })
 }
 
+export function useProviderComplianceStatuses(providerIds: string[], options?: QueryOptions) {
+    return useQuery({
+        queryKey: queryKeys.providers.complianceStatuses(providerIds),
+        queryFn: () => providerService.getComplianceStatuses(providerIds),
+        enabled: (options?.enabled ?? true) && providerIds.length > 0,
+    })
+}
+
 export function useProviderRelationships(
     filters?: { ownerOrgId?: string; providerId?: string; status?: string; my?: boolean },
     options?: QueryOptions
@@ -74,6 +84,22 @@ export function useProviderRelationships(
         queryKey: queryKeys.providers.relationships(filters),
         queryFn: () => providerService.getRelationships(filters),
         enabled: options?.enabled ?? true,
+    })
+}
+
+export function useRelationshipComplianceStatus(relationshipId: string, options?: QueryOptions) {
+    return useQuery({
+        queryKey: queryKeys.providers.relationshipCompliance(relationshipId),
+        queryFn: () => providerService.getRelationshipComplianceStatus(relationshipId),
+        enabled: (options?.enabled ?? true) && !!relationshipId,
+    })
+}
+
+export function useRelationshipComplianceStatuses(relationshipIds: string[], options?: QueryOptions) {
+    return useQuery({
+        queryKey: queryKeys.providers.relationshipComplianceStatuses(relationshipIds),
+        queryFn: () => providerService.getRelationshipComplianceStatuses(relationshipIds),
+        enabled: (options?.enabled ?? true) && relationshipIds.length > 0,
     })
 }
 
@@ -152,13 +178,62 @@ export function useSuspendProvider() {
 export function useUploadProviderDocument() {
     const queryClient = useQueryClient()
     return useMutation({
-        mutationFn: (data: CreateProviderDocumentRequest & { providerId?: string; relationshipId?: string }) =>
+        mutationFn: (data: UploadProviderDocumentRequest) =>
             providerService.uploadDocument(data),
         onSuccess: (result) => {
             queryClient.invalidateQueries({ queryKey: queryKeys.providers.documents() })
             if (result.providerId) {
                 queryClient.invalidateQueries({ queryKey: queryKeys.providers.compliance(result.providerId) })
             }
+            if (result.relationshipId) {
+                queryClient.invalidateQueries({ queryKey: queryKeys.providers.relationshipCompliance(result.relationshipId) })
+            }
+            queryClient.invalidateQueries({ queryKey: queryKeys.providers.relationships() })
+        },
+    })
+}
+
+export function useUpdateProviderComplianceProfile() {
+    const queryClient = useQueryClient()
+    return useMutation({
+        mutationFn: ({ id, data }: { id: string; data: UpdateComplianceProfileRequest }) =>
+            providerService.updateProviderComplianceProfile(id, data),
+        onSuccess: (_, variables) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.providers.detail(variables.id) })
+            queryClient.invalidateQueries({ queryKey: queryKeys.providers.compliance(variables.id) })
+            queryClient.invalidateQueries({ queryKey: ['providers', 'compliance-statuses'] })
+        },
+    })
+}
+
+export function useUpdateRelationshipComplianceProfile() {
+    const queryClient = useQueryClient()
+    return useMutation({
+        mutationFn: ({ id, data }: { id: string; data: UpdateComplianceProfileRequest }) =>
+            providerService.updateRelationshipComplianceProfile(id, data),
+        onSuccess: (_, variables) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.providers.relationships() })
+            queryClient.invalidateQueries({ queryKey: queryKeys.providers.relationshipCompliance(variables.id) })
+        },
+    })
+}
+
+export function useProviderCompliancePolicy(options?: QueryOptions) {
+    return useQuery({
+        queryKey: queryKeys.providers.compliancePolicy,
+        queryFn: () => providerService.getCompliancePolicy(),
+        enabled: options?.enabled ?? true,
+    })
+}
+
+export function useUpdateProviderCompliancePolicy() {
+    const queryClient = useQueryClient()
+    return useMutation({
+        mutationFn: (data: Partial<ProviderCompliancePolicy>) => providerService.updateCompliancePolicy(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.providers.compliancePolicy })
+            queryClient.invalidateQueries({ queryKey: ['providers', 'compliance-statuses'] })
+            queryClient.invalidateQueries({ queryKey: ['providers', 'relationships', 'compliance-statuses'] })
         },
     })
 }

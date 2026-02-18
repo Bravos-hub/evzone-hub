@@ -188,10 +188,12 @@ export type ProviderComplianceCategory =
 
 export type ProviderComplianceGate = 'KYB' | 'SAFETY' | 'OPERATIONS' | 'INTEGRATION'
 export type ProviderRequirementScope = 'PROVIDER' | 'STATION_OWNER'
+export type ProviderComplianceMarket = 'GLOBAL' | 'CN' | 'HK' | 'FI'
+export type ProviderRequirementCoverageMode = 'ANY' | 'PER_MODEL'
 
 export interface ProviderRequirementCondition {
   key: string
-  operator: 'eq' | 'gte' | 'lte' | 'exists'
+  operator: 'eq' | 'gte' | 'lte' | 'exists' | 'includes'
   value?: string | number | boolean
   description?: string
 }
@@ -206,6 +208,11 @@ export interface ProviderRequirementDefinition {
   acceptedDocTypes: ProviderDocumentType[]
   conditions?: ProviderRequirementCondition[]
   appliesTo: ProviderRequirementScope
+  markets?: ProviderComplianceMarket[]
+  effectiveFrom?: string
+  coverageMode?: ProviderRequirementCoverageMode
+  policyDependency?: string
+  roadmapAllowedBeforeEffective?: boolean
 }
 
 export interface ProviderGateStatus {
@@ -220,7 +227,11 @@ export interface ProviderGateStatus {
 }
 
 export interface ProviderComplianceStatus {
+  scope?: 'PROVIDER' | 'RELATIONSHIP'
+  targetId?: string
   providerId: string
+  relationshipId?: string
+  ownerOrgId?: string
   evaluatedAt: string
   gateStatuses: ProviderGateStatus[]
   missingCritical: string[]
@@ -229,6 +240,8 @@ export interface ProviderComplianceStatus {
   expiredCritical: ProviderDocument[]
   overallState: 'READY' | 'WARN' | 'BLOCKED'
   blockerReasonCodes?: string[]
+  policyWarnings?: string[]
+  pendingActivation?: string[]
 }
 
 export interface ProviderDocument {
@@ -241,6 +254,7 @@ export interface ProviderDocument {
   category?: ProviderComplianceCategory
   name: string
   fileUrl: string
+  cloudinaryPublicId?: string
   issuer?: string
   documentNumber?: string
   issueDate?: string
@@ -272,6 +286,8 @@ export interface ProviderRelationship {
   providerRespondedAt?: string
   adminApprovedAt?: string
   notes?: string
+  complianceMarkets?: string[]
+  complianceProfile?: Record<string, unknown>
   documents?: ProviderDocument[]
 }
 
@@ -326,11 +342,13 @@ export interface SwapProvider {
   settlementTerms?: string
   stationCount: number
   website?: string
-  status: SwapProviderStatus | 'Active' | 'Pending' | 'Inactive'
+  status: SwapProviderStatus
   statusReason?: string
   approvedAt?: string
   suspendedAt?: string
   requiredDocuments?: ProviderDocumentType[]
+  complianceMarkets?: string[]
+  complianceProfile?: Record<string, unknown>
   documents?: ProviderDocument[]
   partnerSince: string
 }
@@ -352,6 +370,8 @@ export interface CreateSwapProviderRequest {
   feeModel?: string
   settlementTerms?: string
   website?: string
+  complianceMarkets?: string[]
+  complianceProfile?: Record<string, unknown>
 }
 
 export interface UpdateSwapProviderRequest extends Partial<CreateSwapProviderRequest> {
@@ -374,6 +394,24 @@ export interface CreateProviderDocumentRequest {
   metadata?: Record<string, unknown>
 }
 
+export interface UploadProviderDocumentRequest {
+  providerId?: string
+  relationshipId?: string
+  type: ProviderDocumentType
+  name: string
+  requirementCode?: string
+  category?: ProviderComplianceCategory
+  issuer?: string
+  documentNumber?: string
+  issueDate?: string
+  expiryDate?: string
+  coveredModels?: string[]
+  coveredSites?: string[]
+  version?: string
+  metadata?: Record<string, unknown>
+  file: File
+}
+
 export interface ReviewProviderDocumentRequest {
   status: ProviderDocumentStatus
   reviewedBy?: string
@@ -385,6 +423,35 @@ export interface CreateProviderRelationshipRequest {
   providerId: string
   ownerOrgId: string
   notes?: string
+  complianceMarkets?: string[]
+  complianceProfile?: Record<string, unknown>
+}
+
+export interface UpdateComplianceProfileRequest {
+  complianceMarkets?: string[]
+  complianceProfile?: Record<string, unknown>
+}
+
+export interface ProviderCompliancePolicy {
+  effectiveDateMode: 'WARN_BEFORE_ENFORCE' | 'ENFORCE_NOW'
+  roadmapAllowedBeforeEffective: boolean
+  markets: Array<'CN' | 'HK' | 'FI'>
+  hk: {
+    dg: {
+      requireConfig: boolean
+      thresholdKwh: number | null
+      class9aLabel?: string
+    }
+  }
+}
+
+export interface CompliancePolicyRecord {
+  id: string
+  code: string
+  data: ProviderCompliancePolicy
+  updatedBy?: string
+  createdAt: string
+  updatedAt: string
 }
 
 export interface CreateStationRequest {
