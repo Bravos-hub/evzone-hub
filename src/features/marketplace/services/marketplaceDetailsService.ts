@@ -1,5 +1,5 @@
 import { apiClient } from '@/core/api/client'
-import type { Organization, Site, User } from '@/core/api/types'
+import type { Organization, ProviderDocumentStatus, Site, SwapProvider, User } from '@/core/api/types'
 import type {
   MarketplaceDetailsResult,
   MarketplaceDocument,
@@ -24,6 +24,15 @@ type LegacySiteDocumentApi = {
   fileName: string
   fileUrl: string
   uploadedAt?: string
+}
+
+type ProviderDocumentApi = {
+  id: string
+  name: string
+  type?: string
+  fileUrl: string
+  uploadedAt?: string
+  status?: ProviderDocumentStatus
 }
 
 const DOCUMENT_STATUS_SET = new Set<MarketplaceDocumentStatus>([
@@ -63,6 +72,26 @@ function mapLegacySiteDocument(doc: LegacySiteDocumentApi): MarketplaceDocument 
     uploadedAt: doc.uploadedAt,
     status: 'LEGACY',
     source: 'LEGACY',
+  }
+}
+
+function mapProviderDocumentStatus(status?: ProviderDocumentStatus): MarketplaceDocumentStatus {
+  const normalized = status?.toUpperCase()
+  if (normalized === 'APPROVED') return 'VERIFIED'
+  if (normalized === 'REJECTED') return 'REJECTED'
+  if (normalized === 'PENDING') return 'PENDING'
+  return 'PENDING'
+}
+
+function mapProviderDocument(doc: ProviderDocumentApi): MarketplaceDocument {
+  return {
+    id: doc.id,
+    fileName: doc.name || 'Untitled document',
+    fileUrl: doc.fileUrl,
+    category: doc.type,
+    uploadedAt: doc.uploadedAt,
+    status: mapProviderDocumentStatus(doc.status),
+    source: 'GENERIC',
   }
 }
 
@@ -106,6 +135,11 @@ async function fetchLegacySiteDocuments(siteId: string): Promise<MarketplaceDocu
   }
 }
 
+async function fetchProviderDocuments(providerId: string): Promise<MarketplaceDocument[]> {
+  const docs = await apiClient.get<ProviderDocumentApi[]>(`/provider-documents?providerId=${encodeURIComponent(providerId)}`)
+  return docs.map(mapProviderDocument)
+}
+
 async function fetchTechnicianAvailability(userId: string): Promise<MarketplaceTechnicianAvailability | null> {
   try {
     const rows = await apiClient.get<MarketplaceTechnicianAvailability[]>('/technicians/availability')
@@ -142,6 +176,29 @@ export const marketplaceDetailsService = {
         contact: {
           email: site.owner?.email || undefined,
           phone: site.owner?.phone || undefined,
+        },
+        availability: null,
+      }
+    }
+
+    if (listing.kind === 'Providers') {
+      const provider = await apiClient.get<SwapProvider & Record<string, unknown>>(`/providers/${listing.id}`)
+      const [documents, organization] = await Promise.all([
+        fetchProviderDocuments(listing.id),
+        fetchOrganization(provider.organizationId),
+      ])
+
+      return {
+        kind: listing.kind,
+        listing,
+        entity: provider,
+        organization,
+        documents,
+        rating: resolveRating(provider),
+        status: typeof provider.status === 'string' ? provider.status : null,
+        contact: {
+          email: provider.contactEmail || undefined,
+          phone: provider.contactPhone || undefined,
         },
         availability: null,
       }

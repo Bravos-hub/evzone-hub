@@ -113,6 +113,24 @@ function useOtherDetails(data: MarketplaceDetailsResult | undefined) {
       'documentsVerifiedBy',
       'ownerCapability',
       'subscribedPackage',
+      'standard',
+      'batteriesSupported',
+      'stationCount',
+      'regions',
+      'countries',
+      'supportedStationTypes',
+      'protocolCapabilities',
+      'feeModel',
+      'settlementTerms',
+      'contactEmail',
+      'contactPhone',
+      'statusReason',
+      'partnerSince',
+      'website',
+      'legalName',
+      'registrationNumber',
+      'taxId',
+      'requiredDocuments',
       'postalCode',
       'avatarUrl',
       '_count',
@@ -249,6 +267,7 @@ export function MarketplaceDetailsDrawer({
   const entity = (data?.entity || {}) as Record<string, unknown>
   const leaseDetails = ((entity.leaseDetails as Record<string, unknown>) || {}) as Record<string, unknown>
   const hasSiteKind = listing.kind === 'Sites'
+  const hasProviderKind = listing.kind === 'Providers'
   const contactEmail = data?.contact.email
   const contactPhone = data?.contact.phone
   const ratingLabel = data?.rating == null ? 'Not provided' : String(data.rating)
@@ -376,6 +395,63 @@ export function MarketplaceDetailsDrawer({
                         <div className="text-sm text-muted">Phone: {formatValue((entity.owner as any)?.phone)}</div>
                         <div className="text-sm text-muted">Region: {formatValue((entity.owner as any)?.region)}</div>
                       </div>
+                    </>
+                  ) : hasProviderKind ? (
+                    <>
+                      <div className="grid grid-cols-2 gap-3 text-sm">
+                        <div className="rounded-lg border border-border p-3">
+                          <div className="text-xs text-muted">Standard</div>
+                          <div className="font-semibold">{formatValue(entity.standard)}</div>
+                        </div>
+                        <div className="rounded-lg border border-border p-3">
+                          <div className="text-xs text-muted">Provider Status</div>
+                          <div className="font-semibold">{formatValue(data.status)}</div>
+                        </div>
+                        <div className="rounded-lg border border-border p-3">
+                          <div className="text-xs text-muted">Stations</div>
+                          <div className="font-semibold">{formatValue(entity.stationCount)}</div>
+                        </div>
+                        <div className="rounded-lg border border-border p-3">
+                          <div className="text-xs text-muted">Partner Since</div>
+                          <div className="font-semibold">{toDateLabel(entity.partnerSince)}</div>
+                        </div>
+                        <div className="rounded-lg border border-border p-3 col-span-2">
+                          <div className="text-xs text-muted">Batteries Supported</div>
+                          <div className="font-semibold">{formatValue(entity.batteriesSupported)}</div>
+                        </div>
+                        <div className="rounded-lg border border-border p-3 col-span-2">
+                          <div className="text-xs text-muted">Regions</div>
+                          <div className="font-semibold">
+                            {formatValue(entity.regions || entity.region)}
+                          </div>
+                        </div>
+                        <div className="rounded-lg border border-border p-3 col-span-2">
+                          <div className="text-xs text-muted">Countries</div>
+                          <div className="font-semibold">{formatValue(entity.countries)}</div>
+                        </div>
+                        <div className="rounded-lg border border-border p-3">
+                          <div className="text-xs text-muted">Fee Model</div>
+                          <div className="font-semibold">{formatValue(entity.feeModel)}</div>
+                        </div>
+                        <div className="rounded-lg border border-border p-3">
+                          <div className="text-xs text-muted">Settlement Terms</div>
+                          <div className="font-semibold">{formatValue(entity.settlementTerms)}</div>
+                        </div>
+                      </div>
+
+                      {typeof entity.website === 'string' && entity.website.trim() && (
+                        <div className="rounded-lg border border-border p-4">
+                          <div className="text-sm font-semibold mb-1">Website</div>
+                          <a
+                            href={entity.website}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-sm text-accent hover:underline break-all"
+                          >
+                            {entity.website}
+                          </a>
+                        </div>
+                      )}
                     </>
                   ) : (
                     <>

@@ -5,6 +5,10 @@ import { PATHS } from '@/app/router/paths'
 import { getErrorMessage } from '@/core/api/errors'
 import { useCreateStation, useUpsertSwapBays, useUpsertStationBatteries } from '@/modules/stations/hooks/useStations'
 import { useProviderRelationships, useProviders, useRequestProviderRelationship } from '@/modules/integrations/useProviders'
+import {
+  normalizeProviderStatus,
+  normalizeRelationshipStatus,
+} from '@/modules/integrations/providerStatus'
 import { auditLogger } from '@/core/utils/auditLogger'
 import { useAuthStore } from '@/core/auth/authStore'
 import { useMe } from '@/modules/auth/hooks/useAuth'
@@ -61,36 +65,9 @@ const buildBays = (count: number, existing: SwapBay[]) => {
   }))
 }
 
-type NormalizedProviderStatus = 'DRAFT' | 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED' | 'SUSPENDED'
-type NormalizedRelationshipStatus = 'REQUESTED' | 'PROVIDER_ACCEPTED' | 'DOCS_PENDING' | 'ADMIN_APPROVED' | 'ACTIVE' | 'SUSPENDED' | 'TERMINATED' | 'NONE'
-
-function normalizeProviderStatus(status?: string): NormalizedProviderStatus {
-  const normalized = (status ?? '').toUpperCase()
-  if (normalized === 'ACTIVE') return 'APPROVED'
-  if (normalized === 'PENDING') return 'PENDING_REVIEW'
-  if (normalized === 'INACTIVE') return 'SUSPENDED'
-  if (normalized === 'REJECTED') return 'REJECTED'
-  if (normalized === 'SUSPENDED') return 'SUSPENDED'
-  if (normalized === 'APPROVED') return 'APPROVED'
-  if (normalized === 'PENDING_REVIEW') return 'PENDING_REVIEW'
-  return 'DRAFT'
-}
-
-function normalizeRelationshipStatus(status?: string): NormalizedRelationshipStatus {
-  const normalized = (status ?? '').toUpperCase()
-  if (!normalized) return 'NONE'
-  if (normalized === 'REQUESTED') return 'REQUESTED'
-  if (normalized === 'PROVIDER_ACCEPTED') return 'PROVIDER_ACCEPTED'
-  if (normalized === 'DOCS_PENDING') return 'DOCS_PENDING'
-  if (normalized === 'ADMIN_APPROVED') return 'ADMIN_APPROVED'
-  if (normalized === 'ACTIVE') return 'ACTIVE'
-  if (normalized === 'SUSPENDED') return 'SUSPENDED'
-  if (normalized === 'TERMINATED') return 'TERMINATED'
-  return 'NONE'
-}
-
 function providerUnavailableReason(provider: SwapProvider, relationship?: ProviderRelationship): string {
   const providerStatus = normalizeProviderStatus(provider.status)
+  if (providerStatus === 'UNKNOWN') return 'Provider status is unknown. Contact support.'
   if (providerStatus !== 'APPROVED') return 'Provider is not approved by platform admin.'
 
   const relationshipStatus = normalizeRelationshipStatus(relationship?.status)
@@ -109,6 +86,8 @@ function providerUnavailableReason(provider: SwapProvider, relationship?: Provid
       return 'Relationship is suspended by admin.'
     case 'TERMINATED':
       return 'Relationship was terminated. You can submit a new request.'
+    case 'UNKNOWN':
+      return 'Relationship state is unknown. Contact support.'
     default:
       return 'No active provider contract for your organization.'
   }

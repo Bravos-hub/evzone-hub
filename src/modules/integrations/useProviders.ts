@@ -14,10 +14,15 @@ import type {
 } from '@/core/api/types'
 import type { ProviderListFilters } from './providerService'
 
-export function useProviders(filters?: ProviderListFilters) {
+type QueryOptions = {
+    enabled?: boolean
+}
+
+export function useProviders(filters?: ProviderListFilters, options?: QueryOptions) {
     return useQuery({
         queryKey: queryKeys.providers.all(filters),
         queryFn: () => providerService.getAll(filters),
+        enabled: options?.enabled ?? true,
     })
 }
 
@@ -44,10 +49,14 @@ export function useProviderDocuments(filters?: { providerId?: string; relationsh
     })
 }
 
-export function useProviderRelationships(filters?: { ownerOrgId?: string; providerId?: string; status?: string; my?: boolean }) {
+export function useProviderRelationships(
+    filters?: { ownerOrgId?: string; providerId?: string; status?: string; my?: boolean },
+    options?: QueryOptions
+) {
     return useQuery({
         queryKey: queryKeys.providers.relationships(filters),
         queryFn: () => providerService.getRelationships(filters),
+        enabled: options?.enabled ?? true,
     })
 }
 

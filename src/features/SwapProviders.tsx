@@ -7,6 +7,10 @@ import { getPermissionsForFeature } from '@/constants/permissions'
 import { logAuditEvent } from '@/core/utils/auditLogger'
 import type { ProviderDocumentType, ProviderStandard } from '@/core/api/types'
 import {
+  normalizeProviderStatus,
+  type NormalizedProviderStatus,
+} from '@/modules/integrations/providerStatus'
+import {
   useApproveProvider,
   useApproveProviderRelationship,
   useCreateProvider,
@@ -34,19 +38,12 @@ const DOC_TYPES: ProviderDocumentType[] = [
 
 type TabKey = 'directory' | 'queue' | 'compliance' | 'contracts'
 
-function normalizeProviderStatus(value?: string): string {
-  const normalized = (value ?? '').toUpperCase()
-  if (normalized === 'ACTIVE') return 'APPROVED'
-  if (normalized === 'PENDING') return 'PENDING_REVIEW'
-  if (normalized === 'INACTIVE') return 'SUSPENDED'
-  return normalized || 'DRAFT'
-}
-
-function statusColor(status: string): string {
-  if (status === 'APPROVED' || status === 'ACTIVE') return 'bg-green-500/10 text-green-500'
-  if (status === 'PENDING_REVIEW' || status === 'PENDING') return 'bg-yellow-500/10 text-yellow-500'
+function statusColor(status: NormalizedProviderStatus): string {
+  if (status === 'APPROVED') return 'bg-green-500/10 text-green-500'
+  if (status === 'PENDING_REVIEW') return 'bg-yellow-500/10 text-yellow-500'
   if (status === 'SUSPENDED') return 'bg-red-500/10 text-red-500'
   if (status === 'REJECTED') return 'bg-rose-500/10 text-rose-500'
+  if (status === 'UNKNOWN') return 'bg-slate-500/10 text-slate-500'
   return 'bg-blue-500/10 text-blue-500'
 }
 

@@ -1,6 +1,6 @@
-import type { Organization, Site, User } from '@/core/api/types'
+import type { Organization, Site, SwapProvider, User } from '@/core/api/types'
 
-export type MarketplaceEntityKind = 'Sites' | 'Operators' | 'Technicians'
+export type MarketplaceEntityKind = 'Sites' | 'Operators' | 'Technicians' | 'Providers'
 
 export type MarketplaceDocumentStatus =
   | 'VERIFIED'
@@ -39,7 +39,7 @@ export type MarketplaceTechnicianAvailability = {
 export type MarketplaceDetailsResult = {
   kind: MarketplaceEntityKind
   listing: MarketplaceSummaryListing
-  entity: (Site & Record<string, unknown>) | (User & Record<string, unknown>)
+  entity: (Site & Record<string, unknown>) | (User & Record<string, unknown>) | (SwapProvider & Record<string, unknown>)
   organization: Organization | null
   documents: MarketplaceDocument[]
   rating: number | null
