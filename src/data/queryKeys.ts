@@ -84,7 +84,9 @@ export const queryKeys = {
   // Swap Providers
   providers: {
     all: (filters?: Record<string, unknown>) => ['providers', filters] as const,
+    marketplaceAll: (filters?: Record<string, unknown>) => ['providers', 'marketplace', filters] as const,
     detail: (id: string) => ['providers', id] as const,
+    marketplaceDetail: (id: string) => ['providers', 'marketplace', id] as const,
     documents: (filters?: Record<string, unknown>) => ['providers', 'documents', filters] as const,
     requirements: (filters?: Record<string, unknown>) => ['providers', 'requirements', filters] as const,
     compliance: (providerId: string) => ['providers', providerId, 'compliance'] as const,
@@ -107,6 +109,7 @@ export const queryKeys = {
   // Marketplace
   marketplace: {
     detail: (kind?: string, id?: string) => ['marketplace', 'details', kind ?? 'none', id ?? 'none'] as const,
+    recentContacts: (limit?: number) => ['marketplace', 'recent-contacts', limit ?? 12] as const,
   },
 } as const
 

@@ -182,7 +182,7 @@ export const marketplaceDetailsService = {
     }
 
     if (listing.kind === 'Providers') {
-      const provider = await apiClient.get<SwapProvider & Record<string, unknown>>(`/providers/${listing.id}`)
+      const provider = await apiClient.get<SwapProvider & Record<string, unknown>>(`/providers/marketplace/${listing.id}`)
       const [documents, organization] = await Promise.all([
         fetchProviderDocuments(listing.id),
         fetchOrganization(provider.organizationId),

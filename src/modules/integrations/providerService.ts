@@ -83,11 +83,24 @@ export const providerService = {
         return apiClient.get<SwapProvider[]>(`/providers${queryString ? `?${queryString}` : ''}`)
     },
 
+    async getMarketplaceAll(query?: ProviderListFilters): Promise<SwapProvider[]> {
+        const params = new URLSearchParams()
+        appendQueryValue(params, 'region', query?.region)
+        appendQueryValue(params, 'standard', query?.standard)
+        appendQueryValue(params, 'status', query?.status)
+        const queryString = params.toString()
+        return apiClient.get<SwapProvider[]>(`/providers/marketplace${queryString ? `?${queryString}` : ''}`)
+    },
+
     /**
      * Get provider by ID
      */
     async getById(id: string): Promise<SwapProvider> {
         return apiClient.get<SwapProvider>(`/providers/${id}`)
+    },
+
+    async getMarketplaceById(id: string): Promise<SwapProvider> {
+        return apiClient.get<SwapProvider>(`/providers/marketplace/${id}`)
     },
 
     async create(data: CreateSwapProviderRequest): Promise<SwapProvider> {

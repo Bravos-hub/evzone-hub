@@ -15,7 +15,9 @@ type MarketplaceDetailsDrawerProps = {
   open: boolean
   canApplyToSite: boolean
   onClose: () => void
-  onApplySite: (siteId: string) => void
+  onApplySite: (siteId: string, listing: MarketplaceSummaryListing) => void
+  onEmailContact: (listing: MarketplaceSummaryListing) => void
+  onCallContact: (listing: MarketplaceSummaryListing) => void
 }
 
 const TABS: Array<{ id: DetailsTab; label: string }> = [
@@ -237,6 +239,8 @@ export function MarketplaceDetailsDrawer({
   canApplyToSite,
   onClose,
   onApplySite,
+  onEmailContact,
+  onCallContact,
 }: MarketplaceDetailsDrawerProps) {
   const [activeTab, setActiveTab] = useState<DetailsTab>('overview')
   const [contactNotice, setContactNotice] = useState<string | null>(null)
@@ -546,12 +550,18 @@ export function MarketplaceDetailsDrawer({
                     <a
                       href={contactEmail ? `mailto:${contactEmail}` : undefined}
                       className={`btn secondary ${contactEmail ? '' : 'opacity-50 pointer-events-none'}`}
+                      onClick={() => {
+                        if (contactEmail) onEmailContact(listing)
+                      }}
                     >
                       Email
                     </a>
                     <a
                       href={contactPhone ? `tel:${contactPhone}` : undefined}
                       className={`btn secondary ${contactPhone ? '' : 'opacity-50 pointer-events-none'}`}
+                      onClick={() => {
+                        if (contactPhone) onCallContact(listing)
+                      }}
                     >
                       Call
                     </a>
@@ -601,7 +611,7 @@ export function MarketplaceDetailsDrawer({
 
         <footer className="border-t border-border px-4 py-3 flex justify-end gap-2">
           {hasSiteKind && canApplyToSite && (
-            <button className="btn primary" onClick={() => onApplySite(listing.id)}>
+            <button className="btn primary" onClick={() => onApplySite(listing.id, listing)}>
               Apply for this Site
             </button>
           )}

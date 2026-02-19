@@ -30,10 +30,26 @@ export function useProviders(filters?: ProviderListFilters, options?: QueryOptio
     })
 }
 
+export function useMarketplaceProviders(filters?: ProviderListFilters, options?: QueryOptions) {
+    return useQuery({
+        queryKey: queryKeys.providers.marketplaceAll(filters),
+        queryFn: () => providerService.getMarketplaceAll(filters),
+        enabled: options?.enabled ?? true,
+    })
+}
+
 export function useProvider(id: string) {
     return useQuery({
         queryKey: queryKeys.providers.detail(id),
         queryFn: () => providerService.getById(id),
+        enabled: !!id,
+    })
+}
+
+export function useMarketplaceProvider(id: string) {
+    return useQuery({
+        queryKey: queryKeys.providers.marketplaceDetail(id),
+        queryFn: () => providerService.getMarketplaceById(id),
         enabled: !!id,
     })
 }

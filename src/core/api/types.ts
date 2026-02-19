@@ -291,6 +291,35 @@ export interface ProviderRelationship {
   documents?: ProviderDocument[]
 }
 
+export type MarketplaceContactEntityKind = 'SITE' | 'OPERATOR' | 'TECHNICIAN' | 'PROVIDER'
+export type MarketplaceContactEventType = 'EMAIL' | 'CALL' | 'APPLY_SITE' | 'REQUEST_PARTNERSHIP'
+
+export interface CreateMarketplaceContactEventRequest {
+  entityKind: MarketplaceContactEntityKind
+  entityId: string
+  eventType: MarketplaceContactEventType
+  entityName?: string
+  entityCity?: string
+  entityRegion?: string
+  metadata?: Record<string, unknown>
+}
+
+export interface MarketplaceContactEvent extends CreateMarketplaceContactEventRequest {
+  id: string
+  actorId: string
+  createdAt: string
+}
+
+export interface MarketplaceRecentContact {
+  entityKind: MarketplaceContactEntityKind
+  entityId: string
+  entityName?: string
+  entityCity?: string
+  entityRegion?: string
+  lastEventType: MarketplaceContactEventType
+  lastContactedAt: string
+}
+
 export interface ProviderSettlementSummary {
   currency: string
   period?: { start: string; end: string }
