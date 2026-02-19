@@ -69,10 +69,11 @@ export function useProviderDocuments(filters?: { providerId?: string; relationsh
     })
 }
 
-export function useProviderRequirements(filters?: { appliesTo?: ProviderRequirementScope }) {
+export function useProviderRequirements(filters?: { appliesTo?: ProviderRequirementScope }, options?: QueryOptions) {
     return useQuery({
         queryKey: queryKeys.providers.requirements(filters),
         queryFn: () => providerService.getRequirementCatalog(filters),
+        enabled: options?.enabled ?? true,
     })
 }
 

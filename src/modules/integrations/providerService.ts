@@ -4,6 +4,7 @@
  */
 
 import { apiClient } from '@/core/api/client'
+import { ApiException } from '@/core/api/errors'
 import type {
     CompliancePolicyRecord,
     CreateProviderDocumentRequest,
@@ -64,6 +65,20 @@ const appendQueryValue = (params: URLSearchParams, key: string, value?: string |
     params.append(key, String(value))
 }
 
+const isNotFoundError = (error: unknown): boolean =>
+    error instanceof ApiException && error.statusCode === 404
+
+const normalizeListPayload = <T>(payload: unknown): T[] => {
+    if (Array.isArray(payload)) return payload as T[]
+    if (!payload || typeof payload !== 'object') return []
+
+    const record = payload as Record<string, unknown>
+    if (Array.isArray(record.data)) return record.data as T[]
+    if (Array.isArray(record.items)) return record.items as T[]
+    if (Array.isArray(record.results)) return record.results as T[]
+    return []
+}
+
 export const providerService = {
     /**
      * Get all swapping providers
@@ -89,7 +104,21 @@ export const providerService = {
         appendQueryValue(params, 'standard', query?.standard)
         appendQueryValue(params, 'status', query?.status)
         const queryString = params.toString()
-        return apiClient.get<SwapProvider[]>(`/providers/marketplace${queryString ? `?${queryString}` : ''}`)
+        try {
+            const payload = await apiClient.get<unknown>(`/providers/marketplace${queryString ? `?${queryString}` : ''}`)
+            const rows = normalizeListPayload<SwapProvider>(payload)
+            if (rows.length > 0 || Array.isArray(payload)) return rows
+        } catch (error) {
+            if (!isNotFoundError(error)) throw error
+        }
+
+        try {
+            const fallbackPayload = await apiClient.get<unknown>(`/providers${queryString ? `?${queryString}` : ''}`)
+            return normalizeListPayload<SwapProvider>(fallbackPayload)
+        } catch (error) {
+            if (isNotFoundError(error)) return []
+            throw error
+        }
     },
 
     /**
@@ -100,7 +129,14 @@ export const providerService = {
     },
 
     async getMarketplaceById(id: string): Promise<SwapProvider> {
-        return apiClient.get<SwapProvider>(`/providers/marketplace/${id}`)
+        try {
+            return await apiClient.get<SwapProvider>(`/providers/marketplace/${id}`)
+        } catch (error) {
+            if (isNotFoundError(error)) {
+                return apiClient.get<SwapProvider>(`/providers/${id}`)
+            }
+            throw error
+        }
     },
 
     async create(data: CreateSwapProviderRequest): Promise<SwapProvider> {
@@ -172,9 +208,21 @@ export const providerService = {
         const params = new URLSearchParams()
         appendQueryValue(params, 'appliesTo', filters?.appliesTo)
         const queryString = params.toString()
-        return apiClient.get<ProviderRequirementDefinition[]>(
-            `/provider-requirements${queryString ? `?${queryString}` : ''}`,
-        )
+        try {
+            const payload = await apiClient.get<unknown>(`/provider-requirements${queryString ? `?${queryString}` : ''}`)
+            const rows = normalizeListPayload<ProviderRequirementDefinition>(payload)
+            if (rows.length > 0 || Array.isArray(payload)) return rows
+        } catch (error) {
+            if (!isNotFoundError(error)) throw error
+        }
+
+        try {
+            const fallbackPayload = await apiClient.get<unknown>(`/providers/requirements${queryString ? `?${queryString}` : ''}`)
+            return normalizeListPayload<ProviderRequirementDefinition>(fallbackPayload)
+        } catch (error) {
+            if (isNotFoundError(error)) return []
+            throw error
+        }
     },
 
     async getComplianceStatus(providerId: string): Promise<ProviderComplianceStatus> {
@@ -197,7 +245,21 @@ export const providerService = {
         appendQueryValue(params, 'status', filters?.status)
         appendQueryValue(params, 'my', filters?.my)
         const queryString = params.toString()
-        return apiClient.get<ProviderRelationship[]>(`/provider-relationships${queryString ? `?${queryString}` : ''}`)
+        try {
+            const payload = await apiClient.get<unknown>(`/provider-relationships${queryString ? `?${queryString}` : ''}`)
+            const rows = normalizeListPayload<ProviderRelationship>(payload)
+            if (rows.length > 0 || Array.isArray(payload)) return rows
+        } catch (error) {
+            if (!isNotFoundError(error)) throw error
+        }
+
+        try {
+            const fallbackPayload = await apiClient.get<unknown>(`/providers/relationships${queryString ? `?${queryString}` : ''}`)
+            return normalizeListPayload<ProviderRelationship>(fallbackPayload)
+        } catch (error) {
+            if (isNotFoundError(error)) return []
+            throw error
+        }
     },
 
     async requestRelationship(data: CreateProviderRelationshipRequest): Promise<ProviderRelationship> {

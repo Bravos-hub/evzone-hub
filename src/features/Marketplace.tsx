@@ -228,7 +228,11 @@ export function Marketplace() {
     error: relationshipsError,
     refetch: refetchRelationships,
   } = useProviderRelationships(ownerOrgId ? { ownerOrgId } : undefined, { enabled: shouldLoadRelationships })
-  const relationshipIds = useMemo(() => relationships.map((relationship) => relationship.id), [relationships])
+  const relationshipRows = useMemo<ProviderRelationship[]>(
+    () => (Array.isArray(relationships) ? relationships : []),
+    [relationships],
+  )
+  const relationshipIds = useMemo(() => relationshipRows.map((relationship) => relationship.id), [relationshipRows])
   const {
     data: relationshipComplianceStatuses = [],
     isLoading: relationshipComplianceLoading,
@@ -239,6 +243,22 @@ export function Marketplace() {
   const updateRelationshipComplianceProfileMutation = useUpdateRelationshipComplianceProfile()
   const { data: recentContacts = [], isLoading: loadingRecentContacts } = useMarketplaceRecentContacts(12)
   const trackMarketplaceContactMutation = useTrackMarketplaceContact()
+  const providerRows = useMemo<SwapProvider[]>(
+    () => (Array.isArray(providers) ? providers : []),
+    [providers],
+  )
+  const relationshipComplianceRows = useMemo(
+    () => (Array.isArray(relationshipComplianceStatuses) ? relationshipComplianceStatuses : []),
+    [relationshipComplianceStatuses],
+  )
+  const stationOwnerRequirementRows = useMemo(
+    () => (Array.isArray(stationOwnerRequirements) ? stationOwnerRequirements : []),
+    [stationOwnerRequirements],
+  )
+  const recentContactRows = useMemo<MarketplaceRecentContact[]>(
+    () => (Array.isArray(recentContacts) ? recentContacts : []),
+    [recentContacts],
+  )
 
   const [kind, setKind] = useState<ListingKind | 'All'>(() => parseListingKindParam(kindParam))
   const [region, setRegion] = useState<'ALL' | string>('ALL')
@@ -320,7 +340,7 @@ export function Marketplace() {
     const map = new Map<string, ProviderRelationship>()
     if (!shouldLoadRelationships) return map
 
-    ;(relationships ?? []).forEach((relationship) => {
+    relationshipRows.forEach((relationship) => {
       const existing = map.get(relationship.providerId)
       if (!existing) {
         map.set(relationship.providerId, relationship)
@@ -333,17 +353,17 @@ export function Marketplace() {
       }
     })
     return map
-  }, [relationships, shouldLoadRelationships])
+  }, [relationshipRows, shouldLoadRelationships])
 
   const relationshipComplianceById = useMemo(() => {
-    return relationshipComplianceStatuses.reduce<Map<string, (typeof relationshipComplianceStatuses)[number]>>((acc, status) => {
+    return relationshipComplianceRows.reduce<Map<string, (typeof relationshipComplianceRows)[number]>>((acc, status) => {
       if (status.targetId) acc.set(status.targetId, status)
       return acc
     }, new Map())
-  }, [relationshipComplianceStatuses])
+  }, [relationshipComplianceRows])
 
   const providerListings = useMemo<ProviderListing[]>(() => {
-    return (providers as SwapProvider[]).map((provider) => {
+    return providerRows.map((provider) => {
       const providerStatus = normalizeProviderStatus(provider.status)
       const relationship = relationshipByProvider.get(provider.id)
       let relationshipStatus: ProviderRelationshipBadgeStatus = 'N/A'
@@ -383,7 +403,7 @@ export function Marketplace() {
   }, [
     canRequestPartnership,
     ownerOrgId,
-    providers,
+    providerRows,
     relationshipByProvider,
     relationshipComplianceById,
     relationshipsError,
@@ -517,7 +537,7 @@ export function Marketplace() {
 
   const openQuickSubmit = (provider: ProviderListing) => {
     if (!provider.relationshipId) return
-    const defaultRequirement = stationOwnerRequirements[0]
+    const defaultRequirement = stationOwnerRequirementRows[0]
     setQuickSubmitProviderName(provider.name)
     setQuickSubmitFileInputKey((prev) => prev + 1)
     setQuickSubmitForm({
@@ -637,13 +657,13 @@ export function Marketplace() {
                 </div>
               ))}
             </div>
-          ) : recentContacts.length === 0 ? (
+          ) : recentContactRows.length === 0 ? (
             <div className="rounded-lg border border-dashed border-border p-4 text-sm text-muted text-center">
               No recent outreach yet. Email, call, apply, or request partnership to populate My Listings.
             </div>
           ) : (
             <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-3">
-              {recentContacts.map((item) => {
+              {recentContactRows.map((item) => {
                 const listing = mapRecentContactToListing(item)
                 return (
                   <button
@@ -955,7 +975,7 @@ export function Marketplace() {
               value={quickSubmitForm.requirementCode}
               onChange={(e) => {
                 const requirementCode = e.target.value
-                const requirement = stationOwnerRequirements.find((item) => item.requirementCode === requirementCode)
+                const requirement = stationOwnerRequirementRows.find((item) => item.requirementCode === requirementCode)
                 setQuickSubmitForm((prev) => ({
                   ...prev,
                   requirementCode,
@@ -965,7 +985,7 @@ export function Marketplace() {
               }}
             >
               <option value="">Select station-owner requirement</option>
-              {stationOwnerRequirements.map((requirement) => (
+              {stationOwnerRequirementRows.map((requirement) => (
                 <option key={requirement.requirementCode} value={requirement.requirementCode}>
                   {requirement.title}
                 </option>
