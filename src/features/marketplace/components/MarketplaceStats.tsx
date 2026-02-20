@@ -39,22 +39,22 @@ type Props = {
 
 export function MarketplaceStats({ recentContacts, isLoading, onOpenDetails }: Props) {
     return (
-        <div className="card space-y-3 p-4 bg-white rounded-xl shadow-sm border border-gray-100 dark:bg-gray-800 dark:border-gray-700">
+        <div className="card space-y-3">
             <div>
-                <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">My Listings</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">Recently contacted entities</div>
+                <div className="text-sm font-semibold text-text">My Listings</div>
+                <div className="text-xs text-muted">Recently contacted entities</div>
             </div>
 
             {isLoading ? (
                 <div className="grid md:grid-cols-3 gap-3">
                     {Array.from({ length: 3 }).map((_, idx) => (
-                        <div key={idx} className="rounded-lg border border-gray-200 dark:border-gray-700 p-3">
+                        <div key={idx} className="rounded-lg border border-border-light bg-panel-2 p-3">
                             <TextSkeleton lines={2} />
                         </div>
                     ))}
                 </div>
             ) : recentContacts.length === 0 ? (
-                <div className="rounded-lg border border-dashed border-gray-300 dark:border-gray-600 p-4 text-sm text-gray-500 dark:text-gray-400 text-center">
+                <div className="rounded-lg border border-dashed border-border-light bg-panel-2 p-4 text-sm text-muted text-center">
                     No recent outreach yet. Email, call, apply, or request partnership to populate My Listings.
                 </div>
             ) : (
@@ -65,15 +65,15 @@ export function MarketplaceStats({ recentContacts, isLoading, onOpenDetails }: P
                             <button
                                 type="button"
                                 key={`${item.entityKind}:${item.entityId}`}
-                                className="rounded-lg border border-gray-200 dark:border-gray-700 p-3 text-left hover:border-accent/50 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                                className="rounded-lg border border-border-light bg-panel-2 p-3 text-left hover:border-accent/50 hover:bg-panel transition-colors group"
                                 onClick={() => onOpenDetails(listing)}
                             >
-                                <div className="text-xs text-gray-500 dark:text-gray-400">{listingKindLabel(listing.kind)}</div>
-                                <div className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{listing.name}</div>
-                                <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                <div className="text-xs text-muted group-hover:text-text-secondary transition-colors">{listingKindLabel(listing.kind)}</div>
+                                <div className="text-sm font-semibold text-text truncate">{listing.name}</div>
+                                <div className="text-xs text-muted mt-1">
                                     {listing.city} - {humanizeRegion(normalizeRegion(listing.region))}
                                 </div>
-                                <div className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                                <div className="text-xs text-muted mt-2">
                                     {humanizeRecentEventType(item.lastEventType)} - {new Date(item.lastContactedAt).toLocaleString()}
                                 </div>
                             </button>

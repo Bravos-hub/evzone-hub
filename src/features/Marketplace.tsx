@@ -497,7 +497,7 @@ export function Marketplace() {
         />
 
         {/* Filters */}
-        <div className="card bg-white rounded-xl shadow-sm border border-gray-100 dark:bg-gray-800 dark:border-gray-700 p-4">
+        <div className="card p-4">
           <MarketplaceFilters
             filters={filters}
             actions={actions}
@@ -510,14 +510,14 @@ export function Marketplace() {
         {showUnifiedLoading ? (
           <div className={`grid gap-3 ${filters.viewMode === 'GRID' ? 'md:grid-cols-2 xl:grid-cols-3' : 'grid-cols-1'}`}>
             {Array.from({ length: 6 }).map((_, idx) => (
-              <div key={idx} className="card p-4 bg-white rounded-xl shadow-sm border border-gray-100 dark:bg-gray-800 dark:border-gray-700 h-32 animate-pulse">
-                <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-                <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+              <div key={idx} className="card h-32 animate-pulse">
+                <div className="h-4 bg-panel-2 rounded w-3/4 mb-2"></div>
+                <div className="h-3 bg-panel-2 rounded w-1/2"></div>
               </div>
             ))}
           </div>
         ) : unifiedListings.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-gray-300 dark:border-gray-600 p-12 text-center text-gray-500 dark:text-gray-400">
+          <div className="rounded-lg border border-dashed border-border-light p-12 text-center text-muted">
             No marketplace listings match your filters. Try adjusting your search or filters.
           </div>
         ) : filters.viewMode === 'GRID' ? (

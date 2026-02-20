@@ -36,54 +36,46 @@ export function ListingTable({
 
     if (listings.length === 0) {
         return (
-            <div className="rounded-lg border border-dashed border-gray-300 dark:border-gray-600 p-8 text-center text-gray-500 dark:text-gray-400">
+            <div className="rounded-lg border border-dashed border-border p-8 text-center text-muted">
                 No listings found matching your filters.
             </div>
         )
     }
 
     return (
-        <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800">
-                <thead className="bg-gray-50 dark:bg-gray-900/50">
+        <div className="table-wrap">
+            <table className="table">
+                <thead>
                     <tr>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                            Entity
-                        </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                            Location
-                        </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                            Details
-                        </th>
-                        <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                            Actions
-                        </th>
+                        <th scope="col">Entity</th>
+                        <th scope="col">Location</th>
+                        <th scope="col">Details</th>
+                        <th scope="col" className="text-right">Actions</th>
                     </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                <tbody>
                     {listings.map((listing) => {
                         const isProvider = isProviderListing(listing)
                         const isSite = isSiteListing(listing)
 
                         return (
-                            <tr key={`${listing.kind}:${listing.id}`} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                                <td className="px-6 py-4 whitespace-nowrap">
+                            <tr key={`${listing.kind}:${listing.id}`}>
+                                <td>
                                     <div className="flex flex-col">
-                                        <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{listing.name}</span>
-                                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium w-fit mt-1 ${listing.kind === 'Sites' ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-800'
+                                        <span className="text-sm font-medium text-text">{listing.name}</span>
+                                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium w-fit mt-1 ${listing.kind === 'Sites' ? 'bg-amber-500/10 text-amber-600' : 'bg-panel-2 text-text-secondary border border-border-light'
                                             }`}>
                                             {listingKindLabel(listing.kind)}
                                         </span>
                                     </div>
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                <td>
                                     <div className="flex flex-col">
-                                        <span>{listing.city}</span>
-                                        <span className="text-xs">{humanizeRegion(listing.region)}</span>
+                                        <span className="text-text">{listing.city}</span>
+                                        <span className="text-xs text-muted">{humanizeRegion(listing.region)}</span>
                                     </div>
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                <td>
                                     {isProvider ? (
                                         <div className="flex flex-col gap-1">
                                             <span className={`px-2 py-0.5 rounded-full text-xs w-fit ${providerStatusBadgeClass(listing.providerStatus)}`}>
@@ -94,26 +86,26 @@ export function ListingTable({
                                             </span>
                                         </div>
                                     ) : isSite && 'powerCapacityKw' in listing ? (
-                                        <div className="flex flex-col text-xs">
+                                        <div className="flex flex-col text-xs text-muted">
                                             <span>{listing.powerCapacityKw} kW</span>
                                             <span>{listing.expectedMonthlyPrice ? `$${listing.expectedMonthlyPrice}/mo` : 'Negotiable'}</span>
                                         </div>
                                     ) : (
-                                        <span className="text-xs italic text-gray-400">No details</span>
+                                        <span className="text-xs italic text-muted">No details</span>
                                     )}
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                    <div className="flex justify-end gap-2">
+                                <td className="text-right font-medium">
+                                    <div className="flex justify-end gap-3">
                                         <button
                                             onClick={() => onDetails(listing)}
-                                            className="text-accent hover:text-accent/80"
+                                            className="text-accent hover:text-accent-hover text-xs font-semibold uppercase tracking-wide"
                                         >
                                             Details
                                         </button>
                                         {isSite && canApplyToSite && onApply && (
                                             <button
                                                 onClick={() => onApply(listing)}
-                                                className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200"
+                                                className="text-text-secondary hover:text-text text-xs font-semibold uppercase tracking-wide"
                                             >
                                                 Apply
                                             </button>
@@ -122,7 +114,7 @@ export function ListingTable({
                                             <button
                                                 onClick={() => onRequestPartnership(listing)}
                                                 disabled={isRequestingPartnership}
-                                                className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200 disabled:opacity-50"
+                                                className="text-text-secondary hover:text-text disabled:opacity-50 text-xs font-semibold uppercase tracking-wide"
                                             >
                                                 Request
                                             </button>
