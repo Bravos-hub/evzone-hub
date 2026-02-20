@@ -1,14 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { useAuthStore } from '@/core/auth/authStore'
 import { getErrorMessage } from '@/core/api/errors'
 import { ROLE_GROUPS } from '@/constants/roles'
-import { useSearchParams } from 'react-router-dom'
 import { useSites } from '@/modules/sites/hooks/useSites'
 import { useUsers } from '@/modules/auth/hooks/useUsers'
 import { useMe } from '@/modules/auth/hooks/useAuth'
 import { SiteApplicationForm } from '@/features/SiteApplicationForm'
-import { TextSkeleton } from '@/ui/components/SkeletonCards'
 import { MarketplaceDetailsDrawer } from '@/features/marketplace/components/MarketplaceDetailsDrawer'
 import { useMarketplaceRecentContacts, useTrackMarketplaceContact } from '@/features/marketplace/hooks/useMarketplaceContacts'
 import {
@@ -21,11 +20,8 @@ import {
   useUpdateRelationshipComplianceProfile,
 } from '@/modules/integrations/useProviders'
 import {
-  humanizeProviderStatus,
   normalizeProviderStatus,
   normalizeRelationshipStatus,
-  type NormalizedProviderStatus,
-  type NormalizedRelationshipStatus,
 } from '@/modules/integrations/providerStatus'
 import type {
   MarketplaceContactEntityKind,
@@ -33,141 +29,28 @@ import type {
   MarketplaceRecentContact,
   ProviderDocumentType,
   ProviderRelationship,
-  Site,
-  SwapProvider,
-  User,
 } from '@/core/api/types'
-import type { MarketplaceSummaryListing } from '@/features/marketplace/types'
 
-type ListingKind = 'Operators' | 'Sites' | 'Technicians' | 'Providers'
-type ViewMode = 'LIST' | 'APPLY'
-
-function parseListingKindParam(value: string | null): ListingKind | 'All' {
-  const normalized = value?.trim().toLowerCase()
-  if (normalized === 'all') return 'All'
-  if (normalized === 'operators') return 'Operators'
-  if (normalized === 'providers' || normalized === 'swap-providers' || normalized === 'swap providers') return 'Providers'
-  if (normalized === 'technicians') return 'Technicians'
-  if (normalized === 'sites') return 'Sites'
-  return 'All'
-}
-
-type BaseListing = MarketplaceSummaryListing
-
-type SiteListing = BaseListing & {
-  kind: 'Sites'
-  powerCapacityKw: number
-  leaseType?: string
-  expectedMonthlyPrice?: number
-  expectedFootfall?: string
-  owner?: Site['owner']
-}
-
-type PeopleListing = BaseListing & {
-  kind: 'Operators' | 'Technicians'
-  email?: string
-  phone?: string
-  role: User['role']
-}
-
-type ListingsMarketplaceListing = SiteListing | PeopleListing
-
-type ProviderRelationshipBadgeStatus = NormalizedRelationshipStatus | 'N/A'
-
-type ProviderListing = BaseListing & {
-  kind: 'Providers'
-  providerStatus: NormalizedProviderStatus
-  relationshipStatus: ProviderRelationshipBadgeStatus
-  relationshipId?: string
-  relationshipComplianceState?: 'READY' | 'WARN' | 'BLOCKED'
-  relationshipBlockers: number
-  standard: string
-  stationCount: number
-  batteriesSupported: string[]
-  canRequest: boolean
-}
-
-type UnifiedMarketplaceListing = ListingsMarketplaceListing | ProviderListing
-
-const normalizeRegion = (value?: string | null) =>
-  value && value.trim() ? value.trim().toUpperCase().replace(/\s+/g, '_') : 'UNKNOWN'
-
-const humanizeRegion = (value: string) =>
-  value === 'ALL' ? 'All regions' : value.replace(/_/g, ' ')
-
-const humanizeStatus = (value: string) => (value === 'N/A' ? 'N/A' : humanizeProviderStatus(value))
-
-const PROVIDER_STATUS_OPTIONS: Array<'All' | NormalizedProviderStatus> = [
-  'All',
-  'DRAFT',
-  'PENDING_REVIEW',
-  'APPROVED',
-  'REJECTED',
-  'SUSPENDED',
-  'UNKNOWN',
-]
-
-const RELATIONSHIP_STATUS_OPTIONS: Array<'All' | NormalizedRelationshipStatus> = [
-  'All',
-  'NONE',
-  'REQUESTED',
-  'PROVIDER_ACCEPTED',
-  'DOCS_PENDING',
-  'ADMIN_APPROVED',
-  'ACTIVE',
-  'SUSPENDED',
-  'TERMINATED',
-  'UNKNOWN',
-]
-
-function providerStatusBadgeClass(status: NormalizedProviderStatus): string {
-  if (status === 'APPROVED') return 'bg-emerald-100 text-emerald-700'
-  if (status === 'PENDING_REVIEW') return 'bg-amber-100 text-amber-700'
-  if (status === 'REJECTED') return 'bg-rose-100 text-rose-700'
-  if (status === 'SUSPENDED') return 'bg-red-100 text-red-700'
-  if (status === 'UNKNOWN') return 'bg-slate-200 text-slate-700'
-  return 'bg-slate-100 text-slate-700'
-}
-
-function relationshipStatusBadgeClass(status: ProviderRelationshipBadgeStatus): string {
-  if (status === 'ACTIVE') return 'bg-emerald-100 text-emerald-700'
-  if (status === 'REQUESTED' || status === 'PROVIDER_ACCEPTED' || status === 'DOCS_PENDING' || status === 'ADMIN_APPROVED') {
-    return 'bg-amber-100 text-amber-700'
-  }
-  if (status === 'SUSPENDED' || status === 'TERMINATED') return 'bg-red-100 text-red-700'
-  if (status === 'UNKNOWN') return 'bg-slate-200 text-slate-700'
-  return 'bg-slate-100 text-slate-700'
-}
-
-function relationshipComplianceBadgeClass(status?: 'READY' | 'WARN' | 'BLOCKED'): string {
-  if (status === 'READY') return 'bg-emerald-100 text-emerald-700'
-  if (status === 'WARN') return 'bg-amber-100 text-amber-700'
-  if (status === 'BLOCKED') return 'bg-red-100 text-red-700'
-  return 'bg-slate-100 text-slate-700'
-}
-
-function complianceBlockerCount(status?: { missingCritical: string[]; expiredCritical: Array<{ id: string }> }): number {
-  if (!status) return 0
-  return status.missingCritical.length + status.expiredCritical.length
-}
-
-const isSiteListing = (listing: ListingsMarketplaceListing): listing is SiteListing => listing.kind === 'Sites'
-const isProviderListing = (listing: UnifiedMarketplaceListing): listing is ProviderListing => listing.kind === 'Providers'
-
-const KIND_FILTER_OPTIONS: Array<{ value: ListingKind | 'All'; label: string }> = [
-  { value: 'All', label: 'All' },
-  { value: 'Sites', label: 'Sites' },
-  { value: 'Operators', label: 'Operators' },
-  { value: 'Providers', label: 'Swap Providers' },
-  { value: 'Technicians', label: 'Technicians' },
-]
-
-const RECENT_KIND_TO_LISTING_KIND: Record<MarketplaceContactEntityKind, MarketplaceSummaryListing['kind']> = {
-  SITE: 'Sites',
-  OPERATOR: 'Operators',
-  TECHNICIAN: 'Technicians',
-  PROVIDER: 'Providers',
-}
+// New Imports
+import { useMarketplaceFilters } from './marketplace/hooks/useMarketplaceFilters'
+import { MarketplaceFilters } from './marketplace/components/MarketplaceFilters'
+import { MarketplaceStats } from './marketplace/components/MarketplaceStats'
+import { ListingCard } from './marketplace/components/ListingCard'
+import { ListingTable } from './marketplace/components/ListingTable'
+import { QuickSubmitModal, type QuickSubmitFormState } from './marketplace/components/QuickSubmitModal'
+import {
+  normalizeRegion,
+  humanizeRegion,
+  type ProviderRelationshipBadgeStatus
+} from './marketplace/utils'
+import type {
+  ListingsMarketplaceListing,
+  MarketplaceSummaryListing,
+  PeopleListing,
+  ProviderListing,
+  SiteListing,
+  UnifiedMarketplaceListing
+} from './marketplace/types'
 
 const LISTING_KIND_TO_CONTACT_KIND: Record<MarketplaceSummaryListing['kind'], MarketplaceContactEntityKind> = {
   Sites: 'SITE',
@@ -176,23 +59,19 @@ const LISTING_KIND_TO_CONTACT_KIND: Record<MarketplaceSummaryListing['kind'], Ma
   Providers: 'PROVIDER',
 }
 
-function humanizeRecentEventType(value: MarketplaceContactEventType): string {
-  if (value === 'APPLY_SITE') return 'Applied for site'
-  if (value === 'REQUEST_PARTNERSHIP') return 'Requested partnership'
-  if (value === 'EMAIL') return 'Emailed'
-  if (value === 'CALL') return 'Called'
-  return value
-}
-
-function listingKindLabel(kind: MarketplaceSummaryListing['kind']): string {
-  return kind === 'Providers' ? 'Swap Providers' : kind
+function complianceBlockerCount(status?: { missingCritical: string[]; expiredCritical: Array<{ id: string }> }): number {
+  if (!status) return 0
+  return status.missingCritical.length + status.expiredCritical.length
 }
 
 export function Marketplace() {
   const [searchParams] = useSearchParams()
-  const kindParam = searchParams.get('kind')
+  // const kindParam = searchParams.get('kind') // Handled in hook
   const { user } = useAuthStore()
   const { data: me } = useMe()
+
+  // --- Filter Hook ---
+  const { filters, actions } = useMarketplaceFilters()
 
   const role = me?.role || user?.role
   const ownerCapability = me?.ownerCapability || user?.ownerCapability
@@ -205,6 +84,7 @@ export function Marketplace() {
 
   const canApplyToSite = role === 'STATION_OWNER' || role === 'EVZONE_OPERATOR'
 
+  // --- Data Fetching ---
   const { data: sites = [], isLoading: sitesLoading } = useSites({ purpose: 'COMMERCIAL' })
   const { data: operators = [], isLoading: operatorsLoading } = useUsers({
     role: 'STATION_OPERATOR',
@@ -221,6 +101,7 @@ export function Marketplace() {
     error: providersError,
     refetch: refetchProviders,
   } = useMarketplaceProviders()
+
   const shouldLoadRelationships = canViewRelationshipData && !!ownerOrgId
   const {
     data: relationships = [],
@@ -228,6 +109,7 @@ export function Marketplace() {
     error: relationshipsError,
     refetch: refetchRelationships,
   } = useProviderRelationships(ownerOrgId ? { ownerOrgId } : undefined, { enabled: shouldLoadRelationships })
+
   const relationshipRows = useMemo<ProviderRelationship[]>(
     () => (Array.isArray(relationships) ? relationships : []),
     [relationships],
@@ -237,64 +119,43 @@ export function Marketplace() {
     data: relationshipComplianceStatuses = [],
     isLoading: relationshipComplianceLoading,
   } = useRelationshipComplianceStatuses(relationshipIds, { enabled: relationshipIds.length > 0 })
+
   const { data: stationOwnerRequirements = [] } = useProviderRequirements({ appliesTo: 'STATION_OWNER' })
   const requestProviderRelationshipMutation = useRequestProviderRelationship()
   const uploadProviderDocumentMutation = useUploadProviderDocument()
   const updateRelationshipComplianceProfileMutation = useUpdateRelationshipComplianceProfile()
   const { data: recentContacts = [], isLoading: loadingRecentContacts } = useMarketplaceRecentContacts(12)
   const trackMarketplaceContactMutation = useTrackMarketplaceContact()
-  const providerRows = useMemo<SwapProvider[]>(
-    () => (Array.isArray(providers) ? providers : []),
-    [providers],
-  )
-  const relationshipComplianceRows = useMemo(
-    () => (Array.isArray(relationshipComplianceStatuses) ? relationshipComplianceStatuses : []),
-    [relationshipComplianceStatuses],
-  )
-  const stationOwnerRequirementRows = useMemo(
-    () => (Array.isArray(stationOwnerRequirements) ? stationOwnerRequirements : []),
-    [stationOwnerRequirements],
-  )
-  const recentContactRows = useMemo<MarketplaceRecentContact[]>(
-    () => (Array.isArray(recentContacts) ? recentContacts : []),
-    [recentContacts],
-  )
 
-  const [kind, setKind] = useState<ListingKind | 'All'>(() => parseListingKindParam(kindParam))
-  const [region, setRegion] = useState<'ALL' | string>('ALL')
-  const [q, setQ] = useState('')
+  // --- Memoized Data Helpers ---
+  const relationshipByProvider = useMemo(() => {
+    const map = new Map<string, ProviderRelationship>()
+    if (!shouldLoadRelationships) return map
 
-  const [providerQuery, setProviderQuery] = useState('')
-  const [providerStatusFilter, setProviderStatusFilter] = useState<'All' | NormalizedProviderStatus>('All')
-  const [relationshipStatusFilter, setRelationshipStatusFilter] = useState<'All' | NormalizedRelationshipStatus>('All')
+    relationshipRows.forEach((relationship) => {
+      const existing = map.get(relationship.providerId)
+      if (!existing) {
+        map.set(relationship.providerId, relationship)
+        return
+      }
+      const existingTime = new Date(existing.updatedAt ?? existing.createdAt).getTime()
+      const nextTime = new Date(relationship.updatedAt ?? relationship.createdAt).getTime()
+      if (nextTime >= existingTime) {
+        map.set(relationship.providerId, relationship)
+      }
+    })
+    return map
+  }, [relationshipRows, shouldLoadRelationships])
 
-  const [viewMode, setViewMode] = useState<ViewMode>('LIST')
-  const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null)
-  const [selectedListing, setSelectedListing] = useState<MarketplaceSummaryListing | null>(null)
-  const [providerAck, setProviderAck] = useState('')
-  const [providerActionError, setProviderActionError] = useState('')
-  const [showQuickSubmitModal, setShowQuickSubmitModal] = useState(false)
-  const [quickSubmitProviderName, setQuickSubmitProviderName] = useState('')
-  const [quickSubmitForm, setQuickSubmitForm] = useState({
-    relationshipId: '',
-    requirementCode: '',
-    type: 'SITE_COMPATIBILITY_DECLARATION' as ProviderDocumentType,
-    name: '',
-    file: null as File | null,
-    storedEnergyKwh: '',
-  })
-  const [quickSubmitFileInputKey, setQuickSubmitFileInputKey] = useState(0)
+  const relationshipComplianceById = useMemo(() => {
+    const complianceRows = Array.isArray(relationshipComplianceStatuses) ? relationshipComplianceStatuses : []
+    return complianceRows.reduce<Map<string, (typeof complianceRows)[number]>>((acc, status) => {
+      if (status.targetId) acc.set(status.targetId, status)
+      return acc
+    }, new Map())
+  }, [relationshipComplianceStatuses])
 
-  useEffect(() => {
-    setKind(parseListingKindParam(kindParam))
-  }, [kindParam])
-
-  useEffect(() => {
-    if (!providerAck) return
-    const timer = window.setTimeout(() => setProviderAck(''), 2600)
-    return () => window.clearTimeout(timer)
-  }, [providerAck])
-
+  // --- Derived Listings ---
   const listings = useMemo<ListingsMarketplaceListing[]>(() => {
     const siteListings: SiteListing[] = sites
       .filter((site) => site.purpose === 'COMMERCIAL')
@@ -336,34 +197,9 @@ export function Marketplace() {
     return [...siteListings, ...operatorListings, ...technicianListings]
   }, [operators, sites, technicians])
 
-  const relationshipByProvider = useMemo(() => {
-    const map = new Map<string, ProviderRelationship>()
-    if (!shouldLoadRelationships) return map
-
-    relationshipRows.forEach((relationship) => {
-      const existing = map.get(relationship.providerId)
-      if (!existing) {
-        map.set(relationship.providerId, relationship)
-        return
-      }
-      const existingTime = new Date(existing.updatedAt ?? existing.createdAt).getTime()
-      const nextTime = new Date(relationship.updatedAt ?? relationship.createdAt).getTime()
-      if (nextTime >= existingTime) {
-        map.set(relationship.providerId, relationship)
-      }
-    })
-    return map
-  }, [relationshipRows, shouldLoadRelationships])
-
-  const relationshipComplianceById = useMemo(() => {
-    return relationshipComplianceRows.reduce<Map<string, (typeof relationshipComplianceRows)[number]>>((acc, status) => {
-      if (status.targetId) acc.set(status.targetId, status)
-      return acc
-    }, new Map())
-  }, [relationshipComplianceRows])
-
   const providerListings = useMemo<ProviderListing[]>(() => {
-    return providerRows.map((provider) => {
+    const rows = Array.isArray(providers) ? providers : []
+    return rows.map((provider) => {
       const providerStatus = normalizeProviderStatus(provider.status)
       const relationship = relationshipByProvider.get(provider.id)
       let relationshipStatus: ProviderRelationshipBadgeStatus = 'N/A'
@@ -403,12 +239,13 @@ export function Marketplace() {
   }, [
     canRequestPartnership,
     ownerOrgId,
-    providerRows,
+    providers,
     relationshipByProvider,
     relationshipComplianceById,
     relationshipsError,
   ])
 
+  // --- Filtering Logic ---
   const listingRegionOptions = useMemo(() => {
     const uniqueRegions = Array.from(
       new Set([...listings.map((listing) => listing.region), ...providerListings.map((provider) => provider.region)]),
@@ -424,58 +261,74 @@ export function Marketplace() {
   const filteredListings = useMemo(() => {
     return listings
       .filter((listing) => {
-        if (kind === 'All') return true
-        if (kind === 'Providers') return false
-        return listing.kind === kind
+        if (filters.kind === 'All') return true
+        if (filters.kind === 'Providers') return false
+        return listing.kind === filters.kind
       })
-      .filter((listing) => (region === 'ALL' ? true : listing.region === region))
+      .filter((listing) => (filters.region === 'ALL' ? true : listing.region === filters.region))
       .filter((listing) => {
-        if (!q.trim()) return true
+        if (!filters.q.trim()) return true
         const haystack = `${listing.name} ${listing.city} ${listing.region}`.toLowerCase()
-        return haystack.includes(q.toLowerCase())
+        return haystack.includes(filters.q.toLowerCase())
       })
-  }, [kind, listings, q, region])
-
-  const [providerRegionFilter, setProviderRegionFilter] = useState<'ALL' | string>('ALL')
+  }, [filters.kind, listings, filters.q, filters.region])
 
   const filteredProviderListings = useMemo(() => {
     return providerListings
-      .filter((provider) => (kind === 'All' ? true : kind === 'Providers'))
-      .filter((provider) => (region === 'ALL' ? true : provider.region === region))
+      .filter((provider) => (filters.kind === 'All' ? true : filters.kind === 'Providers'))
+      .filter((provider) => (filters.region === 'ALL' ? true : provider.region === filters.region))
       .filter((provider) => {
-        if (!q.trim()) return true
+        if (!filters.q.trim()) return true
         const haystack = `${provider.name} ${provider.city} ${provider.region}`.toLowerCase()
-        return haystack.includes(q.toLowerCase())
+        return haystack.includes(filters.q.toLowerCase())
       })
-      .filter((provider) => (providerRegionFilter === 'ALL' ? true : provider.region === providerRegionFilter))
+      .filter((provider) => (filters.providerRegion === 'ALL' ? true : provider.region === filters.providerRegion))
       .filter((provider) => {
-        if (!providerQuery.trim()) return true
+        if (!filters.providerQuery.trim()) return true
         const haystack = `${provider.name} ${provider.region} ${provider.standard}`.toLowerCase()
-        return haystack.includes(providerQuery.toLowerCase())
+        return haystack.includes(filters.providerQuery.toLowerCase())
       })
-      .filter((provider) => (providerStatusFilter === 'All' ? true : provider.providerStatus === providerStatusFilter))
-      .filter((provider) => (relationshipStatusFilter === 'All' ? true : provider.relationshipStatus === relationshipStatusFilter))
-  }, [kind, providerListings, providerQuery, providerRegionFilter, providerStatusFilter, q, region, relationshipStatusFilter])
+      .filter((provider) => (filters.providerStatus === 'All' ? true : provider.providerStatus === filters.providerStatus))
+      .filter((provider) => (filters.relationshipStatus === 'All' ? true : provider.relationshipStatus === filters.relationshipStatus))
+  }, [filters, providerListings])
 
   const unifiedListings = useMemo<UnifiedMarketplaceListing[]>(
     () => [...filteredListings, ...filteredProviderListings],
     [filteredListings, filteredProviderListings],
   )
 
+  // --- UI State & Actions ---
   const listingsLoading = sitesLoading || operatorsLoading || techniciansLoading
   const providersLoadingState =
     providersLoading || (shouldLoadRelationships && (relationshipsLoading || relationshipComplianceLoading))
   const providerQueryError = providersError || (shouldLoadRelationships ? relationshipsError : null)
-  const showingProviderCards = kind === 'All' || kind === 'Providers'
+  const showingProviderCards = filters.kind === 'All' || filters.kind === 'Providers'
   const showUnifiedLoading = listingsLoading || (showingProviderCards && providersLoadingState)
 
-  const mapRecentContactToListing = (item: MarketplaceRecentContact): MarketplaceSummaryListing => ({
-    id: item.entityId,
-    kind: RECENT_KIND_TO_LISTING_KIND[item.entityKind],
-    name: item.entityName || 'Unknown listing',
-    city: item.entityCity || 'Unknown',
-    region: item.entityRegion || 'UNKNOWN',
+  const [viewModeState, setViewModeState] = useState<'LIST' | 'APPLY'>('LIST')
+  const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null)
+  const [selectedListing, setSelectedListing] = useState<MarketplaceSummaryListing | null>(null)
+  const [providerAck, setProviderAck] = useState('')
+  const [providerActionError, setProviderActionError] = useState('')
+
+  // Quick Submit Modal State
+  const [showQuickSubmitModal, setShowQuickSubmitModal] = useState(false)
+  const [quickSubmitProviderName, setQuickSubmitProviderName] = useState('')
+  const [quickSubmitForm, setQuickSubmitForm] = useState<QuickSubmitFormState>({
+    relationshipId: '',
+    requirementCode: '',
+    type: 'SITE_COMPATIBILITY_DECLARATION' as ProviderDocumentType,
+    name: '',
+    file: null,
+    storedEnergyKwh: '',
   })
+  const [quickSubmitFileInputKey, setQuickSubmitFileInputKey] = useState(0)
+
+  useEffect(() => {
+    if (!providerAck) return
+    const timer = window.setTimeout(() => setProviderAck(''), 2600)
+    return () => window.clearTimeout(timer)
+  }, [providerAck])
 
   const trackOutreachEvent = (listing: MarketplaceSummaryListing, eventType: MarketplaceContactEventType) => {
     trackMarketplaceContactMutation.mutate({
@@ -488,13 +341,12 @@ export function Marketplace() {
     })
   }
 
-  const handleApply = (siteId: string, listing?: MarketplaceSummaryListing) => {
-    if (listing) {
-      trackOutreachEvent(listing, 'APPLY_SITE')
-    }
-    setSelectedSiteId(siteId)
+  const handleApply = (listing: MarketplaceSummaryListing) => {
+    if (listing.kind !== 'Sites') return
+    trackOutreachEvent(listing, 'APPLY_SITE')
+    setSelectedSiteId(listing.id)
     setSelectedListing(null)
-    setViewMode('APPLY')
+    setViewModeState('APPLY')
   }
 
   const handleOpenDetails = (listing: MarketplaceSummaryListing) => {
@@ -519,16 +371,7 @@ export function Marketplace() {
         providerId: provider.id,
         ownerOrgId,
       })
-      trackOutreachEvent(
-        {
-          id: provider.id,
-          kind: 'Providers',
-          name: provider.name,
-          city: provider.city,
-          region: provider.region,
-        },
-        'REQUEST_PARTNERSHIP',
-      )
+      trackOutreachEvent(provider, 'REQUEST_PARTNERSHIP')
       setProviderAck(`Partnership request sent to ${provider.name}.`)
     } catch (err) {
       setProviderActionError(getErrorMessage(err))
@@ -537,7 +380,7 @@ export function Marketplace() {
 
   const openQuickSubmit = (provider: ProviderListing) => {
     if (!provider.relationshipId) return
-    const defaultRequirement = stationOwnerRequirementRows[0]
+    const defaultRequirement = Array.isArray(stationOwnerRequirements) ? stationOwnerRequirements[0] : undefined
     setQuickSubmitProviderName(provider.name)
     setQuickSubmitFileInputKey((prev) => prev + 1)
     setQuickSubmitForm({
@@ -589,20 +432,20 @@ export function Marketplace() {
     }
   }
 
-  if (viewMode === 'APPLY' && selectedSiteId) {
+  if (viewModeState === 'APPLY' && selectedSiteId) {
     return (
       <DashboardLayout pageTitle="Apply for Site">
         <div className="max-w-3xl mx-auto">
           <button
-            onClick={() => setViewMode('LIST')}
-            className="mb-4 text-sm text-muted hover:text-text flex items-center gap-1"
+            onClick={() => setViewModeState('LIST')}
+            className="mb-4 text-sm text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 flex items-center gap-1"
           >
             {'<-'} Back to Marketplace
           </button>
           <SiteApplicationForm
             siteId={selectedSiteId}
-            onSuccess={() => setViewMode('LIST')}
-            onCancel={() => setViewMode('LIST')}
+            onSuccess={() => setViewModeState('LIST')}
+            onCancel={() => setViewModeState('LIST')}
             embedded={true}
           />
         </div>
@@ -612,21 +455,23 @@ export function Marketplace() {
 
   return (
     <DashboardLayout pageTitle="Marketplace">
-      <div className="space-y-4">
+      <div className="space-y-6">
+
+        {/* Notifications */}
         {providerAck && (
-          <div className="rounded-lg bg-accent/10 text-accent px-4 py-2 text-sm">{providerAck}</div>
+          <div className="rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 text-sm shadow-sm">{providerAck}</div>
         )}
         {providerActionError && (
-          <div className="rounded-lg bg-red-50 border border-red-200 text-red-700 px-4 py-2 text-sm">
+          <div className="rounded-lg bg-red-50 border border-red-200 text-red-700 px-4 py-3 text-sm shadow-sm">
             {providerActionError}
           </div>
         )}
         {providerQueryError && (
-          <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-700">
+          <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-700 shadow-sm">
             <div>Could not load provider marketplace data: {getErrorMessage(providerQueryError)}</div>
             <button
               type="button"
-              className="mt-2 px-3 py-1.5 rounded border border-red-500/40 text-red-700 hover:bg-red-500/10"
+              className="mt-2 px-3 py-1.5 rounded border border-red-500/40 text-red-700 hover:bg-red-500/10 text-xs font-medium"
               onClick={() => {
                 void refetchProviders()
                 if (shouldLoadRelationships) {
@@ -639,426 +484,91 @@ export function Marketplace() {
           </div>
         )}
         {canRequestPartnership && !ownerOrgId && (
-          <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-sm text-amber-700">
+          <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-sm text-amber-700 shadow-sm">
             Provider partnership requests are disabled because your account has no organization ID.
           </div>
         )}
 
-        <div className="card space-y-3">
-          <div>
-            <div className="text-sm font-semibold text-text">My Listings</div>
-            <div className="text-xs text-muted">Recently contacted entities</div>
-          </div>
-          {loadingRecentContacts ? (
-            <div className="grid md:grid-cols-3 gap-3">
-              {Array.from({ length: 3 }).map((_, idx) => (
-                <div key={idx} className="rounded-lg border border-border p-3">
-                  <TextSkeleton lines={2} />
-                </div>
-              ))}
-            </div>
-          ) : recentContactRows.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-border p-4 text-sm text-muted text-center">
-              No recent outreach yet. Email, call, apply, or request partnership to populate My Listings.
-            </div>
-          ) : (
-            <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-3">
-              {recentContactRows.map((item) => {
-                const listing = mapRecentContactToListing(item)
-                return (
-                  <button
-                    type="button"
-                    key={`${item.entityKind}:${item.entityId}`}
-                    className="rounded-lg border border-border p-3 text-left hover:border-accent/50 hover:bg-muted/20 transition-colors"
-                    onClick={() => handleOpenDetails(listing)}
-                  >
-                    <div className="text-xs text-muted">{listingKindLabel(listing.kind)}</div>
-                    <div className="text-sm font-semibold text-text truncate">{listing.name}</div>
-                    <div className="text-xs text-muted mt-1">
-                      {listing.city} - {humanizeRegion(normalizeRegion(listing.region))}
-                    </div>
-                    <div className="text-xs text-muted mt-2">
-                      {humanizeRecentEventType(item.lastEventType)} - {new Date(item.lastContactedAt).toLocaleString()}
-                    </div>
-                  </button>
-                )
-              })}
-            </div>
-          )}
-        </div>
+        {/* My Listings Stats */}
+        <MarketplaceStats
+          recentContacts={Array.isArray(recentContacts) ? recentContacts : []} // Ensure array
+          isLoading={loadingRecentContacts}
+          onOpenDetails={handleOpenDetails}
+        />
 
-        <div className="card grid md:grid-cols-4 gap-3">
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Search name or city"
-            className="input md:col-span-2"
+        {/* Filters */}
+        <div className="card bg-white rounded-xl shadow-sm border border-gray-100 dark:bg-gray-800 dark:border-gray-700 p-4">
+          <MarketplaceFilters
+            filters={filters}
+            actions={actions}
+            listingRegionOptions={listingRegionOptions}
+            providerRegionOptions={providerRegionOptions}
           />
-          <select value={kind} onChange={(e) => setKind(e.target.value as ListingKind | 'All')} className="select">
-            {KIND_FILTER_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-          <select value={region} onChange={(e) => setRegion(e.target.value)} className="select">
-            {listingRegionOptions.map((option) => (
-              <option key={option} value={option}>
-                {humanizeRegion(option)}
-              </option>
-            ))}
-          </select>
         </div>
 
-        <div className="card grid md:grid-cols-2 lg:grid-cols-4 gap-3">
-          <input
-            value={providerQuery}
-            onChange={(e) => setProviderQuery(e.target.value)}
-            placeholder="Search provider, region, or standard"
-            className="input md:col-span-2"
-          />
-          <select
-            value={providerRegionFilter}
-            onChange={(e) => setProviderRegionFilter(e.target.value)}
-            className="select"
-          >
-            {providerRegionOptions.map((option) => (
-              <option key={option} value={option}>
-                {humanizeRegion(option)}
-              </option>
-            ))}
-          </select>
-          <select
-            value={providerStatusFilter}
-            onChange={(e) => setProviderStatusFilter(e.target.value as 'All' | NormalizedProviderStatus)}
-            className="select"
-          >
-            {PROVIDER_STATUS_OPTIONS.map((option) => (
-              <option key={option} value={option}>
-                {option === 'All' ? 'All provider statuses' : humanizeStatus(option)}
-              </option>
-            ))}
-          </select>
-          <select
-            value={relationshipStatusFilter}
-            onChange={(e) => setRelationshipStatusFilter(e.target.value as 'All' | NormalizedRelationshipStatus)}
-            className="select"
-          >
-            {RELATIONSHIP_STATUS_OPTIONS.map((option) => (
-              <option key={option} value={option}>
-                {option === 'All' ? 'All relationship statuses' : humanizeStatus(option)}
-              </option>
-            ))}
-          </select>
-        </div>
-
+        {/* Listings Content */}
         {showUnifiedLoading ? (
-          <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-3">
+          <div className={`grid gap-3 ${filters.viewMode === 'GRID' ? 'md:grid-cols-2 xl:grid-cols-3' : 'grid-cols-1'}`}>
             {Array.from({ length: 6 }).map((_, idx) => (
-              <div key={idx} className="card">
-                <TextSkeleton lines={3} />
+              <div key={idx} className="card p-4 bg-white rounded-xl shadow-sm border border-gray-100 dark:bg-gray-800 dark:border-gray-700 h-32 animate-pulse">
+                <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                <div className="h-3 bg-gray-200 rounded w-1/2"></div>
               </div>
+            ))}
+          </div>
+        ) : unifiedListings.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-gray-300 dark:border-gray-600 p-12 text-center text-gray-500 dark:text-gray-400">
+            No marketplace listings match your filters. Try adjusting your search or filters.
+          </div>
+        ) : filters.viewMode === 'GRID' ? (
+          <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-3">
+            {unifiedListings.map((listing) => (
+              <ListingCard
+                key={`${listing.kind}:${listing.id}`}
+                listing={listing}
+                onDetails={handleOpenDetails}
+                onApply={handleApply}
+                onRequestPartnership={(l) => requestPartnership(l)}
+                onSubmitDocs={(l) => openQuickSubmit(l)}
+                canRequestPartnership={canRequestPartnership}
+                ownerOrgId={ownerOrgId}
+                isRequestingPartnership={requestProviderRelationshipMutation.isPending}
+                canApplyToSite={canApplyToSite}
+              />
             ))}
           </div>
         ) : (
-          <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-3">
-            {unifiedListings.length === 0 && (
-              <div className="md:col-span-2 xl:col-span-3 card text-sm text-muted text-center">
-                No marketplace listings match your filters.
-              </div>
-            )}
-            {unifiedListings.map((listing) => {
-              if (isProviderListing(listing)) {
-                return (
-                  <div key={`${listing.kind}:${listing.id}`} className="card space-y-3">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="min-w-0">
-                        <div className="text-xs text-muted">Swap Provider</div>
-                        <div className="text-lg font-bold text-text truncate">{listing.name}</div>
-                      </div>
-                      <span className="pill neutral">Swap Providers</span>
-                    </div>
-
-                    <div className="text-sm text-muted flex items-center gap-2">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                        />
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                        />
-                      </svg>
-                      {listing.city} - {humanizeRegion(listing.region)}
-                    </div>
-
-                    <div className="flex flex-wrap gap-2">
-                      <span className={`px-2 py-0.5 rounded-full text-xs ${providerStatusBadgeClass(listing.providerStatus)}`}>
-                        Provider: {humanizeStatus(listing.providerStatus)}
-                      </span>
-                      <span className={`px-2 py-0.5 rounded-full text-xs ${relationshipStatusBadgeClass(listing.relationshipStatus)}`}>
-                        Relationship: {humanizeStatus(listing.relationshipStatus)}
-                      </span>
-                      {listing.relationshipId && (
-                        <span className={`px-2 py-0.5 rounded-full text-xs ${relationshipComplianceBadgeClass(listing.relationshipComplianceState)}`}>
-                          Compliance: {listing.relationshipComplianceState || 'PENDING'}
-                          {listing.relationshipBlockers > 0 ? ` (${listing.relationshipBlockers})` : ''}
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      <div className="bg-muted/20 p-2 rounded">
-                        <div className="text-muted">Standard</div>
-                        <div className="font-semibold">{listing.standard}</div>
-                      </div>
-                      <div className="bg-muted/20 p-2 rounded">
-                        <div className="text-muted">Stations</div>
-                        <div className="font-semibold">{listing.stationCount.toLocaleString()}</div>
-                      </div>
-                      <div className="bg-muted/20 p-2 rounded col-span-2">
-                        <div className="text-muted">Batteries</div>
-                        <div className="font-semibold">
-                          {listing.batteriesSupported.length > 0
-                            ? listing.batteriesSupported.slice(0, 4).join(', ')
-                            : 'Not specified'}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 mt-2">
-                      <button
-                        className="btn secondary flex-1"
-                        onClick={() =>
-                          handleOpenDetails({
-                            id: listing.id,
-                            kind: listing.kind,
-                            name: listing.name,
-                            city: listing.city,
-                            region: listing.region,
-                          })
-                        }
-                      >
-                        Details
-                      </button>
-                      {canRequestPartnership && ownerOrgId && listing.canRequest && (
-                        <button
-                          className="btn primary flex-1"
-                          disabled={requestProviderRelationshipMutation.isPending}
-                          onClick={() => requestPartnership(listing)}
-                        >
-                          {requestProviderRelationshipMutation.isPending ? 'Requesting...' : 'Request Partnership'}
-                        </button>
-                      )}
-                      {canRequestPartnership &&
-                        ownerOrgId &&
-                        listing.relationshipId &&
-                        listing.relationshipStatus !== 'TERMINATED' && (
-                          <button className="btn secondary flex-1" onClick={() => openQuickSubmit(listing)}>
-                            Submit Docs
-                          </button>
-                        )}
-                      {canRequestPartnership && !ownerOrgId && (
-                        <button className="btn secondary flex-1 opacity-60 cursor-not-allowed" disabled>
-                          Request Partnership
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                )
-              }
-
-              const summaryListing: MarketplaceSummaryListing = {
-                id: listing.id,
-                kind: listing.kind,
-                name: listing.name,
-                city: listing.city,
-                region: listing.region,
-              }
-
-              return (
-                <div key={`${listing.kind}:${listing.id}`} className="card space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="text-xs text-muted">{listing.kind}</div>
-                      <div className="text-lg font-bold text-text">{listing.name}</div>
-                    </div>
-                    <span className={`pill ${listing.kind === 'Sites' ? 'active' : 'neutral'}`}>
-                      {listingKindLabel(listing.kind)}
-                    </span>
-                  </div>
-
-                  <div className="text-sm text-muted flex items-center gap-2">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                      />
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                      />
-                    </svg>
-                    {listing.city} - {humanizeRegion(listing.region)}
-                  </div>
-
-                  {isSiteListing(listing) && (
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      <div className="bg-muted/20 p-2 rounded">
-                        <div className="text-muted">Lease Type</div>
-                        <div className="font-semibold capitalize">
-                          {listing.leaseType ? listing.leaseType.replace('_', ' ').toLowerCase() : 'N/A'}
-                        </div>
-                      </div>
-                      <div className="bg-muted/20 p-2 rounded">
-                        <div className="text-muted">Price</div>
-                        <div className="font-semibold">
-                          {listing.expectedMonthlyPrice ? `$${listing.expectedMonthlyPrice}/mo` : 'Negotiable'}
-                        </div>
-                      </div>
-                      <div className="bg-muted/20 p-2 rounded">
-                        <div className="text-muted">Power</div>
-                        <div className="font-semibold">{listing.powerCapacityKw} kW</div>
-                      </div>
-                      <div className="bg-muted/20 p-2 rounded">
-                        <div className="text-muted">Footfall</div>
-                        <div className="font-semibold">
-                          {listing.expectedFootfall ? listing.expectedFootfall.toLowerCase() : 'medium'}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="flex items-center gap-2 mt-2">
-                    <button className="btn secondary flex-1" onClick={() => handleOpenDetails(summaryListing)}>
-                      Details
-                    </button>
-                    {listing.kind === 'Sites' && canApplyToSite && (
-                      <button className="btn primary flex-1" onClick={() => handleApply(listing.id, summaryListing)}>
-                        Apply
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
+          <ListingTable
+            listings={unifiedListings}
+            onDetails={handleOpenDetails}
+            onApply={handleApply}
+            onRequestPartnership={(l) => requestPartnership(l)}
+            onSubmitDocs={(l) => openQuickSubmit(l)}
+            canRequestPartnership={canRequestPartnership}
+            ownerOrgId={ownerOrgId}
+            isRequestingPartnership={requestProviderRelationshipMutation.isPending}
+            canApplyToSite={canApplyToSite}
+          />
         )}
       </div>
 
-      {showQuickSubmitModal && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-          <div className="w-full max-w-lg rounded-xl bg-white p-5 space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-base font-bold text-slate-900">Quick Submit Relationship Pack</h3>
-              <button
-                type="button"
-                className="text-sm text-slate-500 hover:text-slate-800"
-                onClick={() => setShowQuickSubmitModal(false)}
-              >
-                Close
-              </button>
-            </div>
-            <div className="text-sm text-slate-600">Provider: {quickSubmitProviderName || 'Unknown'}</div>
-
-            <select
-              className="select w-full"
-              value={quickSubmitForm.requirementCode}
-              onChange={(e) => {
-                const requirementCode = e.target.value
-                const requirement = stationOwnerRequirementRows.find((item) => item.requirementCode === requirementCode)
-                setQuickSubmitForm((prev) => ({
-                  ...prev,
-                  requirementCode,
-                  type: (requirement?.acceptedDocTypes?.[0] as ProviderDocumentType | undefined) || prev.type,
-                  name: requirement?.title || prev.name,
-                }))
-              }}
-            >
-              <option value="">Select station-owner requirement</option>
-              {stationOwnerRequirementRows.map((requirement) => (
-                <option key={requirement.requirementCode} value={requirement.requirementCode}>
-                  {requirement.title}
-                </option>
-              ))}
-            </select>
-
-            <select
-              className="select w-full"
-              value={quickSubmitForm.type}
-              onChange={(e) =>
-                setQuickSubmitForm((prev) => ({
-                  ...prev,
-                  type: e.target.value as ProviderDocumentType,
-                }))
-              }
-            >
-              <option value="SITE_COMPATIBILITY_DECLARATION">SITE_COMPATIBILITY_DECLARATION</option>
-              <option value="TECHNICAL_CONFORMANCE">TECHNICAL_CONFORMANCE</option>
-              <option value="SOP_ACKNOWLEDGEMENT">SOP_ACKNOWLEDGEMENT</option>
-              <option value="INSURANCE">INSURANCE</option>
-              <option value="COMMERCIAL_AGREEMENT">COMMERCIAL_AGREEMENT</option>
-            </select>
-
-            <input
-              className="input w-full"
-              value={quickSubmitForm.name}
-              onChange={(e) => setQuickSubmitForm((prev) => ({ ...prev, name: e.target.value }))}
-              placeholder="Document name"
-            />
-            <input
-              key={quickSubmitFileInputKey}
-              className="input w-full"
-              type="file"
-              onChange={(e) => setQuickSubmitForm((prev) => ({ ...prev, file: e.target.files?.[0] || null }))}
-            />
-            <input
-              className="input w-full"
-              value={quickSubmitForm.storedEnergyKwh}
-              onChange={(e) => setQuickSubmitForm((prev) => ({ ...prev, storedEnergyKwh: e.target.value }))}
-              placeholder="Stored energy kWh (optional, for HK DG profile checks)"
-            />
-
-            <div className="flex items-center justify-end gap-2">
-              <button
-                type="button"
-                className="btn secondary"
-                onClick={() => setShowQuickSubmitModal(false)}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="btn primary"
-                disabled={uploadProviderDocumentMutation.isPending || updateRelationshipComplianceProfileMutation.isPending}
-                onClick={() => {
-                  void submitQuickRelationshipPack()
-                }}
-              >
-                {uploadProviderDocumentMutation.isPending || updateRelationshipComplianceProfileMutation.isPending
-                  ? 'Submitting...'
-                  : 'Submit Pack'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <QuickSubmitModal
+        isOpen={showQuickSubmitModal}
+        onClose={() => setShowQuickSubmitModal(false)}
+        providerName={quickSubmitProviderName}
+        form={quickSubmitForm}
+        setForm={setQuickSubmitForm}
+        requirements={Array.isArray(stationOwnerRequirements) ? stationOwnerRequirements : []}
+        onSubmit={() => void submitQuickRelationshipPack()}
+        isSubmitting={uploadProviderDocumentMutation.isPending || updateRelationshipComplianceProfileMutation.isPending}
+      />
 
       <MarketplaceDetailsDrawer
         listing={selectedListing}
         open={Boolean(selectedListing)}
         canApplyToSite={canApplyToSite}
         onClose={handleCloseDetails}
-        onApplySite={handleApply}
+        onApplySite={(siteId, listing) => handleApply(listing || { id: siteId, kind: 'Sites', name: '', city: '', region: '' } as any)}
         onEmailContact={(listing) => trackOutreachEvent(listing, 'EMAIL')}
         onCallContact={(listing) => trackOutreachEvent(listing, 'CALL')}
       />

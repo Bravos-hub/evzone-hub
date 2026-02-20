@@ -1,4 +1,5 @@
 import type { Organization, Site, SwapProvider, User } from '@/core/api/types'
+import type { NormalizedProviderStatus, NormalizedRelationshipStatus } from '@/modules/integrations/providerStatus'
 
 export type MarketplaceEntityKind = 'Sites' | 'Operators' | 'Technicians' | 'Providers'
 
@@ -27,6 +28,41 @@ export type MarketplaceSummaryListing = {
   city: string
   region: string
 }
+
+export type SiteListing = MarketplaceSummaryListing & {
+  kind: 'Sites'
+  powerCapacityKw: number
+  leaseType?: string
+  expectedMonthlyPrice?: number
+  expectedFootfall?: string
+  owner?: Site['owner']
+}
+
+export type PeopleListing = MarketplaceSummaryListing & {
+  kind: 'Operators' | 'Technicians'
+  email?: string
+  phone?: string
+  role: User['role']
+}
+
+export type ListingsMarketplaceListing = SiteListing | PeopleListing
+
+export type ProviderRelationshipBadgeStatus = NormalizedRelationshipStatus | 'N/A'
+
+export type ProviderListing = MarketplaceSummaryListing & {
+  kind: 'Providers'
+  providerStatus: NormalizedProviderStatus
+  relationshipStatus: ProviderRelationshipBadgeStatus
+  relationshipId?: string
+  relationshipComplianceState?: 'READY' | 'WARN' | 'BLOCKED'
+  relationshipBlockers: number
+  standard: string
+  stationCount: number
+  batteriesSupported: string[]
+  canRequest: boolean
+}
+
+export type UnifiedMarketplaceListing = SiteListing | PeopleListing | ProviderListing
 
 export type MarketplaceTechnicianAvailability = {
   id: string
