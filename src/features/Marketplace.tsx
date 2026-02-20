@@ -521,21 +521,47 @@ export function Marketplace() {
             No marketplace listings match your filters. Try adjusting your search or filters.
           </div>
         ) : filters.viewMode === 'GRID' ? (
-          <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-3">
-            {unifiedListings.map((listing) => (
-              <ListingCard
-                key={`${listing.kind}:${listing.id}`}
-                listing={listing}
-                onDetails={handleOpenDetails}
-                onApply={handleApply}
-                onRequestPartnership={(l) => requestPartnership(l)}
-                onSubmitDocs={(l) => openQuickSubmit(l)}
-                canRequestPartnership={canRequestPartnership}
-                ownerOrgId={ownerOrgId}
-                isRequestingPartnership={requestProviderRelationshipMutation.isPending}
-                canApplyToSite={canApplyToSite}
-              />
-            ))}
+          <div className="space-y-8">
+            {Object.entries(
+              unifiedListings.reduce((acc, listing) => {
+                const kind = listing.kind
+                if (!acc[kind]) acc[kind] = []
+                acc[kind].push(listing)
+                return acc
+              }, {} as Record<string, UnifiedMarketplaceListing[]>)
+            ).map(([kind, groupListings]) => {
+              // Custom labels or sorting order could be applied here
+              const label = kind === 'Providers' ? 'Swap Providers' : kind
+
+              if (groupListings.length === 0) return null
+
+              return (
+                <section key={kind} className="space-y-4">
+                  <div className="flex items-center justify-between border-b border-border-light pb-2">
+                    <h2 className="text-lg font-semibold text-text tracking-tight">{label}</h2>
+                    <span className="text-xs font-medium text-muted bg-panel-2 px-2 py-1 rounded-full border border-border-light">
+                      {groupListings.length}
+                    </span>
+                  </div>
+                  <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
+                    {groupListings.map((listing) => (
+                      <ListingCard
+                        key={`${listing.kind}:${listing.id}`}
+                        listing={listing}
+                        onDetails={handleOpenDetails}
+                        onApply={handleApply}
+                        onRequestPartnership={(l) => requestPartnership(l)}
+                        onSubmitDocs={(l) => openQuickSubmit(l)}
+                        canRequestPartnership={canRequestPartnership}
+                        ownerOrgId={ownerOrgId}
+                        isRequestingPartnership={requestProviderRelationshipMutation.isPending}
+                        canApplyToSite={canApplyToSite}
+                      />
+                    ))}
+                  </div>
+                </section>
+              )
+            })}
           </div>
         ) : (
           <ListingTable

@@ -116,66 +116,76 @@ export function MarketplaceFilters({
                 </div>
             </div>
 
-            {/* Provider Specific Filters */}
-            <div className="p-4 bg-panel-2 rounded-xl border border-border-light space-y-3">
-                <div className="text-xs font-semibold text-muted uppercase tracking-wider">Provider Filters</div>
-                <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-3">
-                    <input
-                        value={filters.providerQuery}
-                        onChange={(e) => actions.setProviderQuery(e.target.value)}
-                        placeholder="Search provider..."
-                        className="input"
-                    />
-                    <div className="relative">
-                        <select
-                            value={filters.providerRegion}
-                            onChange={(e) => actions.setProviderRegion(e.target.value)}
-                            className="select w-full appearance-none"
-                        >
-                            {providerRegionOptions.map((option) => (
-                                <option key={option} value={option}>
-                                    {option === 'ALL' ? 'All Provider Regions' : option}
-                                </option>
-                            ))}
-                        </select>
-                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-muted">
-                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+            {/* Provider Specific Filters - Only show when relevant */}
+            {(filters.kind === 'All' || filters.kind === 'Providers') && (
+                <div className="pt-2 border-t border-border-light">
+                    <details className="group">
+                        <summary className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-muted hover:text-text uppercase tracking-wider select-none w-fit mb-3 transition-colors">
+                            <svg className="w-4 h-4 transition-transform group-open:rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                            <span>Provider Filters</span>
+                        </summary>
+
+                        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-3 animate-in fade-in slide-in-from-top-1 duration-200">
+                            <input
+                                value={filters.providerQuery}
+                                onChange={(e) => actions.setProviderQuery(e.target.value)}
+                                placeholder="Search provider..."
+                                className="input"
+                            />
+                            <div className="relative">
+                                <select
+                                    value={filters.providerRegion}
+                                    onChange={(e) => actions.setProviderRegion(e.target.value)}
+                                    className="select w-full appearance-none"
+                                >
+                                    {providerRegionOptions.map((option) => (
+                                        <option key={option} value={option}>
+                                            {option === 'ALL' ? 'All Provider Regions' : option}
+                                        </option>
+                                    ))}
+                                </select>
+                                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-muted">
+                                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                                </div>
+                            </div>
+                            <div className="relative">
+                                <select
+                                    value={filters.providerStatus}
+                                    onChange={(e) => actions.setProviderStatus(e.target.value as any)}
+                                    className="select w-full appearance-none"
+                                >
+                                    {PROVIDER_STATUS_OPTIONS.map((option) => (
+                                        <option key={option} value={option}>
+                                            {option === 'All' ? 'All Provider Statuses' : humanizeStatus(option)}
+                                        </option>
+                                    ))}
+                                </select>
+                                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-muted">
+                                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                                </div>
+                            </div>
+                            <div className="relative">
+                                <select
+                                    value={filters.relationshipStatus}
+                                    onChange={(e) => actions.setRelationshipStatus(e.target.value as any)}
+                                    className="select w-full appearance-none"
+                                >
+                                    {RELATIONSHIP_STATUS_OPTIONS.map((option) => (
+                                        <option key={option} value={option}>
+                                            {option === 'All' ? 'All Relationship Statuses' : humanizeStatus(option)}
+                                        </option>
+                                    ))}
+                                </select>
+                                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-muted">
+                                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                    <div className="relative">
-                        <select
-                            value={filters.providerStatus}
-                            onChange={(e) => actions.setProviderStatus(e.target.value as any)}
-                            className="select w-full appearance-none"
-                        >
-                            {PROVIDER_STATUS_OPTIONS.map((option) => (
-                                <option key={option} value={option}>
-                                    {option === 'All' ? 'All Provider Statuses' : humanizeStatus(option)}
-                                </option>
-                            ))}
-                        </select>
-                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-muted">
-                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
-                        </div>
-                    </div>
-                    <div className="relative">
-                        <select
-                            value={filters.relationshipStatus}
-                            onChange={(e) => actions.setRelationshipStatus(e.target.value as any)}
-                            className="select w-full appearance-none"
-                        >
-                            {RELATIONSHIP_STATUS_OPTIONS.map((option) => (
-                                <option key={option} value={option}>
-                                    {option === 'All' ? 'All Relationship Statuses' : humanizeStatus(option)}
-                                </option>
-                            ))}
-                        </select>
-                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-muted">
-                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
-                        </div>
-                    </div>
+                    </details>
                 </div>
-            </div>
+            )}
         </div>
     )
 }
