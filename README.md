@@ -45,6 +45,7 @@ npm run preview
 - **`npm run build`**: typecheck + build production bundle
 - **`npm run preview`**: preview the production build locally
 - **`npm run lint`**: run ESLint
+- **`npm run test:routes`**: fail if duplicate route path declarations exist
 
 ---
 
@@ -101,6 +102,7 @@ Create `.env` or `.env.local`:
 
 ```
 VITE_API_BASE_URL=http://localhost:3000/api/v1
+VITE_OCPP_PUBLIC_WS_BASE_URL=wss://ocpp.evzonecharging.com
 ```
 
 ### Data Layer (Mock Today, API Tomorrow)

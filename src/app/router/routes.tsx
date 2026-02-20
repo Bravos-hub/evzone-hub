@@ -182,7 +182,7 @@ export function AppRoutes() {
           ═══════════════════════════════════════════════════════════════════════ */}
       <Route path={PATHS.STATIONS.ROOT} element={<RequireAuth><Stations /></RequireAuth>} />
       <Route path="/stations/:id" element={<RequireAuth><StationDetail /></RequireAuth>} />
-      <Route path={PATHS.STATIONS.CHARGE_POINTS} element={<RequireAuth><Stations /></RequireAuth>} />
+      <Route path={PATHS.STATIONS.CHARGE_POINTS} element={<RequireAuth><ChargePoints /></RequireAuth>} />
       <Route path="/stations/charge-points/:id" element={<RequireAuth><ChargePointDetail /></RequireAuth>} />
       <Route path={PATHS.STATIONS.SWAP_STATIONS} element={<RequireAuth><Stations /></RequireAuth>} />
       <Route path={PATHS.STATIONS.SMART_CHARGING} element={<RequireAuth><Stations /></RequireAuth>} />
@@ -251,7 +251,6 @@ export function AppRoutes() {
       <Route path={PATHS.OWNER.TARIFFS} element={<RequireAuth><Tariffs /></RequireAuth>} />
       <Route path={PATHS.OWNER.PROVIDERS} element={<RequireAuth><SwapProviders /></RequireAuth>} />
       <Route path={PATHS.PROVIDER.DASHBOARD} element={<RequireAuth><ProviderPortal /></RequireAuth>} />
-      <Route path={PATHS.STATIONS.CHARGE_POINTS} element={<RequireAuth><ChargePoints /></RequireAuth>} />
       <Route path={PATHS.OWNER.EARNINGS} element={<RequireAuth><Earnings /></RequireAuth>} />
       <Route path={PATHS.OWNER.BOOKING_LEDGER} element={<RequireAuth><BookingLedger /></RequireAuth>} />
       <Route path={PATHS.OWNER.PRICING_RECIPES} element={<RequireAuth><PricingRecipes /></RequireAuth>} />
@@ -277,8 +276,6 @@ export function AppRoutes() {
           NEW PORTED FEATURES
           ═══════════════════════════════════════════════════════════════════════ */}
       {/* Admin Advanced */}
-      <Route path={PATHS.ADMIN.WEBHOOKS} element={<RequireAuth><Webhooks /></RequireAuth>} />
-      {/* Note: some paths might overlap or be duplicated in routes.tsx, I'll follow the existing structure */}
       <Route path="/content" element={<RequireAuth><Content /></RequireAuth>} />
       <Route path="/openadr" element={<RequireAuth><OpenADR /></RequireAuth>} />
       <Route path="/roaming" element={<RequireAuth><Roaming /></RequireAuth>} />
@@ -344,8 +341,6 @@ export function AppRoutes() {
       <Route path={PATHS.OPERATOR.DASHBOARD} element={<Navigate to={PATHS.DASHBOARD} replace />} />
 
       {/* Financial Tools */}
-      <Route path={PATHS.SESSIONS} element={<RequireAuth><Sessions /></RequireAuth>} />
-      {/* Note: routes.tsx has some repetitive entries, I'll keep them to maintain existing behavior but use constants */}
       <Route path="/payments" element={<RequireAuth><Payments /></RequireAuth>} />
       <Route path="/payouts" element={<RequireAuth><Payouts /></RequireAuth>} />
 

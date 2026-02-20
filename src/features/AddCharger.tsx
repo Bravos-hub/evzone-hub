@@ -171,7 +171,13 @@ const versionSubprotocol = (version: OcppVersion): OcppCredentials['subprotocol'
   return 'ocpp1.6'
 }
 
-const wsUrlFor = (version: OcppVersion, ocppId: string) => `wss://ocpp.evzonecharging.com/ocpp/${version}/${ocppId}`
+const fallbackWsBaseUrl = (() => {
+  const configured = import.meta.env.VITE_OCPP_PUBLIC_WS_BASE_URL as string | undefined
+  const normalized = (configured || 'wss://ocpp.evzonecharging.com').trim().replace(/\/+$/, '')
+  return /^wss?:\/\//i.test(normalized) ? normalized : 'wss://ocpp.evzonecharging.com'
+})()
+
+const wsUrlFor = (version: OcppVersion, ocppId: string) => `${fallbackWsBaseUrl}/ocpp/${version}/${ocppId}`
 const splitAllowlist = (value: string): string[] =>
   Array.from(
     new Set(
