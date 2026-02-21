@@ -45,7 +45,7 @@ const OWNER_SPECIFIC = section('Owner-Specific', [
 ])
 
 const SITE_OWNER = section('Site Owner', [
-  { path: PATHS.SITE_OWNER.SITES, label: 'My Sites', icon: 'map-pin', roles: ['SITE_OWNER', 'STATION_OWNER'] },
+  { path: PATHS.SITE_OWNER.SITES, label: 'Sites', icon: 'map-pin', roles: ['SITE_OWNER', 'STATION_OWNER'] },
   { path: PATHS.SITE_OWNER.PARKING, label: 'Parking', icon: 'truck', roles: ['SITE_OWNER'] },
   { path: PATHS.SITE_OWNER.TENANTS, label: 'Tenants', icon: 'users', roles: ['SITE_OWNER'] },
 ])
