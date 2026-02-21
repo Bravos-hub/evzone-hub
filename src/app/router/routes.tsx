@@ -53,7 +53,6 @@ import {
 
   // Owner Features
   Tariffs,
-  ChargePoints,
   SmartCharging,
   Earnings,
   Bookings,
@@ -182,7 +181,7 @@ export function AppRoutes() {
           ═══════════════════════════════════════════════════════════════════════ */}
       <Route path={PATHS.STATIONS.ROOT} element={<RequireAuth><Stations /></RequireAuth>} />
       <Route path="/stations/:id" element={<RequireAuth><StationDetail /></RequireAuth>} />
-      <Route path={PATHS.STATIONS.CHARGE_POINTS} element={<RequireAuth><ChargePoints /></RequireAuth>} />
+      <Route path={PATHS.STATIONS.CHARGE_POINTS} element={<RequireAuth><Stations /></RequireAuth>} />
       <Route path="/stations/charge-points/:id" element={<RequireAuth><ChargePointDetail /></RequireAuth>} />
       <Route path={PATHS.STATIONS.SWAP_STATIONS} element={<RequireAuth><Stations /></RequireAuth>} />
       <Route path={PATHS.STATIONS.SMART_CHARGING} element={<RequireAuth><Stations /></RequireAuth>} />
