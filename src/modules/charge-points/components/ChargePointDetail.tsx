@@ -29,7 +29,8 @@ export function ChargePointDetail() {
 
     const accessContext = {
         role: user?.role,
-        orgId: me?.orgId || me?.organizationId,
+        userId: me?.id || user?.id,
+        orgId: me?.orgId || me?.organizationId || user?.orgId || user?.organizationId,
         assignedStations: me?.assignedStations || [],
         capability: me?.ownerCapability || user?.ownerCapability,
         viewAll: perms.viewAll,
