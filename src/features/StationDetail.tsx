@@ -221,27 +221,38 @@ export function StationDetail() {
                 </tr>
               </thead>
               <tbody>
-                {chargePoints.map((cp: any) => (
-                  <tr key={cp.id}>
-                    <td className="font-semibold">{cp.id}</td>
-                    <td>{cp.manufacturer}</td>
-                    <td>{cp.model}</td>
-                    <td><StationStatusPill status={cp.status} /></td>
-                    <td>{Array.isArray(cp.connectors) ? cp.connectors.length : 0}</td>
-                    <td className="text-right">
-                      {canManage ? (
+                {chargePoints.map((cp: any) => {
+                  const chargePointId =
+                    typeof cp.id === 'string'
+                      ? cp.id.trim()
+                      : cp.id
+                        ? String(cp.id).trim()
+                        : ''
+                  const canOpenChargePoint = chargePointId.length > 0
+                  const actionLabel = canManage ? 'Manage' : 'View'
+
+                  return (
+                    <tr key={cp.id}>
+                      <td className="font-semibold">{cp.id}</td>
+                      <td>{cp.manufacturer}</td>
+                      <td>{cp.model}</td>
+                      <td><StationStatusPill status={cp.status} /></td>
+                      <td>{Array.isArray(cp.connectors) ? cp.connectors.length : 0}</td>
+                      <td className="text-right">
                         <button
-                          className="btn secondary text-xs font-bold"
-                          onClick={() => nav(PATHS.STATIONS.CHARGE_POINT_DETAIL(cp.id))}
+                          className={`btn secondary text-xs ${canManage ? 'font-bold' : ''} ${canOpenChargePoint ? '' : 'opacity-50 cursor-not-allowed'}`}
+                          disabled={!canOpenChargePoint}
+                          onClick={() => {
+                            if (!canOpenChargePoint) return
+                            nav(PATHS.STATIONS.CHARGE_POINT_DETAIL(chargePointId))
+                          }}
                         >
-                          Manage
+                          {actionLabel}
                         </button>
-                      ) : (
-                        <button className="btn secondary text-xs">View</button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
