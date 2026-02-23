@@ -212,7 +212,7 @@ export function StationDetail() {
             <table className="table">
               <thead>
                 <tr>
-                  <th>ID</th>
+                  <th>OCPP ID</th>
                   <th>Manufacturer</th>
                   <th>Model</th>
                   <th>Status</th>
@@ -228,12 +228,16 @@ export function StationDetail() {
                       : cp.id
                         ? String(cp.id).trim()
                         : ''
+                  const displayOcppId =
+                    typeof cp.ocppId === 'string' && cp.ocppId.trim().length > 0
+                      ? cp.ocppId.trim()
+                      : chargePointId || 'N/A'
                   const canOpenChargePoint = chargePointId.length > 0
                   const actionLabel = canManage ? 'Manage' : 'View'
 
                   return (
                     <tr key={cp.id}>
-                      <td className="font-semibold">{cp.id}</td>
+                      <td className="font-semibold">{displayOcppId}</td>
                       <td>{cp.manufacturer}</td>
                       <td>{cp.model}</td>
                       <td><StationStatusPill status={cp.status} /></td>

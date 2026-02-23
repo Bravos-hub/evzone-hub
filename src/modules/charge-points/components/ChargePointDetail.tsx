@@ -196,8 +196,18 @@ export function ChargePointDetail() {
         )
     }
 
+    const displayOcppId =
+        typeof cp.ocppId === 'string' && cp.ocppId.trim().length > 0
+            ? cp.ocppId.trim()
+            : cp.id
+    const chargeName =
+        typeof cp.model === 'string' && cp.model.trim().length > 0
+            ? cp.model.trim()
+            : 'Charge Point'
+    const chargeTitle = `${chargeName} - ${displayOcppId}`
+
     return (
-        <DashboardLayout pageTitle={`Manage ${cp.id}`}>
+        <DashboardLayout pageTitle={chargeTitle}>
             <div className="mb-6">
                 <button
                     onClick={() => window.history.back()}
@@ -207,7 +217,7 @@ export function ChargePointDetail() {
                 </button>
                 <div className="flex items-center justify-between">
                     <div>
-                        <h1 className="text-3xl font-bold">{cp.id}</h1>
+                        <h1 className="text-3xl font-bold">{chargeTitle}</h1>
                         <p className="text-muted">{cp.manufacturer} {cp.model}</p>
                     </div>
                     <StationStatusPill status={cp.status} />
