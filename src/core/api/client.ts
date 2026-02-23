@@ -171,10 +171,18 @@ class ApiClient {
       const refreshed = await this.refreshAccessToken();
 
       if (refreshed) {
+        // Rebuild auth header so retry uses the newly refreshed token.
+        const retryHeaders = new Headers(headers);
+        if (this.accessToken) {
+          retryHeaders.set('Authorization', `Bearer ${this.accessToken}`);
+        } else {
+          retryHeaders.delete('Authorization');
+        }
+
         // Retry request (new cookie will be sent automatically)
         response = await fetch(url, {
           ...fetchOptions,
-          headers,
+          headers: retryHeaders,
           credentials: 'include',
         });
       } else {
