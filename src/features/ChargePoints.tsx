@@ -52,11 +52,12 @@ export function ChargePoints() {
 
   const accessContext = useMemo(() => ({
     role: user?.role,
-    orgId: me?.orgId || me?.organizationId,
+    userId: me?.id || user?.id,
+    orgId: me?.orgId || me?.organizationId || user?.orgId || user?.organizationId,
     assignedStations: me?.assignedStations || [],
     capability,
     viewAll: perms.viewAll,
-  }), [user?.role, me?.orgId, me?.organizationId, me?.assignedStations, capability, perms.viewAll])
+  }), [user?.role, user?.id, user?.orgId, user?.organizationId, me?.id, me?.orgId, me?.organizationId, me?.assignedStations, capability, perms.viewAll])
 
   const accessibleChargeStations = useMemo(() => {
     return (stations || []).filter((station) => canAccessStation(accessContext, station, 'CHARGE'))
