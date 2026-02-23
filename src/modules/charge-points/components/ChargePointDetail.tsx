@@ -1,7 +1,6 @@
 import { useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
-import { PATHS } from '@/app/router/paths'
 import { useChargePoint, useUpdateChargePoint } from '@/modules/charge-points/hooks/useChargePoints'
 import { useStation } from '@/modules/stations/hooks/useStations'
 import { useMe } from '@/modules/auth/hooks/useAuth'
@@ -12,6 +11,7 @@ import { canAccessStation } from '@/core/auth/rbac'
 import { StationStatusPill } from '@/ui/components/StationStatusPill'
 import { TextSkeleton } from '@/ui/components/SkeletonCards'
 import { getErrorMessage } from '@/core/api/errors'
+import { chargePointService } from '@/modules/charge-points/services/chargePointService'
 
 /* ─────────────────────────────────────────────────────────────────────────────
    ChargePointDetail — Granular charger management for station owners/admins
@@ -38,8 +38,9 @@ export function ChargePointDetail() {
 
     const needsScope = user?.role === 'STATION_OWNER' || user?.role === 'STATION_OPERATOR'
     const accessLoading = needsScope && (meLoading || stationLoading)
-    const hasAccess = station
-        ? canAccessStation(accessContext, station, 'CHARGE')
+    const stationAccessTarget = station || (cp as any)?.station
+    const hasAccess = stationAccessTarget
+        ? canAccessStation(accessContext, stationAccessTarget, 'CHARGE')
         : (perms.viewAll || (user?.role ? ROLE_GROUPS.PLATFORM_OPS.includes(user.role) : false))
 
     const [isEditing, setIsEditing] = useState(false)
@@ -54,6 +55,78 @@ export function ChargePointDetail() {
         bay: '',
         type: 'EV Charging' as const,
     })
+    const [commandBusy, setCommandBusy] = useState<'remoteStart' | 'softReset' | 'reboot' | 'unlock' | null>(null)
+    const [commandFeedback, setCommandFeedback] = useState<{ tone: 'ok' | 'error'; message: string } | null>(null)
+
+    const runCommand = async (
+        command: 'remoteStart' | 'softReset' | 'reboot' | 'unlock',
+        label: string,
+        execute: () => Promise<{ commandId: string; status: string; error?: string }>
+    ) => {
+        try {
+            setCommandFeedback(null)
+            setCommandBusy(command)
+            const response = await execute()
+            const latest = await chargePointService.getCommandStatus(response.commandId).catch(() => null)
+            const finalStatus = latest?.status || response.status
+            const finalError = latest?.error || response.error
+            const failedStates = new Set(['Failed', 'Rejected', 'Timeout', 'NOT_FOUND'])
+
+            if (failedStates.has(finalStatus)) {
+                setCommandFeedback({
+                    tone: 'error',
+                    message: `${label} failed (${finalStatus})${finalError ? `: ${finalError}` : ''}`,
+                })
+                return
+            }
+
+            setCommandFeedback({
+                tone: 'ok',
+                message: `${label} queued (${finalStatus})`,
+            })
+        } catch (err) {
+            setCommandFeedback({
+                tone: 'error',
+                message: getErrorMessage(err),
+            })
+        } finally {
+            setCommandBusy(null)
+        }
+    }
+
+    const handleRemoteStart = () => {
+        if (!id) return
+        const connectorId = cp?.connectors?.[0]?.id ?? 1
+        runCommand('remoteStart', 'Remote start', () =>
+            chargePointService.remoteStart(id, {
+                connectorId,
+                evseId: connectorId,
+                idTag: 'EVZONE_REMOTE',
+                remoteStartId: Math.floor(Date.now() / 1000),
+            })
+        )
+    }
+
+    const handleSoftReset = () => {
+        if (!id) return
+        runCommand('softReset', 'Soft reset', () => chargePointService.softReset(id))
+    }
+
+    const handleReboot = () => {
+        if (!id) return
+        runCommand('reboot', 'Reboot', () => chargePointService.reboot(id))
+    }
+
+    const handleUnlock = () => {
+        if (!id) return
+        const connectorId = cp?.connectors?.[0]?.id ?? 1
+        runCommand('unlock', 'Unlock connector', () =>
+            chargePointService.unlockConnector(id, {
+                connectorId,
+                evseId: connectorId,
+            })
+        )
+    }
 
     const handleEdit = () => {
         if (!cp) return
@@ -270,24 +343,52 @@ export function ChargePointDetail() {
                 <div className="space-y-6">
                     <div className="card bg-muted/10 border-accent/20">
                         <h2 className="text-xl font-bold mb-4">Remote Commands</h2>
-                        <div className="grid grid-cols-1 gap-3">
-                            <button className="btn secondary w-full flex items-center justify-between" onClick={() => alert('Sending Remote Start session command...')}>
-                                <span>Remote Start Session</span>
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                            </button>
-                            <button className="btn secondary w-full flex items-center justify-between" onClick={() => alert('Sending Soft Reset...')}>
-                                <span>Soft Reset</span>
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                            </button>
-                            <button className="btn secondary w-full flex items-center justify-between" onClick={() => alert('Sending Reboot command...')}>
-                                <span>Reboot Hardware</span>
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                            </button>
-                            <button className="btn secondary w-full flex items-center justify-between" onClick={() => alert('Unlocking connector...')}>
-                                <span>Unlock Connector</span>
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" /></svg>
-                            </button>
-                        </div>
+                        {!perms.remoteCommands ? (
+                            <p className="text-sm text-subtle">You do not have permission to send remote commands.</p>
+                        ) : (
+                            <div className="grid grid-cols-1 gap-3">
+                                {commandFeedback && (
+                                    <div className={`rounded-md border px-3 py-2 text-xs ${commandFeedback.tone === 'ok'
+                                        ? 'border-ok/40 bg-ok/10 text-ok'
+                                        : 'border-danger/40 bg-danger/10 text-danger'
+                                        }`}>
+                                        {commandFeedback.message}
+                                    </div>
+                                )}
+                                <button
+                                    className={`btn secondary w-full flex items-center justify-between ${commandBusy ? 'opacity-60 cursor-not-allowed' : ''}`}
+                                    onClick={handleRemoteStart}
+                                    disabled={Boolean(commandBusy)}
+                                >
+                                    <span>{commandBusy === 'remoteStart' ? 'Sending...' : 'Remote Start Session'}</span>
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                </button>
+                                <button
+                                    className={`btn secondary w-full flex items-center justify-between ${commandBusy ? 'opacity-60 cursor-not-allowed' : ''}`}
+                                    onClick={handleSoftReset}
+                                    disabled={Boolean(commandBusy)}
+                                >
+                                    <span>{commandBusy === 'softReset' ? 'Sending...' : 'Soft Reset'}</span>
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                                </button>
+                                <button
+                                    className={`btn secondary w-full flex items-center justify-between ${commandBusy ? 'opacity-60 cursor-not-allowed' : ''}`}
+                                    onClick={handleReboot}
+                                    disabled={Boolean(commandBusy)}
+                                >
+                                    <span>{commandBusy === 'reboot' ? 'Sending...' : 'Reboot Hardware'}</span>
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                                </button>
+                                <button
+                                    className={`btn secondary w-full flex items-center justify-between ${commandBusy ? 'opacity-60 cursor-not-allowed' : ''}`}
+                                    onClick={handleUnlock}
+                                    disabled={Boolean(commandBusy)}
+                                >
+                                    <span>{commandBusy === 'unlock' ? 'Sending...' : 'Unlock Connector'}</span>
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" /></svg>
+                                </button>
+                            </div>
+                        )}
                     </div>
 
                     <div className="card">

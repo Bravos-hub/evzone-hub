@@ -19,6 +19,29 @@ export type ChargePointSecurityState = {
   certificatesCount: number
 }
 
+export type ChargePointCommandResponse = {
+  commandId: string
+  status: string
+  requestedAt: string
+  error?: string
+  message?: string
+  commandType?: string
+  chargePointId?: string
+  stationId?: string
+}
+
+export type ChargePointRemoteStartRequest = {
+  connectorId?: number
+  evseId?: number
+  idTag?: string
+  remoteStartId?: number
+}
+
+export type ChargePointUnlockRequest = {
+  connectorId?: number
+  evseId?: number
+}
+
 export const chargePointService = {
   /**
    * Get all charge points
@@ -77,8 +100,30 @@ export const chargePointService = {
   /**
    * Reboot charge point
    */
-  async reboot(id: string): Promise<void> {
-    return apiClient.post<void>(`/charge-points/${id}/reboot`)
+  async reboot(id: string): Promise<ChargePointCommandResponse> {
+    return apiClient.post<ChargePointCommandResponse>(`/charge-points/${id}/reboot`)
+  },
+
+  async softReset(id: string): Promise<ChargePointCommandResponse> {
+    return apiClient.post<ChargePointCommandResponse>(`/charge-points/${id}/commands/soft-reset`)
+  },
+
+  async remoteStart(
+    id: string,
+    data: ChargePointRemoteStartRequest
+  ): Promise<ChargePointCommandResponse> {
+    return apiClient.post<ChargePointCommandResponse>(`/charge-points/${id}/commands/remote-start`, data)
+  },
+
+  async unlockConnector(
+    id: string,
+    data: ChargePointUnlockRequest
+  ): Promise<ChargePointCommandResponse> {
+    return apiClient.post<ChargePointCommandResponse>(`/charge-points/${id}/commands/unlock`, data)
+  },
+
+  async getCommandStatus(commandId: string): Promise<{ id: string; status: string; error?: string | null }> {
+    return apiClient.get<{ id: string; status: string; error?: string | null }>(`/commands/${commandId}`)
   },
 
   async getSecurity(id: string): Promise<ChargePointSecurityState> {
