@@ -437,7 +437,7 @@ export function Settings() {
               <label className="flex items-center gap-3">
                 <input
                   type="checkbox"
-                  checked={resolvedUser?.twoFactorEnabled || !!qrCodeData}
+                  checked={(resolvedUser as any)?.twoFactorEnabled || !!qrCodeData}
                   onChange={e => handleToggle2fa(e.target.checked)}
                   disabled={generate2fa.isPending || disable2fa.isPending}
                   className="rounded"
@@ -448,7 +448,7 @@ export function Settings() {
                 </div>
               </label>
 
-              {qrCodeData && !resolvedUser?.twoFactorEnabled && (
+              {qrCodeData && !(resolvedUser as any)?.twoFactorEnabled && (
                 <div className="mt-4 p-4 border border-border rounded-lg bg-muted/20">
                   <h3 className="font-medium mb-2">Scan QR Code</h3>
                   <p className="text-sm text-subtle mb-4">Use an authenticator app (like Google Authenticator or Authy) to scan this QR code.</p>
