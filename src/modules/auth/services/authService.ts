@@ -157,5 +157,18 @@ export const authService = {
   async resendVerificationEmail(data: { email: string }): Promise<{ success: boolean; message: string }> {
     return apiClient.post('/auth/resend-verification-email', data, { skipAuth: true })
   },
+
+  /**
+   * 2FA Methods
+   */
+  async generate2fa(): Promise<{ qrCodeUrl: string; secret: string }> {
+    return apiClient.post('/auth/2fa/generate')
+  },
+  async verify2fa(token: string): Promise<{ success: boolean; message: string }> {
+    return apiClient.post('/auth/2fa/verify', { token })
+  },
+  async disable2fa(token: string): Promise<{ success: boolean; message: string }> {
+    return apiClient.post('/auth/2fa/disable', { token })
+  },
 }
 

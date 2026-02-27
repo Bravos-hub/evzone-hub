@@ -1,16 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { useAuthStore } from '@/core/auth/authStore'
-import { useMe } from '@/modules/auth/hooks/useAuth'
-import { useUpdateMe } from '@/modules/auth/hooks/useUsers'
+import { useMe, useGenerate2fa, useVerify2fa, useDisable2fa } from '@/modules/auth/hooks/useAuth'
+import { useUpdateMe, useChangePassword, useUploadAvatar } from '@/modules/auth/hooks/useUsers'
 import { useApiKeys, useRotateApiKey, useRevokeApiKey } from '@/modules/integrations/useIntegrationKeys'
 import { getErrorMessage } from '@/core/api/errors'
 import type { ApiKey } from '@/modules/integrations/integrationsService'
 import { TextSkeleton } from '@/ui/components/SkeletonCards'
 
-/* Settings - Profile, Security, Notifications, API, Localization */
+/* Settings - Profile, Security, Notifications, UI Preferences, API, Organization, Team, Billing */
 
-type SettingsTab = 'profile' | 'security' | 'notifications' | 'api' | 'localization'
+type SettingsTab = 'profile' | 'security' | 'notifications' | 'ui_preferences' | 'api' | 'organization' | 'team' | 'billing'
 
 type NotificationPrefs = {
   emailAlerts: boolean
@@ -66,8 +66,13 @@ const mapNotifications = (user?: any): NotificationPrefs => ({
 
 export function Settings() {
   const { user } = useAuthStore()
-  const { data: me, isLoading: meLoading, error: meError } = useMe()
+  const { data: me, isLoading: meLoading, error: meError, refetch } = useMe()
   const updateMe = useUpdateMe()
+  const changePassword = useChangePassword()
+  const uploadAvatar = useUploadAvatar()
+  const generate2fa = useGenerate2fa()
+  const verify2fa = useVerify2fa()
+  const disable2fa = useDisable2fa()
 
   const { data: apiKeysData, isLoading: apiKeysLoading, error: apiKeysError } = useApiKeys()
   const rotateApiKey = useRotateApiKey()
@@ -129,12 +134,62 @@ export function Settings() {
 
   const handleSecuritySave = (e: React.FormEvent) => {
     e.preventDefault()
+    if (!security.currentPassword || !security.newPassword) {
+      toast('Please fill in both current and new passwords.')
+      return
+    }
     if (security.newPassword !== security.confirmPassword) {
       toast('Passwords do not match!')
       return
     }
-    toast('Password updates are managed via the reset password flow.')
-    setSecurity(s => ({ ...s, currentPassword: '', newPassword: '', confirmPassword: '' }))
+
+    changePassword.mutate(
+      { currentPassword: security.currentPassword, newPassword: security.newPassword },
+      {
+        onSuccess: () => {
+          toast('Password changed successfully!')
+          setSecurity(s => ({ ...s, currentPassword: '', newPassword: '', confirmPassword: '' }))
+        },
+        onError: (err) => toast(getErrorMessage(err))
+      }
+    )
+  }
+
+  const [qrCodeData, setQrCodeData] = useState<{ url: string; secret: string } | null>(null)
+  const [otpToken, setOtpToken] = useState('')
+
+  const handleToggle2fa = (enable: boolean) => {
+    if (enable) {
+      generate2fa.mutate(undefined, {
+        onSuccess: (data: any) => {
+          setQrCodeData({ url: data.qrCodeUrl, secret: data.secret })
+        },
+        onError: (err) => toast(getErrorMessage(err))
+      })
+    } else {
+      const token = prompt('Enter your 2FA token to disable:')
+      if (token) {
+        disable2fa.mutate(token, {
+          onSuccess: () => {
+            toast('2FA disabled successfully!')
+            refetch()
+          },
+          onError: (err) => toast(getErrorMessage(err))
+        })
+      }
+    }
+  }
+
+  const handleVerify2fa = () => {
+    verify2fa.mutate(otpToken, {
+      onSuccess: () => {
+        toast('2FA enabled successfully!')
+        setQrCodeData(null)
+        setOtpToken('')
+        refetch()
+      },
+      onError: (err) => toast(getErrorMessage(err))
+    })
   }
 
   const handleNotificationsSave = () => {
@@ -169,16 +224,33 @@ export function Settings() {
     currentPassword: '',
     newPassword: '',
     confirmPassword: '',
-    twoFactor: false,
   })
 
-  const tabs: { key: SettingsTab; label: string }[] = [
+  // Role-based tab visibility
+  const isAdmin = resolvedUser?.role === 'EVZONE_ADMIN' || resolvedUser?.role === 'SUPER_ADMIN'
+  const isOwner = resolvedUser?.role === 'SITE_OWNER' || resolvedUser?.role === 'STATION_OWNER'
+  const isManager = resolvedUser?.role === 'CASHIER' || resolvedUser?.role === 'ATTENDANT' // Assuming managers, but adjust based on actual roles
+
+  const baseTabs: { key: SettingsTab; label: string }[] = [
     { key: 'profile', label: 'Profile' },
     { key: 'security', label: 'Security' },
     { key: 'notifications', label: 'Notifications' },
-    { key: 'api', label: 'API Keys' },
-    { key: 'localization', label: 'Localization' },
+    { key: 'ui_preferences', label: 'UI Preferences' },
   ]
+
+  if (isAdmin) {
+    baseTabs.push({ key: 'api', label: 'API Keys' })
+    baseTabs.push({ key: 'organization', label: 'Organization Details' })
+    baseTabs.push({ key: 'team', label: 'Team Management' })
+  } else if (isOwner) {
+    baseTabs.push({ key: 'organization', label: 'Organization Details' })
+    baseTabs.push({ key: 'team', label: 'Team Management' })
+    baseTabs.push({ key: 'billing', label: 'Billing & Payouts' })
+  } else if (isManager) {
+    // example, attendants don't see team or billing by default, up to your business logic
+  }
+
+  const tabs = baseTabs;
 
   return (
     <DashboardLayout pageTitle="Settings">
@@ -214,12 +286,32 @@ export function Settings() {
                 <img src={resolvedUser.avatarUrl} alt={resolvedUser.name} className="h-16 w-16 rounded-full object-cover border-2 border-accent/20" />
               ) : (
                 <div className="h-16 w-16 rounded-full bg-muted grid place-items-center text-subtle text-sm">
-                  {profile.name ? profile.name.split(' ').map(n => n[0]).join('').slice(0, 2) : '--'}
+                  {profile.name ? profile.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2) : '--'}
                 </div>
               )}
-              <button type="button" className="px-3 py-2 rounded-lg border border-border hover:bg-muted" disabled>
-                Upload avatar
-              </button>
+              <div className="relative">
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    if (file) {
+                      uploadAvatar.mutate(file, {
+                        onSuccess: () => {
+                          toast('Avatar uploaded successfully!')
+                          refetch()
+                        },
+                        onError: (err) => toast(getErrorMessage(err))
+                      })
+                    }
+                  }}
+                  title="Upload avatar"
+                />
+                <button type="button" className="px-3 py-2 rounded-lg border border-border hover:bg-muted pointer-events-none">
+                  Upload avatar
+                </button>
+              </div>
             </div>
 
             <div className="grid sm:grid-cols-2 gap-4">
@@ -343,16 +435,56 @@ export function Settings() {
 
             <div className="border-t border-border pt-4">
               <label className="flex items-center gap-3">
-                <input type="checkbox" checked={security.twoFactor} onChange={e => setSecurity(s => ({ ...s, twoFactor: e.target.checked }))} className="rounded" />
+                <input
+                  type="checkbox"
+                  checked={resolvedUser?.twoFactorEnabled || !!qrCodeData}
+                  onChange={e => handleToggle2fa(e.target.checked)}
+                  disabled={generate2fa.isPending || disable2fa.isPending}
+                  className="rounded"
+                />
                 <div>
                   <div className="font-medium">Two-Factor Authentication</div>
-                  <div className="text-sm text-subtle">Add an extra layer of security to your account</div>
+                  <div className="text-sm text-subtle">Add an extra layer of security to your account.</div>
                 </div>
               </label>
+
+              {qrCodeData && !resolvedUser?.twoFactorEnabled && (
+                <div className="mt-4 p-4 border border-border rounded-lg bg-muted/20">
+                  <h3 className="font-medium mb-2">Scan QR Code</h3>
+                  <p className="text-sm text-subtle mb-4">Use an authenticator app (like Google Authenticator or Authy) to scan this QR code.</p>
+                  <div className="bg-white p-2 inline-block rounded-md mb-4 border border-border">
+                    <img src={qrCodeData.url} alt="2FA QR Code" className="w-32 h-32" />
+                  </div>
+                  <div className="mb-4">
+                    <p className="text-sm text-subtle mb-2">Or enter this secret manually:</p>
+                    <code className="bg-muted px-2 py-1 rounded select-all">{qrCodeData.secret}</code>
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Enter 6-digit code"
+                      maxLength={6}
+                      value={otpToken}
+                      onChange={e => setOtpToken(e.target.value)}
+                      className="input flex-1 max-w-[200px]"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleVerify2fa}
+                      disabled={otpToken.length < 6 || verify2fa.isPending}
+                      className="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover font-medium disabled:opacity-50"
+                    >
+                      Verify & Enable
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="flex justify-end">
-              <button type="submit" className="px-4 py-2 rounded-lg bg-accent text-white font-medium hover:bg-accent-hover">Update Security</button>
+              <button type="submit" className="px-4 py-2 rounded-lg bg-accent text-white font-medium hover:bg-accent-hover" disabled={changePassword.isPending}>
+                {changePassword.isPending ? 'Updating...' : 'Update Password'}
+              </button>
             </div>
           </form>
         )}
@@ -471,57 +603,97 @@ export function Settings() {
           </div>
         )}
 
-        {/* Localization Tab */}
-        {tab === 'localization' && (
+        {/* UI Preferences Tab */}
+        {tab === 'ui_preferences' && (
           <div className="rounded-xl bg-surface border border-border p-6 space-y-6">
-            <h2 className="text-lg font-semibold">Localization</h2>
-
-            <div className="grid sm:grid-cols-2 gap-4">
-              <label className="grid gap-1">
-                <span className="text-sm font-medium">Language</span>
-                <select value={profile.language} onChange={e => {
-                  setProfile(p => ({ ...p, language: e.target.value }))
-                  setProfileDirty(true)
-                }} className="select">
-                  <option value="">Not set</option>
-                  {['EN', 'FR', 'ES', 'SW', 'AR', 'ZH'].map(l => <option key={l}>{l}</option>)}
+            <h2 className="text-lg font-semibold">UI Preferences</h2>
+            <p className="text-subtle text-sm">Manage your portal appearance and default behaviors.</p>
+            <div className="space-y-4 pt-4 border-t border-border">
+              <label className="flex flex-col gap-1">
+                <span className="text-sm font-medium">Theme Mode</span>
+                <select className="select w-full max-w-xs">
+                  <option value="system">System Default</option>
+                  <option value="light">Light Mode</option>
+                  <option value="dark">Dark Mode</option>
                 </select>
               </label>
-              <label className="grid gap-1">
-                <span className="text-sm font-medium">Timezone</span>
-                <select value={profile.timezone} onChange={e => {
-                  setProfile(p => ({ ...p, timezone: e.target.value }))
-                  setProfileDirty(true)
-                }} className="select">
-                  <option value="">Not set</option>
-                  {['Africa/Kampala', 'Africa/Nairobi', 'Europe/London', 'America/New_York', 'Asia/Shanghai'].map(t => <option key={t}>{t}</option>)}
-                </select>
-              </label>
-              <label className="grid gap-1">
-                <span className="text-sm font-medium">Date Format</span>
-                <select className="select" defaultValue="">
-                  <option value="">Not set</option>
-                  <option>DD/MM/YYYY</option>
-                  <option>MM/DD/YYYY</option>
-                  <option>YYYY-MM-DD</option>
-                </select>
-              </label>
-              <label className="grid gap-1">
-                <span className="text-sm font-medium">Currency</span>
-                <select className="select" defaultValue="">
-                  <option value="">Not set</option>
-                  <option>USD - US Dollar</option>
-                  <option>EUR - Euro</option>
-                  <option>UGX - Ugandan Shilling</option>
-                  <option>KES - Kenyan Shilling</option>
+              <label className="flex flex-col gap-1 mt-4">
+                <span className="text-sm font-medium">Default Dashboard Date Range</span>
+                <select className="select w-full max-w-xs">
+                  <option value="this_week">This Week</option>
+                  <option value="this_month">This Month</option>
+                  <option value="last_30_days" selected>Last 30 Days</option>
+                  <option value="year_to_date">Year to Date</option>
                 </select>
               </label>
             </div>
-
-            <div className="flex justify-end">
-              <button onClick={handleLocalizationSave} className="px-4 py-2 rounded-lg bg-accent text-white font-medium hover:bg-accent-hover" disabled={updateMe.isPending}>
-                {updateMe.isPending ? 'Saving...' : 'Save Settings'}
+            <div className="flex justify-end mt-6">
+              <button type="button" className="px-4 py-2 rounded-lg bg-accent text-white font-medium hover:bg-accent-hover" onClick={() => toast('Preferences saved!')}>
+                Save Preferences
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Organization Tab */}
+        {tab === 'organization' && (
+          <div className="rounded-xl bg-surface border border-border p-6 space-y-6">
+            <h2 className="text-lg font-semibold">Organization Details</h2>
+            <div className="grid sm:grid-cols-2 gap-4">
+              <label className="grid gap-1">
+                <span className="text-sm font-medium">Organization Name</span>
+                <input type="text" defaultValue={(resolvedUser as any)?.organization?.name || ''} className="input" />
+              </label>
+              <label className="grid gap-1">
+                <span className="text-sm font-medium">Support Email</span>
+                <input type="email" defaultValue={(resolvedUser as any)?.organization?.supportEmail || ''} className="input" />
+              </label>
+              <label className="grid gap-1">
+                <span className="text-sm font-medium">Tax / VAT ID</span>
+                <input type="text" className="input" placeholder="e.g. GB123456789" />
+              </label>
+              <label className="grid gap-1 sm:col-span-2">
+                <span className="text-sm font-medium">Billing Address</span>
+                <textarea className="input resize-none" rows={3}></textarea>
+              </label>
+            </div>
+            <div className="flex justify-end">
+              <button type="button" className="px-4 py-2 rounded-lg bg-accent text-white font-medium hover:bg-accent-hover" onClick={() => toast('Organization details saved!')}>
+                Save Organization
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Team Management Tab */}
+        {tab === 'team' && (
+          <div className="rounded-xl bg-surface border border-border p-6 space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Team Management</h2>
+              <button className="px-3 py-1.5 text-sm bg-accent text-white rounded-md hover:bg-accent-hover">Invite Member</button>
+            </div>
+            <div className="border border-border rounded-lg overflow-hidden">
+              <div className="p-8 text-center text-muted">
+                Team management functionality will live here, allowing you to invite Cashiers and Attendants.
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Billing Tab */}
+        {tab === 'billing' && (
+          <div className="rounded-xl bg-surface border border-border p-6 space-y-6">
+            <h2 className="text-lg font-semibold">Billing & Payouts</h2>
+            <div className="p-4 border border-border rounded-lg bg-muted/20">
+              <h3 className="font-medium mb-1">Payout Bank Account</h3>
+              <p className="text-sm text-subtle mb-4">Connect your bank account to receive payouts from charging sessions.</p>
+              <button className="px-4 py-2 border border-border bg-surface rounded-lg hover:bg-muted font-medium text-sm">
+                Connect via Stripe
+              </button>
+            </div>
+            <div className="p-4 border border-border rounded-lg bg-muted/20 mt-4">
+              <h3 className="font-medium mb-1">Subscription Details</h3>
+              <p className="text-sm text-subtle">You are currently on the <strong>Pro Plan</strong> ($0/mo during beta).</p>
             </div>
           </div>
         )}

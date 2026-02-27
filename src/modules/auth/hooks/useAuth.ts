@@ -112,3 +112,29 @@ export function useResetPassword() {
     },
   })
 }
+
+export function useGenerate2fa() {
+  return useMutation({
+    mutationFn: () => authService.generate2fa(),
+  })
+}
+
+export function useVerify2fa() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (token: string) => authService.verify2fa(token),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.auth.me })
+    }
+  })
+}
+
+export function useDisable2fa() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (token: string) => authService.disable2fa(token),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.auth.me })
+    }
+  })
+}

@@ -157,6 +157,22 @@ export const userService = {
   async toggleMfaRequirement(id: string, required: boolean): Promise<void> {
     return apiClient.post<void>(`/users/${id}/mfa-requirement`, { required })
   },
+
+  /**
+   * Change Current User Password
+   */
+  async changePassword(currentPassword: string, newPassword: string): Promise<{ success: boolean; message: string }> {
+    return apiClient.post('/auth/me/password', { currentPassword, newPassword })
+  },
+
+  /**
+   * Upload Avatar
+   */
+  async uploadAvatar(file: File): Promise<{ avatarUrl: string }> {
+    const formData = new FormData()
+    formData.append('file', file)
+    return apiClient.post('/users/me/avatar', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+  },
 }
-
-

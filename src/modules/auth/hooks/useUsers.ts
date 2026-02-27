@@ -142,3 +142,24 @@ export function useToggleMfaRequirement() {
     },
   })
 }
+
+export function useChangePassword() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ currentPassword, newPassword }: any) =>
+      userService.changePassword(currentPassword, newPassword),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.auth.me })
+    },
+  })
+}
+
+export function useUploadAvatar() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (file: File) => userService.uploadAvatar(file),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.auth.me })
+    },
+  })
+}
