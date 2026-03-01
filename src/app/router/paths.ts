@@ -9,6 +9,9 @@ export const PATHS = {
   AUTH: {
     LOGIN: '/auth/login',
     REGISTER: '/auth/register',
+    INVITATION_ACCEPT: '/auth/invitation/accept',
+    SELECT_ORGANIZATION: '/auth/select-organization',
+    FORCE_PASSWORD_CHANGE: '/auth/force-password-change',
     FORGOT_PASSWORD: '/forgot-password',
     RESET_PASSWORD: '/auth/reset-password',
     VERIFY_EMAIL: '/verify-email',

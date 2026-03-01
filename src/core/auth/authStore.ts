@@ -14,7 +14,7 @@ type AuthState = {
   impersonator: UserProfile | null;
   impersonationReturnTo: string | null;
   isLoading: boolean;
-  login: (opts: { email?: string; phone?: string; password: string }) => Promise<void>;
+  login: (opts: { email?: string; phone?: string; password: string; inviteToken?: string }) => Promise<AuthResponse>;
   loginWithUser: (user: AuthResponse['user']) => void;
   loginWithResponse: (response: AuthResponse) => void;
   logout: () => Promise<void>;
@@ -28,21 +28,51 @@ type AuthState = {
 
 type UserLike = Pick<
   AuthResponse['user'],
-  'id' | 'name' | 'role' | 'ownerCapability' | 'providerId' | 'orgId' | 'organizationId' | 'region' | 'zoneId' | 'avatarUrl'
+  | 'id'
+  | 'name'
+  | 'role'
+  | 'ownerCapability'
+  | 'providerId'
+  | 'orgId'
+  | 'organizationId'
+  | 'activeOrganizationId'
+  | 'memberships'
+  | 'mustChangePassword'
+  | 'region'
+  | 'zoneId'
+  | 'avatarUrl'
 > | Pick<
   User,
-  'id' | 'name' | 'role' | 'ownerCapability' | 'providerId' | 'orgId' | 'organizationId' | 'region' | 'zoneId' | 'avatarUrl'
+  | 'id'
+  | 'name'
+  | 'role'
+  | 'ownerCapability'
+  | 'providerId'
+  | 'orgId'
+  | 'organizationId'
+  | 'activeOrganizationId'
+  | 'memberships'
+  | 'mustChangePassword'
+  | 'region'
+  | 'zoneId'
+  | 'avatarUrl'
 >;
 
 function toUserProfile(user: UserLike): UserProfile {
+  const activeOrganizationId =
+    user.activeOrganizationId || user.organizationId || user.orgId;
+
   return {
     id: user.id,
     name: user.name,
     role: user.role as Role,
     ownerCapability: user.ownerCapability,
     providerId: user.providerId,
-    orgId: user.orgId,
-    organizationId: user.organizationId,
+    orgId: activeOrganizationId || user.orgId,
+    organizationId: activeOrganizationId || user.organizationId,
+    activeOrganizationId,
+    memberships: user.memberships,
+    mustChangePassword: user.mustChangePassword,
     region: user.region,
     zoneId: user.zoneId,
     avatarUrl: user.avatarUrl,
@@ -98,12 +128,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   impersonationReturnTo: loadReturnTo(),
   isLoading: false,
 
-  login: async ({ email, phone, password }) => {
+  login: async ({ email, phone, password, inviteToken }) => {
     set({ isLoading: true });
     try {
       // API returns only user data, cookies are set automatically
-      const response = await authService.login({ email, phone, password });
+      const response = await authService.login({ email, phone, password, inviteToken });
       get().loginWithResponse(response);
+      return response;
     } catch (error) {
       set({ isLoading: false });
       throw error;
@@ -119,7 +150,21 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   loginWithResponse: (response) => {
-    get().loginWithUser(response.user);
+    const activeOrganizationId =
+      response.user.activeOrganizationId ||
+      response.activeOrganizationId ||
+      response.user.organizationId ||
+      response.user.orgId;
+
+    get().loginWithUser({
+      ...response.user,
+      activeOrganizationId,
+      organizationId: activeOrganizationId || response.user.organizationId,
+      orgId: activeOrganizationId || response.user.orgId,
+      memberships: response.user.memberships || response.memberships,
+      mustChangePassword:
+        response.user.mustChangePassword ?? response.mustChangePassword,
+    });
     void get().refreshUser();
   },
 

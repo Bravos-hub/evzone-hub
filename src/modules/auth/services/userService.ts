@@ -20,7 +20,7 @@ export type UserListFilters = {
 
 export function resolveUserOrgId(user?: Partial<User> | null): string | undefined {
   if (!user) return undefined
-  return user.organization?.id || user.orgId || user.organizationId || user.tenantId || undefined
+  return user.activeOrganizationId || user.organization?.id || user.orgId || user.organizationId || user.tenantId || undefined
 }
 
 function normalizeMe(user: User): User {
@@ -162,7 +162,7 @@ export const userService = {
    * Change Current User Password
    */
   async changePassword(currentPassword: string, newPassword: string): Promise<{ success: boolean; message: string }> {
-    return apiClient.post('/auth/me/password', { currentPassword, newPassword })
+    return apiClient.post('/users/me/password', { currentPassword, newPassword })
   },
 
   /**

@@ -10,6 +10,7 @@ export interface LoginRequest {
   email?: string
   phone?: string
   password: string
+  inviteToken?: string
 }
 
 export interface RegisterRequest {
@@ -41,12 +42,38 @@ export interface InviteUserRequest {
   organizationId?: string
   region?: string
   zoneId?: string
-  password?: string
+}
+
+export type MembershipStatus = 'INVITED' | 'ACTIVE' | 'SUSPENDED' | 'REVOKED'
+
+export interface MembershipSummary {
+  id: string
+  organizationId: string
+  role: string
+  ownerCapability?: OwnerCapability
+  status: MembershipStatus
+  organizationName?: string
+  organizationType?: string
+}
+
+export interface AcceptInvitationResponse {
+  email: string
+  organizationName: string
+  role: string
+  requiresTempPassword: boolean
+  inviteToken: string
+}
+
+export interface SwitchOrganizationRequest {
+  organizationId: string
 }
 
 export interface AuthResponse {
   accessToken: string
   refreshToken: string
+  activeOrganizationId?: string
+  memberships?: MembershipSummary[]
+  mustChangePassword?: boolean
   user: {
     id: string
     name: string
@@ -56,6 +83,9 @@ export interface AuthResponse {
     providerId?: string
     orgId?: string
     organizationId?: string
+    activeOrganizationId?: string
+    memberships?: MembershipSummary[]
+    mustChangePassword?: boolean
     region?: string
     zoneId?: string
     assignedStations?: string[]
@@ -79,6 +109,9 @@ export interface User {
   providerId?: string
   orgId?: string
   organizationId?: string
+  activeOrganizationId?: string
+  memberships?: MembershipSummary[]
+  mustChangePassword?: boolean
   organization?: {
     id: string
     name: string

@@ -20,6 +20,14 @@ export function Login() {
   const [loading, setLoading] = useState(false)
 
   const returnTo = searchParams.get('returnTo') || PATHS.DASHBOARD
+  const inviteToken = searchParams.get('inviteToken') || undefined
+  const emailFromQuery = searchParams.get('email') || ''
+
+  useEffect(() => {
+    if (emailFromQuery) {
+      setEmail(emailFromQuery)
+    }
+  }, [emailFromQuery])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -27,7 +35,22 @@ export function Login() {
     setLoading(true)
 
     try {
-      await login({ email, password })
+      const response = await login({ email, password, inviteToken })
+      const mustChangePassword =
+        response.user.mustChangePassword ?? response.mustChangePassword
+      const memberships = response.user.memberships || response.memberships || []
+      const activeMemberships = memberships.filter((membership) => membership.status === 'ACTIVE')
+
+      if (mustChangePassword) {
+        navigate(`${PATHS.AUTH.FORCE_PASSWORD_CHANGE}?returnTo=${encodeURIComponent(returnTo)}`)
+        return
+      }
+
+      if (activeMemberships.length > 1) {
+        navigate(`${PATHS.AUTH.SELECT_ORGANIZATION}?returnTo=${encodeURIComponent(returnTo)}`)
+        return
+      }
+
       navigate(returnTo)
     } catch (err: any) {
       setError(err?.message || 'Login failed. Please check your credentials.')
@@ -873,5 +896,4 @@ export function VerifyEmail() {
 }
 
 export default Login
-
 

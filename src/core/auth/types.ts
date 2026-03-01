@@ -37,6 +37,17 @@ export type UserProfile = {
   providerId?: string
   orgId?: string
   organizationId?: string
+  activeOrganizationId?: string
+  memberships?: Array<{
+    id: string
+    organizationId: string
+    role: string
+    ownerCapability?: OwnerCapability
+    status: 'INVITED' | 'ACTIVE' | 'SUSPENDED' | 'REVOKED'
+    organizationName?: string
+    organizationType?: string
+  }>
+  mustChangePassword?: boolean
   region?: string
   zoneId?: string
   status?: 'Active' | 'Pending' | 'Suspended' | 'Inactive' | 'Invited'

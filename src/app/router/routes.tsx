@@ -94,6 +94,9 @@ import {
   Register,
   ForgotPassword,
   VerifyEmail,
+  InvitationAcceptPage,
+  SelectOrganizationPage,
+  ForcePasswordChangePage,
   AccountPending,
   // Role-specific Ops
 
@@ -167,9 +170,26 @@ export function AppRoutes() {
       {/* Public routes */}
       <Route path={PATHS.HOME} element={<HomeRouter />} />
       <Route path={PATHS.AUTH.LOGIN} element={<Login />} />
+      <Route path={PATHS.AUTH.INVITATION_ACCEPT} element={<InvitationAcceptPage />} />
       <Route path={PATHS.AUTH.AWAITING_APPROVAL} element={<AccountPending />} />
       <Route path="/login" element={<Navigate to={PATHS.AUTH.LOGIN} replace />} />
       <Route path={PATHS.ERRORS.UNAUTHORIZED} element={<UnauthorizedPage />} />
+      <Route
+        path={PATHS.AUTH.SELECT_ORGANIZATION}
+        element={
+          <RequireAuth>
+            <SelectOrganizationPage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path={PATHS.AUTH.FORCE_PASSWORD_CHANGE}
+        element={
+          <RequireAuth>
+            <ForcePasswordChangePage />
+          </RequireAuth>
+        }
+      />
 
       {/* ═══════════════════════════════════════════════════════════════════════
           DASHBOARD - Single route, content determined by user's role

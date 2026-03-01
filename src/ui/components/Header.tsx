@@ -5,16 +5,24 @@ import { InviteUserModal } from '@/modals/InviteUserModal'
 import { ROLE_LABELS } from '@/constants/roles'
 import { PATHS } from '@/app/router/paths'
 import { useTheme } from '@/ui/theme'
+import { authService } from '@/modules/auth/services/authService'
 import clsx from 'clsx'
 
 export function Header({ title, onMenuClick }: { title?: string; onMenuClick?: () => void }) {
   const nav = useNavigate()
-  const { user, impersonator, impersonationReturnTo, logout, stopImpersonation } = useAuthStore()
+  const { user, impersonator, impersonationReturnTo, logout, stopImpersonation, loginWithResponse } = useAuthStore()
   const { mode, setMode, effectiveTheme } = useTheme()
   const [createOpen, setCreateOpen] = useState(false)
   const [inviteModalOpen, setInviteModalOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
+  const [switchingOrgId, setSwitchingOrgId] = useState<string | null>(null)
   const createRef = useRef<HTMLDivElement | null>(null)
+
+  const activeMemberships = useMemo(
+    () => (user?.memberships || []).filter((membership) => membership.status === 'ACTIVE'),
+    [user?.memberships],
+  )
+  const currentOrganizationId = user?.activeOrganizationId || user?.organizationId || user?.orgId || ''
 
   useEffect(() => {
     function onDown(e: MouseEvent) {
@@ -122,6 +130,37 @@ export function Header({ title, onMenuClick }: { title?: string; onMenuClick?: (
               </svg>
             </button>
           </div>
+        )}
+
+        {activeMemberships.length > 1 && (
+          <label className="hidden lg:flex items-center gap-2 rounded-xl border border-border bg-panel px-2 py-1">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-text-secondary">Org</span>
+            <select
+              className="bg-transparent text-xs font-medium text-text focus:outline-none"
+              value={currentOrganizationId}
+              disabled={Boolean(switchingOrgId)}
+              onChange={async (event) => {
+                const organizationId = event.target.value
+                if (!organizationId || organizationId === currentOrganizationId) return
+                setSwitchingOrgId(organizationId)
+                try {
+                  const response = await authService.switchOrganization({ organizationId })
+                  loginWithResponse(response)
+                  window.dispatchEvent(new CustomEvent('org:switched', { detail: { organizationId } }))
+                } catch (error) {
+                  console.error('Failed to switch organization', error)
+                } finally {
+                  setSwitchingOrgId(null)
+                }
+              }}
+            >
+              {activeMemberships.map((membership) => (
+                <option key={membership.id} value={membership.organizationId}>
+                  {membership.organizationName || membership.organizationId}
+                </option>
+              ))}
+            </select>
+          </label>
         )}
 
         <div className="relative flex-shrink-0" ref={createRef}>

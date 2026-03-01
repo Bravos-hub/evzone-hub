@@ -16,8 +16,6 @@ export function InviteUserModal({ isOpen, onClose }: InviteUserModalProps) {
   const [ownerCapability, setOwnerCapability] = useState<OwnerCapability>('BOTH')
   const [error, setError] = useState('')
   const [ack, setAck] = useState('')
-  const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
 
   const inviteUser = useInviteUser()
 
@@ -40,26 +38,10 @@ export function InviteUserModal({ isOpen, onClose }: InviteUserModalProps) {
       return
     }
 
-    if (!password) {
-      setError('Password is required')
-      return
-    }
-
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters')
-      return
-    }
-
-    if (password !== confirmPassword) {
-      setError('Passwords do not match')
-      return
-    }
-
     inviteUser.mutate({
       email: email.trim(),
       role,
       ownerCapability: showCapability ? ownerCapability : undefined,
-      password,
     }, {
       onSuccess: () => {
         setAck('Invitation sent successfully!')
@@ -67,8 +49,6 @@ export function InviteUserModal({ isOpen, onClose }: InviteUserModalProps) {
           setEmail('')
           setRole('STATION_OWNER')
           setOwnerCapability('BOTH')
-          setPassword('')
-          setConfirmPassword('')
           setAck('')
           onClose()
         }, 1500)
@@ -85,8 +65,6 @@ export function InviteUserModal({ isOpen, onClose }: InviteUserModalProps) {
     setOwnerCapability('BOTH')
     setError('')
     setAck('')
-    setPassword('')
-    setConfirmPassword('')
     onClose()
   }
 
@@ -152,33 +130,6 @@ export function InviteUserModal({ isOpen, onClose }: InviteUserModalProps) {
                 </select>
               </div>
             )}
-
-            <div>
-              <label className="block text-sm font-medium text-text mb-1">
-                Password *
-              </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Minimum 8 characters"
-                className="input w-full"
-              />
-              <p className="text-xs text-text-secondary mt-1">Set an initial password the user can change later.</p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-text mb-1">
-                Confirm Password *
-              </label>
-              <input
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Repeat the previous password"
-                className="input w-full"
-              />
-            </div>
 
             {(error || ack) && (
               <div className={`text-sm ${error ? 'text-red-600' : 'text-green-600'}`}>

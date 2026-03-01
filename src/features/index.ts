@@ -113,6 +113,9 @@ export { NotFound, ServerError, Offline, BrowserUnsupported } from './ErrorPages
 
 // Auth Pages
 export { Login, Register, ForgotPassword, VerifyEmail } from '@/modules/auth/components/Auth'
+export { InvitationAcceptPage } from '@/modules/auth/components/InvitationAcceptPage'
+export { SelectOrganizationPage } from '@/modules/auth/components/SelectOrganizationPage'
+export { ForcePasswordChangePage } from '@/modules/auth/components/ForcePasswordChangePage'
 
 // Role-specific Ops Pages
 

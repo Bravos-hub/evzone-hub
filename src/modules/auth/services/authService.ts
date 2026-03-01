@@ -4,7 +4,14 @@
  */
 
 import { apiClient } from '@/core/api/client'
-import type { LoginRequest, RegisterRequest, AuthResponse, RefreshTokenRequest } from '@/core/api/types'
+import type {
+  AcceptInvitationResponse,
+  AuthResponse,
+  LoginRequest,
+  RefreshTokenRequest,
+  RegisterRequest,
+  SwitchOrganizationRequest,
+} from '@/core/api/types'
 
 export const authService = {
   /**
@@ -30,6 +37,33 @@ export const authService = {
     if (response.accessToken && response.refreshToken) {
       apiClient.setTokens(response.accessToken, response.refreshToken, response.user)
     }
+    return response
+  },
+
+  /**
+   * Validate invitation token and get invite context
+   */
+  async acceptInvitation(token: string): Promise<AcceptInvitationResponse> {
+    return apiClient.get<AcceptInvitationResponse>('/auth/invitations/accept', {
+      skipAuth: true,
+      params: { token },
+    })
+  },
+
+  /**
+   * Switch active organization and receive scoped tokens
+   */
+  async switchOrganization(data: SwitchOrganizationRequest): Promise<AuthResponse> {
+    const wrappedResponse = await apiClient.post<{ success: boolean; data: AuthResponse }>(
+      '/auth/switch-organization',
+      data,
+    )
+    const response = wrappedResponse.data || wrappedResponse as unknown as AuthResponse
+
+    if (response.accessToken && response.refreshToken) {
+      apiClient.setTokens(response.accessToken, response.refreshToken, response.user)
+    }
+
     return response
   },
 
