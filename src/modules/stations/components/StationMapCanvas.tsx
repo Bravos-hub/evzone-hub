@@ -6,6 +6,7 @@ import * as h3 from 'h3-js'
 import { API_CONFIG } from '@/core/api/config'
 import { useTheme } from '@/ui/theme'
 import type { FeatureCollection } from 'geojson'
+import type { StationMarkerIconKey } from '@/modules/stations/utils/stationIconResolver'
 import { ReliabilityTimeline } from './ReliabilityTimeline'
 
 export interface StationMapData {
@@ -14,6 +15,7 @@ export interface StationMapData {
     address: string
     status: string
     type: string
+    markerIcon?: StationMarkerIconKey
     lat: number
     lng: number
     capacity?: number
@@ -43,13 +45,11 @@ interface StationMapCanvasProps {
     mapLayout?: StationMapLayout
 }
 
-// Custom Icons for charging/swapping (SVG Data URIs)
-const CHARGE_ICON = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M13 2L3 14h9l-1 8 10-12h-9l1-8z'/%3E%3C/svg%3E";
-const SWAP_ICON = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 12V7H5a2 2 0 0 1 0-4h14v4'/%3E%3Cpath d='M3 5v14a2 2 0 0 0 2 2h16v-5'/%3E%3Cpath d='M18 12l3 3-3 3'/%3E%3Cpath d='M3 11a2 2 0 0 1 2-2h14'/%3E%3C/svg%3E";
-const HYBRID_ICON = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M13 2L3 14h9l-1 8 10-12h-9l1-8z'/%3E%3Ccircle cx='18' cy='18' r='3'/%3E%3C/svg%3E";
 const STATUS_AVAILABLE_ICON = '/available.svg'
 const STATUS_INUSE_ICON = '/Inuse.svg'
 const STATUS_UNAVAILABLE_ICON = '/Unavailble.svg'
+const STATUS_BAT_AVAILABLE_ICON = '/Bat-avail.svg'
+const STATUS_BAT_INUSE_ICON = '/Bat-inuse.svg'
 
 const AVAILABLE_STATUS_FILTER = [
     'match',
@@ -62,7 +62,7 @@ const AVAILABLE_STATUS_FILTER = [
     false,
 ] as any
 
-const STATUS_ICON_EXPRESSION = [
+const FALLBACK_STATUS_ICON_EXPRESSION = [
     'match',
     ['get', 'status'],
     'ACTIVE', 'marker-available',
@@ -78,6 +78,12 @@ const STATUS_ICON_EXPRESSION = [
     'FAULTED', 'marker-unavailable',
     'Faulted', 'marker-unavailable',
     'marker-inuse',
+] as any
+
+const MARKER_ICON_EXPRESSION = [
+    'coalesce',
+    ['get', 'markerIcon'],
+    FALLBACK_STATUS_ICON_EXPRESSION,
 ] as any
 
 const MAP_STYLES: Record<StationMapLayout, Record<MapTheme, string>> = {
@@ -165,6 +171,7 @@ export function StationMapCanvas({
                         address: station.address,
                         status: station.status,
                         type: station.type,
+                        markerIcon: station.markerIcon ?? null,
                         lat: station.lat,
                         lng: station.lng,
                         capacity: station.capacity ?? 0,
@@ -242,12 +249,11 @@ export function StationMapCanvas({
             img.src = url
         }
 
-        addImage('charge-icon', CHARGE_ICON)
-        addImage('swap-icon', SWAP_ICON)
-        addImage('hybrid-icon', HYBRID_ICON)
         addImage('marker-available', STATUS_AVAILABLE_ICON)
         addImage('marker-inuse', STATUS_INUSE_ICON)
         addImage('marker-unavailable', STATUS_UNAVAILABLE_ICON)
+        addImage('marker-bat-available', STATUS_BAT_AVAILABLE_ICON)
+        addImage('marker-bat-inuse', STATUS_BAT_INUSE_ICON)
     }, [])
 
     const onMapClick = useCallback((event: maplibregl.MapLayerMouseEvent) => {
@@ -435,7 +441,7 @@ export function StationMapCanvas({
                         type="symbol"
                         filter={['!', ['has', 'point_count']]}
                         layout={{
-                            'icon-image': STATUS_ICON_EXPRESSION,
+                            'icon-image': MARKER_ICON_EXPRESSION,
                             'icon-size': [
                                 'interpolate', ['linear'], ['zoom'],
                                 8, 0.09,
@@ -562,7 +568,7 @@ export function StationMapCanvas({
                         source-layer="stations"
                         filter={['!', ['has', 'point_count']]}
                         layout={{
-                            'icon-image': STATUS_ICON_EXPRESSION,
+                            'icon-image': MARKER_ICON_EXPRESSION,
                             'icon-size': [
                                 'interpolate', ['linear'], ['zoom'],
                                 8, 0.09,

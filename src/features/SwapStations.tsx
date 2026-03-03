@@ -11,6 +11,7 @@ import { LoadingRow } from '@/ui/components/SkeletonCards'
 import { useStations } from '@/modules/stations/hooks/useStations'
 import { stationService } from '@/modules/stations/services/stationService'
 import { queryKeys } from '@/data/queryKeys'
+import { resolveStationIcon } from '@/modules/stations/utils/stationIconResolver'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -22,6 +23,8 @@ type SwapStation = {
   name: string
   site: string
   status: StationStatus
+  iconSrc: string
+  iconAlt: string
   bays: number
   available: number
   charging: number
@@ -85,13 +88,13 @@ export function SwapStations() {
   })
 
   const batteryCounts = useMemo(() => {
-    const map = new Map<string, { ready: number; charging: number }>()
+    const map = new Map<string, { ready: number; charging: number; total: number }>()
     batteryQueries.forEach((query, index) => {
       const stationId = swapStationIds[index]
       const batteries = query.data || []
       const ready = batteries.filter((b) => b.status === 'Ready').length
       const charging = batteries.filter((b) => b.status === 'Charging').length
-      map.set(stationId, { ready, charging })
+      map.set(stationId, { ready, charging, total: batteries.length })
     })
     return map
   }, [batteryQueries, swapStationIds])
@@ -114,6 +117,14 @@ export function SwapStations() {
     }
 
     return accessibleSwapStations.map((station) => ({
+      ...resolveStationIcon({
+        type: station.type,
+        status: station.status,
+        swap: {
+          readyBatteries: batteryCounts.get(station.id)?.ready,
+          totalBatteries: batteryCounts.get(station.id)?.total,
+        },
+      }),
       id: station.code || station.id,
       stationId: station.id,
       name: station.name,
@@ -227,7 +238,7 @@ export function SwapStations() {
                   <div className="text-xs text-muted">{s.name}</div>
                 </td>
                 <td>{s.site}</td>
-                <td><StationStatusPill status={s.status} /></td>
+                <td><StationStatusPill status={s.status} iconSrc={s.iconSrc} iconAlt={s.iconAlt} /></td>
                 <td>{s.bays}</td>
                 <td className="text-ok font-semibold">{s.available}</td>
                 <td className="text-warn">{s.charging}</td>

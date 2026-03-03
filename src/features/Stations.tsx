@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom'
+import { useQueries } from '@tanstack/react-query'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { useAuthStore } from '@/core/auth/authStore'
 import { useMe } from '@/modules/auth/hooks/useAuth'
@@ -12,10 +13,13 @@ import { SwapStations } from './SwapStations'
 import { SmartCharging } from './SmartCharging'
 import { Bookings } from './Bookings'
 import { useStations } from '@/modules/stations/hooks/useStations'
+import { stationService } from '@/modules/stations/services/stationService'
+import { queryKeys } from '@/data/queryKeys'
 import { getErrorMessage } from '@/core/api/errors'
 import Skeleton from 'react-loading-skeleton'
 import { TableSkeleton } from '@/ui/components/SkeletonCards'
 import { StationMapCanvas, type StationMapData, type StationMapLayout } from '@/modules/stations/components/StationMapCanvas'
+import { normalizeStationType, resolveStationIcon, type StationIconDecision } from '@/modules/stations/utils/stationIconResolver'
 import { API_CONFIG } from '@/core/api/config'
 import { PATHS } from '@/app/router/paths'
 import {
@@ -78,13 +82,6 @@ function normalizeRegion(value?: string): Region {
   return REGION_VALUES.has(normalized as Region) ? (normalized as Region) : 'UNKNOWN'
 }
 
-function normalizeStationType(value?: string): 'CHARGING' | 'SWAPPING' | 'BOTH' {
-  const normalized = (value ?? '').trim().toUpperCase()
-  if (normalized === 'SWAP' || normalized === 'SWAPPING') return 'SWAPPING'
-  if (normalized === 'BOTH') return 'BOTH'
-  return 'CHARGING'
-}
-
 function normalizeStationStatus(value?: string): StationStatus {
   const normalized = (value ?? '').trim().toUpperCase()
   if (normalized === 'ACTIVE' || normalized === 'ONLINE' || normalized === 'AVAILABLE') return 'Online'
@@ -99,19 +96,66 @@ function normalizeMapStationStatus(value?: string): 'ACTIVE' | 'INACTIVE' | 'MAI
   return 'MAINTENANCE'
 }
 
+function toCount(value: unknown): number | undefined {
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed) || parsed < 0) return undefined
+  return Math.round(parsed)
+}
+
+function isChargePointAvailableStatus(value?: string): boolean {
+  const normalized = (value ?? '').trim().toUpperCase()
+  return normalized === 'AVAILABLE' || normalized === 'ONLINE'
+}
+
+function extractChargeSignal(apiStation: any): { availableChargePoints: number; totalChargePoints: number } | undefined {
+  const availabilityTotal = toCount(apiStation?.availability?.total)
+  const availabilityAvailable = toCount(apiStation?.availability?.available)
+  if (availabilityTotal !== undefined || availabilityAvailable !== undefined) {
+    return {
+      availableChargePoints: availabilityAvailable ?? 0,
+      totalChargePoints: availabilityTotal ?? 0,
+    }
+  }
+
+  if (Array.isArray(apiStation?.chargePoints)) {
+    const totalChargePoints = apiStation.chargePoints.length
+    const availableChargePoints = apiStation.chargePoints.filter((chargePoint: any) =>
+      isChargePointAvailableStatus(chargePoint?.status),
+    ).length
+    return { availableChargePoints, totalChargePoints }
+  }
+
+  if (Array.isArray(apiStation?.connectors)) {
+    const totalChargePoints = apiStation.connectors.length
+    const availableChargePoints = apiStation.connectors.filter((connector: any) =>
+      isChargePointAvailableStatus(connector?.status),
+    ).length
+    return { availableChargePoints, totalChargePoints }
+  }
+
+  const connectorsTotal = toCount(apiStation?.connectors)
+  if (connectorsTotal !== undefined) {
+    const availableChargePoints = toCount(apiStation?.availableChargePoints ?? apiStation?.availableConnectors) ?? 0
+    return { availableChargePoints, totalChargePoints: connectorsTotal }
+  }
+
+  return undefined
+}
+
 function mapApiStationToStation(apiStation: any): Station {
   const stationType = normalizeStationType(apiStation.type)
+  const chargeSignal = extractChargeSignal(apiStation)
   return {
     id: apiStation.id,
     name: apiStation.name,
     region: normalizeRegion(apiStation.region),
     country: apiStation.country || apiStation.countryCode || '',
     org: apiStation.orgId || 'N/A',
-    type: stationType === 'BOTH' ? 'Both' : stationType === 'SWAPPING' ? 'Swap' : 'Charge',
+    type: stationType === 'BOTH' ? 'Both' : stationType === 'SWAP' ? 'Swap' : 'Charge',
     status: normalizeStationStatus(apiStation.status),
     healthScore: Number(apiStation.healthScore ?? apiStation.health ?? 0),
     utilization: Number(apiStation.utilization ?? 0),
-    connectors: Number(apiStation.connectors ?? 0),
+    connectors: chargeSignal?.totalChargePoints ?? 0,
     swapBays: Number(apiStation.swapBays ?? 0),
     openIncidents: Number(apiStation.openIncidents ?? 0),
     lastHeartbeat: apiStation.lastHeartbeat || 'N/A',
@@ -157,6 +201,55 @@ export function Stations() {
     })
   }, [stationsData, accessContext])
 
+  const swapCapableStationIds = useMemo(() => {
+    return accessibleStationsData
+      .filter((station) => {
+        const stationType = normalizeStationType((station as any)?.type)
+        return stationType === 'SWAP' || stationType === 'BOTH'
+      })
+      .map((station) => station.id)
+  }, [accessibleStationsData])
+
+  const batteryQueries = useQueries({
+    queries: swapCapableStationIds.map((stationId) => ({
+      queryKey: queryKeys.stations.batteries(stationId),
+      queryFn: () => stationService.getBatteries(stationId),
+      enabled: activeTab === 'overview' && !!stationId,
+    })),
+  })
+
+  const batteryCountsByStation = useMemo(() => {
+    const batteryMap = new Map<string, { readyBatteries: number; totalBatteries: number }>()
+    batteryQueries.forEach((query, index) => {
+      const stationId = swapCapableStationIds[index]
+      const batteries = query.data || []
+      const readyBatteries = batteries.filter((battery) => (battery?.status ?? '').trim().toUpperCase() === 'READY').length
+      batteryMap.set(stationId, {
+        readyBatteries,
+        totalBatteries: batteries.length,
+      })
+    })
+    return batteryMap
+  }, [batteryQueries, swapCapableStationIds])
+
+  const stationIconsById = useMemo(() => {
+    const icons = new Map<string, StationIconDecision>()
+    accessibleStationsData.forEach((apiStation) => {
+      const chargeSignal = extractChargeSignal(apiStation)
+      const swapSignal = batteryCountsByStation.get(apiStation.id)
+      icons.set(
+        apiStation.id,
+        resolveStationIcon({
+          type: (apiStation as any)?.type,
+          status: (apiStation as any)?.status,
+          charge: chargeSignal,
+          swap: swapSignal,
+        }),
+      )
+    })
+    return icons
+  }, [accessibleStationsData, batteryCountsByStation])
+
   // Map API stations to Station format
   const stations = useMemo(() => {
     return accessibleStationsData.map(mapApiStationToStation)
@@ -197,12 +290,13 @@ export function Stations() {
         address: r.address,
         status: normalizeMapStationStatus(api?.status),
         type: normalizeStationType(api?.type),
+        markerIcon: stationIconsById.get(r.id)?.markerIcon,
         lat: Number(api?.latitude || 0),
         lng: Number(api?.longitude || 0),
         capacity: Number(api?.capacity || 0)
       }
     })
-  }, [rows, accessibleStationsData])
+  }, [rows, accessibleStationsData, stationIconsById])
 
   const tileUrl = `${API_CONFIG.baseURL}/geography/tiles/{z}/{x}/{y}.pbf`
 
@@ -421,6 +515,7 @@ export function Stations() {
                       rows.map(r => {
                         const primaryStationLabel = r.name && r.name.trim() ? r.name : r.id
                         const showSecondaryId = Boolean(r.name && r.name.trim() && r.name !== r.id)
+                        const stationIcon = stationIconsById.get(r.id)
                         return (
                         <tr key={r.id} className="hover:bg-white/5 transition-colors">
                           <td className="px-6 py-4"><input type="checkbox" className="rounded border-white/10 bg-white/5" /></td>
@@ -436,7 +531,13 @@ export function Stations() {
                           <td className="px-6 py-4 text-center">
                             <span className="text-xs font-semibold px-2 py-0.5 rounded bg-white/5 border border-white/10">{r.type}</span>
                           </td>
-                          <td className="px-6 py-4"><StationStatusPill status={r.status} /></td>
+                          <td className="px-6 py-4">
+                            <StationStatusPill
+                              status={r.status}
+                              iconSrc={stationIcon?.iconSrc}
+                              iconAlt={stationIcon?.iconAlt}
+                            />
+                          </td>
                           <td className="px-6 py-4">
                             <div className="flex items-center gap-2">
                               <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden min-w-[60px]">
