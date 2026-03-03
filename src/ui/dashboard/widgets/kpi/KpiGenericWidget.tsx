@@ -7,6 +7,9 @@ export type KpiGenericConfig = {
   value: string
   delta?: string
   trend?: Trend
+  onClick?: () => void
+  ariaLabel?: string
+  interactive?: boolean
 }
 
 function TrendPill({ trend }: { trend: Trend }) {
@@ -16,24 +19,37 @@ function TrendPill({ trend }: { trend: Trend }) {
 }
 
 export function KpiGenericWidget({ config }: WidgetProps<KpiGenericConfig>) {
-  const { title = 'KPI', value = '—', delta, trend } = config ?? {}
+  const { title = 'KPI', value = '—', delta, trend, onClick, ariaLabel, interactive } = config ?? {}
 
-  return (
-    <div className="rounded-lg border border-border-light bg-panel shadow-card p-4">
-      <div className="flex items-start justify-between gap-2">
-        <div>
-          <div className="text-[11px] font-semibold uppercase tracking-[0.5px] text-muted mb-1.5">{title}</div>
-          <div className="text-xl font-semibold tracking-tight text-text">{value}</div>
-        </div>
-        {(trend || delta) && (
-          <div className="text-right flex-shrink-0">
-            {trend && <TrendPill trend={trend} />}
-            {delta && <div className="text-[10px] text-muted mt-1">{delta}</div>}
-          </div>
-        )}
+  const body = (
+    <div className="flex items-start justify-between gap-2">
+      <div>
+        <div className="text-[11px] font-semibold uppercase tracking-[0.5px] text-muted mb-1.5">{title}</div>
+        <div className="text-xl font-semibold tracking-tight text-text">{value}</div>
       </div>
+      {(trend || delta) && (
+        <div className="text-right flex-shrink-0">
+          {trend && <TrendPill trend={trend} />}
+          {delta && <div className="text-[10px] text-muted mt-1">{delta}</div>}
+        </div>
+      )}
     </div>
   )
+
+  if (interactive && onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        aria-label={ariaLabel ?? title}
+        className="w-full rounded-lg border border-border-light bg-panel shadow-card p-4 text-left cursor-pointer transition-colors hover:border-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+      >
+        {body}
+      </button>
+    )
+  }
+
+  return <div className="rounded-lg border border-border-light bg-panel shadow-card p-4">{body}</div>
 }
 
 /** Simple KPI card without trend (backward compat) */
@@ -46,4 +62,3 @@ export function KpiSimpleWidget({ config }: WidgetProps<{ title: string; value: 
     </div>
   )
 }
-

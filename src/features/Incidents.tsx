@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { useAuthStore } from '@/core/auth/authStore'
 import { getPermissionsForFeature } from '@/constants/permissions'
@@ -15,6 +16,7 @@ type Region = 'AFRICA' | 'EUROPE' | 'AMERICAS' | 'ASIA' | 'MIDDLE_EAST' | 'ALL'
 type Severity = 'SEV1' | 'SEV2' | 'SEV3' | 'SEV4'
 type IncidentStatus = 'Investigating' | 'Identified' | 'Mitigating' | 'Monitoring' | 'Resolved'
 type Impact = 'Charging' | 'Swapping' | 'Payments' | 'Auth' | 'Fleet' | 'Other'
+type IncidentPreset = 'all' | 'open' | '24h'
 
 type Incident = {
   id: string
@@ -30,6 +32,18 @@ type Incident = {
   summary: string
   affectedStationsCount: number
   eta: string
+  createdAtMs: number
+}
+
+function normalizeIncidentPreset(value: string | null): IncidentPreset {
+  switch ((value ?? '').toLowerCase()) {
+    case 'open':
+      return 'open'
+    case '24h':
+      return '24h'
+    default:
+      return 'all'
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -67,6 +81,7 @@ const impacts: Array<Impact | 'All'> = ['All', 'Charging', 'Swapping', 'Payments
  * - escalate: ADMIN, OPERATOR can escalate
  */
 export function Incidents() {
+  const [searchParams, setSearchParams] = useSearchParams()
   const { user } = useAuthStore()
   const perms = getPermissionsForFeature(user?.role, 'incidents')
 
@@ -77,8 +92,9 @@ export function Incidents() {
   const [impact, setImpact] = useState<Impact | 'All'>('All')
   const [openId, setOpenId] = useState<string | null>(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const preset = useMemo<IncidentPreset>(() => normalizeIncidentPreset(searchParams.get('preset')), [searchParams])
 
-  const { data: incidentsData, isLoading: isLoadingIncidents, error: incidentsError } = useIncidents({
+  const { data: incidentsData, isLoading: isLoadingIncidents } = useIncidents({
     status: status !== 'All' ? status : undefined,
     severity: severity !== 'All' ? severity : undefined,
   })
@@ -90,6 +106,7 @@ export function Incidents() {
   const rows = useMemo(() => {
     if (!incidentsData) return []
     return incidentsData.map(i => ({
+      createdAtMs: Number.isFinite(Date.parse(i.createdAt)) ? Date.parse(i.createdAt) : 0,
       id: i.id,
       title: i.title,
       status: i.status === 'OPEN' ? 'Investigating' : i.status === 'IN_PROGRESS' ? 'Mitigating' : i.status === 'RESOLVED' ? 'Resolved' : 'Monitoring' as IncidentStatus,
@@ -106,15 +123,28 @@ export function Incidents() {
     }))
   }, [incidentsData])
 
+  const setPreset = (nextPreset: IncidentPreset) => {
+    const nextParams = new URLSearchParams(searchParams)
+    nextParams.set('preset', nextPreset)
+    setSearchParams(nextParams)
+  }
+
   const filtered = useMemo(
-    () =>
-      rows
+    () => {
+      const last24hCutoff = Date.now() - (24 * 60 * 60 * 1000)
+      return rows
+        .filter((r) => {
+          if (preset === 'all') return true
+          if (preset === 'open') return r.status !== 'Resolved'
+          return r.createdAtMs >= last24hCutoff
+        })
         .filter((r) => (q ? (r.id + ' ' + r.title + ' ' + r.summary).toLowerCase().includes(q.toLowerCase()) : true))
         .filter((r) => (region === 'ALL' ? true : r.region === region))
         .filter((r) => (severity === 'All' ? true : r.severity === severity))
         .filter((r) => (status === 'All' ? true : r.status === status))
-        .filter((r) => (impact === 'All' ? true : r.impact === impact)),
-    [rows, q, region, severity, status, impact]
+        .filter((r) => (impact === 'All' ? true : r.impact === impact))
+    },
+    [rows, preset, q, region, severity, status, impact]
   )
 
   const summary = useMemo(() => ({
@@ -164,13 +194,18 @@ export function Incidents() {
 
       {/* Filters */}
       <div className="card mb-4">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3">
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search incidents"
             className="input col-span-2 xl:col-span-1"
           />
+          <select value={preset} onChange={(e) => setPreset(e.target.value as IncidentPreset)} className="select">
+            <option value="all">All Presets</option>
+            <option value="open">Open</option>
+            <option value="24h">Last 24h</option>
+          </select>
           {perms.viewAll && (
             <select value={region} onChange={(e) => setRegion(e.target.value as Region)} className="select">
               {regions.map((r) => (

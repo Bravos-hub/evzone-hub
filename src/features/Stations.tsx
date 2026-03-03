@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { useAuthStore } from '@/core/auth/authStore'
 import { useMe } from '@/modules/auth/hooks/useAuth'
@@ -28,6 +28,7 @@ import {
 type StationType = 'Charge' | 'Swap' | 'Both'
 type Region = 'AFRICA' | 'EUROPE' | 'AMERICAS' | 'ASIA' | 'MIDDLE_EAST' | 'UNKNOWN'
 type StationsTab = 'overview' | 'charge-points' | 'swap-stations' | 'smart-charging' | 'bookings'
+type StationStatusFilter = 'all' | 'online' | 'offline' | 'degraded'
 
 type Station = {
   id: string
@@ -49,6 +50,19 @@ type Station = {
 
 // Helper function to map API station to Station type
 const REGION_VALUES = new Set<Region>(['AFRICA', 'EUROPE', 'AMERICAS', 'ASIA', 'MIDDLE_EAST', 'UNKNOWN'])
+
+function normalizeStatusFilter(value: string | null): StationStatusFilter {
+  switch ((value ?? '').toLowerCase()) {
+    case 'online':
+      return 'online'
+    case 'offline':
+      return 'offline'
+    case 'degraded':
+      return 'degraded'
+    default:
+      return 'all'
+  }
+}
 
 function normalizeRegion(value?: string): Region {
   if (!value) return 'UNKNOWN'
@@ -81,6 +95,7 @@ function mapApiStationToStation(apiStation: any): Station {
 export function Stations() {
   const navigate = useNavigate()
   const location = useLocation()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { user } = useAuthStore()
   const perms = getPermissionsForFeature(user?.role, 'stations')
 
@@ -119,7 +134,21 @@ export function Stations() {
     return accessibleStationsData.map(mapApiStationToStation)
   }, [accessibleStationsData])
 
-  const rows = useMemo(() => stations, [stations])
+  const statusFilter = useMemo<StationStatusFilter>(
+    () => normalizeStatusFilter(searchParams.get('status')),
+    [searchParams],
+  )
+
+  const rows = useMemo(
+    () =>
+      stations.filter((station) => {
+        if (statusFilter === 'all') return true
+        if (statusFilter === 'online') return station.status === 'Online'
+        if (statusFilter === 'offline') return station.status === 'Offline'
+        return station.status === 'Degraded'
+      }),
+    [stations, statusFilter],
+  )
 
   // --- Map State & Logic ---
   const [selectedStationId, setSelectedStationId] = useState<string | null>(null)
@@ -194,6 +223,12 @@ export function Stations() {
     canCreateChargeStation(stationCreationContext) ||
     canCreateSwapStation(stationCreationContext)
 
+  const setStatusFilter = (nextStatus: StationStatusFilter) => {
+    const nextParams = new URLSearchParams(searchParams)
+    nextParams.set('status', nextStatus)
+    setSearchParams(nextParams)
+  }
+
   if (!perms.access) {
     return (
       <DashboardLayout pageTitle="Stations">
@@ -250,14 +285,36 @@ export function Stations() {
           {/* Filters - Stacked on mobile */}
           {!isLoading && !accessLoading && (
             <>
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-bold">Station List</h2>
-                {showAddStationButton && (
-                  <button onClick={() => navigate(PATHS.OWNER.ADD_STATION_ENTRY)} className="btn primary flex items-center gap-2">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4" /></svg>
-                    Add Station
-                  </button>
-                )}
+              <div className="mb-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-bold">Station List</h2>
+                  {showAddStationButton && (
+                    <button onClick={() => navigate(PATHS.OWNER.ADD_STATION_ENTRY)} className="btn primary flex items-center gap-2">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4" /></svg>
+                      Add Station
+                    </button>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {([
+                    { value: 'all', label: 'All' },
+                    { value: 'online', label: 'Online' },
+                    { value: 'offline', label: 'Offline' },
+                    { value: 'degraded', label: 'Degraded' },
+                  ] as const).map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => setStatusFilter(option.value)}
+                      className={`px-3 py-1.5 rounded-md text-xs font-semibold border transition-colors ${statusFilter === option.value
+                        ? 'border-accent bg-accent/20 text-accent'
+                        : 'border-border-light text-muted hover:text-text hover:border-accent/40'
+                        }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* Map Section - High Performance WebGL MapLibre */}
