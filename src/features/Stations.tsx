@@ -15,7 +15,7 @@ import { useStations } from '@/modules/stations/hooks/useStations'
 import { getErrorMessage } from '@/core/api/errors'
 import Skeleton from 'react-loading-skeleton'
 import { TableSkeleton } from '@/ui/components/SkeletonCards'
-import { StationMapCanvas, type StationMapData } from '@/modules/stations/components/StationMapCanvas'
+import { StationMapCanvas, type StationMapData, type StationMapLayout } from '@/modules/stations/components/StationMapCanvas'
 import { API_CONFIG } from '@/core/api/config'
 import { PATHS } from '@/app/router/paths'
 import {
@@ -29,6 +29,12 @@ type StationType = 'Charge' | 'Swap' | 'Both'
 type Region = 'AFRICA' | 'EUROPE' | 'AMERICAS' | 'ASIA' | 'MIDDLE_EAST' | 'UNKNOWN'
 type StationsTab = 'overview' | 'charge-points' | 'swap-stations' | 'smart-charging' | 'bookings'
 type StationStatusFilter = 'all' | 'online' | 'offline' | 'degraded'
+const MAP_LAYOUT_OPTIONS: Array<{ value: StationMapLayout; label: string }> = [
+  { value: 'driving', label: 'Driving' },
+  { value: 'roadmap', label: 'Roadmap' },
+  { value: 'terrain', label: 'Terrain' },
+  { value: 'satellite', label: 'Satellite' },
+]
 
 type Station = {
   id: string
@@ -72,15 +78,37 @@ function normalizeRegion(value?: string): Region {
   return REGION_VALUES.has(normalized as Region) ? (normalized as Region) : 'UNKNOWN'
 }
 
+function normalizeStationType(value?: string): 'CHARGING' | 'SWAPPING' | 'BOTH' {
+  const normalized = (value ?? '').trim().toUpperCase()
+  if (normalized === 'SWAP' || normalized === 'SWAPPING') return 'SWAPPING'
+  if (normalized === 'BOTH') return 'BOTH'
+  return 'CHARGING'
+}
+
+function normalizeStationStatus(value?: string): StationStatus {
+  const normalized = (value ?? '').trim().toUpperCase()
+  if (normalized === 'ACTIVE' || normalized === 'ONLINE' || normalized === 'AVAILABLE') return 'Online'
+  if (normalized === 'INACTIVE' || normalized === 'OFFLINE' || normalized === 'UNAVAILABLE' || normalized === 'FAULTED') return 'Offline'
+  return 'Degraded'
+}
+
+function normalizeMapStationStatus(value?: string): 'ACTIVE' | 'INACTIVE' | 'MAINTENANCE' {
+  const normalized = (value ?? '').trim().toUpperCase()
+  if (normalized === 'ACTIVE' || normalized === 'ONLINE' || normalized === 'AVAILABLE') return 'ACTIVE'
+  if (normalized === 'INACTIVE' || normalized === 'OFFLINE' || normalized === 'UNAVAILABLE' || normalized === 'FAULTED') return 'INACTIVE'
+  return 'MAINTENANCE'
+}
+
 function mapApiStationToStation(apiStation: any): Station {
+  const stationType = normalizeStationType(apiStation.type)
   return {
     id: apiStation.id,
     name: apiStation.name,
     region: normalizeRegion(apiStation.region),
     country: apiStation.country || apiStation.countryCode || '',
     org: apiStation.orgId || 'N/A',
-    type: apiStation.type === 'BOTH' ? 'Both' : apiStation.type === 'SWAP' ? 'Swap' : 'Charge',
-    status: apiStation.status === 'ACTIVE' ? 'Online' : apiStation.status === 'INACTIVE' ? 'Offline' : 'Degraded',
+    type: stationType === 'BOTH' ? 'Both' : stationType === 'SWAPPING' ? 'Swap' : 'Charge',
+    status: normalizeStationStatus(apiStation.status),
     healthScore: Number(apiStation.healthScore ?? apiStation.health ?? 0),
     utilization: Number(apiStation.utilization ?? 0),
     connectors: Number(apiStation.connectors ?? 0),
@@ -153,6 +181,7 @@ export function Stations() {
   // --- Map State & Logic ---
   const [selectedStationId, setSelectedStationId] = useState<string | null>(null)
   const [popupInfo, setPopupInfo] = useState<StationMapData | null>(null)
+  const [mapLayout, setMapLayout] = useState<StationMapLayout>('driving')
   const [viewState, setViewState] = useState({
     longitude: 35.0,
     latitude: -1.0,
@@ -166,8 +195,8 @@ export function Stations() {
         id: r.id,
         name: r.name,
         address: r.address,
-        status: api?.status || 'ACTIVE',
-        type: api?.type || 'CHARGING',
+        status: normalizeMapStationStatus(api?.status),
+        type: normalizeStationType(api?.type),
         lat: Number(api?.latitude || 0),
         lng: Number(api?.longitude || 0),
         capacity: Number(api?.capacity || 0)
@@ -325,7 +354,22 @@ export function Stations() {
                       <h3 className="font-bold text-sm tracking-tight">Geospatial Distribution</h3>
                       <p className="text-[10px] text-muted-more uppercase font-black">{rows.length} Active nodes</p>
                     </div>
-                    <div className="flex gap-4">
+                    <div className="flex items-center gap-4">
+                      <div className="inline-flex items-center rounded-lg border border-border-light bg-black/10 p-0.5">
+                        {MAP_LAYOUT_OPTIONS.map((option) => (
+                          <button
+                            key={option.value}
+                            type="button"
+                            onClick={() => setMapLayout(option.value)}
+                            className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wide transition-colors ${mapLayout === option.value
+                              ? 'bg-accent text-white'
+                              : 'text-muted hover:text-text'
+                              }`}
+                          >
+                            {option.label}
+                          </button>
+                        ))}
+                      </div>
                       <div className="flex items-center gap-1.5">
                         <div className="w-1.5 h-1.5 rounded-full bg-ok" />
                         <span className="text-[10px] font-bold text-muted uppercase">Live</span>
@@ -335,6 +379,7 @@ export function Stations() {
                   <div className="h-[400px] w-full">
                     <StationMapCanvas
                       tileUrl={tileUrl}
+                      stations={mapData}
                       viewState={viewState}
                       onMove={evt => setViewState(evt.viewState)}
                       onStationClick={s => handleStationSelect(s.id)}
@@ -342,6 +387,7 @@ export function Stations() {
                       selectedStationId={selectedStationId}
                       popupInfo={popupInfo}
                       setPopupInfo={setPopupInfo}
+                      mapLayout={mapLayout}
                     />
                   </div>
                 </div>

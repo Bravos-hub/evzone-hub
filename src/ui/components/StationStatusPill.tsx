@@ -3,6 +3,12 @@ import clsx from 'clsx'
 export type StationStatus = 'Online' | 'Degraded' | 'Offline' | 'Maintenance'
 
 export function StationStatusPill({ status }: { status: StationStatus }) {
+  const statusIconSrc = status === 'Online'
+    ? '/available.svg'
+    : status === 'Offline'
+      ? '/Unavailble.svg'
+      : '/Inuse.svg'
+
   return (
     <span
       className={clsx(
@@ -16,6 +22,7 @@ export function StationStatusPill({ status }: { status: StationStatus }) {
               : 'bg-[rgba(239,68,68,.15)] border-[rgba(239,68,68,.3)] text-[#fca5a5]'
       )}
     >
+      <img src={statusIconSrc} alt="" aria-hidden="true" className="h-4 w-3 object-contain" />
       {status}
     </span>
   )

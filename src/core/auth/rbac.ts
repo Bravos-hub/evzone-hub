@@ -25,7 +25,7 @@ export function normalizeStationType(type?: string): NormalizedStationType | nul
   if (!type) return null
   const normalized = type.trim().toUpperCase()
   if (normalized === 'CHARGING' || normalized === 'CHARGE') return 'CHARGE'
-  if (normalized === 'SWAP') return 'SWAP'
+  if (normalized === 'SWAP' || normalized === 'SWAPPING') return 'SWAP'
   if (normalized === 'BOTH') return 'BOTH'
   return null
 }
@@ -92,4 +92,3 @@ export function canAccessStation(ctx: StationAccessContext, station?: StationAcc
 
   return true
 }
-
