@@ -47,6 +47,30 @@ export type UserProfile = {
     organizationName?: string
     organizationType?: string
   }>
+  stationContexts?: Array<{
+    assignmentId: string
+    stationId: string
+    stationName?: string | null
+    organizationId?: string | null
+    role: Role
+    isPrimary?: boolean
+    attendantMode?: 'FIXED' | 'MOBILE' | null
+    shiftStart?: string | null
+    shiftEnd?: string | null
+    timezone?: string | null
+  }>
+  activeStationContext?: {
+    assignmentId: string
+    stationId: string
+    stationName?: string | null
+    organizationId?: string | null
+    role: Role
+    isPrimary?: boolean
+    attendantMode?: 'FIXED' | 'MOBILE' | null
+    shiftStart?: string | null
+    shiftEnd?: string | null
+    timezone?: string | null
+  } | null
   mustChangePassword?: boolean
   region?: string
   zoneId?: string

@@ -44,6 +44,74 @@ export interface InviteUserRequest {
   zoneId?: string
 }
 
+export type PayoutMethod = 'MOBILE_MONEY' | 'BANK_TRANSFER' | 'CASH_PICKUP'
+
+export interface StationRoleAssignment {
+  id?: string
+  stationId: string
+  stationName?: string | null
+  role: Role
+  isPrimary?: boolean
+  isActive?: boolean
+  attendantMode?: 'FIXED' | 'MOBILE' | null
+  shiftStart?: string | null
+  shiftEnd?: string | null
+  timezone?: string | null
+}
+
+export interface StaffPayoutProfile {
+  id?: string
+  userId?: string
+  method: PayoutMethod
+  beneficiaryName: string
+  providerName?: string | null
+  bankName?: string | null
+  accountNumber?: string | null
+  phoneNumber?: string | null
+  currency?: string
+  isActive?: boolean
+  createdAt?: string
+  updatedAt?: string
+}
+
+export interface StationContextSummary {
+  assignmentId: string
+  stationId: string
+  stationName?: string | null
+  organizationId?: string | null
+  role: Role
+  isPrimary?: boolean
+  attendantMode?: 'FIXED' | 'MOBILE' | null
+  shiftStart?: string | null
+  shiftEnd?: string | null
+  timezone?: string | null
+}
+
+export interface TeamInviteRequest {
+  email: string
+  role: Role
+  ownerCapability?: OwnerCapability
+  frontendUrl?: string
+  region?: string
+  zoneId?: string
+  initialAssignments: StationRoleAssignment[]
+}
+
+export interface TeamMember {
+  id: string
+  name: string
+  email?: string
+  phone?: string
+  role: Role
+  status?: 'Active' | 'Pending' | 'Suspended' | 'Inactive' | 'Invited'
+  displayStatus?: string
+  ownerCapability?: OwnerCapability
+  activeAssignments?: number
+  hasPayoutProfile?: boolean
+  createdAt?: string
+  updatedAt?: string
+}
+
 export type MembershipStatus = 'INVITED' | 'ACTIVE' | 'SUSPENDED' | 'REVOKED'
 
 export interface MembershipSummary {
@@ -73,6 +141,8 @@ export interface AuthResponse {
   refreshToken: string
   activeOrganizationId?: string
   memberships?: MembershipSummary[]
+  stationContexts?: StationContextSummary[]
+  activeStationContext?: StationContextSummary | null
   mustChangePassword?: boolean
   user: {
     id: string
@@ -85,6 +155,8 @@ export interface AuthResponse {
     organizationId?: string
     activeOrganizationId?: string
     memberships?: MembershipSummary[]
+    stationContexts?: StationContextSummary[]
+    activeStationContext?: StationContextSummary | null
     mustChangePassword?: boolean
     region?: string
     zoneId?: string
@@ -111,6 +183,8 @@ export interface User {
   organizationId?: string
   activeOrganizationId?: string
   memberships?: MembershipSummary[]
+  stationContexts?: StationContextSummary[]
+  activeStationContext?: StationContextSummary | null
   mustChangePassword?: boolean
   organization?: {
     id: string
@@ -136,6 +210,10 @@ export interface User {
     ownedStations?: number
     operatedStations?: number
   }
+  displayStatus?: string
+  activeAssignments?: number
+  hasPayoutProfile?: boolean
+  lastStationAssignmentId?: string | null
   createdAt: string
   updatedAt: string
 }
@@ -818,6 +896,7 @@ export interface DashboardMetrics {
     sessions: number
     energyDelivered: number
     revenue: number
+    incidents?: number
   }
   chargers: {
     total: number

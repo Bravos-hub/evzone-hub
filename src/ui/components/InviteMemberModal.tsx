@@ -1,207 +1,334 @@
 import { useState } from 'react'
-import { Card } from './Card'
-import { ROLE_LABELS } from '@/constants/roles'
-import type { Role } from '@/core/auth/types'
-import { useCustomRolesStore } from '@/core/auth/customRolesStore'
-import { CreateRoleModal } from './CreateRoleModal'
 import clsx from 'clsx'
+import type { Role } from '@/core/auth/types'
+import type { TeamInviteRequest } from '@/core/api/types'
+import { ROLE_LABELS } from '@/constants/roles'
+import { Card } from './Card'
 
-interface InviteMemberModalProps {
-    onClose: () => void
-    onInvite: (data: { email: string; role: Role }) => Promise<void>
-    onUpdate?: (data: { email: string; role: Role }) => Promise<void>
-    initialMember?: { email: string; role: Role | string }
-    isEditing?: boolean
+type StationOption = {
+  id: string
+  name: string
 }
 
-export function InviteMemberModal({ onClose, onInvite, onUpdate, initialMember, isEditing = false }: InviteMemberModalProps) {
-    const [email, setEmail] = useState(initialMember?.email || '')
-    const [role, setRole] = useState<string>(initialMember?.role || 'ATTENDANT') // Allow string for custom roles
-    const [isSubmitting, setIsSubmitting] = useState(false)
-    const [error, setError] = useState<string | null>(null)
-    const [showCreateRole, setShowCreateRole] = useState(false)
-    const [roleIdToEdit, setRoleIdToEdit] = useState<string | undefined>(undefined)
+type AssignmentFormRow = {
+  stationId: string
+  role: Role
+  isPrimary: boolean
+  isActive: boolean
+  attendantMode?: 'FIXED' | 'MOBILE'
+  shiftStart?: string
+  shiftEnd?: string
+  timezone?: string
+}
 
-    // Get custom roles from store
-    const { roles: customRoles } = useCustomRolesStore()
+interface InviteMemberModalProps {
+  onClose: () => void
+  onInvite: (payload: TeamInviteRequest) => Promise<void>
+  stations: StationOption[]
+}
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault()
-        if (!email) return
+const ASSIGNABLE_ROLES: Role[] = [
+  'STATION_ADMIN',
+  'MANAGER',
+  'ATTENDANT',
+  'CASHIER',
+  'TECHNICIAN_ORG',
+  'STATION_OPERATOR',
+]
 
-        setIsSubmitting(true)
-        setError(null)
-        try {
-            if (isEditing && onUpdate) {
-                await onUpdate({ email, role: role as Role })
-            } else {
-                await onInvite({ email, role: role as Role })
-            }
-            onClose()
-        } catch (err: any) {
-            setError(err.message || 'Failed to save changes')
-        } finally {
-            setIsSubmitting(false)
-        }
+function createDefaultRow(stationId = ''): AssignmentFormRow {
+  return {
+    stationId,
+    role: 'ATTENDANT',
+    isPrimary: true,
+    isActive: true,
+    attendantMode: 'FIXED',
+    shiftStart: '00:00',
+    shiftEnd: '23:59',
+    timezone: 'Africa/Kampala',
+  }
+}
+
+export function InviteMemberModal({ onClose, onInvite, stations }: InviteMemberModalProps) {
+  const [email, setEmail] = useState('')
+  const [assignments, setAssignments] = useState<AssignmentFormRow[]>([
+    createDefaultRow(stations[0]?.id || ''),
+  ])
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const trimmedEmail = email.trim().toLowerCase()
+
+    if (!trimmedEmail) {
+      setError('Email is required')
+      return
     }
 
-    const standardRoles: Role[] = ['MANAGER', 'STATION_ADMIN', 'ATTENDANT', 'CASHIER', 'TECHNICIAN_ORG']
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      setError('Please enter a valid email address')
+      return
+    }
 
-    return (
-        <>
-            <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                <Card className="w-full max-w-md p-6 shadow-2xl border-white/10">
-                    <div className="flex items-center justify-between mb-6">
-                        <h2 className="text-xl font-bold text-text">{isEditing ? 'Update Team Member' : 'Invite Team Member'}</h2>
-                        <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-lg text-text-secondary transition-colors">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                            </svg>
-                        </button>
-                    </div>
+    if (assignments.length === 0) {
+      setError('At least one station assignment is required')
+      return
+    }
 
-                    <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-                        <div className="flex flex-col gap-1.5">
-                            <label className="text-[11px] font-black uppercase tracking-wider text-text-secondary ml-1">Email Address</label>
-                            <input
-                                autoFocus={!isEditing}
-                                type="email"
-                                required
-                                value={email}
-                                disabled={isEditing}
-                                onChange={(e) => setEmail(e.target.value)}
-                                placeholder="name@example.com"
-                                className={clsx(
-                                    "w-full h-11 px-4 rounded-xl border border-white/10 text-sm text-text focus:outline-none focus:ring-2 focus:ring-accent/50 transition-all",
-                                    isEditing ? "bg-white/5 opacity-50 cursor-not-allowed" : "bg-white/5"
-                                )}
-                            />
-                        </div>
+    const missingStation = assignments.find((row) => !row.stationId)
+    if (missingStation) {
+      setError('Each assignment row must include a station')
+      return
+    }
 
-                        <div className="flex flex-col gap-1.5">
-                            <label className="text-[11px] font-black uppercase tracking-wider text-text-secondary ml-1">Assign Role</label>
-                            <div className="grid grid-cols-1 gap-2 max-h-[300px] overflow-y-auto pr-1">
-                                {standardRoles.map((r) => (
-                                    <button
-                                        key={r}
-                                        type="button"
-                                        onClick={() => setRole(r)}
-                                        className={clsx(
-                                            'flex items-center justify-between px-4 py-3 rounded-xl border transition-all text-left',
-                                            role === r
-                                                ? 'bg-accent/10 border-accent text-accent'
-                                                : 'bg-white/5 border-white/5 text-text-secondary hover:border-white/20'
-                                        )}
-                                    >
-                                        <span className="text-sm font-bold">{ROLE_LABELS[r]}</span>
-                                        {role === r && (
-                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                                                <polyline points="20 6 9 17 4 12" />
-                                            </svg>
-                                        )}
-                                    </button>
-                                ))}
+    const stationIds = assignments.map((row) => row.stationId)
+    const uniqueCount = new Set(stationIds).size
+    if (uniqueCount !== stationIds.length) {
+      setError('Each station can only appear once in initial assignments')
+      return
+    }
 
-                                {customRoles.length > 0 && (
-                                    <>
-                                        <div className="px-1 py-1 text-[10px] font-bold text-muted uppercase">Custom Roles</div>
-                                        {customRoles.map((r) => (
-                                            <div key={r.id} className="flex gap-1 group">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setRole(r.id)}
-                                                    className={clsx(
-                                                        'flex-1 flex items-center justify-between px-4 py-3 rounded-xl border transition-all text-left',
-                                                        role === r.id
-                                                            ? 'bg-brand-orange/10 border-brand-orange text-brand-orange'
-                                                            : 'bg-white/5 border-white/5 text-text-secondary hover:border-white/20'
-                                                    )}
-                                                >
-                                                    <div className="flex flex-col">
-                                                        <span className="text-sm font-bold">{r.name}</span>
-                                                        <span className="text-[10px] opacity-70">{r.permissions.length} permissions</span>
-                                                    </div>
-                                                    {role === r.id && (
-                                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                                                            <polyline points="20 6 9 17 4 12" />
-                                                        </svg>
-                                                    )}
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={(e) => {
-                                                        e.preventDefault()
-                                                        setRoleIdToEdit(r.id)
-                                                        setShowCreateRole(true)
-                                                    }}
-                                                    className="w-10 flex items-center justify-center rounded-xl border border-white/5 bg-white/5 text-muted hover:text-white hover:bg-white/10 transition-colors"
-                                                    title="Edit Role Permissions"
-                                                >
-                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                                                    </svg>
-                                                </button>
-                                            </div>
-                                        ))}
-                                    </>
-                                )}
+    const normalizedAssignments = assignments.map((row, index) => {
+      const isAttendant = row.role === 'ATTENDANT'
+      return {
+        stationId: row.stationId,
+        role: row.role,
+        isPrimary: row.isPrimary || index === 0,
+        isActive: row.isActive,
+        attendantMode: isAttendant ? row.attendantMode || 'FIXED' : undefined,
+        shiftStart: isAttendant ? row.shiftStart || '00:00' : undefined,
+        shiftEnd: isAttendant ? row.shiftEnd || '23:59' : undefined,
+        timezone: isAttendant ? row.timezone || 'Africa/Kampala' : undefined,
+      }
+    })
 
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setRoleIdToEdit(undefined)
-                                        setShowCreateRole(true)
-                                    }}
-                                    className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-dashed border-white/20 text-muted hover:text-white hover:border-white/40 hover:bg-white/5 transition-all mt-2"
-                                >
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                        <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-                                    </svg>
-                                    <span className="text-sm font-medium">Create New Role</span>
-                                </button>
-                            </div>
-                        </div>
+    const payload: TeamInviteRequest = {
+      email: trimmedEmail,
+      role: normalizedAssignments[0].role,
+      initialAssignments: normalizedAssignments,
+    }
 
-                        {error && (
-                            <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-500 text-xs font-medium">
-                                {error}
-                            </div>
-                        )}
+    setIsSubmitting(true)
+    setError(null)
+    try {
+      await onInvite(payload)
+      onClose()
+    } catch (err: any) {
+      setError(err?.message || 'Failed to send invitation')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
-                        <div className="flex items-center gap-3 mt-2">
-                            <button
-                                type="button"
-                                onClick={onClose}
-                                className="flex-1 h-11 rounded-xl font-bold text-sm text-text-secondary hover:bg-white/5 transition-colors"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                type="submit"
-                                disabled={isSubmitting}
-                                className="flex-[2] h-11 rounded-xl bg-accent text-white font-bold text-sm hover:bg-accent-hover disabled:opacity-50 transition-all shadow-lg shadow-accent/20"
-                            >
-                                {isSubmitting ? 'Saving...' : (isEditing ? 'Update Member' : 'Send Invitation')}
-                            </button>
-                        </div>
-                    </form>
-                </Card>
+  const setRow = (index: number, updater: (row: AssignmentFormRow) => AssignmentFormRow) => {
+    setAssignments((prev) => prev.map((row, i) => (i === index ? updater(row) : row)))
+  }
+
+  return (
+    <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+      <Card className="w-full max-w-3xl p-6 shadow-2xl border-white/10">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-bold text-text">Invite Team Member</h2>
+          <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-lg text-text-secondary transition-colors">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[11px] font-black uppercase tracking-wider text-text-secondary ml-1">
+                Email Address
+              </label>
+              <input
+                autoFocus
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="name@example.com"
+                className="w-full h-11 px-4 rounded-xl border border-white/10 bg-white/5 text-sm text-text focus:outline-none focus:ring-2 focus:ring-accent/50 transition-all"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-[11px] font-black uppercase tracking-wider text-text-secondary">
+                Initial Station Assignments
+              </p>
+              <button
+                type="button"
+                onClick={() =>
+                  setAssignments((prev) => [...prev, createDefaultRow(stations[0]?.id || '')])
+                }
+                className="h-9 px-3 rounded-lg border border-white/10 bg-white/5 text-xs font-bold text-text-secondary hover:text-text"
+              >
+                Add Row
+              </button>
             </div>
 
-            {showCreateRole && (
-                <CreateRoleModal
-                    editRoleId={roleIdToEdit}
-                    onClose={() => {
-                        setShowCreateRole(false)
-                        setRoleIdToEdit(undefined)
-                    }}
-                    onRoleCreated={(roleId) => {
-                        setRole(roleId)
-                        setRoleIdToEdit(undefined)
-                    }}
-                />
-            )}
-        </>
-    )
+            {assignments.map((row, index) => {
+              const isAttendant = row.role === 'ATTENDANT'
+              return (
+                <div
+                  key={`assignment-row-${index}`}
+                  className="rounded-xl border border-white/10 bg-white/[0.02] p-3 space-y-3"
+                >
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <select
+                      value={row.stationId}
+                      onChange={(e) =>
+                        setRow(index, (current) => ({ ...current, stationId: e.target.value }))
+                      }
+                      className="h-10 px-3 rounded-lg border border-white/10 bg-white/5 text-sm text-text"
+                    >
+                      <option value="">Select station</option>
+                      {stations.map((station) => (
+                        <option key={station.id} value={station.id}>
+                          {station.name}
+                        </option>
+                      ))}
+                    </select>
+
+                    <select
+                      value={row.role}
+                      onChange={(e) =>
+                        setRow(index, (current) => ({
+                          ...current,
+                          role: e.target.value as Role,
+                        }))
+                      }
+                      className="h-10 px-3 rounded-lg border border-white/10 bg-white/5 text-sm text-text"
+                    >
+                      {ASSIGNABLE_ROLES.map((role) => (
+                        <option key={role} value={role}>
+                          {ROLE_LABELS[role]}
+                        </option>
+                      ))}
+                    </select>
+
+                    <label className="h-10 rounded-lg border border-white/10 bg-white/5 px-3 inline-flex items-center gap-2 text-xs text-text-secondary">
+                      <input
+                        type="checkbox"
+                        checked={row.isPrimary}
+                        onChange={(e) =>
+                          setAssignments((prev) =>
+                            prev.map((item, i) => ({
+                              ...item,
+                              isPrimary: i === index ? e.target.checked : false,
+                            })),
+                          )
+                        }
+                      />
+                      Primary
+                    </label>
+
+                    <div className="flex items-center justify-between gap-2">
+                      <label className="h-10 flex-1 rounded-lg border border-white/10 bg-white/5 px-3 inline-flex items-center gap-2 text-xs text-text-secondary">
+                        <input
+                          type="checkbox"
+                          checked={row.isActive}
+                          onChange={(e) =>
+                            setRow(index, (current) => ({
+                              ...current,
+                              isActive: e.target.checked,
+                            }))
+                          }
+                        />
+                        Active
+                      </label>
+                      {assignments.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setAssignments((prev) => prev.filter((_, i) => i !== index))
+                          }
+                          className="h-10 px-3 rounded-lg border border-red-500/20 text-red-400 text-xs font-bold"
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {isAttendant && (
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                      <select
+                        value={row.attendantMode || 'FIXED'}
+                        onChange={(e) =>
+                          setRow(index, (current) => ({
+                            ...current,
+                            attendantMode: e.target.value as 'FIXED' | 'MOBILE',
+                          }))
+                        }
+                        className="h-10 px-3 rounded-lg border border-white/10 bg-white/5 text-sm text-text"
+                      >
+                        <option value="FIXED">Fixed</option>
+                        <option value="MOBILE">Mobile</option>
+                      </select>
+
+                      <input
+                        type="time"
+                        value={row.shiftStart || '00:00'}
+                        onChange={(e) =>
+                          setRow(index, (current) => ({ ...current, shiftStart: e.target.value }))
+                        }
+                        className="h-10 px-3 rounded-lg border border-white/10 bg-white/5 text-sm text-text"
+                      />
+
+                      <input
+                        type="time"
+                        value={row.shiftEnd || '23:59'}
+                        onChange={(e) =>
+                          setRow(index, (current) => ({ ...current, shiftEnd: e.target.value }))
+                        }
+                        className="h-10 px-3 rounded-lg border border-white/10 bg-white/5 text-sm text-text"
+                      />
+
+                      <input
+                        type="text"
+                        value={row.timezone || 'Africa/Kampala'}
+                        onChange={(e) =>
+                          setRow(index, (current) => ({ ...current, timezone: e.target.value }))
+                        }
+                        className="h-10 px-3 rounded-lg border border-white/10 bg-white/5 text-sm text-text"
+                        placeholder="Africa/Kampala"
+                      />
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+
+          {error && (
+            <div className={clsx('p-3 rounded-lg border text-xs font-medium', 'bg-red-500/10 border-red-500/20 text-red-500')}>
+              {error}
+            </div>
+          )}
+
+          <div className="flex items-center gap-3 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 h-11 rounded-xl font-bold text-sm text-text-secondary hover:bg-white/5 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="flex-[2] h-11 rounded-xl bg-accent text-white font-bold text-sm hover:bg-accent-hover disabled:opacity-50 transition-all shadow-lg shadow-accent/20"
+            >
+              {isSubmitting ? 'Sending...' : 'Send Invitation'}
+            </button>
+          </div>
+        </form>
+      </Card>
+    </div>
+  )
 }

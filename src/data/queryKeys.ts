@@ -18,6 +18,13 @@ export const queryKeys = {
     sessions: (id: string) => ['users', id, 'sessions'] as const,
   },
 
+  team: {
+    members: ['team', 'members'] as const,
+    assignments: (id: string) => ['team', id, 'assignments'] as const,
+    payoutProfile: (id: string) => ['team', id, 'payout-profile'] as const,
+    stationContexts: ['team', 'station-contexts'] as const,
+  },
+
   // Stations
   stations: {
     all: (filters?: Record<string, unknown>) => ['stations', filters] as const,

@@ -1,8 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/core/auth/authStore'
-import { InviteUserModal } from '@/modals/InviteUserModal'
-import { ROLE_LABELS } from '@/constants/roles'
 import { PATHS } from '@/app/router/paths'
 import { useTheme } from '@/ui/theme'
 import { authService } from '@/modules/auth/services/authService'
@@ -10,12 +8,12 @@ import clsx from 'clsx'
 
 export function Header({ title, onMenuClick }: { title?: string; onMenuClick?: () => void }) {
   const nav = useNavigate()
-  const { user, impersonator, impersonationReturnTo, logout, stopImpersonation, loginWithResponse } = useAuthStore()
+  const { user, impersonator, impersonationReturnTo, logout, stopImpersonation, loginWithResponse, switchStationContext } = useAuthStore()
   const { mode, setMode, effectiveTheme } = useTheme()
   const [createOpen, setCreateOpen] = useState(false)
-  const [inviteModalOpen, setInviteModalOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [switchingOrgId, setSwitchingOrgId] = useState<string | null>(null)
+  const [switchingAssignmentId, setSwitchingAssignmentId] = useState<string | null>(null)
   const createRef = useRef<HTMLDivElement | null>(null)
 
   const activeMemberships = useMemo(
@@ -23,6 +21,8 @@ export function Header({ title, onMenuClick }: { title?: string; onMenuClick?: (
     [user?.memberships],
   )
   const currentOrganizationId = user?.activeOrganizationId || user?.organizationId || user?.orgId || ''
+  const stationContexts = user?.stationContexts || []
+  const currentAssignmentId = user?.activeStationContext?.assignmentId || ''
 
   useEffect(() => {
     function onDown(e: MouseEvent) {
@@ -52,7 +52,7 @@ export function Header({ title, onMenuClick }: { title?: string; onMenuClick?: (
       { label: 'Add Station', to: addStation, action: 'navigate' },
       { label: 'Add Charge Point', to: addChargePoint, action: 'navigate' },
       { label: 'Add Swap Station', to: addSwapStation, action: 'navigate' },
-      { label: 'Invite User', to: '', action: 'modal' },
+      { label: 'Invite User', to: `${PATHS.TEAM}?invite=1`, action: 'navigate' },
       { label: 'Request Technician', to: requestTechnician, action: 'navigate' },
       { label: 'List Parking Site', to: listParkingSite, action: 'navigate' },
     ]
@@ -163,6 +163,40 @@ export function Header({ title, onMenuClick }: { title?: string; onMenuClick?: (
           </label>
         )}
 
+        {stationContexts.length > 1 && (
+          <label className="hidden lg:flex items-center gap-2 rounded-xl border border-border bg-panel px-2 py-1">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-text-secondary">Station</span>
+            <select
+              className="bg-transparent text-xs font-medium text-text focus:outline-none max-w-[180px]"
+              value={currentAssignmentId}
+              disabled={Boolean(switchingAssignmentId)}
+              onChange={async (event) => {
+                const assignmentId = event.target.value
+                if (!assignmentId || assignmentId === currentAssignmentId) return
+                setSwitchingAssignmentId(assignmentId)
+                try {
+                  await switchStationContext(assignmentId)
+                  window.dispatchEvent(
+                    new CustomEvent('station-context:switched', {
+                      detail: { assignmentId },
+                    }),
+                  )
+                } catch (error) {
+                  console.error('Failed to switch station context', error)
+                } finally {
+                  setSwitchingAssignmentId(null)
+                }
+              }}
+            >
+              {stationContexts.map((context) => (
+                <option key={context.assignmentId} value={context.assignmentId}>
+                  {context.stationName || context.stationId}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+
         <div className="relative flex-shrink-0" ref={createRef}>
           <button
             className="bg-accent border border-accent text-white py-1.5 lg:py-2 px-3 lg:px-4 rounded-xl text-[12px] lg:text-[13px] font-bold transition-all duration-200 whitespace-nowrap hover:bg-accent-hover inline-flex items-center gap-1 lg:gap-2 shadow-sm"
@@ -182,8 +216,7 @@ export function Header({ title, onMenuClick }: { title?: string; onMenuClick?: (
                   className="w-full text-left px-4 py-2 rounded-xl hover:bg-white/5 transition-colors flex items-center gap-3 text-sm text-text-secondary hover:text-text font-medium"
                   onClick={() => {
                     setCreateOpen(false)
-                    if (it.action === 'modal') setInviteModalOpen(true)
-                    else nav(it.to)
+                    nav(it.to)
                   }}
                 >
                   <span className="h-1.5 w-1.5 rounded-full bg-accent flex-shrink-0" />
@@ -235,8 +268,6 @@ export function Header({ title, onMenuClick }: { title?: string; onMenuClick?: (
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></svg>
         </button>
       </div>
-
-      <InviteUserModal isOpen={inviteModalOpen} onClose={() => setInviteModalOpen(false)} />
     </header>
   )
 }
