@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { useAuthStore } from '@/core/auth/authStore'
 import { getPermissionsForFeature } from '@/constants/permissions'
@@ -15,6 +15,7 @@ import { StatGridSkeleton, TableSkeleton } from '@/ui/components/SkeletonCards'
 
 type InvoiceStatus = 'Paid' | 'Pending' | 'Overdue' | 'Refunded'
 type InvoiceType = 'Subscription' | 'Usage' | 'Settlement' | 'Credit'
+type BillingPeriod = 'all' | 'today' | '30d'
 
 type Invoice = {
   id: string
@@ -27,6 +28,17 @@ type Invoice = {
   dueAt: string
   paidAt?: string
   description: string
+}
+
+function normalizeBillingPeriod(value: string | null): BillingPeriod {
+  switch ((value ?? '').toLowerCase()) {
+    case 'today':
+      return 'today'
+    case '30d':
+      return '30d'
+    default:
+      return 'all'
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -47,6 +59,7 @@ type Invoice = {
  * - adjustments: ADMIN can make adjustments
  */
 export function Billing() {
+  const [searchParams, setSearchParams] = useSearchParams()
   const { user } = useAuthStore()
   const perms = getPermissionsForFeature(user?.role, 'billing')
 
@@ -54,6 +67,7 @@ export function Billing() {
   const [type, setType] = useState<InvoiceType | 'All'>('All')
   const [status, setStatus] = useState<InvoiceStatus | 'All'>('All')
   const [org, setOrg] = useState<string>('All')
+  const period = useMemo<BillingPeriod>(() => normalizeBillingPeriod(searchParams.get('period')), [searchParams])
 
   const { data: invoicesData, isLoading, error } = useQuery({
     queryKey: ['invoices', 'all', { type: type !== 'All' ? type : undefined, status: status !== 'All' ? status : undefined }],
@@ -81,13 +95,32 @@ export function Billing() {
   }, [invoicesData])
 
   // Filter invoices - in real app, filter by user's access
+  const setPeriod = (nextPeriod: BillingPeriod) => {
+    const nextParams = new URLSearchParams(searchParams)
+    nextParams.set('period', nextPeriod)
+    setSearchParams(nextParams)
+  }
+
   const filtered = useMemo(() => {
     return invoices
       .filter((r) => (q ? (r.id + ' ' + r.org + ' ' + r.description).toLowerCase().includes(q.toLowerCase()) : true))
       .filter((r) => (type === 'All' ? true : r.type === type))
       .filter((r) => (status === 'All' ? true : r.status === status))
       .filter((r) => (org === 'All' ? true : r.org === org))
-  }, [invoices, q, type, status, org])
+      .filter((r) => {
+        if (period === 'all') return true
+        const issuedAtMs = Date.parse(r.issuedAt)
+        if (!Number.isFinite(issuedAtMs)) return false
+        if (period === '30d') {
+          return issuedAtMs >= Date.now() - (30 * 24 * 60 * 60 * 1000)
+        }
+        const now = new Date()
+        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+        const endOfToday = new Date(startOfToday)
+        endOfToday.setDate(endOfToday.getDate() + 1)
+        return issuedAtMs >= startOfToday.getTime() && issuedAtMs < endOfToday.getTime()
+      })
+  }, [invoices, q, type, status, org, period])
 
   const orgs = useMemo(() => {
     const set = new Set(invoices.map((i) => i.org))
@@ -152,13 +185,18 @@ export function Billing() {
 
       {/* Filters */}
       <div className="card mb-4">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search invoices"
             className="input col-span-2 xl:col-span-1"
           />
+          <select value={period} onChange={(e) => setPeriod(e.target.value as BillingPeriod)} className="select">
+            <option value="all">All Periods</option>
+            <option value="today">Today</option>
+            <option value="30d">Last 30 days</option>
+          </select>
           <select value={type} onChange={(e) => setType(e.target.value as InvoiceType | 'All')} className="select">
             <option value="All">All Types</option>
             <option value="Usage">Usage</option>

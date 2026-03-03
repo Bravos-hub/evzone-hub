@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { useAuthStore } from '@/core/auth/authStore'
 import { getPermissionsForFeature } from '@/constants/permissions'
@@ -27,6 +27,19 @@ type SessionRow = {
   tariffName: string
 }
 
+type SessionPreset = 'all' | 'today' | 'active'
+
+function normalizeSessionPreset(value: string | null): SessionPreset {
+  switch ((value ?? '').toLowerCase()) {
+    case 'today':
+      return 'today'
+    case 'active':
+      return 'active'
+    default:
+      return 'all'
+  }
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════════════════
@@ -41,6 +54,7 @@ type SessionRow = {
  * - stopSession: ADMIN, OPERATOR, OWNER, STATION_ADMIN, ATTENDANT
  */
 export function Sessions() {
+  const [searchParams, setSearchParams] = useSearchParams()
   const { user } = useAuthStore()
   const perms = getPermissionsForFeature(user?.role, 'sessions')
   
@@ -52,6 +66,7 @@ export function Sessions() {
   const [q, setQ] = useState('')
   const [sel, setSel] = useState<Record<string, boolean>>({})
   const [stationFilter, setStationFilter] = useState<string>('All')
+  const preset = useMemo<SessionPreset>(() => normalizeSessionPreset(searchParams.get('preset')), [searchParams])
 
   // Fetch stations for filter
   const { data: stationsData } = useStations()
@@ -85,6 +100,16 @@ export function Sessions() {
       .filter((r) => (site === 'All Sites' ? true : r.site === site))
       .filter((r) => (paymentMethod === 'All' ? true : r.paymentMethod === paymentMethod))
       .filter((r) => {
+        if (preset === 'all') return true
+        if (preset === 'active') return r.status === 'Active'
+        const now = new Date()
+        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+        const endOfToday = new Date(startOfToday)
+        endOfToday.setDate(endOfToday.getDate() + 1)
+        return r.start >= startOfToday && r.start < endOfToday
+      })
+      .filter((r) => {
+        if (preset !== 'all') return true
         const date = r.start
         return date >= new Date(from) && date <= new Date(to)
       })
@@ -93,7 +118,13 @@ export function Sessions() {
           ? (r.id + ' ' + r.chargePointId + ' ' + r.site).toLowerCase().includes(q.toLowerCase())
           : true
       )
-  }, [historyData, site, paymentMethod, from, to, q])
+  }, [historyData, site, paymentMethod, preset, from, to, q])
+
+  const setPreset = (nextPreset: SessionPreset) => {
+    const nextParams = new URLSearchParams(searchParams)
+    nextParams.set('preset', nextPreset)
+    setSearchParams(nextParams)
+  }
 
   const duration = (start: Date, end?: Date) => {
     if (!end) return '—'
@@ -168,13 +199,18 @@ export function Sessions() {
 
       {/* Filters */}
       <div className="card">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-8 gap-3">
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search Session ID or Charger"
             className="input col-span-2 xl:col-span-1"
           />
+          <select value={preset} onChange={(e) => setPreset(e.target.value as SessionPreset)} className="select">
+            <option value="all">All Presets</option>
+            <option value="today">Today</option>
+            <option value="active">Active</option>
+          </select>
           <select value={stationFilter} onChange={(e) => setStationFilter(e.target.value)} className="select">
             <option value="All">All Stations</option>
             {stations.map(s => (

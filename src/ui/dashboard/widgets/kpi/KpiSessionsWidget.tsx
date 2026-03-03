@@ -1,6 +1,8 @@
+import { useNavigate } from 'react-router-dom'
+import { PATHS } from '@/app/router/paths'
+import { useDashboard } from '@/modules/analytics/hooks/useDashboard'
 import type { WidgetProps } from '../../types'
 import { KpiGenericWidget, type Trend } from './KpiGenericWidget'
-import { useDashboard } from '@/modules/analytics/hooks/useDashboard'
 
 export type KpiSessionsConfig = {
   count: number
@@ -15,13 +17,23 @@ function fmtCompact(n: number) {
   return String(n)
 }
 
+function periodToPreset(period?: string): 'all' | 'today' | 'active' {
+  if (!period) return 'all'
+  const normalized = period.trim().toLowerCase()
+  if (normalized === 'today') return 'today'
+  if (normalized === 'active') return 'active'
+  return 'all'
+}
+
 export function KpiSessionsWidget({ config }: WidgetProps<KpiSessionsConfig>) {
+  const navigate = useNavigate()
   const { data: dashboard } = useDashboard()
 
   const count = config?.count ?? dashboard?.today?.sessions ?? 0
   const period = config?.period ?? 'Today'
   const trend = config?.trend
   const delta = config?.delta
+  const preset = periodToPreset(period)
 
   return (
     <KpiGenericWidget
@@ -30,6 +42,9 @@ export function KpiSessionsWidget({ config }: WidgetProps<KpiSessionsConfig>) {
         value: fmtCompact(count),
         trend,
         delta,
+        interactive: true,
+        ariaLabel: `Sessions (${period}) - open sessions with ${preset} preset`,
+        onClick: () => navigate(`${PATHS.SESSIONS}?preset=${preset}`),
       }}
     />
   )

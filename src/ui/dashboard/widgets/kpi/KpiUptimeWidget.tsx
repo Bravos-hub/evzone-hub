@@ -1,6 +1,8 @@
+import { useNavigate } from 'react-router-dom'
+import { PATHS } from '@/app/router/paths'
+import { useDashboard } from '@/modules/analytics/hooks/useDashboard'
 import type { WidgetProps } from '../../types'
 import { KpiGenericWidget, type Trend } from './KpiGenericWidget'
-import { useDashboard } from '@/modules/analytics/hooks/useDashboard'
 
 export type KpiUptimeConfig = {
   value?: number
@@ -9,6 +11,7 @@ export type KpiUptimeConfig = {
 }
 
 export function KpiUptimeWidget({ config }: WidgetProps<KpiUptimeConfig>) {
+  const navigate = useNavigate()
   const { data: dashboard } = useDashboard()
   const total = dashboard?.chargers?.total ?? 0
   const online = dashboard?.chargers?.online ?? 0
@@ -24,6 +27,9 @@ export function KpiUptimeWidget({ config }: WidgetProps<KpiUptimeConfig>) {
         value: `${value.toFixed(1)}%`,
         trend,
         delta,
+        interactive: true,
+        ariaLabel: 'SLA / Uptime - open online stations',
+        onClick: () => navigate(`${PATHS.STATIONS.ROOT}?status=online`),
       }}
     />
   )
