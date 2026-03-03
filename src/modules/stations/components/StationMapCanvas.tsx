@@ -320,7 +320,7 @@ export function StationMapCanvas({
                     emitBounds()
                 }}
                 mapStyle={mapStyle}
-                interactiveLayerIds={['clusters', 'unclustered-point']}
+                interactiveLayerIds={['unclustered-point']}
                 onClick={onMapClick}
                 cursor="pointer"
                 style={{ width: '100%', height: '100%' }}
@@ -353,45 +353,9 @@ export function StationMapCanvas({
                     id="stations-source"
                     type="geojson"
                     data={stationsGeoJson ?? { type: 'FeatureCollection', features: [] }}
-                    cluster={true}
-                    clusterMaxZoom={14}
-                    clusterRadius={50}
+                    cluster={false}
                 >
-                    {/* 1. Clusters (Density Circles) */}
-                    <Layer
-                        id="clusters"
-                        type="circle"
-                        filter={['has', 'point_count']}
-                        paint={{
-                            'circle-color': [
-                                'step',
-                                ['get', 'point_count'],
-                                'rgba(81, 187, 214, 0.6)', 100,
-                                'rgba(241, 240, 117, 0.6)', 750,
-                                'rgba(242, 140, 177, 0.6)'
-                            ],
-                            'circle-radius': [
-                                'step',
-                                ['get', 'point_count'],
-                                20, 100, 30, 750, 40
-                            ],
-                            'circle-stroke-width': 2,
-                            'circle-stroke-color': 'rgba(255,255,255,0.4)',
-                            'circle-blur': 0.1
-                        }}
-                    />
-
-                    <Layer
-                        id="cluster-count"
-                        type="symbol"
-                        filter={['has', 'point_count']}
-                        layout={{
-                            'text-field': '{point_count_abbreviated}',
-                            'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
-                            'text-size': 12
-                        }}
-                        paint={{ 'text-color': '#fff' }}
-                    />
+                    {/* Clustering intentionally disabled for clearer station-level visibility */}
 
                     {/* 2. Unclustered Points (Individual Stations) */}
                     {/* Confidence Glow (Soft aura for high-uptime stations) */}
@@ -444,9 +408,9 @@ export function StationMapCanvas({
                             'icon-image': MARKER_ICON_EXPRESSION,
                             'icon-size': [
                                 'interpolate', ['linear'], ['zoom'],
-                                8, 0.09,
-                                14, 0.13,
-                                20, 0.2
+                                8, 0.6,
+                                14, 0.9,
+                                20, 1.3
                             ],
                             'icon-allow-overlap': true,
                             'icon-anchor': 'bottom',
@@ -479,43 +443,7 @@ export function StationMapCanvas({
                     type="vector"
                     tiles={[tileUrl]}
                 >
-                    {/* 1. Clusters (Density Circles) */}
-                    <Layer
-                        id="clusters"
-                        type="circle"
-                        source-layer="stations"
-                        filter={['has', 'point_count']}
-                        paint={{
-                            'circle-color': [
-                                'step',
-                                ['get', 'point_count'],
-                                'rgba(81, 187, 214, 0.6)', 100,
-                                'rgba(241, 240, 117, 0.6)', 750,
-                                'rgba(242, 140, 177, 0.6)'
-                            ],
-                            'circle-radius': [
-                                'step',
-                                ['get', 'point_count'],
-                                20, 100, 30, 750, 40
-                            ],
-                            'circle-stroke-width': 2,
-                            'circle-stroke-color': 'rgba(255,255,255,0.4)',
-                            'circle-blur': 0.1
-                        }}
-                    />
-
-                    <Layer
-                        id="cluster-count"
-                        type="symbol"
-                        source-layer="stations"
-                        filter={['has', 'point_count']}
-                        layout={{
-                            'text-field': '{point_count_abbreviated}',
-                            'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
-                            'text-size': 12
-                        }}
-                        paint={{ 'text-color': '#fff' }}
-                    />
+                    {/* Clustering intentionally disabled for clearer station-level visibility */}
 
                     {/* 2. Unclustered Points (Individual Stations) */}
                     {/* Confidence Glow (Soft aura for high-uptime stations) */}
@@ -571,9 +499,9 @@ export function StationMapCanvas({
                             'icon-image': MARKER_ICON_EXPRESSION,
                             'icon-size': [
                                 'interpolate', ['linear'], ['zoom'],
-                                8, 0.09,
-                                14, 0.13,
-                                20, 0.2
+                                8, 0.6,
+                                14, 0.9,
+                                20, 1.3
                             ],
                             'icon-allow-overlap': true,
                             'icon-anchor': 'bottom',
