@@ -242,9 +242,39 @@ export function StationMapCanvas({
     const loadCustomImages = useCallback((map: maplibregl.Map) => {
         const addImage = (name: string, url: string) => {
             if (map.hasImage(name)) return
-            const img = new Image(24, 24)
+
+            const img = new Image()
             img.onload = () => {
-                if (!map.hasImage(name)) map.addImage(name, img)
+                if (map.hasImage(name)) return
+
+                const width = img.naturalWidth || img.width
+                const height = img.naturalHeight || img.height
+                if (!width || !height) return
+
+                try {
+                    const canvas = document.createElement('canvas')
+                    canvas.width = width
+                    canvas.height = height
+                    const ctx = canvas.getContext('2d')
+                    if (!ctx) {
+                        map.addImage(name, img as any)
+                        return
+                    }
+
+                    ctx.drawImage(img, 0, 0, width, height)
+                    const imageData = ctx.getImageData(0, 0, width, height)
+                    map.addImage(name, {
+                        width,
+                        height,
+                        data: new Uint8Array(imageData.data.buffer),
+                    })
+                } catch (error) {
+                    console.error(`Failed to rasterize marker icon ${url}`, error)
+                    if (!map.hasImage(name)) map.addImage(name, img as any)
+                }
+            }
+            img.onerror = () => {
+                console.error(`Failed to load marker icon ${url}`)
             }
             img.src = url
         }
@@ -312,8 +342,8 @@ export function StationMapCanvas({
                 {...viewState}
                 onMove={onMove}
                 onMoveEnd={emitBounds}
-                onLoad={() => {
-                    const map = mapRef.current?.getMap()
+                onLoad={(event) => {
+                    const map = (event?.target as maplibregl.Map | undefined) ?? mapRef.current?.getMap()
                     if (!map) return
                     loadCustomImages(map)
                     onMapReady?.(map)
