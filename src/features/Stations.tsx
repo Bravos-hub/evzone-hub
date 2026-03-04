@@ -284,6 +284,8 @@ export function Stations() {
   const mapData = useMemo<StationMapData[]>(() => {
     return rows.map(r => {
       const api = accessibleStationsData.find(st => st.id === r.id) as any
+      const lat = Number(api?.latitude ?? NaN)
+      const lng = Number(api?.longitude ?? NaN)
       return {
         id: r.id,
         name: r.name,
@@ -291,8 +293,8 @@ export function Stations() {
         status: normalizeMapStationStatus(api?.status),
         type: normalizeStationType(api?.type),
         markerIcon: stationIconsById.get(r.id)?.markerIcon,
-        lat: Number(api?.latitude || 0),
-        lng: Number(api?.longitude || 0),
+        lat: Number.isFinite(lat) ? lat : NaN,
+        lng: Number.isFinite(lng) ? lng : NaN,
         capacity: Number(api?.capacity || 0)
       }
     })
@@ -517,60 +519,58 @@ export function Stations() {
                         const showSecondaryId = Boolean(r.name && r.name.trim() && r.name !== r.id)
                         const stationIcon = stationIconsById.get(r.id)
                         return (
-                        <tr key={r.id} className="hover:bg-white/5 transition-colors">
-                          <td className="px-6 py-4"><input type="checkbox" className="rounded border-white/10 bg-white/5" /></td>
-                          <td className="px-6 py-4">
-                            <div className="font-bold text-text">{primaryStationLabel}</div>
-                            {showSecondaryId && <div className="text-xs text-muted leading-tight">ID: {r.id}</div>}
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="text-muted font-medium">{r.region}</div>
-                            <div className="text-[10px] text-muted-more uppercase">{r.country}</div>
-                          </td>
-                          <td className="px-6 py-4 text-muted">{r.org}</td>
-                          <td className="px-6 py-4 text-center">
-                            <span className="text-xs font-semibold px-2 py-0.5 rounded bg-white/5 border border-white/10">{r.type}</span>
-                          </td>
-                          <td className="px-6 py-4">
-                            <StationStatusPill
-                              status={r.status}
-                              iconSrc={stationIcon?.iconSrc}
-                              iconAlt={stationIcon?.iconAlt}
-                            />
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="flex items-center gap-2">
-                              <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden min-w-[60px]">
-                                <div
-                                  className={`h-full rounded-full transition-all ${r.healthScore > 80 ? 'bg-ok' : r.healthScore > 50 ? 'bg-warn' : 'bg-danger'
-                                    }`}
-                                  style={{ width: `${r.healthScore}%` }}
-                                />
+                          <tr key={r.id} className="hover:bg-white/5 transition-colors">
+                            <td className="px-6 py-4"><input type="checkbox" className="rounded border-white/10 bg-white/5" /></td>
+                            <td className="px-6 py-4">
+                              <div className="font-bold text-text">{primaryStationLabel}</div>
+                              {showSecondaryId && <div className="text-xs text-muted leading-tight">ID: {r.id}</div>}
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="text-muted font-medium">{r.region}</div>
+                              <div className="text-[10px] text-muted-more uppercase">{r.country}</div>
+                            </td>
+                            <td className="px-6 py-4 text-muted">{r.org}</td>
+                            <td className="px-6 py-4 text-center">
+                              <span className="text-xs font-semibold px-2 py-0.5 rounded bg-white/5 border border-white/10">{r.type}</span>
+                            </td>
+                            <td className="px-6 py-4">
+                              <StationStatusPill
+                                status={r.status}
+                              />
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-2">
+                                <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden min-w-[60px]">
+                                  <div
+                                    className={`h-full rounded-full transition-all ${r.healthScore > 80 ? 'bg-ok' : r.healthScore > 50 ? 'bg-warn' : 'bg-danger'
+                                      }`}
+                                    style={{ width: `${r.healthScore}%` }}
+                                  />
+                                </div>
+                                <span className="text-xs font-mono">{r.healthScore}%</span>
                               </div>
-                              <span className="text-xs font-mono">{r.healthScore}%</span>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="text-muted font-mono">{r.utilization}%</div>
-                          </td>
-                          <td className="px-6 py-4 text-center">
-                            {r.openIncidents > 0 ? (
-                              <span className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-danger/20 text-danger text-xs font-bold border border-danger/20">
-                                {r.openIncidents}
-                              </span>
-                            ) : (
-                              <span className="text-muted">—</span>
-                            )}
-                          </td>
-                          <td className="px-6 py-4 text-right">
-                            <button
-                              className="btn secondary sm:px-4 sm:py-2 px-3 py-1.5 text-xs sm:text-sm"
-                              onClick={() => navigate(`/stations/${r.id}`)}
-                            >
-                              Open
-                            </button>
-                          </td>
-                        </tr>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="text-muted font-mono">{r.utilization}%</div>
+                            </td>
+                            <td className="px-6 py-4 text-center">
+                              {r.openIncidents > 0 ? (
+                                <span className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-danger/20 text-danger text-xs font-bold border border-danger/20">
+                                  {r.openIncidents}
+                                </span>
+                              ) : (
+                                <span className="text-muted">—</span>
+                              )}
+                            </td>
+                            <td className="px-6 py-4 text-right">
+                              <button
+                                className="btn secondary sm:px-4 sm:py-2 px-3 py-1.5 text-xs sm:text-sm"
+                                onClick={() => navigate(`/stations/${r.id}`)}
+                              >
+                                Open
+                              </button>
+                            </td>
+                          </tr>
                         )
                       })
                     )}

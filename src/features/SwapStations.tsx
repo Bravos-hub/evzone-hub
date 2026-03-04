@@ -23,8 +23,6 @@ type SwapStation = {
   name: string
   site: string
   status: StationStatus
-  iconSrc: string
-  iconAlt: string
   bays: number
   available: number
   charging: number
@@ -238,7 +236,7 @@ export function SwapStations() {
                   <div className="text-xs text-muted">{s.name}</div>
                 </td>
                 <td>{s.site}</td>
-                <td><StationStatusPill status={s.status} iconSrc={s.iconSrc} iconAlt={s.iconAlt} /></td>
+                <td><StationStatusPill status={s.status} /></td>
                 <td>{s.bays}</td>
                 <td className="text-ok font-semibold">{s.available}</td>
                 <td className="text-warn">{s.charging}</td>

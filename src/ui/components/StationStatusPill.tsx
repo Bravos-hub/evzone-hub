@@ -4,15 +4,13 @@ export type StationStatus = 'Online' | 'Degraded' | 'Offline' | 'Maintenance'
 
 type StationStatusPillProps = {
   status: StationStatus
-  iconSrc?: string
-  iconAlt?: string
 }
 
-export function StationStatusPill({ status, iconSrc, iconAlt }: StationStatusPillProps) {
+export function StationStatusPill({ status }: StationStatusPillProps) {
   return (
     <span
       className={clsx(
-        'inline-flex items-center gap-1.5 py-[5px] px-3 rounded-md text-[11px] font-semibold border border-transparent uppercase tracking-[0.3px]',
+        'inline-flex items-center py-[5px] px-3 rounded-md text-[11px] font-semibold border border-transparent uppercase tracking-[0.3px]',
         status === 'Online'
           ? 'bg-[rgba(16,185,129,.15)] border-[rgba(16,185,129,.3)] text-[#34d399]'
           : status === 'Degraded'
@@ -22,9 +20,7 @@ export function StationStatusPill({ status, iconSrc, iconAlt }: StationStatusPil
               : 'bg-[rgba(239,68,68,.15)] border-[rgba(239,68,68,.3)] text-[#fca5a5]'
       )}
     >
-      {iconSrc && <img src={iconSrc} alt={iconAlt || ''} aria-hidden={!iconAlt} className="h-4 w-3 object-contain" />}
       {status}
     </span>
   )
 }
-

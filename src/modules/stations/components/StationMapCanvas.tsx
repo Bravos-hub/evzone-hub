@@ -45,11 +45,11 @@ interface StationMapCanvasProps {
     mapLayout?: StationMapLayout
 }
 
-const STATUS_AVAILABLE_ICON = '/available.svg'
-const STATUS_INUSE_ICON = '/Inuse.svg'
-const STATUS_UNAVAILABLE_ICON = '/Unavailble.svg'
-const STATUS_BAT_AVAILABLE_ICON = '/Bat-avail.svg'
-const STATUS_BAT_INUSE_ICON = '/Bat-inuse.svg'
+const STATUS_AVAILABLE_ICON = '/marker-available.png'
+const STATUS_INUSE_ICON = '/marker-inuse.png'
+const STATUS_UNAVAILABLE_ICON = '/marker-unavailable.png'
+const STATUS_BAT_AVAILABLE_ICON = '/marker-bat-available.png'
+const STATUS_BAT_INUSE_ICON = '/marker-bat-inuse.png'
 
 const AVAILABLE_STATUS_FILTER = [
     'match',
@@ -153,35 +153,37 @@ export function StationMapCanvas({
     const mapRef = useRef<MapRef>(null)
     const [h3Data, setH3Data] = useState<any[]>([])
     const [statusHistory, setStatusHistory] = useState<any[]>([])
+    const [imagesReady, setImagesReady] = useState(false)
     const mapStyle = useMemo(() => getMapStyle(mapLayout, effectiveTheme), [mapLayout, effectiveTheme])
     const useGeoJsonSource = Array.isArray(stations)
 
     const stationsGeoJson = useMemo<FeatureCollection | null>(() => {
         if (!useGeoJsonSource || !stations) return null
 
+        const validStations = stations.filter((station) => Number.isFinite(station.lng) && Number.isFinite(station.lat))
+        console.log('[StationMap] stations prop count:', stations.length, '| valid (finite coords):', validStations.length, '| sample:', stations.slice(0, 3).map(s => ({ id: s.id, lat: s.lat, lng: s.lng })))
+
         return {
             type: 'FeatureCollection',
-            features: stations
-                .filter((station) => Number.isFinite(station.lng) && Number.isFinite(station.lat))
-                .map((station) => ({
-                    type: 'Feature' as const,
-                    properties: {
-                        id: station.id,
-                        name: station.name,
-                        address: station.address,
-                        status: station.status,
-                        type: station.type,
-                        markerIcon: station.markerIcon ?? null,
-                        lat: station.lat,
-                        lng: station.lng,
-                        capacity: station.capacity ?? 0,
-                        lastHeartbeat: station.lastHeartbeat ?? null,
-                    },
-                    geometry: {
-                        type: 'Point' as const,
-                        coordinates: [station.lng, station.lat],
-                    },
-                })),
+            features: validStations.map((station) => ({
+                type: 'Feature' as const,
+                properties: {
+                    id: station.id,
+                    name: station.name,
+                    address: station.address,
+                    status: station.status,
+                    type: station.type,
+                    markerIcon: station.markerIcon ?? null,
+                    lat: station.lat,
+                    lng: station.lng,
+                    capacity: station.capacity ?? 0,
+                    lastHeartbeat: station.lastHeartbeat ?? null,
+                },
+                geometry: {
+                    type: 'Point' as const,
+                    coordinates: [station.lng, station.lat],
+                },
+            })),
         }
     }, [stations, useGeoJsonSource])
 
@@ -240,51 +242,42 @@ export function StationMapCanvas({
     }, [popupInfo])
 
     const loadCustomImages = useCallback((map: maplibregl.Map) => {
-        const addImage = (name: string, url: string) => {
-            if (map.hasImage(name)) return
+        const icons: [string, string][] = [
+            ['marker-available', STATUS_AVAILABLE_ICON],
+            ['marker-inuse', STATUS_INUSE_ICON],
+            ['marker-unavailable', STATUS_UNAVAILABLE_ICON],
+            ['marker-bat-available', STATUS_BAT_AVAILABLE_ICON],
+            ['marker-bat-inuse', STATUS_BAT_INUSE_ICON],
+        ]
 
-            const img = new Image()
-            img.onload = () => {
-                if (map.hasImage(name)) return
-
-                const width = img.naturalWidth || img.width
-                const height = img.naturalHeight || img.height
-                if (!width || !height) return
-
-                try {
-                    const canvas = document.createElement('canvas')
-                    canvas.width = width
-                    canvas.height = height
-                    const ctx = canvas.getContext('2d')
-                    if (!ctx) {
-                        map.addImage(name, img as any)
-                        return
-                    }
-
-                    ctx.drawImage(img, 0, 0, width, height)
-                    const imageData = ctx.getImageData(0, 0, width, height)
-                    map.addImage(name, {
-                        width,
-                        height,
-                        data: new Uint8Array(imageData.data.buffer),
-                    })
-                } catch (error) {
-                    console.error(`Failed to rasterize marker icon ${url}`, error)
-                    if (!map.hasImage(name)) map.addImage(name, img as any)
-                }
-            }
-            img.onerror = () => {
-                console.error(`Failed to load marker icon ${url}`)
-            }
-            img.src = url
-        }
-
-        addImage('marker-available', STATUS_AVAILABLE_ICON)
-        addImage('marker-inuse', STATUS_INUSE_ICON)
-        addImage('marker-unavailable', STATUS_UNAVAILABLE_ICON)
-        addImage('marker-bat-available', STATUS_BAT_AVAILABLE_ICON)
-        addImage('marker-bat-inuse', STATUS_BAT_INUSE_ICON)
-    }, [])
+        // Load all real PNGs first using standard HTML Image elements.
+        // This ensures the MapLibre engine receives an HTMLImageElement with
+        // correct naturalWidth/naturalHeight instead of a faulty ImageBitmap.
+        // Then register them and set imagesReady.
+        Promise.all(
+            icons.map(([name, url]) => {
+                return new Promise<{ name: string; data: HTMLImageElement }>((resolve, reject) => {
+                    const img = new Image()
+                    img.crossOrigin = 'Anonymous'
+                    img.onload = () => resolve({ name, data: img })
+                    img.onerror = () => reject(new Error(`Failed to load ${url}`))
+                    img.src = url
+                })
+            })
+        )
+            .then((results) => {
+                results.forEach(({ name, data }) => {
+                    // Specify pixelRatio: 2 for sharper rendering since these are PNGs
+                    if (!map.hasImage(name)) map.addImage(name, data, { pixelRatio: 2 })
+                })
+                setImagesReady(true)
+            })
+            .catch((err) => {
+                console.error('[StationMapCanvas] Icon load error:', err)
+                // Still enable layers so the map is usable even without icons
+                setImagesReady(true)
+            })
+    }, [setImagesReady])
 
     const onMapClick = useCallback((event: maplibregl.MapLayerMouseEvent) => {
         const feature = event.features?.[0]
@@ -379,186 +372,191 @@ export function StationMapCanvas({
                 )}
 
                 {useGeoJsonSource ? (
-                <Source
-                    id="stations-source"
-                    type="geojson"
-                    data={stationsGeoJson ?? { type: 'FeatureCollection', features: [] }}
-                    cluster={false}
-                >
-                    {/* Clustering intentionally disabled for clearer station-level visibility */}
+                    <Source
+                        id="stations-source"
+                        type="geojson"
+                        data={stationsGeoJson ?? { type: 'FeatureCollection', features: [] }}
+                        cluster={false}
+                    >
+                        {/* Clustering intentionally disabled for clearer station-level visibility */}
 
-                    {/* 2. Unclustered Points (Individual Stations) */}
-                    {/* Confidence Glow (Soft aura for high-uptime stations) */}
-                    <Layer
-                        id="station-confidence-glow"
-                        type="circle"
-                        filter={AVAILABLE_STATUS_FILTER}
-                        paint={{
-                            'circle-color': '#03cd8c',
-                            'circle-radius': [
-                                'interpolate', ['linear'], ['zoom'],
-                                8, 8,
-                                14, 15,
-                                20, 30
-                            ],
-                            'circle-opacity': [
-                                'interpolate', ['linear'], ['zoom'],
-                                10, 0.1,
-                                14, 0.2,
-                                18, 0.05
-                            ],
-                            'circle-blur': 1.5
-                        }}
-                    />
+                        {/* 2. Unclustered Points (Individual Stations) */}
+                        {/* Confidence Glow (Soft aura for high-uptime stations) */}
+                        <Layer
+                            id="station-confidence-glow"
+                            type="circle"
+                            filter={AVAILABLE_STATUS_FILTER}
+                            paint={{
+                                'circle-color': '#03cd8c',
+                                'circle-radius': [
+                                    'interpolate', ['linear'], ['zoom'],
+                                    8, 8,
+                                    14, 15,
+                                    20, 30
+                                ],
+                                'circle-opacity': [
+                                    'interpolate', ['linear'], ['zoom'],
+                                    10, 0.1,
+                                    14, 0.2,
+                                    18, 0.05
+                                ],
+                                'circle-blur': 1.5
+                            }}
+                        />
 
-                    {/* Base Glow / Pulse Effect for selection */}
-                    <Layer
-                        id="station-selection-glow"
-                        type="circle"
-                        filter={['==', ['get', 'id'], selectedStationId || '']}
-                        paint={{
-                            'circle-color': '#03cd8c',
-                            'circle-radius': [
-                                'interpolate', ['linear'], ['zoom'],
-                                10, 15,
-                                14, 30,
-                                22, 60
-                            ],
-                            'circle-opacity': 0.2,
-                            'circle-blur': 1
-                        }}
-                    />
+                        {/* Base Glow / Pulse Effect for selection */}
+                        <Layer
+                            id="station-selection-glow"
+                            type="circle"
+                            filter={['==', ['get', 'id'], selectedStationId || '']}
+                            paint={{
+                                'circle-color': '#03cd8c',
+                                'circle-radius': [
+                                    'interpolate', ['linear'], ['zoom'],
+                                    10, 15,
+                                    14, 30,
+                                    22, 60
+                                ],
+                                'circle-opacity': 0.2,
+                                'circle-blur': 1
+                            }}
+                        />
 
-                    {/* Main Station Circle */}
-                    <Layer
-                        id="unclustered-point"
-                        type="symbol"
-                        filter={['!', ['has', 'point_count']]}
-                        layout={{
-                            'icon-image': MARKER_ICON_EXPRESSION,
-                            'icon-size': [
-                                'interpolate', ['linear'], ['zoom'],
-                                8, 0.6,
-                                14, 0.9,
-                                20, 1.3
-                            ],
-                            'icon-allow-overlap': true,
-                            'icon-anchor': 'bottom',
-                            'icon-pitch-alignment': 'map',
-                        }}
-                    />
+                        {/* Main Station Circle (only mount after PNG icons are registered) */}
+                        {imagesReady && (
+                            <Layer
+                                id="unclustered-point"
+                                type="symbol"
+                                filter={['!', ['has', 'point_count']]}
+                                layout={{
+                                    'icon-image': MARKER_ICON_EXPRESSION,
+                                    'icon-size': [
+                                        'interpolate', ['linear'], ['zoom'],
+                                        8, 0.6,
+                                        14, 0.9,
+                                        20, 1.3
+                                    ],
+                                    'icon-allow-overlap': true,
+                                    'icon-anchor': 'bottom',
+                                    'icon-pitch-alignment': 'map',
+                                }}
+                            />
+                        )}
 
-                    {/* Station Labels (High Zoom Only) */}
-                    <Layer
-                        id="station-labels"
-                        type="symbol"
-                        filter={['all', ['!', ['has', 'point_count']], ['>=', ['zoom'], 15]]}
-                        layout={{
-                            'text-field': ['get', 'name'],
-                            'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
-                            'text-offset': [0, 1.2],
-                            'text-anchor': 'top',
-                            'text-size': 11
-                        }}
-                        paint={{
-                            'text-color': '#fff',
-                            'text-halo-color': 'rgba(0,0,0,0.8)',
-                            'text-halo-width': 1
-                        }}
-                    />
-                </Source>
+                        {/* Station Labels (High Zoom Only — also gated on imagesReady) */}
+                        {imagesReady && (
+                            <Layer
+                                id="station-labels"
+                                type="symbol"
+                                filter={['all', ['!', ['has', 'point_count']], ['>=', ['zoom'], 15]]}
+                                layout={{
+                                    'text-field': ['get', 'name'],
+                                    'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
+                                    'text-offset': [0, 1.2],
+                                    'text-anchor': 'top',
+                                    'text-size': 11
+                                }}
+                                paint={{
+                                    'text-color': '#fff',
+                                    'text-halo-color': 'rgba(0,0,0,0.8)',
+                                    'text-halo-width': 1
+                                }}
+                            />
+                        )}
+                    </Source>
+
                 ) : (
-                <Source
-                    id="stations-source"
-                    type="vector"
-                    tiles={[tileUrl]}
-                >
-                    {/* Clustering intentionally disabled for clearer station-level visibility */}
+                    <Source
+                        id="stations-source"
+                        type="vector"
+                        tiles={[tileUrl]}
+                    >
+                        {/* Clustering intentionally disabled for clearer station-level visibility */}
 
-                    {/* 2. Unclustered Points (Individual Stations) */}
-                    {/* Confidence Glow (Soft aura for high-uptime stations) */}
-                    <Layer
-                        id="station-confidence-glow"
-                        type="circle"
-                        source-layer="stations"
-                        filter={AVAILABLE_STATUS_FILTER}
-                        paint={{
-                            'circle-color': '#03cd8c',
-                            'circle-radius': [
-                                'interpolate', ['linear'], ['zoom'],
-                                8, 8,
-                                14, 15,
-                                20, 30
-                            ],
-                            'circle-opacity': [
-                                'interpolate', ['linear'], ['zoom'],
-                                10, 0.1,
-                                14, 0.2,
-                                18, 0.05
-                            ],
-                            'circle-blur': 1.5
-                        }}
-                    />
+                        {/* 2. Unclustered Points (Individual Stations) */}
+                        {/* Confidence Glow (Soft aura for high-uptime stations) */}
+                        <Layer
+                            id="station-confidence-glow"
+                            type="circle"
+                            source-layer="stations"
+                            filter={AVAILABLE_STATUS_FILTER}
+                            paint={{
+                                'circle-color': '#03cd8c',
+                                'circle-radius': [
+                                    'interpolate', ['linear'], ['zoom'],
+                                    8, 8,
+                                    14, 15,
+                                    20, 30
+                                ],
+                                'circle-opacity': [
+                                    'interpolate', ['linear'], ['zoom'],
+                                    10, 0.1,
+                                    14, 0.2,
+                                    18, 0.05
+                                ],
+                                'circle-blur': 1.5
+                            }}
+                        />
 
-                    {/* Base Glow / Pulse Effect for selection */}
-                    <Layer
-                        id="station-selection-glow"
-                        type="circle"
-                        source-layer="stations"
-                        filter={['==', ['get', 'id'], selectedStationId || '']}
-                        paint={{
-                            'circle-color': '#03cd8c',
-                            'circle-radius': [
-                                'interpolate', ['linear'], ['zoom'],
-                                10, 15,
-                                14, 30,
-                                22, 60
-                            ],
-                            'circle-opacity': 0.2,
-                            'circle-blur': 1
-                        }}
-                    />
+                        {/* Base Glow / Pulse Effect for selection */}
+                        <Layer
+                            id="station-selection-glow"
+                            type="circle"
+                            source-layer="stations"
+                            filter={['==', ['get', 'id'], selectedStationId || '']}
+                            paint={{
+                                'circle-color': '#03cd8c',
+                                'circle-radius': [
+                                    'interpolate', ['linear'], ['zoom'],
+                                    10, 15,
+                                    14, 30,
+                                    22, 60
+                                ],
+                                'circle-opacity': 0.2,
+                                'circle-blur': 1
+                            }}
+                        />
 
-                    {/* Main Station Circle */}
-                    <Layer
-                        id="unclustered-point"
-                        type="symbol"
-                        source-layer="stations"
-                        filter={['!', ['has', 'point_count']]}
-                        layout={{
-                            'icon-image': MARKER_ICON_EXPRESSION,
-                            'icon-size': [
-                                'interpolate', ['linear'], ['zoom'],
-                                8, 0.6,
-                                14, 0.9,
-                                20, 1.3
-                            ],
-                            'icon-allow-overlap': true,
-                            'icon-anchor': 'bottom',
-                            'icon-pitch-alignment': 'map',
-                        }}
-                    />
+                        {/* Main Station Circle */}
+                        <Layer
+                            id="unclustered-point"
+                            type="symbol"
+                            source-layer="stations"
+                            filter={['!', ['has', 'point_count']]}
+                            layout={{
+                                'icon-image': MARKER_ICON_EXPRESSION,
+                                'icon-size': [
+                                    'interpolate', ['linear'], ['zoom'],
+                                    8, 0.6,
+                                    14, 0.9,
+                                    20, 1.3
+                                ],
+                                'icon-allow-overlap': true,
+                                'icon-anchor': 'bottom',
+                                'icon-pitch-alignment': 'map',
+                            }}
+                        />
 
-                    {/* Station Labels (High Zoom Only) */}
-                    <Layer
-                        id="station-labels"
-                        type="symbol"
-                        source-layer="stations"
-                        filter={['all', ['!', ['has', 'point_count']], ['>=', ['zoom'], 15]]}
-                        layout={{
-                            'text-field': ['get', 'name'],
-                            'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
-                            'text-offset': [0, 1.2],
-                            'text-anchor': 'top',
-                            'text-size': 11
-                        }}
-                        paint={{
-                            'text-color': '#fff',
-                            'text-halo-color': 'rgba(0,0,0,0.8)',
-                            'text-halo-width': 1
-                        }}
-                    />
-                </Source>
+                        {/* Station Labels (High Zoom Only) */}
+                        <Layer
+                            id="station-labels"
+                            type="symbol"
+                            source-layer="stations"
+                            filter={['all', ['!', ['has', 'point_count']], ['>=', ['zoom'], 15]]}
+                            layout={{
+                                'text-field': ['get', 'name'],
+                                'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
+                                'text-offset': [0, 1.2],
+                                'text-anchor': 'top',
+                                'text-size': 11
+                            }}
+                            paint={{
+                                'text-color': '#fff',
+                                'text-halo-color': 'rgba(0,0,0,0.8)',
+                                'text-halo-width': 1
+                            }}
+                        />
+                    </Source>
                 )}
 
                 {popupInfo && (
