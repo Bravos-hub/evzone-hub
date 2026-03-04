@@ -12,6 +12,7 @@ import { StationStatusPill } from '@/ui/components/StationStatusPill'
 import { TextSkeleton } from '@/ui/components/SkeletonCards'
 import { getErrorMessage } from '@/core/api/errors'
 import { chargePointService } from '@/modules/charge-points/services/chargePointService'
+import { formatDistanceToNow } from 'date-fns'
 
 /* ─────────────────────────────────────────────────────────────────────────────
    ChargePointDetail — Granular charger management for station owners/admins
@@ -426,11 +427,15 @@ export function ChargePointDetail() {
                         <div className="space-y-4">
                             <div className="flex items-center justify-between">
                                 <span className="text-sm">OCPP Connection</span>
-                                <span className="text-sm font-bold text-ok">Connected</span>
+                                <span className={`text-sm font-bold ${cp.status === 'Online' ? 'text-ok' : 'text-danger'}`}>
+                                    {cp.status === 'Online' ? 'Connected' : 'Disconnected'}
+                                </span>
                             </div>
                             <div className="flex items-center justify-between">
                                 <span className="text-sm">Heartbeat</span>
-                                <span className="text-sm text-subtle">2 minutes ago</span>
+                                <span className="text-sm text-subtle">
+                                    {cp.lastHeartbeat ? `${formatDistanceToNow(new Date(cp.lastHeartbeat))} ago` : 'Never'}
+                                </span>
                             </div>
                             <div className="flex items-center justify-between">
                                 <span className="text-sm">Error Code</span>
