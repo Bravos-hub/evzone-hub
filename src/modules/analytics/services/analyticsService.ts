@@ -4,6 +4,7 @@
  */
 
 import { apiClient } from '@/core/api/client'
+import { API_CONFIG } from '@/core/api/config'
 import type {
   DashboardMetrics,
   SystemHealthResponse,
@@ -90,7 +91,6 @@ export const analyticsService = {
     params.append('end', endDate)
     if (orgId) params.append('orgId', orgId)
 
-    const { API_CONFIG } = await import('@/core/api/config')
     const response = await fetch(`${API_CONFIG.baseURL}/analytics/export?${params.toString()}`, {
       credentials: 'include',
     })
