@@ -407,8 +407,8 @@ export function ChargePointDetail() {
                         <div className="space-y-4">
                             <div className="flex items-center justify-between">
                                 <span className="text-sm">OCPP Connection</span>
-                                <span className={`text-sm font-bold ${cp.status === 'Online' || cp.status === 'Available' ? 'text-ok' : 'text-danger'}`}>
-                                    {cp.status === 'Online' || cp.status === 'Available' ? 'Connected' : 'Disconnected'}
+                                <span className={`text-sm font-bold ${cp.status === 'Online' ? 'text-ok' : 'text-danger'}`}>
+                                    {cp.status === 'Online' ? 'Connected' : 'Disconnected'}
                                 </span>
                             </div>
                             <div className="flex items-center justify-between">
