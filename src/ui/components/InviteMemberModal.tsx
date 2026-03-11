@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import clsx from 'clsx'
 import type { OwnerCapability, Role } from '@/core/auth/types'
 import type { TeamInviteRequest } from '@/core/api/types'
@@ -9,6 +9,7 @@ import {
   type CustomRoleOption,
   isStationScopedRole,
 } from '@/modules/auth/utils/teamRoles'
+import { useGeographicZone, useGeographicZones } from '@/modules/geography/hooks/useGeography'
 
 type StationOption = {
   id: string
@@ -57,13 +58,22 @@ export function InviteMemberModal({
   const [email, setEmail] = useState('')
   const [roleValue, setRoleValue] = useState<string>('STATION_ADMIN')
   const [ownerCapability, setOwnerCapability] = useState<OwnerCapability>('BOTH')
-  const [region, setRegion] = useState(defaultRegion || '')
+  const [regionId, setRegionId] = useState('')
   const [zoneId, setZoneId] = useState(defaultZoneId || '')
   const [assignments, setAssignments] = useState<AssignmentFormRow[]>([
     createDefaultRow(stations[0]?.id || ''),
   ])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const { data: regionOptions = [], isLoading: isLoadingRegions } = useGeographicZones({
+    parentId: null,
+    active: true,
+  })
+  const { data: selectedZone } = useGeographicZone(zoneId || undefined)
+  const { data: zoneOptions = [], isLoading: isLoadingZones } = useGeographicZones({
+    parentId: regionId || undefined,
+    active: true,
+  })
 
   const roleOptions = useMemo(() => buildInviteRoleOptions(customRoles), [customRoles])
   const selectedRole =
@@ -81,6 +91,24 @@ export function InviteMemberModal({
     }, {} as Record<Role, CustomRoleOption[]>)
   }, [customRoles])
 
+  useEffect(() => {
+    if (!defaultZoneId || !selectedZone?.parentId || regionId) return
+    setRegionId(selectedZone.parentId)
+  }, [defaultZoneId, selectedZone?.parentId, regionId])
+
+  useEffect(() => {
+    if (!defaultRegion || regionId || regionOptions.length === 0) return
+    const normalizedDefaultRegion = defaultRegion.trim().toLowerCase()
+    const matchingRegion = regionOptions.find(
+      (zone) =>
+        zone.name.trim().toLowerCase() === normalizedDefaultRegion ||
+        zone.code.trim().toLowerCase() === normalizedDefaultRegion,
+    )
+    if (matchingRegion) {
+      setRegionId(matchingRegion.id)
+    }
+  }, [defaultRegion, regionId, regionOptions])
+
   const setRow = (index: number, updater: (row: AssignmentFormRow) => AssignmentFormRow) => {
     setAssignments((prev) => prev.map((row, i) => (i === index ? updater(row) : row)))
   }
@@ -88,8 +116,8 @@ export function InviteMemberModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     const trimmedEmail = email.trim().toLowerCase()
-    const trimmedRegion = region.trim()
     const trimmedZoneId = zoneId.trim()
+    const selectedRegion = regionOptions.find((zone) => zone.id === regionId)
 
     if (!trimmedEmail) {
       setError('Email is required')
@@ -131,8 +159,8 @@ export function InviteMemberModal({
         timezone: isAttendantRole ? row.timezone || 'Africa/Kampala' : undefined,
       }))
     } else {
-      if (!trimmedRegion && !trimmedZoneId) {
-        setError('Region or Zone ID is required for non-station invites')
+      if (!selectedRegion && !trimmedZoneId) {
+        setError('Select a region or zone for non-station invites')
         return
       }
     }
@@ -143,7 +171,7 @@ export function InviteMemberModal({
       customRoleId: selectedRole?.customRoleId,
       customRoleName: selectedRole?.customRoleName,
       ownerCapability: showCapability ? ownerCapability : undefined,
-      region: !isStationRole ? trimmedRegion || undefined : undefined,
+      region: !isStationRole ? selectedRegion?.name || undefined : undefined,
       zoneId: !isStationRole ? trimmedZoneId || undefined : undefined,
       initialAssignments: normalizedAssignments,
     }
@@ -249,24 +277,49 @@ export function InviteMemberModal({
                 <label className="text-[11px] font-black uppercase tracking-wider text-text-secondary ml-1">
                   Region
                 </label>
-                <input
-                  value={region}
-                  onChange={(e) => setRegion(e.target.value)}
-                  placeholder="e.g. AFRICA"
+                <select
+                  value={regionId}
+                  onChange={(e) => {
+                    setRegionId(e.target.value)
+                    setZoneId('')
+                  }}
                   className="w-full h-11 px-4 rounded-xl border border-white/10 bg-white/5 text-sm text-text focus:outline-none focus:ring-2 focus:ring-accent/50 transition-all"
-                />
+                  disabled={isLoadingRegions}
+                >
+                  <option value="">
+                    {isLoadingRegions ? 'Loading regions...' : 'Select region'}
+                  </option>
+                  {regionOptions.map((zone) => (
+                    <option key={zone.id} value={zone.id}>
+                      {zone.name}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="flex flex-col gap-1.5">
                 <label className="text-[11px] font-black uppercase tracking-wider text-text-secondary ml-1">
-                  Zone ID
+                  Zone
                 </label>
-                <input
+                <select
                   value={zoneId}
                   onChange={(e) => setZoneId(e.target.value)}
-                  placeholder="Optional when region is known"
                   className="w-full h-11 px-4 rounded-xl border border-white/10 bg-white/5 text-sm text-text focus:outline-none focus:ring-2 focus:ring-accent/50 transition-all"
-                />
+                  disabled={!regionId || isLoadingZones}
+                >
+                  <option value="">
+                    {!regionId
+                      ? 'Select region first'
+                      : isLoadingZones
+                        ? 'Loading zones...'
+                        : 'Optional: select zone'}
+                  </option>
+                  {zoneOptions.map((zone) => (
+                    <option key={zone.id} value={zone.id}>
+                      {zone.name} ({zone.code})
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
           )}
