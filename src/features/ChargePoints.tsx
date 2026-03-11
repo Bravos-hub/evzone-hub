@@ -33,6 +33,11 @@ type ChargePoint = {
 /**
  * Charge Points Page - Owner feature
  */
+const normalizeChargePoints = (data: unknown) => {
+  if (Array.isArray(data)) return data
+  return (data as { data?: unknown[] } | undefined)?.data ?? []
+}
+
 export function ChargePoints() {
   const nav = useNavigate()
   const { user } = useAuthStore()
@@ -73,18 +78,19 @@ export function ChargePoints() {
 
   // Map API charge points to display format
   const chargePoints = useMemo(() => {
-    if (!chargePointsData) return []
+    const source = normalizeChargePoints(chargePointsData)
     const allowedStationIds = new Set(accessibleChargeStations.map((station) => station.id))
-    return chargePointsData
+
+    return source
       .filter((cp) => (needsScope ? allowedStationIds.has(cp.stationId) : true))
-      .map(cp => ({
+      .map((cp) => ({
         id: cp.id,
-        name: cp.model,
-        site: stationLookup.get(cp.stationId)?.name || 'Unknown',
-        make: cp.manufacturer,
-        model: cp.model,
+        name: cp.model || cp.id,
+        site: stationLookup.get(cp.stationId)?.name || cp.stationId || 'Unknown',
+        make: cp.manufacturer || 'Unknown',
+        model: cp.model || 'Unknown',
         status: cp.status,
-        connectors: cp.connectors.map(c => ({
+        connectors: (cp.connectors || []).map((c) => ({
           type: c.type,
           kw: c.maxPowerKw,
           status: c.status,
@@ -259,5 +265,6 @@ export function ChargePoints() {
     </>
   )
 }
+
 
 
