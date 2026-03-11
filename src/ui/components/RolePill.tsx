@@ -3,20 +3,26 @@ import type { Role } from '@/core/auth/types'
 import { ROLE_LABELS } from '@/constants/roles'
 import { useCustomRolesStore } from '@/core/auth/customRolesStore'
 
-export function RolePill({ role }: { role: Role | string }) {
+export function RolePill({
+  role,
+  label,
+}: {
+  role: Role | string
+  label?: string | null
+}) {
   const { getRole } = useCustomRolesStore()
 
   // Try to find standard role label
-  let label = ROLE_LABELS[role as Role]
+  let resolvedLabel = label || ROLE_LABELS[role as Role]
 
   // If not found, try custom roles
-  if (!label) {
+  if (!resolvedLabel) {
     const customRole = getRole(role)
     if (customRole) {
-      label = customRole.name
+      resolvedLabel = customRole.name
     } else {
       // Fallback
-      label = role
+      resolvedLabel = role
     }
   }
 
@@ -39,7 +45,7 @@ export function RolePill({ role }: { role: Role | string }) {
 
   return (
     <span className={clsx('inline-flex items-center gap-1.5 py-[5px] px-3 rounded-md text-[11px] font-semibold border border-transparent uppercase tracking-[0.3px]', colorClass)}>
-      {label}
+      {resolvedLabel}
     </span>
   )
 }

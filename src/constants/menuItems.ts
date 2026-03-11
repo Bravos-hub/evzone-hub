@@ -57,7 +57,7 @@ const TECHNICIAN = section('Technician', [
 ])
 
 const TEAM_USERS = section('Team & Users', [
-  { path: PATHS.TEAM, label: 'Team', icon: 'users', roles: ['STATION_ADMIN', 'STATION_OPERATOR', 'STATION_OWNER'] },
+  { path: PATHS.TEAM, label: 'Team', icon: 'users', roles: [...ROLE_GROUPS.PLATFORM_OPS, 'STATION_ADMIN', 'STATION_OPERATOR', 'STATION_OWNER'] },
   { path: PATHS.ADMIN.USERS, label: 'Users & Roles', icon: 'user-check', roles: ROLE_GROUPS.PLATFORM_ADMINS },
   { path: PATHS.ADMIN.APPROVALS, label: 'Approvals', icon: 'check-circle', roles: ROLE_GROUPS.PLATFORM_OPS },
 ])

@@ -1,9 +1,14 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import clsx from 'clsx'
-import type { Role } from '@/core/auth/types'
+import type { OwnerCapability, Role } from '@/core/auth/types'
 import type { TeamInviteRequest } from '@/core/api/types'
-import { ROLE_LABELS } from '@/constants/roles'
+import { ALL_ROLES, CAPABILITY_LABELS, ROLE_LABELS } from '@/constants/roles'
 import { Card } from './Card'
+import {
+  buildInviteRoleOptions,
+  type CustomRoleOption,
+  isStationScopedRole,
+} from '@/modules/auth/utils/teamRoles'
 
 type StationOption = {
   id: string
@@ -12,7 +17,6 @@ type StationOption = {
 
 type AssignmentFormRow = {
   stationId: string
-  role: Role
   isPrimary: boolean
   isActive: boolean
   attendantMode?: 'FIXED' | 'MOBILE'
@@ -25,21 +29,14 @@ interface InviteMemberModalProps {
   onClose: () => void
   onInvite: (payload: TeamInviteRequest) => Promise<void>
   stations: StationOption[]
+  customRoles: CustomRoleOption[]
+  defaultRegion?: string
+  defaultZoneId?: string
 }
-
-const ASSIGNABLE_ROLES: Role[] = [
-  'STATION_ADMIN',
-  'MANAGER',
-  'ATTENDANT',
-  'CASHIER',
-  'TECHNICIAN_ORG',
-  'STATION_OPERATOR',
-]
 
 function createDefaultRow(stationId = ''): AssignmentFormRow {
   return {
     stationId,
-    role: 'ATTENDANT',
     isPrimary: true,
     isActive: true,
     attendantMode: 'FIXED',
@@ -49,17 +46,50 @@ function createDefaultRow(stationId = ''): AssignmentFormRow {
   }
 }
 
-export function InviteMemberModal({ onClose, onInvite, stations }: InviteMemberModalProps) {
+export function InviteMemberModal({
+  onClose,
+  onInvite,
+  stations,
+  customRoles,
+  defaultRegion,
+  defaultZoneId,
+}: InviteMemberModalProps) {
   const [email, setEmail] = useState('')
+  const [roleValue, setRoleValue] = useState<string>('STATION_ADMIN')
+  const [ownerCapability, setOwnerCapability] = useState<OwnerCapability>('BOTH')
+  const [region, setRegion] = useState(defaultRegion || '')
+  const [zoneId, setZoneId] = useState(defaultZoneId || '')
   const [assignments, setAssignments] = useState<AssignmentFormRow[]>([
     createDefaultRow(stations[0]?.id || ''),
   ])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const roleOptions = useMemo(() => buildInviteRoleOptions(customRoles), [customRoles])
+  const selectedRole =
+    roleOptions.find((option) => option.value === roleValue) ?? roleOptions[0]
+  const selectedBaseRole = selectedRole?.baseRole || 'STATION_ADMIN'
+  const isStationRole = isStationScopedRole(selectedBaseRole)
+  const isAttendantRole = selectedBaseRole === 'ATTENDANT'
+  const showCapability =
+    selectedBaseRole === 'STATION_OWNER' || selectedBaseRole === 'STATION_OPERATOR'
+
+  const customRolesByBaseRole = useMemo(() => {
+    return ALL_ROLES.reduce<Record<Role, CustomRoleOption[]>>((acc, role) => {
+      acc[role] = customRoles.filter((item) => item.baseRole === role)
+      return acc
+    }, {} as Record<Role, CustomRoleOption[]>)
+  }, [customRoles])
+
+  const setRow = (index: number, updater: (row: AssignmentFormRow) => AssignmentFormRow) => {
+    setAssignments((prev) => prev.map((row, i) => (i === index ? updater(row) : row)))
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     const trimmedEmail = email.trim().toLowerCase()
+    const trimmedRegion = region.trim()
+    const trimmedZoneId = zoneId.trim()
 
     if (!trimmedEmail) {
       setError('Email is required')
@@ -71,41 +101,50 @@ export function InviteMemberModal({ onClose, onInvite, stations }: InviteMemberM
       return
     }
 
-    if (assignments.length === 0) {
-      setError('At least one station assignment is required')
-      return
-    }
+    let normalizedAssignments: TeamInviteRequest['initialAssignments']
+    if (isStationRole) {
+      if (assignments.length === 0) {
+        setError('At least one station assignment is required')
+        return
+      }
 
-    const missingStation = assignments.find((row) => !row.stationId)
-    if (missingStation) {
-      setError('Each assignment row must include a station')
-      return
-    }
+      const missingStation = assignments.find((row) => !row.stationId)
+      if (missingStation) {
+        setError('Each assignment row must include a station')
+        return
+      }
 
-    const stationIds = assignments.map((row) => row.stationId)
-    const uniqueCount = new Set(stationIds).size
-    if (uniqueCount !== stationIds.length) {
-      setError('Each station can only appear once in initial assignments')
-      return
-    }
+      const stationIds = assignments.map((row) => row.stationId)
+      if (new Set(stationIds).size !== stationIds.length) {
+        setError('Each station can only appear once in initial assignments')
+        return
+      }
 
-    const normalizedAssignments = assignments.map((row, index) => {
-      const isAttendant = row.role === 'ATTENDANT'
-      return {
+      normalizedAssignments = assignments.map((row, index) => ({
         stationId: row.stationId,
-        role: row.role,
+        role: selectedBaseRole,
         isPrimary: row.isPrimary || index === 0,
         isActive: row.isActive,
-        attendantMode: isAttendant ? row.attendantMode || 'FIXED' : undefined,
-        shiftStart: isAttendant ? row.shiftStart || '00:00' : undefined,
-        shiftEnd: isAttendant ? row.shiftEnd || '23:59' : undefined,
-        timezone: isAttendant ? row.timezone || 'Africa/Kampala' : undefined,
+        attendantMode: isAttendantRole ? row.attendantMode || 'FIXED' : undefined,
+        shiftStart: isAttendantRole ? row.shiftStart || '00:00' : undefined,
+        shiftEnd: isAttendantRole ? row.shiftEnd || '23:59' : undefined,
+        timezone: isAttendantRole ? row.timezone || 'Africa/Kampala' : undefined,
+      }))
+    } else {
+      if (!trimmedRegion && !trimmedZoneId) {
+        setError('Region or Zone ID is required for non-station invites')
+        return
       }
-    })
+    }
 
     const payload: TeamInviteRequest = {
       email: trimmedEmail,
-      role: normalizedAssignments[0].role,
+      role: selectedBaseRole,
+      customRoleId: selectedRole?.customRoleId,
+      customRoleName: selectedRole?.customRoleName,
+      ownerCapability: showCapability ? ownerCapability : undefined,
+      region: !isStationRole ? trimmedRegion || undefined : undefined,
+      zoneId: !isStationRole ? trimmedZoneId || undefined : undefined,
       initialAssignments: normalizedAssignments,
     }
 
@@ -121,13 +160,9 @@ export function InviteMemberModal({ onClose, onInvite, stations }: InviteMemberM
     }
   }
 
-  const setRow = (index: number, updater: (row: AssignmentFormRow) => AssignmentFormRow) => {
-    setAssignments((prev) => prev.map((row, i) => (i === index ? updater(row) : row)))
-  }
-
   return (
     <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <Card className="w-full max-w-3xl p-6 shadow-2xl border-white/10">
+      <Card className="w-full max-w-4xl p-6 shadow-2xl border-white/10">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold text-text">Invite Team Member</h2>
           <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-lg text-text-secondary transition-colors">
@@ -153,27 +188,107 @@ export function InviteMemberModal({ onClose, onInvite, stations }: InviteMemberM
                 className="w-full h-11 px-4 rounded-xl border border-white/10 bg-white/5 text-sm text-text focus:outline-none focus:ring-2 focus:ring-accent/50 transition-all"
               />
             </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[11px] font-black uppercase tracking-wider text-text-secondary ml-1">
+                Invite Role
+              </label>
+              <select
+                value={roleValue}
+                onChange={(e) => setRoleValue(e.target.value)}
+                className="w-full h-11 px-4 rounded-xl border border-white/10 bg-white/5 text-sm text-text focus:outline-none focus:ring-2 focus:ring-accent/50 transition-all"
+              >
+                <optgroup label="Standard Roles">
+                  {ALL_ROLES.map((role) => (
+                    <option key={role} value={role}>
+                      {ROLE_LABELS[role]}
+                    </option>
+                  ))}
+                </optgroup>
+                {ALL_ROLES.map((role) => {
+                  const groupedRoles = customRolesByBaseRole[role]
+                  if (!groupedRoles?.length) return null
+                  return (
+                    <optgroup key={`custom-${role}`} label={`Custom - ${ROLE_LABELS[role]}`}>
+                      {groupedRoles.map((customRole) => (
+                        <option key={customRole.id} value={`custom:${customRole.id}`}>
+                          {customRole.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )
+                })}
+              </select>
+            </div>
           </div>
 
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <p className="text-[11px] font-black uppercase tracking-wider text-text-secondary">
-                Initial Station Assignments
-              </p>
-              <button
-                type="button"
-                onClick={() =>
-                  setAssignments((prev) => [...prev, createDefaultRow(stations[0]?.id || '')])
-                }
-                className="h-9 px-3 rounded-lg border border-white/10 bg-white/5 text-xs font-bold text-text-secondary hover:text-text"
-              >
-                Add Row
-              </button>
+          {showCapability && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[11px] font-black uppercase tracking-wider text-text-secondary ml-1">
+                  Owner Capability
+                </label>
+                <select
+                  value={ownerCapability}
+                  onChange={(e) => setOwnerCapability(e.target.value as OwnerCapability)}
+                  className="w-full h-11 px-4 rounded-xl border border-white/10 bg-white/5 text-sm text-text focus:outline-none focus:ring-2 focus:ring-accent/50 transition-all"
+                >
+                  {(['CHARGE', 'SWAP', 'BOTH'] as OwnerCapability[]).map((capability) => (
+                    <option key={capability} value={capability}>
+                      {CAPABILITY_LABELS[capability]}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
+          )}
 
-            {assignments.map((row, index) => {
-              const isAttendant = row.role === 'ATTENDANT'
-              return (
+          {!isStationRole && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[11px] font-black uppercase tracking-wider text-text-secondary ml-1">
+                  Region
+                </label>
+                <input
+                  value={region}
+                  onChange={(e) => setRegion(e.target.value)}
+                  placeholder="e.g. AFRICA"
+                  className="w-full h-11 px-4 rounded-xl border border-white/10 bg-white/5 text-sm text-text focus:outline-none focus:ring-2 focus:ring-accent/50 transition-all"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[11px] font-black uppercase tracking-wider text-text-secondary ml-1">
+                  Zone ID
+                </label>
+                <input
+                  value={zoneId}
+                  onChange={(e) => setZoneId(e.target.value)}
+                  placeholder="Optional when region is known"
+                  className="w-full h-11 px-4 rounded-xl border border-white/10 bg-white/5 text-sm text-text focus:outline-none focus:ring-2 focus:ring-accent/50 transition-all"
+                />
+              </div>
+            </div>
+          )}
+
+          {isStationRole && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-[11px] font-black uppercase tracking-wider text-text-secondary">
+                  Initial Station Assignments
+                </p>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setAssignments((prev) => [...prev, createDefaultRow(stations[0]?.id || '')])
+                  }
+                  className="h-9 px-3 rounded-lg border border-white/10 bg-white/5 text-xs font-bold text-text-secondary hover:text-text"
+                >
+                  Add Row
+                </button>
+              </div>
+
+              {assignments.map((row, index) => (
                 <div
                   key={`assignment-row-${index}`}
                   className="rounded-xl border border-white/10 bg-white/[0.02] p-3 space-y-3"
@@ -194,22 +309,9 @@ export function InviteMemberModal({ onClose, onInvite, stations }: InviteMemberM
                       ))}
                     </select>
 
-                    <select
-                      value={row.role}
-                      onChange={(e) =>
-                        setRow(index, (current) => ({
-                          ...current,
-                          role: e.target.value as Role,
-                        }))
-                      }
-                      className="h-10 px-3 rounded-lg border border-white/10 bg-white/5 text-sm text-text"
-                    >
-                      {ASSIGNABLE_ROLES.map((role) => (
-                        <option key={role} value={role}>
-                          {ROLE_LABELS[role]}
-                        </option>
-                      ))}
-                    </select>
+                    <div className="h-10 px-3 rounded-lg border border-white/10 bg-white/5 text-sm text-text inline-flex items-center">
+                      {selectedRole?.customRoleName || ROLE_LABELS[selectedBaseRole]}
+                    </div>
 
                     <label className="h-10 rounded-lg border border-white/10 bg-white/5 px-3 inline-flex items-center gap-2 text-xs text-text-secondary">
                       <input
@@ -255,7 +357,7 @@ export function InviteMemberModal({ onClose, onInvite, stations }: InviteMemberM
                     </div>
                   </div>
 
-                  {isAttendant && (
+                  {isAttendantRole && (
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                       <select
                         value={row.attendantMode || 'FIXED'}
@@ -301,9 +403,9 @@ export function InviteMemberModal({ onClose, onInvite, stations }: InviteMemberM
                     </div>
                   )}
                 </div>
-              )
-            })}
-          </div>
+              ))}
+            </div>
+          )}
 
           {error && (
             <div className={clsx('p-3 rounded-lg border text-xs font-medium', 'bg-red-500/10 border-red-500/20 text-red-500')}>

@@ -3,10 +3,10 @@ import { useSearchParams } from 'react-router-dom'
 import clsx from 'clsx'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { useAuthStore } from '@/core/auth/authStore'
-import type { Role } from '@/core/auth/types'
+import type { OwnerCapability, Role } from '@/core/auth/types'
 import type { StaffPayoutProfile, StationRoleAssignment, TeamMember } from '@/core/api/types'
 import { getPermissionsForFeature } from '@/constants/permissions'
-import { ROLE_LABELS } from '@/constants/roles'
+import { ALL_ROLES, CAPABILITY_LABELS, ROLE_LABELS } from '@/constants/roles'
 import { RolePill } from '@/ui/components/RolePill'
 import { InviteMemberModal } from '@/ui/components/InviteMemberModal'
 import {
@@ -18,17 +18,17 @@ import {
   useUpdateTeamMember,
   useUpsertTeamPayoutProfile,
 } from '@/modules/auth/hooks/useTeamMembers'
+import { useRoles } from '@/modules/operators/hooks/useRoles'
 import { useStations } from '@/modules/stations/hooks/useStations'
 import { KpiCardSkeleton, TableSkeleton } from '@/ui/components/SkeletonCards'
-
-const ASSIGNABLE_ROLES: Role[] = [
-  'STATION_ADMIN',
-  'MANAGER',
-  'ATTENDANT',
-  'CASHIER',
-  'TECHNICIAN_ORG',
-  'STATION_OPERATOR',
-]
+import {
+  buildInviteRoleOptions,
+  getRoleDisplayLabel,
+  isStationScopedRole,
+  STATION_SCOPED_ROLES,
+  TEAM_MANAGEABLE_ROLES,
+  type CustomRoleOption,
+} from '@/modules/auth/utils/teamRoles'
 
 type EditableStatus = 'Active' | 'Pending' | 'Suspended' | 'Inactive' | 'Invited'
 
@@ -40,6 +40,7 @@ export function Team() {
 
   const { data: members, isLoading } = useTeamMembers()
   const { data: stations = [] } = useStations({ orgId })
+  const { data: customRoles = [] } = useRoles()
   const inviteMutation = useInviteTeamMember()
   const updateMutation = useUpdateTeamMember()
   const replaceAssignmentsMutation = useReplaceTeamAssignments()
@@ -47,7 +48,7 @@ export function Team() {
 
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false)
   const [q, setQ] = useState('')
-  const [roleFilter, setRoleFilter] = useState<Role | 'All'>('All')
+  const [roleFilter, setRoleFilter] = useState<string>('All')
 
   const [profileMember, setProfileMember] = useState<TeamMember | null>(null)
   const [assignmentMember, setAssignmentMember] = useState<TeamMember | null>(null)
@@ -61,6 +62,10 @@ export function Team() {
     }
   }, [searchParams, setSearchParams])
 
+  const roleOptions = useMemo(
+    () => buildInviteRoleOptions(customRoles as CustomRoleOption[]),
+    [customRoles],
+  )
 
   const filtered = useMemo(() => {
     if (!members) return []
@@ -72,7 +77,11 @@ export function Team() {
               .includes(q.toLowerCase())
           : true,
       )
-      .filter((member) => (roleFilter === 'All' ? true : member.role === roleFilter))
+      .filter((member) => {
+        if (roleFilter === 'All') return true
+        if (member.customRoleId && roleFilter === member.customRoleId) return true
+        return member.role === roleFilter
+      })
   }, [members, q, roleFilter])
 
   const stats = useMemo(
@@ -130,13 +139,13 @@ export function Team() {
 
           <select
             value={roleFilter}
-            onChange={(e) => setRoleFilter(e.target.value as Role | 'All')}
+            onChange={(e) => setRoleFilter(e.target.value)}
             className="w-full sm:w-48 h-11 px-4 rounded-xl bg-white/5 border border-white/10 text-sm font-bold text-text focus:outline-none focus:ring-2 focus:ring-accent/50 transition-all cursor-pointer"
           >
             <option value="All">All Roles</option>
-            {ASSIGNABLE_ROLES.map((role) => (
-              <option key={role} value={role}>
-                {ROLE_LABELS[role]}
+            {roleOptions.map((option) => (
+              <option key={option.value} value={option.customRoleId || option.baseRole}>
+                {option.label}
               </option>
             ))}
           </select>
@@ -181,7 +190,10 @@ export function Team() {
                     </div>
                   </td>
                   <td className="px-6 py-4 text-center">
-                    <RolePill role={member.role} />
+                    <RolePill
+                      role={member.customRoleId || member.role}
+                      label={getRoleDisplayLabel(member.role, member.customRoleName)}
+                    />
                   </td>
                   <td className="px-6 py-4 text-center">
                     <StatusBadge status={member.displayStatus || member.status || 'Unknown'} />
@@ -211,12 +223,14 @@ export function Team() {
                       >
                         Edit
                       </button>
-                      <button
-                        onClick={() => setAssignmentMember(member)}
-                        className="px-3 h-9 rounded-lg border border-white/10 bg-white/5 text-xs font-bold text-text-secondary hover:text-text"
-                      >
-                        Assignments
-                      </button>
+                      {isStationScopedRole(member.role) && (
+                        <button
+                          onClick={() => setAssignmentMember(member)}
+                          className="px-3 h-9 rounded-lg border border-white/10 bg-white/5 text-xs font-bold text-text-secondary hover:text-text"
+                        >
+                          Assignments
+                        </button>
+                      )}
                       <button
                         onClick={() => setPayoutMember(member)}
                         className="px-3 h-9 rounded-lg border border-white/10 bg-white/5 text-xs font-bold text-text-secondary hover:text-text"
@@ -236,6 +250,9 @@ export function Team() {
         <InviteMemberModal
           onClose={() => setIsInviteModalOpen(false)}
           stations={stations.map((station) => ({ id: station.id, name: station.name }))}
+          customRoles={customRoles as CustomRoleOption[]}
+          defaultRegion={currentUser?.region}
+          defaultZoneId={currentUser?.zoneId}
           onInvite={async (payload) => {
             await inviteMutation.mutateAsync(payload)
           }}
@@ -245,6 +262,7 @@ export function Team() {
       {profileMember && (
         <ProfileModal
           member={profileMember}
+          customRoles={customRoles as CustomRoleOption[]}
           onClose={() => setProfileMember(null)}
           onSave={async (payload) => {
             await updateMutation.mutateAsync({ id: profileMember.id, payload })
@@ -325,19 +343,39 @@ function StatusBadge({ status }: { status: string }) {
 
 function ProfileModal({
   member,
+  customRoles,
   onClose,
   onSave,
 }: {
   member: TeamMember
+  customRoles: CustomRoleOption[]
   onClose: () => void
-  onSave: (payload: { name: string; phone?: string; status?: EditableStatus; role?: Role }) => Promise<void>
+  onSave: (payload: {
+    name: string
+    phone?: string
+    status?: EditableStatus
+    role?: Role
+    ownerCapability?: OwnerCapability
+    customRoleId?: string
+    customRoleName?: string
+  }) => Promise<void>
 }) {
   const [name, setName] = useState(member.name || '')
   const [phone, setPhone] = useState(member.phone || '')
   const [status, setStatus] = useState<EditableStatus>((member.status || 'Active') as EditableStatus)
-  const [role, setRole] = useState<Role>(member.role)
+  const [ownerCapability, setOwnerCapability] = useState<OwnerCapability>(member.ownerCapability || 'BOTH')
+  const [roleValue, setRoleValue] = useState<string>(member.customRoleId ? `custom:${member.customRoleId}` : member.role)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const roleOptions = useMemo(
+    () => buildInviteRoleOptions(customRoles),
+    [customRoles],
+  )
+  const selectedRole =
+    roleOptions.find((option) => option.value === roleValue) ?? roleOptions[0]
+  const selectedBaseRole = selectedRole?.baseRole || member.role
+  const showCapability =
+    selectedBaseRole === 'STATION_OWNER' || selectedBaseRole === 'STATION_OPERATOR'
 
   return (
     <div className="fixed inset-0 z-[160] bg-black/60 backdrop-blur-sm p-4 flex items-center justify-center">
@@ -361,13 +399,13 @@ function ProfileModal({
             placeholder="Phone number"
           />
           <select
-            value={role}
-            onChange={(e) => setRole(e.target.value as Role)}
+            value={roleValue}
+            onChange={(e) => setRoleValue(e.target.value)}
             className="h-10 px-3 rounded-lg border border-white/10 bg-white/5 text-sm text-text"
           >
-            {ASSIGNABLE_ROLES.map((r) => (
-              <option key={r} value={r}>
-                {ROLE_LABELS[r]}
+            {roleOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
               </option>
             ))}
           </select>
@@ -383,6 +421,20 @@ function ProfileModal({
             <option value="Inactive">Inactive</option>
           </select>
         </div>
+
+        {showCapability && (
+          <select
+            value={ownerCapability}
+            onChange={(e) => setOwnerCapability(e.target.value as OwnerCapability)}
+            className="h-10 w-full px-3 rounded-lg border border-white/10 bg-white/5 text-sm text-text"
+          >
+            {(['CHARGE', 'SWAP', 'BOTH'] as OwnerCapability[]).map((capability) => (
+              <option key={capability} value={capability}>
+                {CAPABILITY_LABELS[capability]}
+              </option>
+            ))}
+          </select>
+        )}
 
         {error && <p className="text-xs text-red-500">{error}</p>}
 
@@ -400,7 +452,10 @@ function ProfileModal({
                 await onSave({
                   name: name.trim(),
                   phone: phone.trim() || undefined,
-                  role,
+                  role: selectedBaseRole,
+                  customRoleId: selectedRole?.customRoleId,
+                  customRoleName: selectedRole?.customRoleName,
+                  ownerCapability: showCapability ? ownerCapability : undefined,
                   status,
                 })
               } catch (err: any) {
@@ -509,7 +564,7 @@ function AssignmentModal({
                     }
                     className="h-10 px-3 rounded-lg border border-white/10 bg-white/5 text-sm text-text"
                   >
-                    {ASSIGNABLE_ROLES.map((role) => (
+                    {STATION_SCOPED_ROLES.map((role) => (
                       <option key={role} value={role}>
                         {ROLE_LABELS[role]}
                       </option>

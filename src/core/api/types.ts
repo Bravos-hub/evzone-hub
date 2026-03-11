@@ -37,6 +37,8 @@ export interface InviteUserRequest {
   email: string
   role: string
   ownerCapability?: OwnerCapability
+  customRoleId?: string
+  customRoleName?: string
   assignedStations?: string[]
   orgId?: string
   organizationId?: string
@@ -91,10 +93,12 @@ export interface TeamInviteRequest {
   email: string
   role: Role
   ownerCapability?: OwnerCapability
+  customRoleId?: string
+  customRoleName?: string
   frontendUrl?: string
   region?: string
   zoneId?: string
-  initialAssignments: StationRoleAssignment[]
+  initialAssignments?: StationRoleAssignment[]
 }
 
 export interface TeamMember {
@@ -103,6 +107,8 @@ export interface TeamMember {
   email?: string
   phone?: string
   role: Role
+  customRoleId?: string
+  customRoleName?: string
   status?: 'Active' | 'Pending' | 'Suspended' | 'Inactive' | 'Invited'
   displayStatus?: string
   ownerCapability?: OwnerCapability
@@ -118,6 +124,8 @@ export interface MembershipSummary {
   id: string
   organizationId: string
   role: string
+  customRoleId?: string
+  customRoleName?: string
   ownerCapability?: OwnerCapability
   status: MembershipStatus
   organizationName?: string
@@ -227,6 +235,8 @@ export interface UpdateUserRequest {
   orgId?: string
   organizationId?: string
   ownerCapability?: OwnerCapability
+  customRoleId?: string
+  customRoleName?: string
   assignedStations?: string[]
   status?: 'Active' | 'Pending' | 'Suspended' | 'Inactive' | 'Invited' | 'MfaRequired'
 }
