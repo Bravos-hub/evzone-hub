@@ -46,6 +46,7 @@ import {
   StatusPage,
   RolesMatrix,
   Organizations,
+  Geography,
   Settlement,
   Plans,
   FeatureFlags,
@@ -249,6 +250,7 @@ export function AppRoutes() {
       <Route path={PATHS.ADMIN.STATUS} element={<RequireAuth><StatusPage /></RequireAuth>} />
       <Route path={PATHS.ADMIN.ROLES} element={<RequireAuth><RolesMatrix /></RequireAuth>} />
       <Route path={PATHS.ADMIN.ORGS} element={<RequireAuth><Organizations /></RequireAuth>} />
+      <Route path={PATHS.ADMIN.GEOGRAPHY} element={<RequireAuth><Geography /></RequireAuth>} />
       <Route path={PATHS.ADMIN.HOME} element={<Navigate to={PATHS.DASHBOARD} replace />} />
 
       <Route path={PATHS.MARKETPLACE} element={<RequireAuth><Marketplace /></RequireAuth>} />

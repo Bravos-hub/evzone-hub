@@ -162,6 +162,13 @@ export const PERMISSIONS: Record<string, FeaturePermissions> = {
     delete: ROLE_GROUPS.PLATFORM_ADMINS,
   },
 
+  geography: {
+    access: ROLE_GROUPS.PLATFORM_OPS,
+    viewAll: ROLE_GROUPS.PLATFORM_OPS,
+    create: ROLE_GROUPS.PLATFORM_ADMINS,
+    edit: ROLE_GROUPS.PLATFORM_ADMINS,
+  },
+
   protocolsConsole: {
     access: ROLE_GROUPS.PLATFORM_ADMINS,
     ocpp: ROLE_GROUPS.PLATFORM_ADMINS,

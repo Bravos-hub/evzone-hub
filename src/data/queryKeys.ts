@@ -80,6 +80,11 @@ export const queryKeys = {
     detail: (id: string) => ['organizations', id] as const,
   },
 
+  geography: {
+    zones: (filters?: Record<string, unknown>) => ['geography', 'zones', filters] as const,
+    detail: (id: string) => ['geography', 'zones', id] as const,
+  },
+
   // Sites
   sites: {
     all: (filters?: Record<string, unknown>) => ['sites', filters] as const,

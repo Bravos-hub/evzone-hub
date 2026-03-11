@@ -95,6 +95,7 @@ const PLATFORM_ADMIN = section('Platform Admin', [
   { path: PATHS.ADMIN.GLOBAL_CONFIG, label: 'Settings', icon: 'settings', roles: ROLE_GROUPS.PLATFORM_ADMINS },
   { path: PATHS.ADMIN.ROLES, label: 'Roles & Permissions', icon: 'lock', roles: ROLE_GROUPS.PLATFORM_ADMINS },
   { path: PATHS.ADMIN.ORGS, label: 'Organizations', icon: 'building', roles: ROLE_GROUPS.PLATFORM_ADMINS },
+  { path: PATHS.ADMIN.GEOGRAPHY, label: 'Geography', icon: 'globe', roles: ROLE_GROUPS.PLATFORM_OPS },
 ])
 
 const NEW_PORTED_FEATURES = section('New Ported Features', [

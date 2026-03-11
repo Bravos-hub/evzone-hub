@@ -62,6 +62,7 @@ export const PATHS = {
     STATUS: '/status-page',
     ROLES: '/roles-matrix',
     ORGS: '/organizations',
+    GEOGRAPHY: '/geography-admin',
     HOME: '/admin-home',
   },
 

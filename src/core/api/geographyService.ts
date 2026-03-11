@@ -7,9 +7,43 @@ export interface GeographicZone {
     name: string;
     type: 'CONTINENT' | 'SUB_REGION' | 'COUNTRY' | 'ADM1' | 'ADM2' | 'ADM3' | 'CITY' | 'POSTAL_ZONE';
     parentId?: string;
+    isActive?: boolean;
     currency?: string;
     timezone?: string;
     postalCodeRegex?: string;
+    parent?: GeographicZone | null;
+    _count?: {
+        children: number;
+        stations?: number;
+        sites?: number;
+        users?: number;
+    };
+}
+
+export interface GeographicZonesQuery {
+    parentId?: string | null;
+    type?: GeographicZone['type'];
+    active?: boolean;
+}
+
+export interface CreateGeographicZoneRequest {
+    code: string;
+    name: string;
+    type: GeographicZone['type'];
+    parentId?: string;
+    currency?: string;
+    timezone?: string;
+    postalCodeRegex?: string;
+}
+
+export interface UpdateGeographicZoneRequest {
+    code?: string;
+    name?: string;
+    type?: GeographicZone['type'];
+    parentId?: string;
+    currency?: string | null;
+    timezone?: string | null;
+    postalCodeRegex?: string | null;
 }
 
 export interface DetectedLocation {
@@ -43,9 +77,29 @@ export const geographyService = {
     /**
      * Get zones (continents, countries, etc.)
      */
-    getZones: async (parentId?: string, type?: string): Promise<GeographicZone[]> => {
+    getZones: async (query?: GeographicZonesQuery): Promise<GeographicZone[]> => {
         return apiClient.get<GeographicZone[]>('/geography/zones', {
-            params: { parentId, type }
+            params: {
+                parentId: query?.parentId,
+                type: query?.type,
+                active: query?.active,
+            }
         });
-    }
+    },
+
+    getZoneById: async (id: string): Promise<GeographicZone> => {
+        return apiClient.get<GeographicZone>(`/geography/zones/${id}`);
+    },
+
+    createZone: async (data: CreateGeographicZoneRequest): Promise<GeographicZone> => {
+        return apiClient.post<GeographicZone>('/geography/zones', data);
+    },
+
+    updateZone: async (id: string, data: UpdateGeographicZoneRequest): Promise<GeographicZone> => {
+        return apiClient.patch<GeographicZone>(`/geography/zones/${id}`, data);
+    },
+
+    updateZoneStatus: async (id: string, isActive: boolean): Promise<GeographicZone> => {
+        return apiClient.patch<GeographicZone>(`/geography/zones/${id}/status`, { isActive });
+    },
 };
