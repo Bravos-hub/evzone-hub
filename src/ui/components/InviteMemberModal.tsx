@@ -189,19 +189,21 @@ export function InviteMemberModal({
   }
 
   return (
-    <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <Card className="w-full max-w-4xl p-6 shadow-2xl border-white/10">
-        <div className="flex items-center justify-between mb-6">
+    <div className="fixed inset-0 z-[150] flex items-stretch justify-end bg-black/60 backdrop-blur-sm sm:p-4">
+      <Card className="flex h-full w-full flex-col rounded-none border-white/10 shadow-2xl shadow-black/30 transition-all duration-300 ease-out sm:h-[calc(100vh-2rem)] sm:max-w-2xl sm:rounded-[28px] lg:max-w-4xl">
+        <div className="flex items-center justify-between border-b border-white/10 px-5 py-5 sm:px-6">
           <h2 className="text-xl font-bold text-text">Invite Team Member</h2>
-          <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-lg text-text-secondary transition-colors">
+          <button onClick={onClose} className="rounded-lg p-2 text-text-secondary transition-colors hover:bg-white/5">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
             </svg>
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+          <div className="flex-1 overflow-y-auto px-5 py-5 sm:px-6">
+            <div className="space-y-5">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="flex flex-col gap-1.5">
               <label className="text-[11px] font-black uppercase tracking-wider text-text-secondary ml-1">
                 Email Address
@@ -248,239 +250,243 @@ export function InviteMemberModal({
                 })}
               </select>
             </div>
-          </div>
-
-          {showCapability && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[11px] font-black uppercase tracking-wider text-text-secondary ml-1">
-                  Owner Capability
-                </label>
-                <select
-                  value={ownerCapability}
-                  onChange={(e) => setOwnerCapability(e.target.value as OwnerCapability)}
-                  className="w-full h-11 px-4 rounded-xl border border-white/10 bg-white/5 text-sm text-text focus:outline-none focus:ring-2 focus:ring-accent/50 transition-all"
-                >
-                  {(['CHARGE', 'SWAP', 'BOTH'] as OwnerCapability[]).map((capability) => (
-                    <option key={capability} value={capability}>
-                      {CAPABILITY_LABELS[capability]}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          )}
-
-          {!isStationRole && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[11px] font-black uppercase tracking-wider text-text-secondary ml-1">
-                  Region
-                </label>
-                <select
-                  value={regionId}
-                  onChange={(e) => {
-                    setRegionId(e.target.value)
-                    setZoneId('')
-                  }}
-                  className="w-full h-11 px-4 rounded-xl border border-white/10 bg-white/5 text-sm text-text focus:outline-none focus:ring-2 focus:ring-accent/50 transition-all"
-                  disabled={isLoadingRegions}
-                >
-                  <option value="">
-                    {isLoadingRegions ? 'Loading regions...' : 'Select region'}
-                  </option>
-                  {regionOptions.map((zone) => (
-                    <option key={zone.id} value={zone.id}>
-                      {zone.name}
-                    </option>
-                  ))}
-                </select>
               </div>
 
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[11px] font-black uppercase tracking-wider text-text-secondary ml-1">
-                  Zone
-                </label>
-                <select
-                  value={zoneId}
-                  onChange={(e) => setZoneId(e.target.value)}
-                  className="w-full h-11 px-4 rounded-xl border border-white/10 bg-white/5 text-sm text-text focus:outline-none focus:ring-2 focus:ring-accent/50 transition-all"
-                  disabled={!regionId || isLoadingZones}
-                >
-                  <option value="">
-                    {!regionId
-                      ? 'Select region first'
-                      : isLoadingZones
-                        ? 'Loading zones...'
-                        : 'Optional: select zone'}
-                  </option>
-                  {zoneOptions.map((zone) => (
-                    <option key={zone.id} value={zone.id}>
-                      {zone.name} ({zone.code})
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          )}
-
-          {isStationRole && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <p className="text-[11px] font-black uppercase tracking-wider text-text-secondary">
-                  Initial Station Assignments
-                </p>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setAssignments((prev) => [...prev, createDefaultRow(stations[0]?.id || '')])
-                  }
-                  className="h-9 px-3 rounded-lg border border-white/10 bg-white/5 text-xs font-bold text-text-secondary hover:text-text"
-                >
-                  Add Row
-                </button>
-              </div>
-
-              {assignments.map((row, index) => (
-                <div
-                  key={`assignment-row-${index}`}
-                  className="rounded-xl border border-white/10 bg-white/[0.02] p-3 space-y-3"
-                >
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+              {showCapability && (
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[11px] font-black uppercase tracking-wider text-text-secondary ml-1">
+                      Owner Capability
+                    </label>
                     <select
-                      value={row.stationId}
-                      onChange={(e) =>
-                        setRow(index, (current) => ({ ...current, stationId: e.target.value }))
-                      }
-                      className="h-10 px-3 rounded-lg border border-white/10 bg-white/5 text-sm text-text"
+                      value={ownerCapability}
+                      onChange={(e) => setOwnerCapability(e.target.value as OwnerCapability)}
+                      className="w-full h-11 px-4 rounded-xl border border-white/10 bg-white/5 text-sm text-text focus:outline-none focus:ring-2 focus:ring-accent/50 transition-all"
                     >
-                      <option value="">Select station</option>
-                      {stations.map((station) => (
-                        <option key={station.id} value={station.id}>
-                          {station.name}
+                      {(['CHARGE', 'SWAP', 'BOTH'] as OwnerCapability[]).map((capability) => (
+                        <option key={capability} value={capability}>
+                          {CAPABILITY_LABELS[capability]}
                         </option>
                       ))}
                     </select>
+                  </div>
+                </div>
+              )}
 
-                    <div className="h-10 px-3 rounded-lg border border-white/10 bg-white/5 text-sm text-text inline-flex items-center">
-                      {selectedRole?.customRoleName || ROLE_LABELS[selectedBaseRole]}
-                    </div>
-
-                    <label className="h-10 rounded-lg border border-white/10 bg-white/5 px-3 inline-flex items-center gap-2 text-xs text-text-secondary">
-                      <input
-                        type="checkbox"
-                        checked={row.isPrimary}
-                        onChange={(e) =>
-                          setAssignments((prev) =>
-                            prev.map((item, i) => ({
-                              ...item,
-                              isPrimary: i === index ? e.target.checked : false,
-                            })),
-                          )
-                        }
-                      />
-                      Primary
+              {!isStationRole && (
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[11px] font-black uppercase tracking-wider text-text-secondary ml-1">
+                      Region
                     </label>
-
-                    <div className="flex items-center justify-between gap-2">
-                      <label className="h-10 flex-1 rounded-lg border border-white/10 bg-white/5 px-3 inline-flex items-center gap-2 text-xs text-text-secondary">
-                        <input
-                          type="checkbox"
-                          checked={row.isActive}
-                          onChange={(e) =>
-                            setRow(index, (current) => ({
-                              ...current,
-                              isActive: e.target.checked,
-                            }))
-                          }
-                        />
-                        Active
-                      </label>
-                      {assignments.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setAssignments((prev) => prev.filter((_, i) => i !== index))
-                          }
-                          className="h-10 px-3 rounded-lg border border-red-500/20 text-red-400 text-xs font-bold"
-                        >
-                          Remove
-                        </button>
-                      )}
-                    </div>
+                    <select
+                      value={regionId}
+                      onChange={(e) => {
+                        setRegionId(e.target.value)
+                        setZoneId('')
+                      }}
+                      className="w-full h-11 px-4 rounded-xl border border-white/10 bg-white/5 text-sm text-text focus:outline-none focus:ring-2 focus:ring-accent/50 transition-all"
+                      disabled={isLoadingRegions}
+                    >
+                      <option value="">
+                        {isLoadingRegions ? 'Loading regions...' : 'Select region'}
+                      </option>
+                      {regionOptions.map((zone) => (
+                        <option key={zone.id} value={zone.id}>
+                          {zone.name}
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
-                  {isAttendantRole && (
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                      <select
-                        value={row.attendantMode || 'FIXED'}
-                        onChange={(e) =>
-                          setRow(index, (current) => ({
-                            ...current,
-                            attendantMode: e.target.value as 'FIXED' | 'MOBILE',
-                          }))
-                        }
-                        className="h-10 px-3 rounded-lg border border-white/10 bg-white/5 text-sm text-text"
-                      >
-                        <option value="FIXED">Fixed</option>
-                        <option value="MOBILE">Mobile</option>
-                      </select>
-
-                      <input
-                        type="time"
-                        value={row.shiftStart || '00:00'}
-                        onChange={(e) =>
-                          setRow(index, (current) => ({ ...current, shiftStart: e.target.value }))
-                        }
-                        className="h-10 px-3 rounded-lg border border-white/10 bg-white/5 text-sm text-text"
-                      />
-
-                      <input
-                        type="time"
-                        value={row.shiftEnd || '23:59'}
-                        onChange={(e) =>
-                          setRow(index, (current) => ({ ...current, shiftEnd: e.target.value }))
-                        }
-                        className="h-10 px-3 rounded-lg border border-white/10 bg-white/5 text-sm text-text"
-                      />
-
-                      <input
-                        type="text"
-                        value={row.timezone || 'Africa/Kampala'}
-                        onChange={(e) =>
-                          setRow(index, (current) => ({ ...current, timezone: e.target.value }))
-                        }
-                        className="h-10 px-3 rounded-lg border border-white/10 bg-white/5 text-sm text-text"
-                        placeholder="Africa/Kampala"
-                      />
-                    </div>
-                  )}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[11px] font-black uppercase tracking-wider text-text-secondary ml-1">
+                      Zone
+                    </label>
+                    <select
+                      value={zoneId}
+                      onChange={(e) => setZoneId(e.target.value)}
+                      className="w-full h-11 px-4 rounded-xl border border-white/10 bg-white/5 text-sm text-text focus:outline-none focus:ring-2 focus:ring-accent/50 transition-all"
+                      disabled={!regionId || isLoadingZones}
+                    >
+                      <option value="">
+                        {!regionId
+                          ? 'Select region first'
+                          : isLoadingZones
+                            ? 'Loading zones...'
+                            : 'Optional: select zone'}
+                      </option>
+                      {zoneOptions.map((zone) => (
+                        <option key={zone.id} value={zone.id}>
+                          {zone.name} ({zone.code})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
-              ))}
-            </div>
-          )}
+              )}
 
-          {error && (
-            <div className={clsx('p-3 rounded-lg border text-xs font-medium', 'bg-red-500/10 border-red-500/20 text-red-500')}>
-              {error}
-            </div>
-          )}
+              {isStationRole && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-[11px] font-black uppercase tracking-wider text-text-secondary">
+                      Initial Station Assignments
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setAssignments((prev) => [...prev, createDefaultRow(stations[0]?.id || '')])
+                      }
+                      className="h-9 px-3 rounded-lg border border-white/10 bg-white/5 text-xs font-bold text-text-secondary hover:text-text"
+                    >
+                      Add Row
+                    </button>
+                  </div>
 
-          <div className="flex items-center gap-3 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 h-11 rounded-xl font-bold text-sm text-text-secondary hover:bg-white/5 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="flex-[2] h-11 rounded-xl bg-accent text-white font-bold text-sm hover:bg-accent-hover disabled:opacity-50 transition-all shadow-lg shadow-accent/20"
-            >
-              {isSubmitting ? 'Sending...' : 'Send Invitation'}
-            </button>
+                  {assignments.map((row, index) => (
+                    <div
+                      key={`assignment-row-${index}`}
+                      className="rounded-xl border border-white/10 bg-white/[0.02] p-3 space-y-3"
+                    >
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+                        <select
+                          value={row.stationId}
+                          onChange={(e) =>
+                            setRow(index, (current) => ({ ...current, stationId: e.target.value }))
+                          }
+                          className="h-10 px-3 rounded-lg border border-white/10 bg-white/5 text-sm text-text"
+                        >
+                          <option value="">Select station</option>
+                          {stations.map((station) => (
+                            <option key={station.id} value={station.id}>
+                              {station.name}
+                            </option>
+                          ))}
+                        </select>
+
+                        <div className="h-10 px-3 rounded-lg border border-white/10 bg-white/5 text-sm text-text inline-flex items-center">
+                          {selectedRole?.customRoleName || ROLE_LABELS[selectedBaseRole]}
+                        </div>
+
+                        <label className="h-10 rounded-lg border border-white/10 bg-white/5 px-3 inline-flex items-center gap-2 text-xs text-text-secondary">
+                          <input
+                            type="checkbox"
+                            checked={row.isPrimary}
+                            onChange={(e) =>
+                              setAssignments((prev) =>
+                                prev.map((item, i) => ({
+                                  ...item,
+                                  isPrimary: i === index ? e.target.checked : false,
+                                })),
+                              )
+                            }
+                          />
+                          Primary
+                        </label>
+
+                        <div className="flex items-center justify-between gap-2">
+                          <label className="h-10 flex-1 rounded-lg border border-white/10 bg-white/5 px-3 inline-flex items-center gap-2 text-xs text-text-secondary">
+                            <input
+                              type="checkbox"
+                              checked={row.isActive}
+                              onChange={(e) =>
+                                setRow(index, (current) => ({
+                                  ...current,
+                                  isActive: e.target.checked,
+                                }))
+                              }
+                            />
+                            Active
+                          </label>
+                          {assignments.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setAssignments((prev) => prev.filter((_, i) => i !== index))
+                              }
+                              className="h-10 px-3 rounded-lg border border-red-500/20 text-red-400 text-xs font-bold"
+                            >
+                              Remove
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {isAttendantRole && (
+                        <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+                          <select
+                            value={row.attendantMode || 'FIXED'}
+                            onChange={(e) =>
+                              setRow(index, (current) => ({
+                                ...current,
+                                attendantMode: e.target.value as 'FIXED' | 'MOBILE',
+                              }))
+                            }
+                            className="h-10 px-3 rounded-lg border border-white/10 bg-white/5 text-sm text-text"
+                          >
+                            <option value="FIXED">Fixed</option>
+                            <option value="MOBILE">Mobile</option>
+                          </select>
+
+                          <input
+                            type="time"
+                            value={row.shiftStart || '00:00'}
+                            onChange={(e) =>
+                              setRow(index, (current) => ({ ...current, shiftStart: e.target.value }))
+                            }
+                            className="h-10 px-3 rounded-lg border border-white/10 bg-white/5 text-sm text-text"
+                          />
+
+                          <input
+                            type="time"
+                            value={row.shiftEnd || '23:59'}
+                            onChange={(e) =>
+                              setRow(index, (current) => ({ ...current, shiftEnd: e.target.value }))
+                            }
+                            className="h-10 px-3 rounded-lg border border-white/10 bg-white/5 text-sm text-text"
+                          />
+
+                          <input
+                            type="text"
+                            value={row.timezone || 'Africa/Kampala'}
+                            onChange={(e) =>
+                              setRow(index, (current) => ({ ...current, timezone: e.target.value }))
+                            }
+                            className="h-10 px-3 rounded-lg border border-white/10 bg-white/5 text-sm text-text"
+                            placeholder="Africa/Kampala"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {error && (
+                <div className={clsx('rounded-lg border p-3 text-xs font-medium', 'bg-red-500/10 border-red-500/20 text-red-500')}>
+                  {error}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="border-t border-white/10 bg-background/95 px-5 py-4 backdrop-blur sm:px-6">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <button
+                type="button"
+                onClick={onClose}
+                className="h-11 rounded-xl font-bold text-sm text-text-secondary transition-colors hover:bg-white/5 sm:flex-1"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="h-11 rounded-xl bg-accent px-6 text-sm font-bold text-white shadow-lg shadow-accent/20 transition-all hover:bg-accent-hover disabled:opacity-50 sm:flex-[1.4]"
+              >
+                {isSubmitting ? 'Sending...' : 'Send Invitation'}
+              </button>
+            </div>
           </div>
         </form>
       </Card>
