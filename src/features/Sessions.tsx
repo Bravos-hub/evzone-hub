@@ -1,9 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { useAuthStore } from '@/core/auth/authStore'
 import { getPermissionsForFeature } from '@/constants/permissions'
-import { useSessionHistory, useActiveSessions, useStopSession } from '@/modules/sessions/hooks/useSessions'
+import { useSessionHistory, useStopSession } from '@/modules/sessions/hooks/useSessions'
 import { useStations } from '@/modules/stations/hooks/useStations'
 import { getErrorMessage } from '@/core/api/errors'
 import type { SessionStatus, PaymentMethod } from '@/core/types/domain'
@@ -57,6 +57,7 @@ export function Sessions() {
   const [searchParams, setSearchParams] = useSearchParams()
   const { user } = useAuthStore()
   const perms = getPermissionsForFeature(user?.role, 'sessions')
+  const filtersRef = useRef<HTMLDivElement | null>(null)
   
   const [site, setSite] = useState('All Sites')
   const [status, setStatus] = useState<SessionStatus | 'All'>('All')
@@ -66,6 +67,7 @@ export function Sessions() {
   const [q, setQ] = useState('')
   const [sel, setSel] = useState<Record<string, boolean>>({})
   const [stationFilter, setStationFilter] = useState<string>('All')
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false)
   const preset = useMemo<SessionPreset>(() => normalizeSessionPreset(searchParams.get('preset')), [searchParams])
 
   // Fetch stations for filter
@@ -125,6 +127,43 @@ export function Sessions() {
     nextParams.set('preset', nextPreset)
     setSearchParams(nextParams)
   }
+
+  const activeFilterCount = useMemo(() => {
+    let count = 0
+    if (preset !== 'all') count += 1
+    if (stationFilter !== 'All') count += 1
+    if (site !== 'All Sites') count += 1
+    if (status !== 'All') count += 1
+    if (paymentMethod !== 'All') count += 1
+    if (from !== '2025-10-01') count += 1
+    if (to !== '2025-10-29') count += 1
+    return count
+  }, [from, paymentMethod, preset, site, stationFilter, status, to])
+
+  useEffect(() => {
+    if (!isFiltersOpen) return
+
+    function onPointerDown(event: MouseEvent) {
+      const el = filtersRef.current
+      if (!el) return
+      if (event.target instanceof Node && !el.contains(event.target)) {
+        setIsFiltersOpen(false)
+      }
+    }
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setIsFiltersOpen(false)
+      }
+    }
+
+    window.addEventListener('mousedown', onPointerDown)
+    window.addEventListener('keydown', onKeyDown)
+    return () => {
+      window.removeEventListener('mousedown', onPointerDown)
+      window.removeEventListener('keydown', onKeyDown)
+    }
+  }, [isFiltersOpen])
 
   const duration = (start: Date, end?: Date) => {
     if (!end) return '—'
@@ -199,45 +238,83 @@ export function Sessions() {
 
       {/* Filters */}
       <div className="card">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-8 gap-3">
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Search Session ID or Charger"
-            className="input col-span-2 xl:col-span-1"
-          />
-          <select value={preset} onChange={(e) => setPreset(e.target.value as SessionPreset)} className="select">
-            <option value="all">All Presets</option>
-            <option value="today">Today</option>
-            <option value="active">Active</option>
-          </select>
-          <select value={stationFilter} onChange={(e) => setStationFilter(e.target.value)} className="select">
-            <option value="All">All Stations</option>
-            {stations.map(s => (
-              <option key={s.id} value={s.id}>{s.name}</option>
-            ))}
-          </select>
-          <select value={site} onChange={(e) => setSite(e.target.value)} className="select">
-            <option>All Sites</option>
-            <option>Central Hub</option>
-            <option>Airport East</option>
-          </select>
-          <select value={status} onChange={(e) => setStatus(e.target.value as SessionStatus | 'All')} className="select">
-            <option value="All">All Status</option>
-            <option value="Completed">Completed</option>
-            <option value="Failed">Failed</option>
-            <option value="Cancelled">Cancelled</option>
-            <option value="Pending">Pending</option>
-            <option value="Active">Active</option>
-          </select>
-          <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod | 'All')} className="select">
-            <option value="All">All Payment</option>
-            <option value="Card">Card</option>
-            <option value="Mobile Money">Mobile Money</option>
-            <option value="Roaming">Roaming</option>
-          </select>
-          <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="input" />
-          <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="input" />
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="w-full lg:w-[420px]">
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search Session ID or Charger"
+              className="input"
+            />
+          </div>
+
+          <div className="relative" ref={filtersRef}>
+            <button
+              type="button"
+              className="btn secondary min-w-[112px]"
+              onClick={() => setIsFiltersOpen((open) => !open)}
+              aria-haspopup="dialog"
+              aria-expanded={isFiltersOpen}
+              aria-label="Open filters"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M3 6h18" />
+                <path d="M6 12h12" />
+                <path d="M10 18h4" />
+              </svg>
+              <span>Filters</span>
+              {activeFilterCount > 0 && (
+                <span className="inline-flex min-w-[20px] items-center justify-center rounded-full bg-accent px-1.5 py-0.5 text-[11px] font-bold text-white">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
+
+            {isFiltersOpen && (
+              <div
+                className="absolute right-0 top-[calc(100%+12px)] z-30 w-[min(360px,calc(100vw-3rem))] rounded-2xl border border-border-light bg-panel p-4 shadow-xl"
+                role="dialog"
+                aria-label="Session filters"
+              >
+                <div className="grid gap-3">
+                  <select value={preset} onChange={(e) => setPreset(e.target.value as SessionPreset)} className="select">
+                    <option value="all">All Presets</option>
+                    <option value="today">Today</option>
+                    <option value="active">Active</option>
+                  </select>
+                  <select value={stationFilter} onChange={(e) => setStationFilter(e.target.value)} className="select">
+                    <option value="All">All Stations</option>
+                    {stations.map(s => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                  </select>
+                  <select value={site} onChange={(e) => setSite(e.target.value)} className="select">
+                    <option>All Sites</option>
+                    <option>Central Hub</option>
+                    <option>Airport East</option>
+                  </select>
+                  <select value={status} onChange={(e) => setStatus(e.target.value as SessionStatus | 'All')} className="select">
+                    <option value="All">All Status</option>
+                    <option value="Completed">Completed</option>
+                    <option value="Failed">Failed</option>
+                    <option value="Cancelled">Cancelled</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Active">Active</option>
+                  </select>
+                  <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod | 'All')} className="select">
+                    <option value="All">All Payment</option>
+                    <option value="Card">Card</option>
+                    <option value="Mobile Money">Mobile Money</option>
+                    <option value="Roaming">Roaming</option>
+                  </select>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="input" />
+                    <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="input" />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
