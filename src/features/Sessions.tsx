@@ -3,14 +3,17 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { useAuthStore } from '@/core/auth/authStore'
 import { getPermissionsForFeature } from '@/constants/permissions'
+import { canAccessStation } from '@/core/auth/rbac'
+import type { SessionStatus } from '@/core/types/domain'
+import { getErrorMessage } from '@/core/api/errors'
+import { auditLogger } from '@/core/utils/auditLogger'
+import { useMe } from '@/modules/auth/hooks/useAuth'
 import { useSessionHistory, useStopSession } from '@/modules/sessions/hooks/useSessions'
 import { useStations } from '@/modules/stations/hooks/useStations'
-import { getErrorMessage } from '@/core/api/errors'
-import type { SessionStatus } from '@/core/types/domain'
-import { auditLogger } from '@/core/utils/auditLogger'
 
 type SessionRow = {
   id: string
+  stationId: string
   chargePointId: string
   connectorId: string
   userId?: string
@@ -55,7 +58,7 @@ function subtractDays(base: Date, days: number) {
 }
 
 function mapApiStatus(status: string): SessionStatus {
-  switch (status) {
+  switch ((status ?? '').toUpperCase()) {
     case 'ACTIVE':
       return 'Active'
     case 'COMPLETED':
@@ -67,9 +70,32 @@ function mapApiStatus(status: string): SessionStatus {
   }
 }
 
+function canAccessSessionStation(
+  accessContext: {
+    role?: string
+    userId?: string
+    orgId?: string
+    assignedStations?: string[]
+    capability?: string
+    viewAll?: boolean
+    stationContextIds?: string[]
+  },
+  station: any,
+) {
+  if (!accessContext.role) return false
+
+  if (canAccessStation(accessContext as any, station, 'ANY')) return true
+
+  const stationContextIds = accessContext.stationContextIds || []
+  if (stationContextIds.length === 0) return false
+
+  return stationContextIds.includes(station.id) || (station.code ? stationContextIds.includes(station.code) : false)
+}
+
 export function Sessions() {
   const [searchParams, setSearchParams] = useSearchParams()
   const { user } = useAuthStore()
+  const { data: me } = useMe()
   const perms = getPermissionsForFeature(user?.role, 'sessions')
   const filtersRef = useRef<HTMLDivElement | null>(null)
   const defaultFrom = useMemo(() => formatDateInput(subtractDays(new Date(), 29)), [])
@@ -92,8 +118,6 @@ export function Sessions() {
       : undefined
 
   const { data: stationsData } = useStations()
-  const stations = stationsData || []
-
   const { data: historyData } = useSessionHistory({
     page: 1,
     limit: 100,
@@ -101,24 +125,85 @@ export function Sessions() {
     stationId: stationFilter !== 'All' ? stationFilter : undefined,
   })
 
+  const accessContext = useMemo(() => {
+    const viewerOrgId =
+      me?.activeOrganizationId ||
+      me?.orgId ||
+      me?.organizationId ||
+      user?.activeOrganizationId ||
+      user?.orgId ||
+      user?.organizationId
+    const stationContextIds = Array.from(
+      new Set(
+        (user?.stationContexts || [])
+          .flatMap((context) => [context.stationId, context.assignmentId])
+          .concat(user?.activeStationContext?.stationId ? [user.activeStationContext.stationId] : [])
+          .filter(Boolean) as string[],
+      ),
+    )
+
+    return {
+      role: user?.role,
+      userId: user?.id,
+      orgId: viewerOrgId,
+      assignedStations: me?.assignedStations || [],
+      capability: me?.ownerCapability || user?.ownerCapability,
+      viewAll: perms.viewAll,
+      stationContextIds,
+    }
+  }, [
+    me?.activeOrganizationId,
+    me?.assignedStations,
+    me?.orgId,
+    me?.organizationId,
+    me?.ownerCapability,
+    perms.viewAll,
+    user?.activeOrganizationId,
+    user?.activeStationContext?.stationId,
+    user?.id,
+    user?.orgId,
+    user?.organizationId,
+    user?.ownerCapability,
+    user?.role,
+    user?.stationContexts,
+  ])
+
+  const accessibleStationsData = useMemo(() => {
+    if (!stationsData) return []
+    return stationsData.filter((station) => canAccessSessionStation(accessContext, station))
+  }, [accessContext, stationsData])
+
+  const accessibleStationIds = useMemo(
+    () => new Set(accessibleStationsData.map((station) => station.id)),
+    [accessibleStationsData],
+  )
+
+  const stationOptions = useMemo(
+    () => accessibleStationsData.slice().sort((a, b) => (a.name || '').localeCompare(b.name || '')),
+    [accessibleStationsData],
+  )
+
   const baseRows = useMemo<SessionRow[]>(() => {
     if (!historyData?.sessions) return []
 
-    return historyData.sessions.map((session: any): SessionRow => ({
-      id: session.id,
-      chargePointId: session.stationId || session.chargePointId || session.stationName || 'N/A',
-      connectorId: session.connectorId || 'N/A',
-      userId: session.userId,
-      userName: session.userName,
-      site: session.stationName || session.station?.name || 'Unknown',
-      start: new Date(session.startedAt),
-      end: session.endedAt ? new Date(session.endedAt) : undefined,
-      status: mapApiStatus(session.status),
-      energyKwh: session.energyDelivered || 0,
-      amount: session.cost || 0,
-      tariffName: session.tariff?.name || session.tariffName || 'Standard',
-    }))
-  }, [historyData])
+    return historyData.sessions
+      .map((session: any): SessionRow => ({
+        id: session.id,
+        stationId: session.stationId || session.chargePointId || '',
+        chargePointId: session.stationId || session.chargePointId || session.stationName || 'N/A',
+        connectorId: session.connectorId || 'N/A',
+        userId: session.userId,
+        userName: session.userName,
+        site: session.stationName || session.station?.name || 'Unknown',
+        start: new Date(session.startedAt),
+        end: session.endedAt ? new Date(session.endedAt) : undefined,
+        status: mapApiStatus(session.status),
+        energyKwh: session.energyDelivered || 0,
+        amount: session.cost || 0,
+        tariffName: session.tariff?.name || session.tariffName || 'Standard',
+      }))
+      .filter((row) => accessibleStationIds.has(row.stationId))
+  }, [accessibleStationIds, historyData])
 
   const siteOptions = useMemo(
     () => ['All Sites', ...Array.from(new Set(baseRows.map((row) => row.site).filter(Boolean))).sort((a, b) => a.localeCompare(b))],
@@ -251,7 +336,9 @@ export function Sessions() {
   function toggleAll() {
     const next: Record<string, boolean> = {}
     const val = !allSel
-    rows.forEach((row) => (next[row.id] = val))
+    rows.forEach((row) => {
+      next[row.id] = val
+    })
     setSel(next)
   }
 
@@ -272,7 +359,7 @@ export function Sessions() {
 
   return (
     <DashboardLayout pageTitle="Sessions">
-      <div className="grid grid-cols-2 gap-3 mb-4 md:grid-cols-3 lg:grid-cols-6">
+      <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
         <div className="card">
           <div className="text-xs text-muted">Total Sessions</div>
           <div className="text-xl font-bold text-text">{stats.total}</div>
@@ -375,7 +462,7 @@ export function Sessions() {
                       <span className="text-[11px] font-semibold uppercase tracking-[0.5px] text-muted">Station</span>
                       <select value={stationFilter} onChange={(e) => setStationFilter(e.target.value)} className="select">
                         <option value="All">All Stations</option>
-                        {stations.map((station) => (
+                        {stationOptions.map((station) => (
                           <option key={station.id} value={station.id}>{station.name}</option>
                         ))}
                       </select>
@@ -431,9 +518,7 @@ export function Sessions() {
         </div>
       </div>
 
-      <div className={isFiltersOpen ? 'h-[34rem] md:h-[28rem]' : 'h-4'} />
-
-      <div className="mb-4 flex items-center gap-2">
+      <div className="mb-4 mt-4 flex items-center gap-2">
         {perms.export && (
           <button className="btn secondary" onClick={exportSessions}>
             Export
@@ -446,88 +531,104 @@ export function Sessions() {
         )}
       </div>
 
-      <div className="table-wrap">
-        <table className="table">
-          <thead>
-            <tr>
-              {perms.refund && (
-                <th className="w-10">
-                  <input type="checkbox" className="h-4 w-4" checked={allSel} onChange={toggleAll} />
-                </th>
-              )}
-              <th className="w-20">Session</th>
-              <th className="w-28">Site</th>
-              <th className="w-28">Charger/Conn</th>
-              <th className="w-28">Start</th>
-              <th className="w-28">End</th>
-              <th className="w-20">Duration</th>
-              <th className="w-12 !text-right">kWh</th>
-              <th className="w-20">Tariff</th>
-              <th className="w-16 !text-right">Amount</th>
-              <th className="w-20">Status</th>
-              <th className="w-20 !text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.id}>
+      {isFiltersOpen ? (
+        <div className="card border-dashed">
+          <div className="text-sm font-semibold text-text">Filters open</div>
+          <div className="mt-1 text-sm text-muted">
+            The sessions table is hidden while you refine filters. Close the filter panel to view the scoped results.
+          </div>
+        </div>
+      ) : rows.length === 0 ? (
+        <div className="card">
+          <div className="text-sm font-semibold text-text">No sessions found</div>
+          <div className="mt-1 text-sm text-muted">
+            There are no accessible sessions for your current role and filter combination.
+          </div>
+        </div>
+      ) : (
+        <div className="table-wrap">
+          <table className="table">
+            <thead>
+              <tr>
                 {perms.refund && (
-                  <td>
-                    <input type="checkbox" className="h-4 w-4" checked={!!sel[row.id]} onChange={() => toggle(row.id)} />
-                  </td>
+                  <th className="w-10">
+                    <input type="checkbox" className="h-4 w-4" checked={allSel} onChange={toggleAll} />
+                  </th>
                 )}
-                <td className="max-w-[80px] truncate font-semibold">
-                  <Link to={`/sessions/${row.id}`} className="text-accent hover:underline">
-                    {row.id}
-                  </Link>
-                </td>
-                <td className="max-w-[112px] truncate" title={row.site}>{row.site}</td>
-                <td className="max-w-[112px] truncate" title={`${row.chargePointId}/${row.connectorId}`}>
-                  {row.chargePointId}/{row.connectorId}
-                </td>
-                <td className="whitespace-nowrap text-xs">{row.start.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
-                <td className="whitespace-nowrap text-xs">
-                  {row.end
-                    ? row.end.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
-                    : '—'}
-                </td>
-                <td className="whitespace-nowrap text-xs">{duration(row.start, row.end)}</td>
-                <td className="whitespace-nowrap text-right text-xs">{row.energyKwh?.toFixed(1) || '—'}</td>
-                <td className="max-w-[80px] truncate text-xs" title={row.tariffName}>{row.tariffName}</td>
-                <td className="whitespace-nowrap text-right text-xs">${row.amount.toFixed(2)}</td>
-                <td>
-                  <span
-                    className={`pill whitespace-nowrap ${
-                      row.status === 'Completed'
-                        ? 'approved'
-                        : row.status === 'Stopped'
-                          ? 'rejected'
-                          : 'sendback'
-                    }`}
-                  >
-                    {row.status}
-                  </span>
-                </td>
-                <td className="text-right">
-                  <div className="inline-flex items-center gap-2">
-                    <Link to={`/sessions/${row.id}`} className="rounded border border-border px-2 py-1 text-xs transition-colors hover:bg-muted">
-                      View
-                    </Link>
-                    {perms.refund && row.status === 'Completed' && (
-                      <button className="rounded border border-border px-2 py-1 text-xs transition-colors hover:bg-muted" onClick={() => alert(`Refund ${row.id} (demo)`)}>
-                        Refund
-                      </button>
-                    )}
-                    {perms.stopSession && row.status === 'Active' && (
-                      <StopSessionButton sessionId={row.id} />
-                    )}
-                  </div>
-                </td>
+                <th className="w-20">Session</th>
+                <th className="w-28">Site</th>
+                <th className="w-28">Charger/Conn</th>
+                <th className="w-28">Start</th>
+                <th className="w-28">End</th>
+                <th className="w-20">Duration</th>
+                <th className="w-12 !text-right">kWh</th>
+                <th className="w-20">Tariff</th>
+                <th className="w-16 !text-right">Amount</th>
+                <th className="w-20">Status</th>
+                <th className="w-20 !text-right">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row.id}>
+                  {perms.refund && (
+                    <td>
+                      <input type="checkbox" className="h-4 w-4" checked={!!sel[row.id]} onChange={() => toggle(row.id)} />
+                    </td>
+                  )}
+                  <td className="max-w-[80px] truncate font-semibold">
+                    <Link to={`/sessions/${row.id}`} className="text-accent hover:underline">
+                      {row.id}
+                    </Link>
+                  </td>
+                  <td className="max-w-[112px] truncate" title={row.site}>{row.site}</td>
+                  <td className="max-w-[112px] truncate" title={`${row.chargePointId}/${row.connectorId}`}>
+                    {row.chargePointId}/{row.connectorId}
+                  </td>
+                  <td className="whitespace-nowrap text-xs">{row.start.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
+                  <td className="whitespace-nowrap text-xs">
+                    {row.end
+                      ? row.end.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+                      : '—'}
+                  </td>
+                  <td className="whitespace-nowrap text-xs">{duration(row.start, row.end)}</td>
+                  <td className="whitespace-nowrap text-right text-xs">{row.energyKwh?.toFixed(1) || '—'}</td>
+                  <td className="max-w-[80px] truncate text-xs" title={row.tariffName}>{row.tariffName}</td>
+                  <td className="whitespace-nowrap text-right text-xs">${row.amount.toFixed(2)}</td>
+                  <td>
+                    <span
+                      className={`pill whitespace-nowrap ${
+                        row.status === 'Completed'
+                          ? 'approved'
+                          : row.status === 'Stopped'
+                            ? 'rejected'
+                            : 'sendback'
+                      }`}
+                    >
+                      {row.status}
+                    </span>
+                  </td>
+                  <td className="text-right">
+                    <div className="inline-flex items-center gap-2">
+                      <Link to={`/sessions/${row.id}`} className="rounded border border-border px-2 py-1 text-xs transition-colors hover:bg-muted">
+                        View
+                      </Link>
+                      {perms.refund && row.status === 'Completed' && (
+                        <button className="rounded border border-border px-2 py-1 text-xs transition-colors hover:bg-muted" onClick={() => alert(`Refund ${row.id} (demo)`)}>
+                          Refund
+                        </button>
+                      )}
+                      {perms.stopSession && row.status === 'Active' && (
+                        <StopSessionButton sessionId={row.id} />
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </DashboardLayout>
   )
 }
