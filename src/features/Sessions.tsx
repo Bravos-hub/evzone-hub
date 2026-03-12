@@ -237,7 +237,7 @@ export function Sessions() {
       </div>
 
       {/* Filters */}
-      <div className="card">
+      <div className="card relative z-20 overflow-visible">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="w-full lg:w-[420px]">
             <input
@@ -248,7 +248,7 @@ export function Sessions() {
             />
           </div>
 
-          <div className="relative" ref={filtersRef}>
+          <div className="relative z-30" ref={filtersRef}>
             <button
               type="button"
               className="btn secondary min-w-[112px]"
@@ -272,7 +272,7 @@ export function Sessions() {
 
             {isFiltersOpen && (
               <div
-                className="absolute right-0 top-[calc(100%+12px)] z-30 w-[min(360px,calc(100vw-3rem))] rounded-2xl border border-border-light bg-panel p-4 shadow-xl"
+                className="absolute right-0 top-[calc(100%+12px)] z-[140] w-[min(360px,calc(100vw-3rem))] rounded-2xl border border-border-light bg-panel p-4 shadow-xl"
                 role="dialog"
                 aria-label="Session filters"
               >
@@ -318,7 +318,7 @@ export function Sessions() {
         </div>
       </div>
 
-      <div className="h-4" />
+      <div className={isFiltersOpen ? 'h-80 md:h-64' : 'h-4'} />
 
       {/* Actions */}
       <div className="flex items-center gap-2 mb-4">
