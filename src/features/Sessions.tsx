@@ -6,139 +6,199 @@ import { getPermissionsForFeature } from '@/constants/permissions'
 import { useSessionHistory, useStopSession } from '@/modules/sessions/hooks/useSessions'
 import { useStations } from '@/modules/stations/hooks/useStations'
 import { getErrorMessage } from '@/core/api/errors'
-import type { SessionStatus, PaymentMethod } from '@/core/types/domain'
+import type { SessionStatus } from '@/core/types/domain'
 import { auditLogger } from '@/core/utils/auditLogger'
-
-// ═══════════════════════════════════════════════════════════════════════════
-// TYPES
-// ═══════════════════════════════════════════════════════════════════════════
 
 type SessionRow = {
   id: string
   chargePointId: string
   connectorId: string
+  userId?: string
+  userName?: string
   site: string
   start: Date
   end?: Date
   status: SessionStatus
   energyKwh: number
   amount: number
-  paymentMethod: PaymentMethod
   tariffName: string
 }
 
-type SessionPreset = 'all' | 'today' | 'active'
+type SessionPreset = 'active' | 'today' | 'last7' | 'last30' | 'custom'
 
 function normalizeSessionPreset(value: string | null): SessionPreset {
   switch ((value ?? '').toLowerCase()) {
-    case 'today':
-      return 'today'
     case 'active':
       return 'active'
+    case 'today':
+      return 'today'
+    case 'last7':
+      return 'last7'
+    case 'custom':
+      return 'custom'
     default:
-      return 'all'
+      return 'last30'
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// MAIN COMPONENT
-// ═══════════════════════════════════════════════════════════════════════════
+function formatDateInput(date: Date) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
 
-/**
- * Sessions Page - Unified for all roles
- * 
- * RBAC Controls:
- * - viewAll: ADMIN, OPERATOR see all sessions
- * - export: ADMIN, OPERATOR, OWNER can export
- * - refund: ADMIN, OPERATOR can issue refunds
- * - stopSession: ADMIN, OPERATOR, OWNER, STATION_ADMIN, ATTENDANT
- */
+function subtractDays(base: Date, days: number) {
+  const next = new Date(base)
+  next.setDate(next.getDate() - days)
+  return next
+}
+
+function mapApiStatus(status: string): SessionStatus {
+  switch (status) {
+    case 'ACTIVE':
+      return 'Active'
+    case 'COMPLETED':
+      return 'Completed'
+    case 'STOPPED':
+      return 'Stopped'
+    default:
+      return 'Stopped'
+  }
+}
+
 export function Sessions() {
   const [searchParams, setSearchParams] = useSearchParams()
   const { user } = useAuthStore()
   const perms = getPermissionsForFeature(user?.role, 'sessions')
   const filtersRef = useRef<HTMLDivElement | null>(null)
-  
+  const defaultFrom = useMemo(() => formatDateInput(subtractDays(new Date(), 29)), [])
+  const defaultTo = useMemo(() => formatDateInput(new Date()), [])
+
   const [site, setSite] = useState('All Sites')
   const [status, setStatus] = useState<SessionStatus | 'All'>('All')
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | 'All'>('All')
-  const [from, setFrom] = useState('2025-10-01')
-  const [to, setTo] = useState('2025-10-29')
+  const [tariff, setTariff] = useState('All Tariffs')
+  const [from, setFrom] = useState(defaultFrom)
+  const [to, setTo] = useState(defaultTo)
   const [q, setQ] = useState('')
   const [sel, setSel] = useState<Record<string, boolean>>({})
   const [stationFilter, setStationFilter] = useState<string>('All')
   const [isFiltersOpen, setIsFiltersOpen] = useState(false)
   const preset = useMemo<SessionPreset>(() => normalizeSessionPreset(searchParams.get('preset')), [searchParams])
+  const effectiveApiStatus = status !== 'All'
+    ? status.toUpperCase()
+    : preset === 'active'
+      ? 'ACTIVE'
+      : undefined
 
-  // Fetch stations for filter
   const { data: stationsData } = useStations()
   const stations = stationsData || []
 
-  // Fetch session history
-  const { data: historyData, isLoading, error } = useSessionHistory({
+  const { data: historyData } = useSessionHistory({
     page: 1,
     limit: 100,
-    status: status !== 'All' ? status.toUpperCase() : undefined,
+    status: effectiveApiStatus,
     stationId: stationFilter !== 'All' ? stationFilter : undefined,
   })
 
-  // Map API sessions to the format expected by the component
-  const rows = useMemo<SessionRow[]>(() => {
+  const baseRows = useMemo<SessionRow[]>(() => {
     if (!historyData?.sessions) return []
-    
+
     return historyData.sessions.map((session: any): SessionRow => ({
       id: session.id,
-      chargePointId: session.stationId || session.chargePointId || 'N/A',
+      chargePointId: session.stationId || session.chargePointId || session.stationName || 'N/A',
       connectorId: session.connectorId || 'N/A',
-      site: session.station?.name || 'Unknown',
+      userId: session.userId,
+      userName: session.userName,
+      site: session.stationName || session.station?.name || 'Unknown',
       start: new Date(session.startedAt),
       end: session.endedAt ? new Date(session.endedAt) : undefined,
-      status: session.status === 'COMPLETED' ? 'Completed' : session.status === 'ACTIVE' ? 'Active' : 'Failed' as SessionStatus,
+      status: mapApiStatus(session.status),
       energyKwh: session.energyDelivered || 0,
       amount: session.cost || 0,
-      paymentMethod: 'Wallet' as PaymentMethod, // API doesn't provide payment method
-      tariffName: session.tariff?.name || session.tariffName || 'Standard', // Default to 'Standard' if not provided
+      tariffName: session.tariff?.name || session.tariffName || 'Standard',
     }))
-      .filter((r) => (site === 'All Sites' ? true : r.site === site))
-      .filter((r) => (paymentMethod === 'All' ? true : r.paymentMethod === paymentMethod))
-      .filter((r) => {
-        if (preset === 'all') return true
-        if (preset === 'active') return r.status === 'Active'
-        const now = new Date()
-        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-        const endOfToday = new Date(startOfToday)
-        endOfToday.setDate(endOfToday.getDate() + 1)
-        return r.start >= startOfToday && r.start < endOfToday
-      })
-      .filter((r) => {
-        if (preset !== 'all') return true
-        const date = r.start
-        return date >= new Date(from) && date <= new Date(to)
-      })
-      .filter((r) =>
-        q
-          ? (r.id + ' ' + r.chargePointId + ' ' + r.site).toLowerCase().includes(q.toLowerCase())
-          : true
-      )
-  }, [historyData, site, paymentMethod, preset, from, to, q])
+  }, [historyData])
 
-  const setPreset = (nextPreset: SessionPreset) => {
-    const nextParams = new URLSearchParams(searchParams)
-    nextParams.set('preset', nextPreset)
-    setSearchParams(nextParams)
-  }
+  const siteOptions = useMemo(
+    () => ['All Sites', ...Array.from(new Set(baseRows.map((row) => row.site).filter(Boolean))).sort((a, b) => a.localeCompare(b))],
+    [baseRows],
+  )
+
+  const tariffOptions = useMemo(
+    () => ['All Tariffs', ...Array.from(new Set(baseRows.map((row) => row.tariffName).filter(Boolean))).sort((a, b) => a.localeCompare(b))],
+    [baseRows],
+  )
+
+  const rows = useMemo<SessionRow[]>(() => {
+    return baseRows
+      .filter((row) => (site === 'All Sites' ? true : row.site === site))
+      .filter((row) => (tariff === 'All Tariffs' ? true : row.tariffName === tariff))
+      .filter((row) => (status === 'All' ? true : row.status === status))
+      .filter((row) => {
+        if (preset === 'active') return row.status === 'Active'
+        if (preset === 'today') {
+          const now = new Date()
+          const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+          const endOfToday = new Date(startOfToday)
+          endOfToday.setDate(endOfToday.getDate() + 1)
+          return row.start >= startOfToday && row.start < endOfToday
+        }
+        if (preset === 'last7') {
+          const startDate = subtractDays(new Date(), 6)
+          startDate.setHours(0, 0, 0, 0)
+          return row.start >= startDate
+        }
+        if (preset === 'last30') {
+          const startDate = subtractDays(new Date(), 29)
+          startDate.setHours(0, 0, 0, 0)
+          return row.start >= startDate
+        }
+        const fromDate = new Date(from)
+        const toDate = new Date(to)
+        toDate.setHours(23, 59, 59, 999)
+        return row.start >= fromDate && row.start <= toDate
+      })
+      .filter((row) =>
+        q
+          ? [
+              row.id,
+              row.chargePointId,
+              row.connectorId,
+              row.site,
+              row.userName ?? '',
+              row.userId ?? '',
+            ]
+              .join(' ')
+              .toLowerCase()
+              .includes(q.toLowerCase())
+          : true,
+      )
+  }, [baseRows, from, preset, q, site, status, tariff, to])
 
   const activeFilterCount = useMemo(() => {
     let count = 0
-    if (preset !== 'all') count += 1
+    if (preset !== 'last30') count += 1
     if (stationFilter !== 'All') count += 1
-    if (site !== 'All Sites') count += 1
     if (status !== 'All') count += 1
-    if (paymentMethod !== 'All') count += 1
-    if (from !== '2025-10-01') count += 1
-    if (to !== '2025-10-29') count += 1
+    if (site !== 'All Sites') count += 1
+    if (tariff !== 'All Tariffs') count += 1
+    if (preset === 'custom' && from !== defaultFrom) count += 1
+    if (preset === 'custom' && to !== defaultTo) count += 1
     return count
-  }, [from, paymentMethod, preset, site, stationFilter, status, to])
+  }, [defaultFrom, defaultTo, from, preset, site, stationFilter, status, tariff, to])
+
+  const stats = {
+    total: rows.length,
+    completed: rows.filter((row) => row.status === 'Completed').length,
+    stopped: rows.filter((row) => row.status === 'Stopped').length,
+    active: rows.filter((row) => row.status === 'Active').length,
+    totalKwh: rows.reduce((acc, row) => acc + (row.energyKwh || 0), 0),
+    totalRevenue: rows.reduce((acc, row) => acc + row.amount, 0),
+  }
+
+  const allSel = rows.length > 0 && rows.every((row) => sel[row.id])
+  const someSel = rows.some((row) => sel[row.id])
 
   useEffect(() => {
     if (!isFiltersOpen) return
@@ -165,29 +225,33 @@ export function Sessions() {
     }
   }, [isFiltersOpen])
 
+  const setPreset = (nextPreset: SessionPreset) => {
+    const nextParams = new URLSearchParams(searchParams)
+    nextParams.set('preset', nextPreset)
+    setSearchParams(nextParams)
+  }
+
+  const resetFilters = () => {
+    setStatus('All')
+    setStationFilter('All')
+    setSite('All Sites')
+    setTariff('All Tariffs')
+    setFrom(defaultFrom)
+    setTo(defaultTo)
+    setQ('')
+    setPreset('last30')
+  }
+
   const duration = (start: Date, end?: Date) => {
     if (!end) return '—'
     const minutes = Math.max(0, Math.round((end.getTime() - start.getTime()) / 60000))
     return `${minutes} min`
   }
 
-  // Summary stats
-  const stats = {
-    total: rows.length,
-    completed: rows.filter(r => r.status === 'Completed').length,
-    failed: rows.filter(r => r.status === 'Failed').length,
-    pending: rows.filter(r => r.status === 'Pending').length,
-    totalKwh: rows.reduce((acc, r) => acc + (r.energyKwh || 0), 0),
-    totalRevenue: rows.reduce((acc, r) => acc + r.amount, 0),
-  }
-
-  const allSel = rows.length > 0 && rows.every((r) => sel[r.id])
-  const someSel = rows.some((r) => sel[r.id])
-
   function toggleAll() {
     const next: Record<string, boolean> = {}
     const val = !allSel
-    rows.forEach((r) => (next[r.id] = val))
+    rows.forEach((row) => (next[row.id] = val))
     setSel(next)
   }
 
@@ -196,8 +260,8 @@ export function Sessions() {
   }
 
   async function bulkRefund() {
-    const ids = rows.filter((r) => sel[r.id]).map((r) => r.id)
-    await new Promise((r) => setTimeout(r, 400))
+    const ids = rows.filter((row) => sel[row.id]).map((row) => row.id)
+    await new Promise((resolve) => setTimeout(resolve, 400))
     alert(`Refund initiated for: ${ids.join(', ')} (demo)`)
     setSel({})
   }
@@ -208,8 +272,7 @@ export function Sessions() {
 
   return (
     <DashboardLayout pageTitle="Sessions">
-      {/* Summary Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
+      <div className="grid grid-cols-2 gap-3 mb-4 md:grid-cols-3 lg:grid-cols-6">
         <div className="card">
           <div className="text-xs text-muted">Total Sessions</div>
           <div className="text-xl font-bold text-text">{stats.total}</div>
@@ -219,12 +282,12 @@ export function Sessions() {
           <div className="text-xl font-bold text-ok">{stats.completed}</div>
         </div>
         <div className="card">
-          <div className="text-xs text-muted">Failed</div>
-          <div className="text-xl font-bold text-danger">{stats.failed}</div>
+          <div className="text-xs text-muted">Stopped</div>
+          <div className="text-xl font-bold text-danger">{stats.stopped}</div>
         </div>
         <div className="card">
-          <div className="text-xs text-muted">Pending</div>
-          <div className="text-xl font-bold text-warn">{stats.pending}</div>
+          <div className="text-xs text-muted">Active</div>
+          <div className="text-xl font-bold text-warn">{stats.active}</div>
         </div>
         <div className="card">
           <div className="text-xs text-muted">Total Energy</div>
@@ -236,14 +299,13 @@ export function Sessions() {
         </div>
       </div>
 
-      {/* Filters */}
       <div className="card relative z-20 overflow-visible">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="w-full lg:w-[420px]">
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Search Session ID or Charger"
+              placeholder="Search Session ID, Charger, Connector, or User"
               className="input"
             />
           </div>
@@ -272,44 +334,95 @@ export function Sessions() {
 
             {isFiltersOpen && (
               <div
-                className="absolute right-0 top-[calc(100%+12px)] z-[140] w-[min(360px,calc(100vw-3rem))] rounded-2xl border border-border-light bg-panel p-4 shadow-xl"
+                className="absolute right-0 top-[calc(100%+12px)] z-[140] w-[min(420px,calc(100vw-3rem))] rounded-2xl border border-border-light bg-panel p-4 shadow-xl"
                 role="dialog"
                 aria-label="Session filters"
               >
-                <div className="grid gap-3">
-                  <select value={preset} onChange={(e) => setPreset(e.target.value as SessionPreset)} className="select">
-                    <option value="all">All Presets</option>
-                    <option value="today">Today</option>
-                    <option value="active">Active</option>
-                  </select>
-                  <select value={stationFilter} onChange={(e) => setStationFilter(e.target.value)} className="select">
-                    <option value="All">All Stations</option>
-                    {stations.map(s => (
-                      <option key={s.id} value={s.id}>{s.name}</option>
-                    ))}
-                  </select>
-                  <select value={site} onChange={(e) => setSite(e.target.value)} className="select">
-                    <option>All Sites</option>
-                    <option>Central Hub</option>
-                    <option>Airport East</option>
-                  </select>
-                  <select value={status} onChange={(e) => setStatus(e.target.value as SessionStatus | 'All')} className="select">
-                    <option value="All">All Status</option>
-                    <option value="Completed">Completed</option>
-                    <option value="Failed">Failed</option>
-                    <option value="Cancelled">Cancelled</option>
-                    <option value="Pending">Pending</option>
-                    <option value="Active">Active</option>
-                  </select>
-                  <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod | 'All')} className="select">
-                    <option value="All">All Payment</option>
-                    <option value="Card">Card</option>
-                    <option value="Mobile Money">Mobile Money</option>
-                    <option value="Roaming">Roaming</option>
-                  </select>
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="input" />
-                    <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="input" />
+                <div className="grid gap-4">
+                  <div className="space-y-2">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.5px] text-muted">Quick Filters</div>
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        { value: 'active', label: 'Active' },
+                        { value: 'today', label: 'Today' },
+                        { value: 'last7', label: 'Last 7 Days' },
+                        { value: 'last30', label: 'Last 30 Days' },
+                        { value: 'custom', label: 'Custom Range' },
+                      ].map((option) => (
+                        <button
+                          key={option.value}
+                          type="button"
+                          className={preset === option.value ? 'btn px-3 py-2 text-xs' : 'btn secondary px-3 py-2 text-xs'}
+                          onClick={() => setPreset(option.value as SessionPreset)}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <label className="grid gap-1.5">
+                      <span className="text-[11px] font-semibold uppercase tracking-[0.5px] text-muted">Status</span>
+                      <select value={status} onChange={(e) => setStatus(e.target.value as SessionStatus | 'All')} className="select">
+                        <option value="All">All Statuses</option>
+                        <option value="Active">Active</option>
+                        <option value="Completed">Completed</option>
+                        <option value="Stopped">Stopped</option>
+                      </select>
+                    </label>
+                    <label className="grid gap-1.5">
+                      <span className="text-[11px] font-semibold uppercase tracking-[0.5px] text-muted">Station</span>
+                      <select value={stationFilter} onChange={(e) => setStationFilter(e.target.value)} className="select">
+                        <option value="All">All Stations</option>
+                        {stations.map((station) => (
+                          <option key={station.id} value={station.id}>{station.name}</option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+
+                  <div className="border-t border-border-light pt-4">
+                    <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.5px] text-muted">Advanced Filters</div>
+                    <div className="grid gap-3">
+                      <label className="grid gap-1.5">
+                        <span className="text-[11px] font-semibold uppercase tracking-[0.5px] text-muted">Site</span>
+                        <select value={site} onChange={(e) => setSite(e.target.value)} className="select">
+                          {siteOptions.map((option) => (
+                            <option key={option} value={option}>{option}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="grid gap-1.5">
+                        <span className="text-[11px] font-semibold uppercase tracking-[0.5px] text-muted">Tariff</span>
+                        <select value={tariff} onChange={(e) => setTariff(e.target.value)} className="select">
+                          {tariffOptions.map((option) => (
+                            <option key={option} value={option}>{option}</option>
+                          ))}
+                        </select>
+                      </label>
+                      {preset === 'custom' && (
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                          <label className="grid gap-1.5">
+                            <span className="text-[11px] font-semibold uppercase tracking-[0.5px] text-muted">From</span>
+                            <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="input" />
+                          </label>
+                          <label className="grid gap-1.5">
+                            <span className="text-[11px] font-semibold uppercase tracking-[0.5px] text-muted">To</span>
+                            <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="input" />
+                          </label>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between border-t border-border-light pt-3">
+                    <div className="text-xs text-muted">
+                      {activeFilterCount > 0 ? `${activeFilterCount} active filters` : 'Using default operational filters'}
+                    </div>
+                    <button type="button" className="btn secondary px-3 py-2 text-xs" onClick={resetFilters}>
+                      Reset Filters
+                    </button>
                   </div>
                 </div>
               </div>
@@ -318,10 +431,9 @@ export function Sessions() {
         </div>
       </div>
 
-      <div className={isFiltersOpen ? 'h-80 md:h-64' : 'h-4'} />
+      <div className={isFiltersOpen ? 'h-[34rem] md:h-[28rem]' : 'h-4'} />
 
-      {/* Actions */}
-      <div className="flex items-center gap-2 mb-4">
+      <div className="mb-4 flex items-center gap-2">
         {perms.export && (
           <button className="btn secondary" onClick={exportSessions}>
             Export
@@ -334,7 +446,6 @@ export function Sessions() {
         )}
       </div>
 
-      {/* Sessions Table */}
       <div className="table-wrap">
         <table className="table">
           <thead>
@@ -353,66 +464,62 @@ export function Sessions() {
               <th className="w-12 !text-right">kWh</th>
               <th className="w-20">Tariff</th>
               <th className="w-16 !text-right">Amount</th>
-              <th className="w-20">Payment</th>
               <th className="w-20">Status</th>
               <th className="w-20 !text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((r) => (
-              <tr key={r.id}>
+            {rows.map((row) => (
+              <tr key={row.id}>
                 {perms.refund && (
                   <td>
-                    <input type="checkbox" className="h-4 w-4" checked={!!sel[r.id]} onChange={() => toggle(r.id)} />
+                    <input type="checkbox" className="h-4 w-4" checked={!!sel[row.id]} onChange={() => toggle(row.id)} />
                   </td>
                 )}
-                <td className="font-semibold truncate max-w-[80px]">
-                  <Link to={`/sessions/${r.id}`} className="text-accent hover:underline">
-                    {r.id}
+                <td className="max-w-[80px] truncate font-semibold">
+                  <Link to={`/sessions/${row.id}`} className="text-accent hover:underline">
+                    {row.id}
                   </Link>
                 </td>
-                <td className="truncate max-w-[112px]" title={r.site}>{r.site}</td>
-                <td className="truncate max-w-[112px]" title={`${r.chargePointId}/${r.connectorId}`}>
-                  {r.chargePointId}/{r.connectorId}
+                <td className="max-w-[112px] truncate" title={row.site}>{row.site}</td>
+                <td className="max-w-[112px] truncate" title={`${row.chargePointId}/${row.connectorId}`}>
+                  {row.chargePointId}/{row.connectorId}
                 </td>
-                <td className="whitespace-nowrap text-xs">{r.start.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
+                <td className="whitespace-nowrap text-xs">{row.start.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
                 <td className="whitespace-nowrap text-xs">
-                  {r.end
-                    ? r.end.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+                  {row.end
+                    ? row.end.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
                     : '—'}
                 </td>
-                <td className="whitespace-nowrap text-xs">{duration(r.start, r.end)}</td>
-                <td className="text-right whitespace-nowrap text-xs">{r.energyKwh?.toFixed(1) || '—'}</td>
-                <td className="truncate max-w-[80px] text-xs" title={r.tariffName}>{r.tariffName}</td>
-                <td className="text-right whitespace-nowrap text-xs">${r.amount.toFixed(2)}</td>
-                <td className="truncate max-w-[80px] text-xs">{r.paymentMethod}</td>
+                <td className="whitespace-nowrap text-xs">{duration(row.start, row.end)}</td>
+                <td className="whitespace-nowrap text-right text-xs">{row.energyKwh?.toFixed(1) || '—'}</td>
+                <td className="max-w-[80px] truncate text-xs" title={row.tariffName}>{row.tariffName}</td>
+                <td className="whitespace-nowrap text-right text-xs">${row.amount.toFixed(2)}</td>
                 <td>
                   <span
                     className={`pill whitespace-nowrap ${
-                      r.status === 'Completed'
+                      row.status === 'Completed'
                         ? 'approved'
-                        : r.status === 'Failed'
+                        : row.status === 'Stopped'
                           ? 'rejected'
-                          : r.status === 'Pending'
-                            ? 'pending'
-                            : 'sendback'
+                          : 'sendback'
                     }`}
                   >
-                    {r.status}
+                    {row.status}
                   </span>
                 </td>
                 <td className="text-right">
                   <div className="inline-flex items-center gap-2">
-                    <Link to={`/sessions/${r.id}`} className="px-2 py-1 text-xs rounded border border-border hover:bg-muted transition-colors">
+                    <Link to={`/sessions/${row.id}`} className="rounded border border-border px-2 py-1 text-xs transition-colors hover:bg-muted">
                       View
                     </Link>
-                    {perms.refund && r.status === 'Completed' && (
-                      <button className="px-2 py-1 text-xs rounded border border-border hover:bg-muted transition-colors" onClick={() => alert(`Refund ${r.id} (demo)`)}>
+                    {perms.refund && row.status === 'Completed' && (
+                      <button className="rounded border border-border px-2 py-1 text-xs transition-colors hover:bg-muted" onClick={() => alert(`Refund ${row.id} (demo)`)}>
                         Refund
                       </button>
                     )}
-                    {perms.stopSession && (r.status === 'Pending' || r.status === 'Active') && (
-                      <StopSessionButton sessionId={r.id} />
+                    {perms.stopSession && row.status === 'Active' && (
+                      <StopSessionButton sessionId={row.id} />
                     )}
                   </div>
                 </td>
@@ -425,7 +532,6 @@ export function Sessions() {
   )
 }
 
-// Stop Session Button Component
 function StopSessionButton({ sessionId }: { sessionId: string }) {
   const stopSessionMutation = useStopSession()
   const [stopping, setStopping] = useState(false)
@@ -445,7 +551,7 @@ function StopSessionButton({ sessionId }: { sessionId: string }) {
 
   return (
     <button
-      className="px-2 py-1 text-xs rounded border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 transition-colors disabled:opacity-50"
+      className="rounded border border-rose-200 bg-rose-50 px-2 py-1 text-xs text-rose-700 transition-colors hover:bg-rose-100 disabled:opacity-50"
       onClick={handleStop}
       disabled={stopping || stopSessionMutation.isPending}
     >
