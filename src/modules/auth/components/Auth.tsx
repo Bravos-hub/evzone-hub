@@ -5,6 +5,7 @@ import { useAuthStore } from '@/core/auth/authStore'
 import { PATHS } from '@/app/router/paths'
 import { authService } from '@/modules/auth/services/authService'
 import { onboardingService } from '@/modules/auth/services/onboardingService'
+import { platformProfile } from '@/core/platform/platform'
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Auth Pages — Login, Register, Reset Password, Verify Email
@@ -62,7 +63,6 @@ export function Login() {
   return (
     <div className="relative h-screen overflow-x-hidden overflow-y-auto bg-gradient-to-br from-bg-subtle via-bg-secondary to-bg">
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
         .login-shell {
           --evz-ink: var(--app-text);
           --evz-muted: var(--app-text-secondary);
@@ -71,11 +71,11 @@ export function Login() {
           --evz-card: var(--app-panel);
           --evz-card-border: var(--app-border);
           --evz-card-soft: var(--app-panel-2);
-          font-family: 'Space Grotesk', 'Segoe UI', Tahoma, sans-serif;
+          font-family: ${platformProfile.fonts.sans};
           color: var(--evz-ink);
         }
         .login-title {
-          font-family: 'Fraunces', 'Times New Roman', serif;
+          font-family: ${platformProfile.fonts.serif};
           letter-spacing: -0.02em;
         }
       `}</style>
@@ -340,17 +340,16 @@ export function Register() {
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-gradient-to-br from-bg-subtle via-bg-secondary to-bg selection:bg-accent/30">
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
         .register-shell {
           --evz-ink: var(--app-text);
           --evz-muted: var(--app-text-secondary);
           --evz-accent: var(--app-accent);
           --evz-card: var(--app-panel);
           --evz-card-border: var(--app-border);
-          font-family: 'Space Grotesk', sans-serif;
+          font-family: ${platformProfile.fonts.sans};
           color: var(--evz-ink);
         }
-        .step-title { font-family: 'Fraunces', serif; letter-spacing: -0.01em; }
+        .step-title { font-family: ${platformProfile.fonts.serif}; letter-spacing: -0.01em; }
       `}</style>
 
       <div className="register-shell relative mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 py-8">
@@ -896,4 +895,3 @@ export function VerifyEmail() {
 }
 
 export default Login
-

@@ -4,6 +4,7 @@
  */
 
 import { apiClient } from '@/core/api/client'
+import { supportsSocialLogin } from '@/core/platform/platform'
 import type {
   AcceptInvitationResponse,
   AuthResponse,
@@ -133,6 +134,10 @@ export const authService = {
    * Social login (Google)
    */
   async googleLogin(token: string): Promise<AuthResponse> {
+    if (!supportsSocialLogin('google')) {
+      throw new Error('Google login is not available for this regional deployment')
+    }
+
     // Backend wraps response in { success: true, data: ... }
     const wrappedResponse = await apiClient.post<{ success: boolean; data: AuthResponse }>('/auth/social/google', { token }, { skipAuth: true })
 
@@ -150,6 +155,10 @@ export const authService = {
    * Social login (Apple)
    */
   async appleLogin(token: string): Promise<AuthResponse> {
+    if (!supportsSocialLogin('apple')) {
+      throw new Error('Apple login is not available for this regional deployment')
+    }
+
     // Backend wraps response in { success: true, data: ... }
     const wrappedResponse = await apiClient.post<{ success: boolean; data: AuthResponse }>('/auth/social/apple', { token }, { skipAuth: true })
 

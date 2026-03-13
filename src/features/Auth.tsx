@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuthStore } from '@/core/auth/authStore'
+import { platformProfile } from '@/core/platform/platform'
 import { PATHS } from '@/app/router/paths'
 import { authService } from '@/modules/auth/services/authService'
 
@@ -37,7 +38,6 @@ export function Login() {
   return (
     <div className="relative h-screen overflow-x-hidden overflow-y-auto bg-gradient-to-br from-bg-subtle via-bg-secondary to-bg">
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
         .login-shell {
           --evz-ink: var(--app-text);
           --evz-muted: var(--app-text-secondary);
@@ -46,11 +46,11 @@ export function Login() {
           --evz-card: var(--app-panel);
           --evz-card-border: var(--app-border);
           --evz-card-soft: var(--app-panel-2);
-          font-family: 'Space Grotesk', 'Segoe UI', Tahoma, sans-serif;
+          font-family: ${platformProfile.fonts.sans};
           color: var(--evz-ink);
         }
         .login-title {
-          font-family: 'Fraunces', 'Times New Roman', serif;
+          font-family: ${platformProfile.fonts.serif};
           letter-spacing: -0.02em;
         }
       `}</style>
@@ -248,7 +248,6 @@ export function Register() {
   return (
     <div className="relative h-screen overflow-x-hidden overflow-y-auto bg-gradient-to-br from-bg-subtle via-bg-secondary to-bg">
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
         .register-shell {
           --evz-ink: var(--app-text);
           --evz-muted: var(--app-text-secondary);
@@ -257,11 +256,11 @@ export function Register() {
           --evz-card: var(--app-panel);
           --evz-card-border: var(--app-border);
           --evz-card-soft: var(--app-panel-2);
-          font-family: 'Space Grotesk', 'Segoe UI', Tahoma, sans-serif;
+          font-family: ${platformProfile.fonts.sans};
           color: var(--evz-ink);
         }
         .register-title {
-          font-family: 'Fraunces', 'Times New Roman', serif;
+          font-family: ${platformProfile.fonts.serif};
           letter-spacing: -0.02em;
         }
       `}</style>

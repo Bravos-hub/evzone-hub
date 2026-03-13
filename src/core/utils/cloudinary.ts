@@ -1,3 +1,5 @@
+import { platformProfile } from '@/core/platform/platform'
+
 /**
  * Cloudinary Upload Utility
  * Handles direct image uploads to Cloudinary from the browser
@@ -23,6 +25,10 @@ export async function uploadImageToCloudinary(
     onProgress?: (progress: number) => void,
     resourceType: 'image' | 'video' | 'raw' | 'auto' = 'auto'
 ): Promise<string> {
+    if (platformProfile.mediaProvider !== 'cloudinary') {
+        throw new Error(`Media uploads are disabled for the ${platformProfile.region} platform profile`)
+    }
+
     if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
         console.error('❌ Cloudinary config missing:', {
             cloudName: CLOUDINARY_CLOUD_NAME,
@@ -100,6 +106,10 @@ export function getOptimizedCloudinaryUrl(
         format?: 'auto'
     } = {}
 ): string {
+    if (platformProfile.mediaProvider !== 'cloudinary') {
+        return url
+    }
+
     const { width, quality = 'auto', format = 'auto' } = options
 
     if (!url.includes('cloudinary.com')) {

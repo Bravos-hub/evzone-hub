@@ -4,6 +4,7 @@ import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import * as h3 from 'h3-js'
 import { API_CONFIG } from '@/core/api/config'
+import { platformProfile } from '@/core/platform/platform'
 import { useTheme } from '@/ui/theme'
 import type { FeatureCollection } from 'geojson'
 import type { StationMarkerIconKey } from '@/modules/stations/utils/stationIconResolver'
@@ -88,20 +89,20 @@ const MARKER_ICON_EXPRESSION = [
 
 const MAP_STYLES: Record<StationMapLayout, Record<MapTheme, string>> = {
     roadmap: {
-        light: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
-        dark: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
+        light: platformProfile.mapStyles.roadmapLight,
+        dark: platformProfile.mapStyles.roadmapDark,
     },
     driving: {
-        light: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
-        dark: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
+        light: platformProfile.mapStyles.roadmapLight,
+        dark: platformProfile.mapStyles.roadmapDark,
     },
     terrain: {
-        light: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
-        dark: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
+        light: platformProfile.mapStyles.terrain,
+        dark: platformProfile.mapStyles.terrain,
     },
     satellite: {
-        light: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-        dark: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        light: platformProfile.mapStyles.satellite,
+        dark: platformProfile.mapStyles.satellite,
     },
 }
 
@@ -111,7 +112,6 @@ function getMapStyle(layout: StationMapLayout, theme: MapTheme): string | maplib
     if (layout === 'satellite' || layout === 'terrain') {
         return {
             version: 8,
-            glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
             sources: {
                 'raster-tiles': {
                     type: 'raster',
@@ -161,7 +161,6 @@ export function StationMapCanvas({
         if (!useGeoJsonSource || !stations) return null
 
         const validStations = stations.filter((station) => Number.isFinite(station.lng) && Number.isFinite(station.lat))
-        console.log('[StationMap] stations prop count:', stations.length, '| valid (finite coords):', validStations.length, '| sample:', stations.slice(0, 3).map(s => ({ id: s.id, lat: s.lat, lng: s.lng })))
 
         return {
             type: 'FeatureCollection',
