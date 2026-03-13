@@ -20,6 +20,9 @@ export function OwnerFiltersWidget() {
           >
             <option value="7D">Last 7 days</option>
             <option value="30D">Last 30 days</option>
+            <option value="90D">Last 90 days</option>
+            <option value="YTD">Year to date</option>
+            <option value="ALL">All time</option>
           </select>
         </div>
         <div className="flex-1">

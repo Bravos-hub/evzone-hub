@@ -71,7 +71,7 @@ export const sessionService = {
     }
   }> {
     const params = new URLSearchParams()
-    if (query?.page) params.append('page', query.page.toString())
+    if (query?.page) params.append('offset', ((query.page - 1) * (query.limit || 100)).toString())
     if (query?.limit) params.append('limit', query.limit.toString())
     if (query?.status) params.append('status', query.status)
     if (query?.stationId) params.append('stationId', query.stationId)
