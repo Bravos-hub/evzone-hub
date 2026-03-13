@@ -1,13 +1,17 @@
-import type { UtilizationHour } from '@/core/api/types'
+import type { OwnerUtilizationHeatmapCell, UtilizationHour } from '@/core/api/types'
 import { Card } from '../components/Card'
 import clsx from 'clsx'
 
 interface UtilizationHeatmapProps {
-    data: UtilizationHour[]
+    data: Array<UtilizationHour | OwnerUtilizationHeatmapCell>
 }
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i)
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+
+function isOwnerCell(item: UtilizationHour | OwnerUtilizationHeatmapCell | undefined): item is OwnerUtilizationHeatmapCell {
+    return Boolean(item && 'utilizationPct' in item)
+}
 
 export function UtilizationHeatmap({ data }: UtilizationHeatmapProps) {
     if (!data || !Array.isArray(data)) return null
@@ -35,7 +39,9 @@ export function UtilizationHeatmap({ data }: UtilizationHeatmapProps) {
                         <div className="flex flex-1 gap-1">
                             {HOURS.map((hour) => {
                                 const item = data.find((d) => d.day === day && d.hour === hour)
-                                const utilization = item?.utilization ?? 0
+                                const utilization = isOwnerCell(item) ? item.utilizationPct : item?.utilization ?? 0
+                                const sessionCount = isOwnerCell(item) ? item.sessionCount : undefined
+                                const energyKwh = isOwnerCell(item) ? item.energyKwh : undefined
                                 return (
                                     <div
                                         key={hour}
@@ -46,6 +52,8 @@ export function UtilizationHeatmap({ data }: UtilizationHeatmapProps) {
                                     >
                                         <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-panel text-[10px] text-text rounded opacity-0 group-hover:opacity-100 whitespace-nowrap z-20 pointer-events-none border border-white/10 shadow-xl">
                                             {hour}:00 - {utilization}% Use
+                                            {sessionCount !== undefined ? ` • ${sessionCount} sessions` : ''}
+                                            {energyKwh !== undefined ? ` • ${energyKwh.toFixed(1)} kWh` : ''}
                                         </div>
                                     </div>
                                 )

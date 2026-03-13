@@ -234,29 +234,46 @@ export const DASHBOARD_CONFIGS: Record<DashboardKey, DashboardConfig> = {
   STATION_OWNER: {
     title: 'Owner Dashboard',
     kpiRow: [
-      { id: 'kpi-revenue', config: { period: 'Today', trend: 'up' } },
-      { id: 'kpi-swaps', config: {} },
-      { id: 'kpi-sessions', config: { period: 'Today' } },
-      { id: 'kpi-uptime', config: { trend: 'up' } },
+      { id: 'kpi-owner-metric', config: { metric: 'revenue', title: 'Revenue', format: 'currency', path: '/billing?period=30d' } },
+      { id: 'kpi-owner-metric', config: { metric: 'energySoldKwh', title: 'Energy Sold', format: 'energy', path: '/reports' } },
+      { id: 'kpi-owner-metric', config: { metric: 'sessions', title: 'Sessions', format: 'number', path: '/sessions?preset=all' } },
+      { id: 'kpi-owner-metric', config: { metric: 'utilizationPct', title: 'Utilization', format: 'percent', path: '/sessions?preset=all' } },
+      { id: 'kpi-owner-metric', config: { metric: 'uptimePct', title: 'Uptime', format: 'percent', path: '/stations?status=online' } },
+      { id: 'kpi-owner-metric', config: { metric: 'activeStations', title: 'Active Stations', format: 'number', path: '/stations?status=online' } },
+      { id: 'kpi-owner-metric', config: { metric: 'avgSessionDurationMinutes', title: 'Avg Session', format: 'duration', path: '/sessions?preset=all' } },
+      { id: 'kpi-owner-metric', config: { metric: 'margin', title: 'Margin', format: 'currency', path: '/billing?period=30d' } },
     ],
     rows: [
       {
-        sectionTitle: 'Operational Workflow',
+        sectionTitle: 'Filters',
         widgets: [
-          { id: 'panel-owner-workflow', size: 'full', config: {} },
+          { id: 'panel-owner-filters', size: 'full', config: {} },
         ],
       },
       {
-        sectionTitle: 'Analytics & Hardware',
+        sectionTitle: 'Commercial + Operations',
         widgets: [
-          { id: 'panel-revenue-chart', size: '2', config: { title: 'Combined Revenue' } },
-          { id: 'panel-status-donut', size: '2', config: { title: 'Hardware Status' } },
+          { id: 'panel-revenue-chart', size: '2', config: { title: 'Revenue / Cost / Margin', ownerMode: true } },
+          { id: 'panel-owner-operations', size: '2', config: {} },
         ],
       },
       {
-        sectionTitle: 'Operations & Health',
+        sectionTitle: 'Utilization',
         widgets: [
-          { id: 'panel-utilization-heatmap', size: 'full', config: {} },
+          { id: 'panel-utilization-heatmap', size: 'full', config: { ownerMode: true } },
+        ],
+      },
+      {
+        sectionTitle: 'Station Ranking',
+        widgets: [
+          { id: 'panel-owner-site-ranking', size: '2', config: { variant: 'top', title: 'Top 5 Busiest Stations' } },
+          { id: 'panel-owner-site-ranking', size: '2', config: { variant: 'bottom', title: 'Bottom 5 Underperforming Stations' } },
+        ],
+      },
+      {
+        sectionTitle: 'Actions',
+        widgets: [
+          { id: 'panel-owner-alerts', size: 'full', config: {} },
         ],
       },
     ],

@@ -1,9 +1,9 @@
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts'
-import type { RevenueTrendPoint } from '@/core/api/types'
+import type { OwnerRevenueTrendPoint, RevenueTrendPoint } from '@/core/api/types'
 import { Card } from '../components/Card'
 
 interface RevenueChartProps {
-    data: RevenueTrendPoint[]
+    data: Array<RevenueTrendPoint | OwnerRevenueTrendPoint>
     title?: string
 }
 
@@ -24,6 +24,10 @@ export function RevenueChart({ data, title = 'Revenue Overview' }: RevenueChartP
                         <div className="w-3 h-3 rounded-full bg-slate-500" />
                         <span className="text-xs text-text-secondary font-medium">Cost</span>
                     </div>
+                    <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full bg-emerald-400" />
+                        <span className="text-xs text-text-secondary font-medium">Margin</span>
+                    </div>
                 </div>
             </div>
 
@@ -38,6 +42,10 @@ export function RevenueChart({ data, title = 'Revenue Overview' }: RevenueChartP
                             <linearGradient id="colorCost" x1="0" y1="0" x2="0" y2="1">
                                 <stop offset="5%" stopColor="#64748b" stopOpacity={0.3} />
                                 <stop offset="95%" stopColor="#64748b" stopOpacity={0} />
+                            </linearGradient>
+                            <linearGradient id="colorMargin" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#34d399" stopOpacity={0.25} />
+                                <stop offset="95%" stopColor="#34d399" stopOpacity={0} />
                             </linearGradient>
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
@@ -81,6 +89,14 @@ export function RevenueChart({ data, title = 'Revenue Overview' }: RevenueChartP
                             strokeWidth={2}
                             fillOpacity={1}
                             fill="url(#colorCost)"
+                        />
+                        <Area
+                            type="monotone"
+                            dataKey="margin"
+                            stroke="#34d399"
+                            strokeWidth={2}
+                            fillOpacity={1}
+                            fill="url(#colorMargin)"
                         />
                     </AreaChart>
                 </ResponsiveContainer>

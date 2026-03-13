@@ -76,7 +76,7 @@ export function GenericDashboard() {
     <DashboardLayout pageTitle={config.title}>
       {/* KPI Row */}
       {config.kpiRow.length > 0 && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3">
           {config.kpiRow.map((w, i) => (
             <Widget key={`kpi-${w.id}-${i}`} widgetId={w.id} size="1" config={w.config} scope={scope} />
           ))}
@@ -115,7 +115,7 @@ export function DashboardForRole({
   return (
     <DashboardLayout pageTitle={config.title}>
       {config.kpiRow.length > 0 && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3">
           {config.kpiRow.map((w, i) => (
             <Widget key={`kpi-${w.id}-${i}`} widgetId={w.id} size="1" config={w.config} scope={scope} />
           ))}

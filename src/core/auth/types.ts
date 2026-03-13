@@ -26,6 +26,9 @@ export type Scope = {
   stationId: string | 'ALL'
   siteId?: string | 'ALL'
   dateRange: DateRange
+  chargerType?: string | 'ALL'
+  sessionStatus?: string | 'ALL'
+  state?: string | 'ALL'
 }
 
 export type UserProfile = {

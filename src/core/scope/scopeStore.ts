@@ -7,7 +7,16 @@ type ScopeState = {
 }
 
 export const useScopeStore = create<ScopeState>((set) => ({
-  scope: { region: 'ALL', orgId: 'ALL', stationId: 'ALL', siteId: 'ALL', dateRange: '7D' },
+  scope: {
+    region: 'ALL',
+    orgId: 'ALL',
+    stationId: 'ALL',
+    siteId: 'ALL',
+    dateRange: '7D',
+    chargerType: 'ALL',
+    sessionStatus: 'ALL',
+    state: 'ALL',
+  },
   setScope: (patch) => set((s) => ({ scope: { ...s.scope, ...patch } })),
 }))
 

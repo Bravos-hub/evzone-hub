@@ -10,4 +10,5 @@ export { KpiReadyBatteriesWidget } from './KpiReadyBatteriesWidget'
 export { KpiActiveSessionsWidget } from './KpiActiveSessionsWidget'
 export { KpiEnergyDeliveredWidget } from './KpiEnergyDeliveredWidget'
 export { KpiSiteCountWidget } from './KpiSiteCountWidget'
+export { OwnerMetricKpiWidget, type OwnerMetricKpiConfig } from './OwnerMetricKpiWidget'
 

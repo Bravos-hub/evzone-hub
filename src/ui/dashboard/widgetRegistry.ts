@@ -2,7 +2,7 @@ import type { Role } from '@/core/auth/types'
 import type { WidgetDef, WidgetId } from './types'
 
 // KPI Widgets
-import { KpiGenericWidget, KpiSimpleWidget, KpiStationsWidget, KpiRevenueWidget, KpiSessionsWidget, KpiIncidentsWidget, KpiUptimeWidget, KpiUtilizationWidget, KpiSwapsWidget, KpiReadyBatteriesWidget, KpiActiveSessionsWidget, KpiEnergyDeliveredWidget, KpiSiteCountWidget } from './widgets/kpi'
+import { KpiGenericWidget, KpiSimpleWidget, KpiStationsWidget, KpiRevenueWidget, KpiSessionsWidget, KpiIncidentsWidget, KpiUptimeWidget, KpiUtilizationWidget, KpiSwapsWidget, KpiReadyBatteriesWidget, KpiActiveSessionsWidget, KpiEnergyDeliveredWidget, KpiSiteCountWidget, OwnerMetricKpiWidget } from './widgets/kpi'
 
 // Chart Widgets
 import { BarChartWidget, LineChartWidget, DonutGaugeWidget } from './widgets/charts'
@@ -40,7 +40,11 @@ import {
   StatusDonutWidget,
   UtilizationHeatmapWidget,
   TeamActivityWidget,
-  QuickNavigationWidget
+  QuickNavigationWidget,
+  OwnerFiltersWidget,
+  OwnerOperationsWidget,
+  OwnerSiteRankingWidget,
+  OwnerAlertsWidget
 } from './widgets/panels'
 
 /** All roles for convenience */
@@ -184,6 +188,14 @@ export const WIDGET_REGISTRY: Record<WidgetId, WidgetDef> = {
     title: 'Site Count',
     allowedRoles: ['SITE_OWNER', 'STATION_OWNER', ...ADMIN_OPS],
     component: KpiSiteCountWidget as any,
+    defaultSize: '1',
+    category: 'kpi',
+  },
+  'kpi-owner-metric': {
+    id: 'kpi-owner-metric',
+    title: 'Owner Metric',
+    allowedRoles: ['STATION_OWNER'],
+    component: OwnerMetricKpiWidget as any,
     defaultSize: '1',
     category: 'kpi',
   },
@@ -488,6 +500,38 @@ export const WIDGET_REGISTRY: Record<WidgetId, WidgetDef> = {
     allowedRoles: ALL_ROLES,
     component: QuickNavigationWidget as any,
     defaultSize: '1',
+    category: 'panel',
+  },
+  'panel-owner-filters': {
+    id: 'panel-owner-filters',
+    title: 'Owner Filters',
+    allowedRoles: ['STATION_OWNER'],
+    component: OwnerFiltersWidget as any,
+    defaultSize: 'full',
+    category: 'panel',
+  },
+  'panel-owner-operations': {
+    id: 'panel-owner-operations',
+    title: 'Owner Operations',
+    allowedRoles: ['STATION_OWNER'],
+    component: OwnerOperationsWidget as any,
+    defaultSize: '2',
+    category: 'panel',
+  },
+  'panel-owner-site-ranking': {
+    id: 'panel-owner-site-ranking',
+    title: 'Owner Site Ranking',
+    allowedRoles: ['STATION_OWNER'],
+    component: OwnerSiteRankingWidget as any,
+    defaultSize: '2',
+    category: 'panel',
+  },
+  'panel-owner-alerts': {
+    id: 'panel-owner-alerts',
+    title: 'Owner Alerts',
+    allowedRoles: ['STATION_OWNER'],
+    component: OwnerAlertsWidget as any,
+    defaultSize: 'full',
     category: 'panel',
   },
 }

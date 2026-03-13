@@ -65,6 +65,7 @@ export const queryKeys = {
   // Analytics
   analytics: {
     dashboard: ['analytics', 'dashboard'] as const,
+    ownerDashboard: (filters?: Record<string, unknown>) => ['analytics', 'owner-dashboard', filters] as const,
     uptime: (period: string) => ['analytics', 'uptime', period] as const,
     usage: (period: string) => ['analytics', 'usage', period] as const,
     revenue: (period: string) => ['analytics', 'revenue', period] as const,

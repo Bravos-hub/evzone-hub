@@ -6,12 +6,21 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { analyticsService } from '../services/analyticsService'
 import { queryKeys } from '@/data/queryKeys'
+import type { OwnerDashboardFilters } from '@/core/api/types'
 
 export function useDashboardMetrics() {
   return useQuery({
     queryKey: queryKeys.analytics.dashboard,
     queryFn: () => analyticsService.getDashboard(),
     refetchInterval: 60000, // Refetch every minute for real-time updates
+  })
+}
+
+export function useOwnerDashboard(filters: OwnerDashboardFilters) {
+  return useQuery({
+    queryKey: queryKeys.analytics.ownerDashboard(filters as Record<string, unknown>),
+    queryFn: () => analyticsService.getOwnerDashboard(filters),
+    staleTime: 60_000,
   })
 }
 

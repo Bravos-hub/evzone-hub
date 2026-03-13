@@ -4,8 +4,13 @@ import type { Incident, MaintenanceNote, IncidentStatus } from '@/core/api/types
 const baseURL = API_CONFIG.baseURL
 
 export const incidentService = {
-  getAll: async () => {
-    const response = await fetch(`${baseURL}/incidents`)
+  getAll: async (filters?: { status?: string; severity?: string; stationId?: string }) => {
+    const params = new URLSearchParams()
+    if (filters?.status) params.append('status', filters.status)
+    if (filters?.severity) params.append('severity', filters.severity)
+    if (filters?.stationId) params.append('stationId', filters.stationId)
+    const query = params.toString()
+    const response = await fetch(`${baseURL}/incidents${query ? `?${query}` : ''}`)
     if (!response.ok) throw new Error('Failed to fetch incidents')
     return response.json() as Promise<Incident[]>
   },

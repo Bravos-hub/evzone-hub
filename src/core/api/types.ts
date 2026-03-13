@@ -879,6 +879,7 @@ export interface RevenueTrendPoint {
   date: string
   revenue: number
   cost: number
+  margin?: number | null
 }
 
 export interface UtilizationHour {
@@ -935,6 +936,114 @@ export interface DashboardMetrics {
     average: number
     lowHealthCount: number
   }
+}
+
+export type OwnerDashboardRange = '7d' | '30d' | '90d' | 'YTD' | 'ALL'
+
+export interface OwnerDashboardFilters {
+  range?: OwnerDashboardRange
+  siteId?: string
+  stationId?: string
+  chargerType?: string
+  sessionStatus?: string
+  state?: string
+  compare?: 'previous' | 'none'
+}
+
+export interface OwnerKpi {
+  value: number | null
+  deltaPct: number | null
+}
+
+export interface OwnerMarginKpi extends OwnerKpi {
+  available: boolean
+}
+
+export interface OwnerRevenueTrendPoint {
+  date: string
+  revenue: number
+  cost: number
+  margin: number | null
+}
+
+export interface OwnerUtilizationHeatmapCell {
+  day: string
+  hour: number
+  utilizationPct: number
+  sessionCount: number
+  energyKwh: number
+}
+
+export interface OwnerSitePerformanceRow {
+  stationId: string
+  stationName: string
+  siteId?: string | null
+  siteName?: string | null
+  revenue: number
+  sessions: number
+  utilizationPct: number
+  uptimePct: number | null
+  margin: number | null
+}
+
+export interface OwnerIncidentSummary {
+  stationId: string
+  stationName: string
+  openCount: number
+  recurringCount: number
+  highestSeverity: string
+}
+
+export interface OwnerActionAlert {
+  severity: 'critical' | 'high' | 'medium' | 'low'
+  message: string
+  reasonCode: string
+  targetType: 'portfolio' | 'site' | 'station' | 'chargePoint' | 'incident' | 'session'
+  targetId: string | null
+  recommendedPath: string
+}
+
+export interface OwnerDashboardResponse {
+  filters: {
+    range: OwnerDashboardRange
+    siteId: string | null
+    stationId: string | null
+    chargerType: string | null
+    sessionStatus: string | null
+    state: string | null
+    compare: 'previous' | 'none'
+  }
+  kpis: {
+    revenue: OwnerKpi
+    energySoldKwh: OwnerKpi
+    sessions: OwnerKpi
+    utilizationPct: OwnerKpi
+    uptimePct: OwnerKpi
+    activeStations: OwnerKpi
+    avgSessionDurationMinutes: OwnerKpi
+    margin: OwnerMarginKpi
+  }
+  commercial: {
+    revenueCostMarginTrend: OwnerRevenueTrendPoint[]
+  }
+  operations: {
+    statusCounts: {
+      total: number
+      online: number
+      offline: number
+      maintenance: number
+    }
+    openIncidents: number
+    recurringFaultStations: number
+    downtimeHours: number | null
+    incidentSummary: OwnerIncidentSummary[]
+  }
+  utilization: {
+    heatmap: OwnerUtilizationHeatmapCell[]
+    topSites: OwnerSitePerformanceRow[]
+    underperformingSites: OwnerSitePerformanceRow[]
+  }
+  alerts: OwnerActionAlert[]
 }
 
 // Organization Types

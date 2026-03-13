@@ -7,6 +7,8 @@ import { apiClient } from '@/core/api/client'
 import { API_CONFIG } from '@/core/api/config'
 import type {
   DashboardMetrics,
+  OwnerDashboardFilters,
+  OwnerDashboardResponse,
   SystemHealthResponse,
   SystemEvent,
   ServiceLog,
@@ -19,6 +21,19 @@ export const analyticsService = {
    */
   async getDashboard(): Promise<DashboardMetrics> {
     return apiClient.get<DashboardMetrics>('/analytics/dashboard')
+  },
+
+  async getOwnerDashboard(filters: OwnerDashboardFilters = {}): Promise<OwnerDashboardResponse> {
+    const params = new URLSearchParams()
+    if (filters.range) params.append('range', filters.range)
+    if (filters.siteId) params.append('siteId', filters.siteId)
+    if (filters.stationId) params.append('stationId', filters.stationId)
+    if (filters.chargerType) params.append('chargerType', filters.chargerType)
+    if (filters.sessionStatus) params.append('sessionStatus', filters.sessionStatus)
+    if (filters.state) params.append('state', filters.state)
+    if (filters.compare) params.append('compare', filters.compare)
+    const query = params.toString()
+    return apiClient.get<OwnerDashboardResponse>(`/analytics/owner/dashboard${query ? `?${query}` : ''}`)
   },
 
   /**

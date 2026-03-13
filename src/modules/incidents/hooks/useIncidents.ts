@@ -6,7 +6,7 @@ import type { IncidentStatus } from '@/core/api/types'
 export function useIncidents(filters?: { status?: string; severity?: string }) {
   return useQuery({
     queryKey: ['incidents', 'all', filters],
-    queryFn: () => incidentService.getAll(),
+    queryFn: () => incidentService.getAll(filters),
   })
 }
 
