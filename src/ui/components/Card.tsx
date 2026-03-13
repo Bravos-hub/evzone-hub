@@ -6,6 +6,6 @@ export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 export function Card({ children, className, ...props }: CardProps) {
-  return <div className={clsx('card', className)} {...props}>{children}</div>
+  return <div className={clsx('card min-w-0', className)} {...props}>{children}</div>
 }
 

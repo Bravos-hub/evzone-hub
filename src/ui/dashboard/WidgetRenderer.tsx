@@ -83,7 +83,7 @@ export function Widget({ widgetId, config, size, className, scope }: WidgetProps
   if (!visible) return null
 
   return (
-    <div className={`${gridClass} ${className ?? ''}`}>
+    <div className={`${gridClass} min-w-0 ${className ?? ''}`}>
       <Component config={scopedConfig} />
     </div>
   )

@@ -9,7 +9,7 @@ interface RevenueChartProps {
 
 export function RevenueChart({ data, title = 'Revenue Overview' }: RevenueChartProps) {
     return (
-        <Card className="p-6 flex flex-col gap-6">
+        <Card className="min-w-0 p-6 flex flex-col gap-6">
             <div className="flex items-center justify-between">
                 <div>
                     <h3 className="text-lg font-bold text-text">{title}</h3>
@@ -31,8 +31,8 @@ export function RevenueChart({ data, title = 'Revenue Overview' }: RevenueChartP
                 </div>
             </div>
 
-            <div className="h-[300px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
+            <div className="h-[300px] min-h-[300px] w-full min-w-0 overflow-hidden">
+                <ResponsiveContainer width="100%" height="100%" debounce={50}>
                     <AreaChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                         <defs>
                             <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
