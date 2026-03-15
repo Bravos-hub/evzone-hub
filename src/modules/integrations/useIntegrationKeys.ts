@@ -6,10 +6,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { integrationsService } from './integrationsService'
 
-export function useApiKeys() {
+export function useApiKeys(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: ['integrations', 'api-keys'],
     queryFn: () => integrationsService.getApiKeys(),
+    enabled: options?.enabled ?? true,
   })
 }
 

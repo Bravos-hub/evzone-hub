@@ -74,7 +74,10 @@ export function Settings() {
   const verify2fa = useVerify2fa()
   const disable2fa = useDisable2fa()
 
-  const { data: apiKeysData, isLoading: apiKeysLoading, error: apiKeysError } = useApiKeys()
+  const resolvedRole = (me || user)?.role
+  const canUseApiKeys = resolvedRole === 'EVZONE_ADMIN' || resolvedRole === 'SUPER_ADMIN'
+
+  const { data: apiKeysData, isLoading: apiKeysLoading, error: apiKeysError } = useApiKeys({ enabled: canUseApiKeys })
   const rotateApiKey = useRotateApiKey()
   const revokeApiKey = useRevokeApiKey()
 
@@ -227,7 +230,7 @@ export function Settings() {
   })
 
   // Role-based tab visibility
-  const isAdmin = resolvedUser?.role === 'EVZONE_ADMIN' || resolvedUser?.role === 'SUPER_ADMIN'
+  const isAdmin = canUseApiKeys
   const isOwner = resolvedUser?.role === 'SITE_OWNER' || resolvedUser?.role === 'STATION_OWNER'
   const isManager = resolvedUser?.role === 'CASHIER' || resolvedUser?.role === 'ATTENDANT' // Assuming managers, but adjust based on actual roles
 
@@ -256,7 +259,7 @@ export function Settings() {
     <DashboardLayout pageTitle="Settings">
       <div className="space-y-6">
         {ack && <div className="rounded-lg bg-accent/10 text-accent px-4 py-2 text-sm">{ack}</div>}
-        {(meError || apiKeysError) && (
+        {(meError || (canUseApiKeys && apiKeysError)) && (
           <div className="card mb-4 bg-red-50 border border-red-200 text-red-700 text-sm">
             {getErrorMessage(meError || apiKeysError)}
           </div>
