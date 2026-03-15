@@ -12,6 +12,8 @@ export function LoginPage() {
 
   const [emailOrPhone, setEmailOrPhone] = useState('')
   const [password, setPassword] = useState('')
+  const [twoFactorToken, setTwoFactorToken] = useState('')
+  const [requiresTwoFactor, setRequiresTwoFactor] = useState(false)
   const [error, setError] = useState('')
   const [showPassword, setShowPassword] = useState(false)
 
@@ -31,6 +33,11 @@ export function LoginPage() {
       return
     }
 
+    if (requiresTwoFactor && !twoFactorToken.trim()) {
+      setError('Authenticator code is required')
+      return
+    }
+
     if (!emailOrPhone.trim()) {
       setError('Email or phone number is required')
       return
@@ -42,10 +49,25 @@ export function LoginPage() {
         email: isEmailInput ? emailOrPhone : undefined,
         phone: isEmailInput ? undefined : emailOrPhone,
         password,
+        twoFactorToken: requiresTwoFactor ? twoFactorToken : undefined,
       })
+      setRequiresTwoFactor(false)
+      setTwoFactorToken('')
       nav(returnTo, { replace: true })
     } catch (err) {
-      setError(getErrorMessage(err))
+      const message = getErrorMessage(err)
+      const lowered = message.toLowerCase()
+
+      if (lowered.includes('two-factor')) {
+        setRequiresTwoFactor(true)
+      }
+
+      if (lowered.includes('code required')) {
+        setError('Enter the 6-digit code from your authenticator app to continue.')
+        return
+      }
+
+      setError(message)
     }
   }
 
@@ -132,6 +154,28 @@ export function LoginPage() {
                       </button>
                     </div>
                   </div>
+
+                  {requiresTwoFactor && (
+                    <div>
+                      <label htmlFor="twoFactorToken" className="block text-xs font-medium text-text-secondary mb-2">
+                        Authenticator Code
+                      </label>
+                      <input
+                        id="twoFactorToken"
+                        type="text"
+                        className="w-full bg-bg-secondary border border-border-light text-text rounded-xl py-3 px-4 text-sm transition-all duration-200 focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 placeholder:text-muted"
+                        value={twoFactorToken}
+                        onChange={(e) =>
+                          setTwoFactorToken(e.target.value.replace(/\D/g, '').slice(0, 6))
+                        }
+                        placeholder="6-digit code"
+                        required
+                        disabled={loginMutation.isPending}
+                        inputMode="numeric"
+                        autoComplete="one-time-code"
+                      />
+                    </div>
+                  )}
                 </div>
 
                 {/* Error Message */}
@@ -157,10 +201,10 @@ export function LoginPage() {
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                         </svg>
-                        Logging in...
+                        {requiresTwoFactor ? 'Verifying code...' : 'Logging in...'}
                       </span>
                     ) : (
-                      'Sign In'
+                      requiresTwoFactor ? 'Verify & Sign In' : 'Sign In'
                     )}
                   </button>
                 </div>

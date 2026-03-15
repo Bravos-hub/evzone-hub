@@ -11,6 +11,7 @@ export interface LoginRequest {
   phone?: string
   password: string
   inviteToken?: string
+  twoFactorToken?: string
 }
 
 export interface RegisterRequest {

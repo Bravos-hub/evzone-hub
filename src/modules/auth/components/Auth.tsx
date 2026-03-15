@@ -17,6 +17,8 @@ export function Login() {
   const { login } = useAuthStore()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [twoFactorToken, setTwoFactorToken] = useState('')
+  const [requiresTwoFactor, setRequiresTwoFactor] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -36,7 +38,20 @@ export function Login() {
     setLoading(true)
 
     try {
-      const response = await login({ email, password, inviteToken })
+      if (requiresTwoFactor && !twoFactorToken.trim()) {
+        setError('Authenticator code is required')
+        setLoading(false)
+        return
+      }
+
+      const response = await login({
+        email,
+        password,
+        inviteToken,
+        twoFactorToken: requiresTwoFactor ? twoFactorToken : undefined,
+      })
+      setRequiresTwoFactor(false)
+      setTwoFactorToken('')
       const mustChangePassword =
         response.user.mustChangePassword ?? response.mustChangePassword
       const memberships = response.user.memberships || response.memberships || []
@@ -54,7 +69,16 @@ export function Login() {
 
       navigate(returnTo)
     } catch (err: any) {
-      setError(err?.message || 'Login failed. Please check your credentials.')
+      const message = String(err?.message || 'Login failed. Please check your credentials.')
+      const lowered = message.toLowerCase()
+      if (lowered.includes('two-factor')) {
+        setRequiresTwoFactor(true)
+      }
+      if (lowered.includes('code required')) {
+        setError('Enter the 6-digit code from your authenticator app to continue.')
+      } else {
+        setError(message)
+      }
     } finally {
       setLoading(false)
     }
@@ -154,6 +178,24 @@ export function Login() {
                   />
                 </div>
 
+                {requiresTwoFactor && (
+                  <div>
+                    <label className="text-xs font-semibold uppercase tracking-[0.2em] text-text-secondary">
+                      Authenticator Code
+                    </label>
+                    <input
+                      type="text"
+                      value={twoFactorToken}
+                      onChange={e => setTwoFactorToken(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                      className="input mt-2 rounded-2xl"
+                      placeholder="6-digit code"
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      required
+                    />
+                  </div>
+                )}
+
                 <div className="flex items-center justify-between text-sm text-[var(--evz-muted)]">
                   <label className="flex items-center gap-2">
                     <input type="checkbox" className="rounded border-border" />
@@ -167,7 +209,13 @@ export function Login() {
                   disabled={loading}
                   className="w-full rounded-2xl bg-accent px-4 py-3 text-sm font-semibold text-white shadow-accent transition hover:bg-accent-hover disabled:opacity-50"
                 >
-                  {loading ? 'Signing in...' : 'Sign in'}
+                  {loading
+                    ? requiresTwoFactor
+                      ? 'Verifying code...'
+                      : 'Signing in...'
+                    : requiresTwoFactor
+                      ? 'Verify & Sign in'
+                      : 'Sign in'}
                 </button>
               </form>
 

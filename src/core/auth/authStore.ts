@@ -16,7 +16,13 @@ type AuthState = {
   impersonator: UserProfile | null;
   impersonationReturnTo: string | null;
   isLoading: boolean;
-  login: (opts: { email?: string; phone?: string; password: string; inviteToken?: string }) => Promise<AuthResponse>;
+  login: (opts: {
+    email?: string;
+    phone?: string;
+    password: string;
+    inviteToken?: string;
+    twoFactorToken?: string;
+  }) => Promise<AuthResponse>;
   loginWithUser: (user: AuthResponse['user']) => void;
   loginWithResponse: (response: AuthResponse) => void;
   logout: () => Promise<void>;
@@ -167,11 +173,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   impersonationReturnTo: loadReturnTo(),
   isLoading: false,
 
-  login: async ({ email, phone, password, inviteToken }) => {
+  login: async ({ email, phone, password, inviteToken, twoFactorToken }) => {
     set({ isLoading: true });
     try {
       // API returns only user data, cookies are set automatically
-      const response = await authService.login({ email, phone, password, inviteToken });
+      const response = await authService.login({
+        email,
+        phone,
+        password,
+        inviteToken,
+        twoFactorToken,
+      });
       get().loginWithResponse(response);
       return response;
     } catch (error) {
