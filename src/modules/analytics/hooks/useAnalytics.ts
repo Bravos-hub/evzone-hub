@@ -21,6 +21,7 @@ export function useOwnerDashboard(filters: OwnerDashboardFilters) {
     queryKey: queryKeys.analytics.ownerDashboard(filters as Record<string, unknown>),
     queryFn: () => analyticsService.getOwnerDashboard(filters),
     staleTime: 60_000,
+    placeholderData: (previousData) => previousData,
   })
 }
 
