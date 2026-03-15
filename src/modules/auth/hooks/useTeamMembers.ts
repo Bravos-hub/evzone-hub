@@ -8,10 +8,11 @@ import type {
   UpdateUserRequest,
 } from '@/core/api/types'
 
-export function useTeamMembers() {
+export function useTeamMembers(enabled = true) {
   return useQuery({
     queryKey: queryKeys.team.members,
     queryFn: () => teamService.getTeamMembers(),
+    enabled,
   })
 }
 

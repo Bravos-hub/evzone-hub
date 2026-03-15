@@ -230,6 +230,9 @@ export interface UpdateUserRequest {
   name?: string
   email?: string
   phone?: string
+  country?: string
+  region?: string
+  postalCode?: string
   role?: string
   providerId?: string
   orgId?: string

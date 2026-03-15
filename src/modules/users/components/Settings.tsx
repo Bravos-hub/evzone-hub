@@ -1,17 +1,45 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { useAuthStore } from '@/core/auth/authStore'
-import { useMe, useGenerate2fa, useVerify2fa, useDisable2fa } from '@/modules/auth/hooks/useAuth'
-import { useUpdateMe, useChangePassword, useUploadAvatar } from '@/modules/auth/hooks/useUsers'
-import { useApiKeys, useRotateApiKey, useRevokeApiKey } from '@/modules/integrations/useIntegrationKeys'
-import { useReferenceCountries } from '@/modules/geography/hooks/useGeography'
+import { apiClient } from '@/core/api/client'
 import { getErrorMessage } from '@/core/api/errors'
+import type { Organization, TeamInviteRequest, TeamMember } from '@/core/api/types'
+import { queryKeys } from '@/data/queryKeys'
+import {
+  useMe,
+  useGenerate2fa,
+  useVerify2fa,
+  useDisable2fa,
+} from '@/modules/auth/hooks/useAuth'
+import {
+  useUpdateMe,
+  useChangePassword,
+  useUploadAvatar,
+} from '@/modules/auth/hooks/useUsers'
+import {
+  useTeamMembers,
+  useInviteTeamMember,
+} from '@/modules/auth/hooks/useTeamMembers'
+import { onboardingService } from '@/modules/auth/services/onboardingService'
+import { resolveUserOrgId } from '@/modules/auth/services/userService'
+import { useApiKeys, useRotateApiKey, useRevokeApiKey } from '@/modules/integrations/useIntegrationKeys'
 import type { ApiKey } from '@/modules/integrations/integrationsService'
+import { useReferenceCountries } from '@/modules/geography/hooks/useGeography'
+import { useStations } from '@/modules/stations/hooks/useStations'
+import { ROLE_LABELS } from '@/constants/roles'
+import { InviteMemberModal } from '@/ui/components/InviteMemberModal'
 import { TextSkeleton } from '@/ui/components/SkeletonCards'
 
-/* Settings - Profile, Security, Notifications, UI Preferences, API, Organization, Team, Billing */
-
-type SettingsTab = 'profile' | 'security' | 'notifications' | 'ui_preferences' | 'api' | 'organization' | 'team' | 'billing'
+type SettingsTab =
+  | 'profile'
+  | 'security'
+  | 'notifications'
+  | 'ui_preferences'
+  | 'api'
+  | 'organization'
+  | 'team'
+  | 'billing'
 
 type NotificationPrefs = {
   emailAlerts: boolean
@@ -25,12 +53,26 @@ type ProfileState = {
   name: string
   email: string
   phone: string
-  company: string
-  title: string
   country: string
+}
+
+type UiPreferencesState = {
+  themeMode: 'system' | 'light' | 'dark'
+  dashboardRange: 'this_week' | 'this_month' | 'last_30_days' | 'year_to_date'
+}
+
+type OrganizationFormState = {
+  name: string
+  regId: string
+  taxId: string
   city: string
-  language: string
-  timezone: string
+  address: string
+}
+
+type BillingFormState = {
+  provider: string
+  walletNumber: string
+  taxId: string
 }
 
 const defaultNotifications: NotificationPrefs = {
@@ -39,6 +81,11 @@ const defaultNotifications: NotificationPrefs = {
   smsAlerts: false,
   weeklyDigest: false,
   marketingEmails: false,
+}
+
+const defaultUiPreferences: UiPreferencesState = {
+  themeMode: 'system',
+  dashboardRange: 'last_30_days',
 }
 
 const fallbackCountryOptions = [
@@ -51,6 +98,9 @@ const fallbackCountryOptions = [
   'United Kingdom',
 ]
 
+const notificationStorageKey = 'settings.notifications'
+const uiPreferencesStorageKey = 'settings.uiPreferences'
+
 const formatDate = (value?: string) => {
   if (!value) return '--'
   const date = new Date(value)
@@ -58,24 +108,52 @@ const formatDate = (value?: string) => {
   return date.toISOString().slice(0, 10)
 }
 
+const scopedStorageKey = (base: string, userId?: string) =>
+  `${base}:${userId || 'anonymous'}`
+
+const readStorage = <T,>(key: string, fallback: T): T => {
+  if (typeof window === 'undefined') return fallback
+  try {
+    const raw = window.localStorage.getItem(key)
+    if (!raw) return fallback
+    return JSON.parse(raw) as T
+  } catch {
+    return fallback
+  }
+}
+
+const writeStorage = <T,>(key: string, value: T) => {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value))
+  } catch {
+    // noop
+  }
+}
+
 const mapProfile = (user?: any): ProfileState => ({
   name: user?.name || '',
   email: user?.email || '',
   phone: user?.phone || '',
-  company: user?.company || user?.organizationName || '',
-  title: user?.title || '',
   country: user?.country || '',
-  city: user?.city || '',
-  language: user?.language || user?.locale || '',
-  timezone: user?.timezone || '',
 })
 
-const mapNotifications = (user?: any): NotificationPrefs => ({
-  ...defaultNotifications,
-  ...(user?.notificationPreferences || user?.preferences?.notifications || {}),
+const mapOrganizationForm = (organization?: Partial<Organization>): OrganizationFormState => ({
+  name: organization?.name || '',
+  regId: organization?.regId || '',
+  taxId: organization?.taxId || '',
+  city: organization?.city || '',
+  address: organization?.address || '',
+})
+
+const mapBillingForm = (organization?: Partial<Organization>): BillingFormState => ({
+  provider: organization?.paymentProvider || '',
+  walletNumber: organization?.walletNumber || '',
+  taxId: organization?.taxId || '',
 })
 
 export function Settings() {
+  const queryClient = useQueryClient()
   const { user } = useAuthStore()
   const { data: me, isLoading: meLoading, error: meError, refetch } = useMe()
   const updateMe = useUpdateMe()
@@ -85,24 +163,102 @@ export function Settings() {
   const verify2fa = useVerify2fa()
   const disable2fa = useDisable2fa()
 
-  const resolvedRole = (me || user)?.role
+  const resolvedUser = me || user
+  const resolvedRole = resolvedUser?.role
+  const organizationId = resolveUserOrgId(resolvedUser as any)
   const canUseApiKeys = resolvedRole === 'EVZONE_ADMIN' || resolvedRole === 'SUPER_ADMIN'
-
-  const { data: apiKeysData, isLoading: apiKeysLoading, error: apiKeysError } = useApiKeys({ enabled: canUseApiKeys })
-  const rotateApiKey = useRotateApiKey()
-  const revokeApiKey = useRevokeApiKey()
+  const isOwner =
+    resolvedRole === 'SITE_OWNER' || resolvedRole === 'STATION_OWNER'
+  const canManageTeam = canUseApiKeys || isOwner
 
   const [tab, setTab] = useState<SettingsTab>('profile')
   const [ack, setAck] = useState('')
-  const { data: referenceCountries = [] } = useReferenceCountries()
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false)
 
-  const resolvedUser = me || user
+  const { data: referenceCountries = [] } = useReferenceCountries()
+  const countryOptions = useMemo(() => {
+    if (referenceCountries.length === 0) return fallbackCountryOptions
+    return referenceCountries.map((country) => country.name)
+  }, [referenceCountries])
+
+  const { data: apiKeysData, isLoading: apiKeysLoading, error: apiKeysError } =
+    useApiKeys({ enabled: canUseApiKeys })
+  const rotateApiKey = useRotateApiKey()
+  const revokeApiKey = useRevokeApiKey()
+
+  const organizationQuery = useQuery({
+    queryKey: queryKeys.organizations.detail(organizationId || 'none'),
+    queryFn: () => apiClient.get<Organization>(`/organizations/${organizationId}`),
+    enabled: Boolean(organizationId),
+  })
+
+  const { data: teamMembers = [], isLoading: teamLoading, error: teamError } =
+    useTeamMembers(canManageTeam && tab === 'team')
+
+  const { data: stations = [] } = useStations(
+    { orgId: organizationId || undefined },
+    {
+      enabled: canManageTeam && (tab === 'team' || isInviteModalOpen) && Boolean(organizationId),
+    },
+  )
+  const inviteTeamMember = useInviteTeamMember()
 
   const [profile, setProfile] = useState<ProfileState>(() => mapProfile(resolvedUser))
   const [profileDirty, setProfileDirty] = useState(false)
 
-  const [notifications, setNotifications] = useState<NotificationPrefs>(() => mapNotifications(resolvedUser))
+  const [notifications, setNotifications] = useState<NotificationPrefs>(
+    defaultNotifications,
+  )
   const [notificationsDirty, setNotificationsDirty] = useState(false)
+
+  const [uiPreferences, setUiPreferences] = useState<UiPreferencesState>(
+    defaultUiPreferences,
+  )
+  const [uiPreferencesDirty, setUiPreferencesDirty] = useState(false)
+
+  const [organizationForm, setOrganizationForm] = useState<OrganizationFormState>(
+    mapOrganizationForm(),
+  )
+  const [organizationDirty, setOrganizationDirty] = useState(false)
+
+  const [billingForm, setBillingForm] = useState<BillingFormState>(mapBillingForm())
+  const [billingDirty, setBillingDirty] = useState(false)
+
+  const [security, setSecurity] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  })
+  const [qrCodeData, setQrCodeData] = useState<{ url: string; secret: string } | null>(null)
+  const [otpToken, setOtpToken] = useState('')
+
+  const tabs = useMemo<{ key: SettingsTab; label: string }[]>(() => {
+    const baseTabs: { key: SettingsTab; label: string }[] = [
+      { key: 'profile', label: 'Profile' },
+      { key: 'security', label: 'Security' },
+      { key: 'notifications', label: 'Notifications' },
+      { key: 'ui_preferences', label: 'UI Preferences' },
+    ]
+
+    if (canUseApiKeys) {
+      baseTabs.push({ key: 'api', label: 'API Keys' })
+      baseTabs.push({ key: 'organization', label: 'Organization Details' })
+      baseTabs.push({ key: 'team', label: 'Team Management' })
+      baseTabs.push({ key: 'billing', label: 'Billing & Payouts' })
+    } else if (isOwner) {
+      baseTabs.push({ key: 'organization', label: 'Organization Details' })
+      baseTabs.push({ key: 'team', label: 'Team Management' })
+      baseTabs.push({ key: 'billing', label: 'Billing & Payouts' })
+    }
+
+    return baseTabs
+  }, [canUseApiKeys, isOwner])
+
+  useEffect(() => {
+    if (!tabs.some((item) => item.key === tab)) {
+      setTab(tabs[0]?.key || 'profile')
+    }
+  }, [tab, tabs])
 
   useEffect(() => {
     if (!profileDirty) {
@@ -111,44 +267,88 @@ export function Settings() {
   }, [resolvedUser, profileDirty])
 
   useEffect(() => {
-    if (!notificationsDirty) {
-      setNotifications(mapNotifications(resolvedUser))
+    if (!organizationDirty) {
+      setOrganizationForm(mapOrganizationForm(organizationQuery.data))
     }
-  }, [resolvedUser, notificationsDirty])
+  }, [organizationQuery.data, organizationDirty])
+
+  useEffect(() => {
+    if (!billingDirty) {
+      setBillingForm(mapBillingForm(organizationQuery.data))
+    }
+  }, [organizationQuery.data, billingDirty])
+
+  useEffect(() => {
+    const scopedNotificationsKey = scopedStorageKey(
+      notificationStorageKey,
+      resolvedUser?.id,
+    )
+    const scopedUiPrefsKey = scopedStorageKey(uiPreferencesStorageKey, resolvedUser?.id)
+    setNotifications(readStorage(scopedNotificationsKey, defaultNotifications))
+    setUiPreferences(readStorage(scopedUiPrefsKey, defaultUiPreferences))
+    setNotificationsDirty(false)
+    setUiPreferencesDirty(false)
+  }, [resolvedUser?.id])
 
   const apiKeys = useMemo<ApiKey[]>(() => {
     if (Array.isArray(apiKeysData)) return apiKeysData
     return (apiKeysData as any)?.data || []
   }, [apiKeysData])
 
-  const countryOptions = useMemo(() => {
-    if (referenceCountries.length === 0) return fallbackCountryOptions
-    return referenceCountries.map((country) => country.name)
-  }, [referenceCountries])
+  const toast = (message: string) => {
+    setAck(message)
+    setTimeout(() => setAck(''), 2400)
+  }
 
-  const toast = (m: string) => { setAck(m); setTimeout(() => setAck(''), 2000) }
+  const updateOrganization = useMutation({
+    mutationFn: async (payload: Partial<Organization>) => {
+      if (!organizationId) throw new Error('No active organization context found.')
+      return apiClient.patch<Organization>(`/organizations/${organizationId}`, payload)
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.organizations.detail(organizationId || ''),
+      })
+      toast('Organization details saved.')
+      setOrganizationDirty(false)
+    },
+    onError: (error) => toast(getErrorMessage(error)),
+  })
+
+  const updateBilling = useMutation({
+    mutationFn: async (payload: BillingFormState) => {
+      if (!organizationId) throw new Error('No active organization context found.')
+      return onboardingService.setupPayouts(organizationId, {
+        provider: payload.provider,
+        walletNumber: payload.walletNumber,
+        taxId: payload.taxId || undefined,
+      })
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.organizations.detail(organizationId || ''),
+      })
+      toast('Billing and payout details saved.')
+      setBillingDirty(false)
+    },
+    onError: (error) => toast(getErrorMessage(error)),
+  })
 
   const handleProfileSave = (e: React.FormEvent) => {
     e.preventDefault()
     updateMe.mutate(
       {
         name: profile.name || undefined,
-        email: profile.email || undefined,
         phone: profile.phone || undefined,
-        company: profile.company || undefined,
-        title: profile.title || undefined,
         country: profile.country || undefined,
-        city: profile.city || undefined,
-        language: profile.language || undefined,
-        timezone: profile.timezone || undefined,
       } as any,
       {
         onSuccess: () => {
-          toast('Profile saved successfully!')
+          toast('Profile saved successfully.')
           setProfileDirty(false)
         },
-        onError: (err) => toast(getErrorMessage(err))
-      }
+        onError: (error) => toast(getErrorMessage(error)),
+      },
     )
   }
 
@@ -159,24 +359,28 @@ export function Settings() {
       return
     }
     if (security.newPassword !== security.confirmPassword) {
-      toast('Passwords do not match!')
+      toast('Passwords do not match.')
       return
     }
 
     changePassword.mutate(
-      { currentPassword: security.currentPassword, newPassword: security.newPassword },
+      {
+        currentPassword: security.currentPassword,
+        newPassword: security.newPassword,
+      },
       {
         onSuccess: () => {
-          toast('Password changed successfully!')
-          setSecurity(s => ({ ...s, currentPassword: '', newPassword: '', confirmPassword: '' }))
+          toast('Password changed successfully.')
+          setSecurity({
+            currentPassword: '',
+            newPassword: '',
+            confirmPassword: '',
+          })
         },
-        onError: (err) => toast(getErrorMessage(err))
-      }
+        onError: (error) => toast(getErrorMessage(error)),
+      },
     )
   }
-
-  const [qrCodeData, setQrCodeData] = useState<{ url: string; secret: string } | null>(null)
-  const [otpToken, setOtpToken] = useState('')
 
   const handleToggle2fa = (enable: boolean) => {
     if (enable) {
@@ -184,272 +388,279 @@ export function Settings() {
         onSuccess: (data: any) => {
           setQrCodeData({ url: data.qrCodeUrl, secret: data.secret })
         },
-        onError: (err) => toast(getErrorMessage(err))
+        onError: (error) => toast(getErrorMessage(error)),
       })
-    } else {
-      const token = prompt('Enter your 2FA token to disable:')
-      if (token) {
-        disable2fa.mutate(token, {
-          onSuccess: () => {
-            toast('2FA disabled successfully!')
-            refetch()
-          },
-          onError: (err) => toast(getErrorMessage(err))
-        })
-      }
+      return
     }
+
+    const token = prompt('Enter your 2FA token to disable:')
+    if (!token) return
+    disable2fa.mutate(token, {
+      onSuccess: () => {
+        toast('2FA disabled successfully.')
+        refetch()
+      },
+      onError: (error) => toast(getErrorMessage(error)),
+    })
   }
 
   const handleVerify2fa = () => {
     verify2fa.mutate(otpToken, {
       onSuccess: () => {
-        toast('2FA enabled successfully!')
+        toast('2FA enabled successfully.')
         setQrCodeData(null)
         setOtpToken('')
         refetch()
       },
-      onError: (err) => toast(getErrorMessage(err))
+      onError: (error) => toast(getErrorMessage(error)),
     })
   }
 
   const handleNotificationsSave = () => {
-    updateMe.mutate(
-      { notificationPreferences: notifications } as any,
-      {
-        onSuccess: () => {
-          toast('Notification preferences saved!')
-          setNotificationsDirty(false)
-        },
-        onError: (err) => toast(getErrorMessage(err))
-      }
+    writeStorage(
+      scopedStorageKey(notificationStorageKey, resolvedUser?.id),
+      notifications,
     )
+    setNotificationsDirty(false)
+    toast('Notification preferences saved on this device.')
   }
 
-  const handleLocalizationSave = () => {
-    updateMe.mutate(
-      {
-        language: profile.language || undefined,
-        timezone: profile.timezone || undefined,
-        country: profile.country || undefined,
-        city: profile.city || undefined,
-      } as any,
-      {
-        onSuccess: () => toast('Localization settings saved!'),
-        onError: (err) => toast(getErrorMessage(err))
-      }
+  const handleUiPreferencesSave = () => {
+    writeStorage(
+      scopedStorageKey(uiPreferencesStorageKey, resolvedUser?.id),
+      uiPreferences,
     )
+    setUiPreferencesDirty(false)
+    toast('UI preferences saved on this device.')
   }
 
-  const [security, setSecurity] = useState({
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: '',
-  })
-
-  // Role-based tab visibility
-  const isAdmin = canUseApiKeys
-  const isOwner = resolvedUser?.role === 'SITE_OWNER' || resolvedUser?.role === 'STATION_OWNER'
-  const isManager = resolvedUser?.role === 'CASHIER' || resolvedUser?.role === 'ATTENDANT' // Assuming managers, but adjust based on actual roles
-
-  const baseTabs: { key: SettingsTab; label: string }[] = [
-    { key: 'profile', label: 'Profile' },
-    { key: 'security', label: 'Security' },
-    { key: 'notifications', label: 'Notifications' },
-    { key: 'ui_preferences', label: 'UI Preferences' },
-  ]
-
-  if (isAdmin) {
-    baseTabs.push({ key: 'api', label: 'API Keys' })
-    baseTabs.push({ key: 'organization', label: 'Organization Details' })
-    baseTabs.push({ key: 'team', label: 'Team Management' })
-  } else if (isOwner) {
-    baseTabs.push({ key: 'organization', label: 'Organization Details' })
-    baseTabs.push({ key: 'team', label: 'Team Management' })
-    baseTabs.push({ key: 'billing', label: 'Billing & Payouts' })
-  } else if (isManager) {
-    // example, attendants don't see team or billing by default, up to your business logic
+  const handleInviteMember = async (payload: TeamInviteRequest) => {
+    try {
+      await inviteTeamMember.mutateAsync(payload)
+      toast('Team invitation sent.')
+      setIsInviteModalOpen(false)
+    } catch (error) {
+      toast(getErrorMessage(error))
+    }
   }
 
-  const tabs = baseTabs;
+  const criticalError = meError || (canUseApiKeys && apiKeysError)
+  const secondaryError = organizationQuery.error || teamError
 
   return (
     <DashboardLayout pageTitle="Settings">
-      <div className="space-y-6">
-        {ack && <div className="rounded-lg bg-accent/10 text-accent px-4 py-2 text-sm">{ack}</div>}
-        {(meError || (canUseApiKeys && apiKeysError)) && (
-          <div className="card mb-4 bg-red-50 border border-red-200 text-red-700 text-sm">
-            {getErrorMessage(meError || apiKeysError)}
+      <div className="space-y-6 pb-24">
+        {ack && (
+          <div className="rounded-lg bg-accent/10 px-4 py-2 text-sm text-accent">
+            {ack}
           </div>
         )}
 
-        {/* Tabs */}
-        <div className="flex gap-2 border-b border-border pb-2">
-          {tabs.map(t => (
+        {criticalError && (
+          <div className="card border border-red-200 bg-red-50 text-sm text-red-700">
+            {getErrorMessage(criticalError)}
+          </div>
+        )}
+
+        {secondaryError && (
+          <div className="card border border-amber-200 bg-amber-50 text-sm text-amber-700">
+            {getErrorMessage(secondaryError)}
+          </div>
+        )}
+
+        <div className="flex gap-2 overflow-x-auto border-b border-border pb-2">
+          {tabs.map((item) => (
             <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
-              className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${tab === t.key ? 'bg-accent text-white' : 'hover:bg-muted'}`}
+              key={item.key}
+              onClick={() => setTab(item.key)}
+              className={`shrink-0 rounded-t-lg px-4 py-2 font-medium transition-colors ${
+                tab === item.key ? 'bg-accent text-white' : 'hover:bg-muted'
+              }`}
             >
-              {t.label}
+              {item.label}
             </button>
           ))}
         </div>
 
-        {/* Profile Tab */}
         {tab === 'profile' && (
-          <form onSubmit={handleProfileSave} className="rounded-xl bg-surface border border-border p-6 space-y-6">
+          <form
+            onSubmit={handleProfileSave}
+            className="space-y-6 rounded-xl border border-border bg-surface p-6"
+          >
             <h2 className="text-lg font-semibold">Profile Information</h2>
 
-            {/* Avatar */}
+            {meLoading && (
+              <div className="py-2">
+                <TextSkeleton lines={2} />
+              </div>
+            )}
+
             <div className="flex items-center gap-4">
               {resolvedUser?.avatarUrl ? (
-                <img src={resolvedUser.avatarUrl} alt={resolvedUser.name} className="h-16 w-16 rounded-full object-cover border-2 border-accent/20" />
+                <img
+                  src={resolvedUser.avatarUrl}
+                  alt={resolvedUser.name || 'Avatar'}
+                  className="h-16 w-16 rounded-full border-2 border-accent/20 object-cover"
+                />
               ) : (
-                <div className="h-16 w-16 rounded-full bg-muted grid place-items-center text-subtle text-sm">
-                  {profile.name ? profile.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2) : '--'}
+                <div className="grid h-16 w-16 place-items-center rounded-full bg-muted text-sm text-subtle">
+                  {profile.name
+                    ? profile.name
+                        .split(' ')
+                        .map((part: string) => part[0])
+                        .join('')
+                        .slice(0, 2)
+                    : '--'}
                 </div>
               )}
+
               <div className="relative">
                 <input
                   type="file"
                   accept="image/*"
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
                   onChange={(e) => {
                     const file = e.target.files?.[0]
-                    if (file) {
-                      uploadAvatar.mutate(file, {
-                        onSuccess: () => {
-                          toast('Avatar uploaded successfully!')
-                          refetch()
-                        },
-                        onError: (err) => toast(getErrorMessage(err))
-                      })
-                    }
+                    if (!file) return
+                    uploadAvatar.mutate(file, {
+                      onSuccess: () => {
+                        toast('Avatar uploaded successfully.')
+                        refetch()
+                      },
+                      onError: (error) => toast(getErrorMessage(error)),
+                    })
                   }}
                   title="Upload avatar"
                 />
-                <button type="button" className="px-3 py-2 rounded-lg border border-border hover:bg-muted pointer-events-none">
-                  Upload avatar
+                <button
+                  type="button"
+                  className="pointer-events-none rounded-lg border border-border px-3 py-2 hover:bg-muted"
+                >
+                  {uploadAvatar.isPending ? 'Uploading...' : 'Upload avatar'}
                 </button>
               </div>
             </div>
 
-            <div className="grid sm:grid-cols-2 gap-4">
+            <div className="grid gap-4 sm:grid-cols-2">
               <label className="grid gap-1">
                 <span className="text-sm font-medium">Full Name</span>
                 <input
                   value={profile.name}
-                  onChange={e => {
-                    setProfile(p => ({ ...p, name: e.target.value }))
+                  onChange={(e) => {
+                    setProfile((prev) => ({ ...prev, name: e.target.value }))
                     setProfileDirty(true)
                   }}
                   className="input"
-                  disabled={meLoading}
+                  disabled={meLoading || updateMe.isPending}
                 />
               </label>
+
               <label className="grid gap-1">
                 <span className="text-sm font-medium">Email</span>
                 <input
                   type="email"
                   value={profile.email}
-                  onChange={e => {
-                    setProfile(p => ({ ...p, email: e.target.value }))
-                    setProfileDirty(true)
-                  }}
-                  className="input"
-                  disabled={meLoading}
+                  className="input bg-muted/30"
+                  disabled
                 />
+                <span className="text-xs text-subtle">
+                  Email changes are currently managed by account administration.
+                </span>
               </label>
+
               <label className="grid gap-1">
                 <span className="text-sm font-medium">Phone</span>
                 <input
                   value={profile.phone}
-                  onChange={e => {
-                    setProfile(p => ({ ...p, phone: e.target.value }))
+                  onChange={(e) => {
+                    setProfile((prev) => ({ ...prev, phone: e.target.value }))
                     setProfileDirty(true)
                   }}
                   className="input"
-                  disabled={meLoading}
+                  disabled={meLoading || updateMe.isPending}
                 />
               </label>
-              <label className="grid gap-1">
-                <span className="text-sm font-medium">Company</span>
-                <input
-                  value={profile.company}
-                  onChange={e => {
-                    setProfile(p => ({ ...p, company: e.target.value }))
-                    setProfileDirty(true)
-                  }}
-                  className="input"
-                  disabled={meLoading}
-                />
-              </label>
-              <label className="grid gap-1">
-                <span className="text-sm font-medium">Title</span>
-                <input
-                  value={profile.title}
-                  onChange={e => {
-                    setProfile(p => ({ ...p, title: e.target.value }))
-                    setProfileDirty(true)
-                  }}
-                  className="input"
-                  disabled={meLoading}
-                />
-              </label>
+
               <label className="grid gap-1">
                 <span className="text-sm font-medium">Country</span>
                 <select
                   value={profile.country}
-                  onChange={e => {
-                    setProfile(p => ({ ...p, country: e.target.value }))
+                  onChange={(e) => {
+                    setProfile((prev) => ({ ...prev, country: e.target.value }))
                     setProfileDirty(true)
                   }}
                   className="select"
-                  disabled={meLoading}
+                  disabled={meLoading || updateMe.isPending}
                 >
                   <option value="">Select country</option>
-                  {countryOptions.map(c => <option key={c}>{c}</option>)}
+                  {countryOptions.map((country) => (
+                    <option key={country} value={country}>
+                      {country}
+                    </option>
+                  ))}
                 </select>
-              </label>
-              <label className="grid gap-1">
-                <span className="text-sm font-medium">City</span>
-                <input
-                  value={profile.city}
-                  onChange={e => {
-                    setProfile(p => ({ ...p, city: e.target.value }))
-                    setProfileDirty(true)
-                  }}
-                  className="input"
-                  disabled={meLoading}
-                />
               </label>
             </div>
 
             <div className="flex justify-end">
-              <button type="submit" className="px-4 py-2 rounded-lg bg-accent text-white font-medium hover:bg-accent-hover" disabled={updateMe.isPending}>
+              <button
+                type="submit"
+                className="rounded-lg bg-accent px-4 py-2 font-medium text-white hover:bg-accent-hover disabled:opacity-60"
+                disabled={!profileDirty || updateMe.isPending}
+              >
                 {updateMe.isPending ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
           </form>
         )}
-
-        {/* Security Tab */}
         {tab === 'security' && (
-          <form onSubmit={handleSecuritySave} className="rounded-xl bg-surface border border-border p-6 space-y-6">
+          <form
+            onSubmit={handleSecuritySave}
+            className="space-y-6 rounded-xl border border-border bg-surface p-6"
+          >
             <h2 className="text-lg font-semibold">Security Settings</h2>
 
-            <div className="grid sm:grid-cols-2 gap-4">
+            <div className="grid gap-4 sm:grid-cols-2">
               <label className="grid gap-1 sm:col-span-2">
                 <span className="text-sm font-medium">Current Password</span>
-                <input type="password" value={security.currentPassword} onChange={e => setSecurity(s => ({ ...s, currentPassword: e.target.value }))} className="input" />
+                <input
+                  type="password"
+                  value={security.currentPassword}
+                  onChange={(e) =>
+                    setSecurity((prev) => ({
+                      ...prev,
+                      currentPassword: e.target.value,
+                    }))
+                  }
+                  className="input"
+                />
               </label>
+
               <label className="grid gap-1">
                 <span className="text-sm font-medium">New Password</span>
-                <input type="password" value={security.newPassword} onChange={e => setSecurity(s => ({ ...s, newPassword: e.target.value }))} className="input" />
+                <input
+                  type="password"
+                  value={security.newPassword}
+                  onChange={(e) =>
+                    setSecurity((prev) => ({ ...prev, newPassword: e.target.value }))
+                  }
+                  className="input"
+                />
               </label>
+
               <label className="grid gap-1">
                 <span className="text-sm font-medium">Confirm New Password</span>
-                <input type="password" value={security.confirmPassword} onChange={e => setSecurity(s => ({ ...s, confirmPassword: e.target.value }))} className="input" />
+                <input
+                  type="password"
+                  value={security.confirmPassword}
+                  onChange={(e) =>
+                    setSecurity((prev) => ({
+                      ...prev,
+                      confirmPassword: e.target.value,
+                    }))
+                  }
+                  className="input"
+                />
               </label>
             </div>
 
@@ -458,43 +669,48 @@ export function Settings() {
                 <input
                   type="checkbox"
                   checked={(resolvedUser as any)?.twoFactorEnabled || !!qrCodeData}
-                  onChange={e => handleToggle2fa(e.target.checked)}
+                  onChange={(e) => handleToggle2fa(e.target.checked)}
                   disabled={generate2fa.isPending || disable2fa.isPending}
                   className="rounded"
                 />
                 <div>
                   <div className="font-medium">Two-Factor Authentication</div>
-                  <div className="text-sm text-subtle">Add an extra layer of security to your account.</div>
+                  <div className="text-sm text-subtle">
+                    Add an extra layer of security to your account.
+                  </div>
                 </div>
               </label>
 
               {qrCodeData && !(resolvedUser as any)?.twoFactorEnabled && (
-                <div className="mt-4 p-4 border border-border rounded-lg bg-muted/20">
-                  <h3 className="font-medium mb-2">Scan QR Code</h3>
-                  <p className="text-sm text-subtle mb-4">Use an authenticator app (like Google Authenticator or Authy) to scan this QR code.</p>
-                  <div className="bg-white p-2 inline-block rounded-md mb-4 border border-border">
-                    <img src={qrCodeData.url} alt="2FA QR Code" className="w-32 h-32" />
+                <div className="mt-4 rounded-lg border border-border bg-muted/20 p-4">
+                  <h3 className="mb-2 font-medium">Scan QR Code</h3>
+                  <p className="mb-4 text-sm text-subtle">
+                    Use Google Authenticator, Authy, or another authenticator app.
+                  </p>
+                  <div className="mb-4 inline-block rounded-md border border-border bg-white p-2">
+                    <img src={qrCodeData.url} alt="2FA QR Code" className="h-32 w-32" />
                   </div>
-                  <div className="mb-4">
-                    <p className="text-sm text-subtle mb-2">Or enter this secret manually:</p>
-                    <code className="bg-muted px-2 py-1 rounded select-all">{qrCodeData.secret}</code>
-                  </div>
-                  <div className="flex gap-2">
+                  <p className="mb-2 text-sm text-subtle">Manual secret:</p>
+                  <code className="select-all rounded bg-muted px-2 py-1">
+                    {qrCodeData.secret}
+                  </code>
+
+                  <div className="mt-4 flex gap-2">
                     <input
                       type="text"
                       placeholder="Enter 6-digit code"
                       maxLength={6}
                       value={otpToken}
-                      onChange={e => setOtpToken(e.target.value)}
-                      className="input flex-1 max-w-[200px]"
+                      onChange={(e) => setOtpToken(e.target.value)}
+                      className="input max-w-[220px] flex-1"
                     />
                     <button
                       type="button"
                       onClick={handleVerify2fa}
                       disabled={otpToken.length < 6 || verify2fa.isPending}
-                      className="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover font-medium disabled:opacity-50"
+                      className="rounded-lg bg-accent px-4 py-2 font-medium text-white hover:bg-accent-hover disabled:opacity-50"
                     >
-                      Verify & Enable
+                      {verify2fa.isPending ? 'Verifying...' : 'Verify & Enable'}
                     </button>
                   </div>
                 </div>
@@ -502,55 +718,88 @@ export function Settings() {
             </div>
 
             <div className="flex justify-end">
-              <button type="submit" className="px-4 py-2 rounded-lg bg-accent text-white font-medium hover:bg-accent-hover" disabled={changePassword.isPending}>
+              <button
+                type="submit"
+                className="rounded-lg bg-accent px-4 py-2 font-medium text-white hover:bg-accent-hover disabled:opacity-60"
+                disabled={changePassword.isPending}
+              >
                 {changePassword.isPending ? 'Updating...' : 'Update Password'}
               </button>
             </div>
           </form>
         )}
-
-        {/* Notifications Tab */}
         {tab === 'notifications' && (
-          <div className="rounded-xl bg-surface border border-border p-6 space-y-6">
+          <div className="space-y-6 rounded-xl border border-border bg-surface p-6">
             <h2 className="text-lg font-semibold">Notification Preferences</h2>
+            <p className="text-sm text-subtle">
+              Preferences are currently saved per account on this browser session.
+            </p>
 
             <div className="space-y-4">
               {[
-                { key: 'emailAlerts', label: 'Email Alerts', desc: 'Receive important alerts via email' },
-                { key: 'pushNotifications', label: 'Push Notifications', desc: 'Receive push notifications in browser' },
-                { key: 'smsAlerts', label: 'SMS Alerts', desc: 'Receive critical alerts via SMS' },
-                { key: 'weeklyDigest', label: 'Weekly Digest', desc: 'Receive a weekly summary email' },
-                { key: 'marketingEmails', label: 'Marketing Emails', desc: 'Receive product updates and offers' },
-              ].map(n => (
-                <label key={n.key} className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted">
+                {
+                  key: 'emailAlerts',
+                  label: 'Email Alerts',
+                  desc: 'Receive important alerts via email',
+                },
+                {
+                  key: 'pushNotifications',
+                  label: 'Push Notifications',
+                  desc: 'Receive push notifications in browser',
+                },
+                {
+                  key: 'smsAlerts',
+                  label: 'SMS Alerts',
+                  desc: 'Receive critical alerts via SMS',
+                },
+                {
+                  key: 'weeklyDigest',
+                  label: 'Weekly Digest',
+                  desc: 'Receive a weekly summary email',
+                },
+                {
+                  key: 'marketingEmails',
+                  label: 'Marketing Emails',
+                  desc: 'Receive product updates and offers',
+                },
+              ].map((item) => (
+                <label
+                  key={item.key}
+                  className="flex items-center justify-between rounded-lg border border-border p-3 hover:bg-muted"
+                >
                   <div>
-                    <div className="font-medium">{n.label}</div>
-                    <div className="text-sm text-subtle">{n.desc}</div>
+                    <div className="font-medium">{item.label}</div>
+                    <div className="text-sm text-subtle">{item.desc}</div>
                   </div>
                   <input
                     type="checkbox"
-                    checked={notifications[n.key as keyof typeof notifications]}
-                    onChange={e => {
-                      setNotifications(prev => ({ ...prev, [n.key]: e.target.checked }))
+                    checked={notifications[item.key as keyof NotificationPrefs]}
+                    onChange={(e) => {
+                      setNotifications((prev) => ({
+                        ...prev,
+                        [item.key]: e.target.checked,
+                      }))
                       setNotificationsDirty(true)
                     }}
-                    className="rounded h-5 w-5"
+                    className="h-5 w-5 rounded"
                   />
                 </label>
               ))}
             </div>
 
             <div className="flex justify-end">
-              <button onClick={handleNotificationsSave} className="px-4 py-2 rounded-lg bg-accent text-white font-medium hover:bg-accent-hover" disabled={updateMe.isPending}>
-                {updateMe.isPending ? 'Saving...' : 'Save Preferences'}
+              <button
+                onClick={handleNotificationsSave}
+                className="rounded-lg bg-accent px-4 py-2 font-medium text-white hover:bg-accent-hover disabled:opacity-60"
+                disabled={!notificationsDirty}
+              >
+                Save Preferences
               </button>
             </div>
           </div>
         )}
-
-        {/* API Keys Tab */}
-        {tab === 'api' && (
-          <div className="rounded-xl bg-surface border border-border p-6 space-y-6">
+        {tab === 'api' && canUseApiKeys && (
+          <div className="space-y-6 rounded-xl border border-border bg-surface p-6">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold">API Keys</h2>
             </div>
@@ -573,48 +822,56 @@ export function Settings() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {apiKeys.map(k => (
-                    <tr key={k.id} className="hover:bg-muted/50">
-                      <td className="px-4 py-3 font-medium">{k.name || k.id}</td>
-                      <td className="px-4 py-3 font-mono text-subtle">{k.prefix ? `${k.prefix}****` : '****'}</td>
-                      <td className="px-4 py-3 text-subtle">{formatDate(k.createdAt)}</td>
-                      <td className="px-4 py-3 text-subtle">{formatDate(k.lastUsedAt)}</td>
+                  {apiKeys.map((item) => (
+                    <tr key={item.id} className="hover:bg-muted/50">
+                      <td className="px-4 py-3 font-medium">{item.name || item.id}</td>
+                      <td className="px-4 py-3 font-mono text-subtle">
+                        {item.prefix ? `${item.prefix}****` : '****'}
+                      </td>
+                      <td className="px-4 py-3 text-subtle">{formatDate(item.createdAt)}</td>
+                      <td className="px-4 py-3 text-subtle">{formatDate(item.lastUsedAt)}</td>
                       <td className="px-4 py-3 text-right">
                         <div className="inline-flex gap-2">
                           <button
                             onClick={() => {
-                              if (k.prefix) {
-                                navigator?.clipboard?.writeText?.(k.prefix)
-                              }
-                              toast('Copied to clipboard!')
+                              if (item.prefix) navigator?.clipboard?.writeText?.(item.prefix)
+                              toast('Copied to clipboard.')
                             }}
-                            className="px-2 py-1 rounded border border-border hover:bg-muted text-xs"
+                            className="rounded border border-border px-2 py-1 text-xs hover:bg-muted"
                           >
                             Copy
                           </button>
-                          {(resolvedUser?.role === 'EVZONE_ADMIN' || resolvedUser?.role === 'SUPER_ADMIN') && (
-                            <>
-                              <button
-                                onClick={() => rotateApiKey.mutate(k.id, { onSuccess: () => toast('API key rotated') })}
-                                className="px-2 py-1 rounded border border-border hover:bg-muted text-xs"
-                              >
-                                Rotate
-                              </button>
-                              <button
-                                onClick={() => revokeApiKey.mutate(k.id, { onSuccess: () => toast('API key revoked') })}
-                                className="px-2 py-1 rounded border border-border hover:bg-muted text-xs text-red-600"
-                              >
-                                Revoke
-                              </button>
-                            </>
-                          )}
+                          <button
+                            onClick={() =>
+                              rotateApiKey.mutate(item.id, {
+                                onSuccess: () => toast('API key rotated.'),
+                                onError: (error) => toast(getErrorMessage(error)),
+                              })
+                            }
+                            className="rounded border border-border px-2 py-1 text-xs hover:bg-muted"
+                          >
+                            Rotate
+                          </button>
+                          <button
+                            onClick={() =>
+                              revokeApiKey.mutate(item.id, {
+                                onSuccess: () => toast('API key revoked.'),
+                                onError: (error) => toast(getErrorMessage(error)),
+                              })
+                            }
+                            className="rounded border border-border px-2 py-1 text-xs text-red-600 hover:bg-muted"
+                          >
+                            Revoke
+                          </button>
                         </div>
                       </td>
                     </tr>
                   ))}
                   {!apiKeysLoading && apiKeys.length === 0 && (
                     <tr>
-                      <td colSpan={5} className="px-4 py-6 text-center text-muted">No API keys found.</td>
+                      <td colSpan={5} className="px-4 py-6 text-center text-muted">
+                        No API keys found.
+                      </td>
                     </tr>
                   )}
                 </tbody>
@@ -622,102 +879,350 @@ export function Settings() {
             </div>
           </div>
         )}
-
-        {/* UI Preferences Tab */}
         {tab === 'ui_preferences' && (
-          <div className="rounded-xl bg-surface border border-border p-6 space-y-6">
+          <div className="space-y-6 rounded-xl border border-border bg-surface p-6">
             <h2 className="text-lg font-semibold">UI Preferences</h2>
-            <p className="text-subtle text-sm">Manage your portal appearance and default behaviors.</p>
-            <div className="space-y-4 pt-4 border-t border-border">
-              <label className="flex flex-col gap-1">
+            <p className="text-sm text-subtle">
+              Manage portal behavior defaults. Preferences are saved per browser.
+            </p>
+
+            <div className="space-y-4 border-t border-border pt-4">
+              <label className="flex max-w-xs flex-col gap-1">
                 <span className="text-sm font-medium">Theme Mode</span>
-                <select className="select w-full max-w-xs">
+                <select
+                  value={uiPreferences.themeMode}
+                  onChange={(e) => {
+                    setUiPreferences((prev) => ({
+                      ...prev,
+                      themeMode: e.target.value as UiPreferencesState['themeMode'],
+                    }))
+                    setUiPreferencesDirty(true)
+                  }}
+                  className="select w-full"
+                >
                   <option value="system">System Default</option>
                   <option value="light">Light Mode</option>
                   <option value="dark">Dark Mode</option>
                 </select>
               </label>
-              <label className="flex flex-col gap-1 mt-4">
+
+              <label className="mt-4 flex max-w-xs flex-col gap-1">
                 <span className="text-sm font-medium">Default Dashboard Date Range</span>
-                <select className="select w-full max-w-xs">
+                <select
+                  value={uiPreferences.dashboardRange}
+                  onChange={(e) => {
+                    setUiPreferences((prev) => ({
+                      ...prev,
+                      dashboardRange:
+                        e.target.value as UiPreferencesState['dashboardRange'],
+                    }))
+                    setUiPreferencesDirty(true)
+                  }}
+                  className="select w-full"
+                >
                   <option value="this_week">This Week</option>
                   <option value="this_month">This Month</option>
-                  <option value="last_30_days" selected>Last 30 Days</option>
+                  <option value="last_30_days">Last 30 Days</option>
                   <option value="year_to_date">Year to Date</option>
                 </select>
               </label>
             </div>
-            <div className="flex justify-end mt-6">
-              <button type="button" className="px-4 py-2 rounded-lg bg-accent text-white font-medium hover:bg-accent-hover" onClick={() => toast('Preferences saved!')}>
+
+            <div className="mt-6 flex justify-end">
+              <button
+                type="button"
+                className="rounded-lg bg-accent px-4 py-2 font-medium text-white hover:bg-accent-hover disabled:opacity-60"
+                onClick={handleUiPreferencesSave}
+                disabled={!uiPreferencesDirty}
+              >
                 Save Preferences
               </button>
             </div>
           </div>
         )}
-
-        {/* Organization Tab */}
         {tab === 'organization' && (
-          <div className="rounded-xl bg-surface border border-border p-6 space-y-6">
+          <div className="space-y-6 rounded-xl border border-border bg-surface p-6">
             <h2 className="text-lg font-semibold">Organization Details</h2>
-            <div className="grid sm:grid-cols-2 gap-4">
+
+            {!organizationId && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700">
+                No active organization was found for this account.
+              </div>
+            )}
+
+            {organizationQuery.isLoading && organizationId && (
+              <div className="py-2">
+                <TextSkeleton lines={2} />
+              </div>
+            )}
+
+            <div className="grid gap-4 sm:grid-cols-2">
               <label className="grid gap-1">
                 <span className="text-sm font-medium">Organization Name</span>
-                <input type="text" defaultValue={(resolvedUser as any)?.organization?.name || ''} className="input" />
+                <input
+                  type="text"
+                  value={organizationForm.name}
+                  onChange={(e) => {
+                    setOrganizationForm((prev) => ({ ...prev, name: e.target.value }))
+                    setOrganizationDirty(true)
+                  }}
+                  className="input"
+                  disabled={!organizationId || updateOrganization.isPending}
+                />
               </label>
+
               <label className="grid gap-1">
-                <span className="text-sm font-medium">Support Email</span>
-                <input type="email" defaultValue={(resolvedUser as any)?.organization?.supportEmail || ''} className="input" />
+                <span className="text-sm font-medium">Business Registration ID</span>
+                <input
+                  type="text"
+                  value={organizationForm.regId}
+                  onChange={(e) => {
+                    setOrganizationForm((prev) => ({ ...prev, regId: e.target.value }))
+                    setOrganizationDirty(true)
+                  }}
+                  className="input"
+                  disabled={!organizationId || updateOrganization.isPending}
+                />
               </label>
+
               <label className="grid gap-1">
                 <span className="text-sm font-medium">Tax / VAT ID</span>
-                <input type="text" className="input" placeholder="e.g. GB123456789" />
+                <input
+                  type="text"
+                  value={organizationForm.taxId}
+                  onChange={(e) => {
+                    setOrganizationForm((prev) => ({ ...prev, taxId: e.target.value }))
+                    setOrganizationDirty(true)
+                  }}
+                  className="input"
+                  placeholder="e.g. GB123456789"
+                  disabled={!organizationId || updateOrganization.isPending}
+                />
               </label>
+
+              <label className="grid gap-1">
+                <span className="text-sm font-medium">City</span>
+                <input
+                  type="text"
+                  value={organizationForm.city}
+                  onChange={(e) => {
+                    setOrganizationForm((prev) => ({ ...prev, city: e.target.value }))
+                    setOrganizationDirty(true)
+                  }}
+                  className="input"
+                  disabled={!organizationId || updateOrganization.isPending}
+                />
+              </label>
+
               <label className="grid gap-1 sm:col-span-2">
                 <span className="text-sm font-medium">Billing Address</span>
-                <textarea className="input resize-none" rows={3}></textarea>
+                <textarea
+                  value={organizationForm.address}
+                  onChange={(e) => {
+                    setOrganizationForm((prev) => ({ ...prev, address: e.target.value }))
+                    setOrganizationDirty(true)
+                  }}
+                  className="input resize-none"
+                  rows={3}
+                  disabled={!organizationId || updateOrganization.isPending}
+                />
               </label>
             </div>
+
             <div className="flex justify-end">
-              <button type="button" className="px-4 py-2 rounded-lg bg-accent text-white font-medium hover:bg-accent-hover" onClick={() => toast('Organization details saved!')}>
-                Save Organization
+              <button
+                type="button"
+                className="rounded-lg bg-accent px-4 py-2 font-medium text-white hover:bg-accent-hover disabled:opacity-60"
+                disabled={!organizationId || !organizationDirty || updateOrganization.isPending}
+                onClick={() =>
+                  updateOrganization.mutate({
+                    name: organizationForm.name || undefined,
+                    regId: organizationForm.regId || undefined,
+                    taxId: organizationForm.taxId || undefined,
+                    city: organizationForm.city || undefined,
+                    address: organizationForm.address || undefined,
+                  })
+                }
+              >
+                {updateOrganization.isPending ? 'Saving...' : 'Save Organization'}
               </button>
             </div>
           </div>
         )}
-
-        {/* Team Management Tab */}
         {tab === 'team' && (
-          <div className="rounded-xl bg-surface border border-border p-6 space-y-6">
-            <div className="flex items-center justify-between">
+          <div className="space-y-6 rounded-xl border border-border bg-surface p-6">
+            <div className="flex items-center justify-between gap-4">
               <h2 className="text-lg font-semibold">Team Management</h2>
-              <button className="px-3 py-1.5 text-sm bg-accent text-white rounded-md hover:bg-accent-hover">Invite Member</button>
+              <button
+                className="rounded-md bg-accent px-3 py-1.5 text-sm text-white hover:bg-accent-hover disabled:opacity-60"
+                onClick={() => setIsInviteModalOpen(true)}
+                disabled={!canManageTeam || !organizationId || inviteTeamMember.isPending}
+              >
+                Invite Member
+              </button>
             </div>
-            <div className="border border-border rounded-lg overflow-hidden">
-              <div className="p-8 text-center text-muted">
-                Team management functionality will live here, allowing you to invite Cashiers and Attendants.
+
+            {!canManageTeam && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700">
+                Team management is not available for your account role.
+              </div>
+            )}
+
+            {teamLoading && canManageTeam && (
+              <div className="py-2">
+                <TextSkeleton lines={2} />
+              </div>
+            )}
+
+            {canManageTeam && !teamLoading && (
+              <div className="overflow-x-auto rounded-lg border border-border">
+                <table className="min-w-full text-sm">
+                  <thead className="bg-muted text-subtle">
+                    <tr>
+                      <th className="px-4 py-3 text-left font-medium">Member</th>
+                      <th className="px-4 py-3 text-left font-medium">Role</th>
+                      <th className="px-4 py-3 text-left font-medium">Status</th>
+                      <th className="px-4 py-3 text-left font-medium">Assignments</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {teamMembers.map((member: TeamMember) => (
+                      <tr key={member.id} className="hover:bg-muted/50">
+                        <td className="px-4 py-3">
+                          <div className="font-medium">{member.name}</div>
+                          <div className="text-xs text-subtle">
+                            {member.email || member.phone || '--'}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          {member.customRoleName ||
+                            ROLE_LABELS[member.role as keyof typeof ROLE_LABELS] ||
+                            member.role}
+                        </td>
+                        <td className="px-4 py-3">
+                          {member.displayStatus || member.status || '--'}
+                        </td>
+                        <td className="px-4 py-3">{member.activeAssignments ?? 0}</td>
+                      </tr>
+                    ))}
+                    {!teamLoading && teamMembers.length === 0 && (
+                      <tr>
+                        <td colSpan={4} className="px-4 py-6 text-center text-muted">
+                          No team members yet.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+        {tab === 'billing' && (
+          <div className="space-y-6 rounded-xl border border-border bg-surface p-6">
+            <h2 className="text-lg font-semibold">Billing & Payouts</h2>
+
+            {!organizationId && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700">
+                No active organization was found for payout configuration.
+              </div>
+            )}
+
+            <div className="rounded-lg border border-border bg-muted/20 p-4">
+              <h3 className="mb-1 font-medium">Payout Account</h3>
+              <p className="mb-4 text-sm text-subtle">
+                Configure payout provider and destination for charging-session settlements.
+              </p>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="grid gap-1">
+                  <span className="text-sm font-medium">Provider</span>
+                  <select
+                    value={billingForm.provider}
+                    onChange={(e) => {
+                      setBillingForm((prev) => ({ ...prev, provider: e.target.value }))
+                      setBillingDirty(true)
+                    }}
+                    className="select"
+                    disabled={!organizationId || updateBilling.isPending}
+                  >
+                    <option value="">Select provider</option>
+                    <option value="MTN">MTN</option>
+                    <option value="AIRTEL">Airtel</option>
+                    <option value="M-PESA">M-Pesa</option>
+                    <option value="BANK_TRANSFER">Bank Transfer</option>
+                  </select>
+                </label>
+
+                <label className="grid gap-1">
+                  <span className="text-sm font-medium">Wallet / Account Number</span>
+                  <input
+                    type="text"
+                    value={billingForm.walletNumber}
+                    onChange={(e) => {
+                      setBillingForm((prev) => ({
+                        ...prev,
+                        walletNumber: e.target.value,
+                      }))
+                      setBillingDirty(true)
+                    }}
+                    className="input"
+                    disabled={!organizationId || updateBilling.isPending}
+                  />
+                </label>
+
+                <label className="grid gap-1">
+                  <span className="text-sm font-medium">Tax ID</span>
+                  <input
+                    type="text"
+                    value={billingForm.taxId}
+                    onChange={(e) => {
+                      setBillingForm((prev) => ({ ...prev, taxId: e.target.value }))
+                      setBillingDirty(true)
+                    }}
+                    className="input"
+                    disabled={!organizationId || updateBilling.isPending}
+                  />
+                </label>
+              </div>
+
+              <div className="mt-4 flex justify-end">
+                <button
+                  className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-hover disabled:opacity-60"
+                  disabled={
+                    !organizationId ||
+                    !billingDirty ||
+                    !billingForm.provider ||
+                    !billingForm.walletNumber ||
+                    updateBilling.isPending
+                  }
+                  onClick={() => updateBilling.mutate(billingForm)}
+                >
+                  {updateBilling.isPending ? 'Saving...' : 'Save Billing & Payouts'}
+                </button>
               </div>
             </div>
-          </div>
-        )}
 
-        {/* Billing Tab */}
-        {tab === 'billing' && (
-          <div className="rounded-xl bg-surface border border-border p-6 space-y-6">
-            <h2 className="text-lg font-semibold">Billing & Payouts</h2>
-            <div className="p-4 border border-border rounded-lg bg-muted/20">
-              <h3 className="font-medium mb-1">Payout Bank Account</h3>
-              <p className="text-sm text-subtle mb-4">Connect your bank account to receive payouts from charging sessions.</p>
-              <button className="px-4 py-2 border border-border bg-surface rounded-lg hover:bg-muted font-medium text-sm">
-                Connect via Stripe
-              </button>
-            </div>
-            <div className="p-4 border border-border rounded-lg bg-muted/20 mt-4">
-              <h3 className="font-medium mb-1">Subscription Details</h3>
-              <p className="text-sm text-subtle">You are currently on the <strong>Pro Plan</strong> ($0/mo during beta).</p>
+            <div className="rounded-lg border border-border bg-muted/20 p-4">
+              <h3 className="mb-1 font-medium">Subscription Details</h3>
+              <p className="text-sm text-subtle">
+                You are currently on the <strong>Pro Plan</strong> ($0/mo during beta).
+              </p>
             </div>
           </div>
         )}
       </div>
+
+      {isInviteModalOpen && canManageTeam && (
+        <InviteMemberModal
+          onClose={() => setIsInviteModalOpen(false)}
+          stations={stations.map((station) => ({ id: station.id, name: station.name }))}
+          customRoles={[]}
+          defaultRegion={resolvedUser?.region}
+          defaultZoneId={resolvedUser?.zoneId}
+          onInvite={handleInviteMember}
+        />
+      )}
     </DashboardLayout>
   )
 }
