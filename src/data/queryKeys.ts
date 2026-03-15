@@ -84,6 +84,15 @@ export const queryKeys = {
   geography: {
     zones: (filters?: Record<string, unknown>) => ['geography', 'zones', filters] as const,
     detail: (id: string) => ['geography', 'zones', id] as const,
+    referenceCountries: (query?: Record<string, unknown>) =>
+      ['geography', 'reference', 'countries', query] as const,
+    referenceStates: (countryCode: string, query?: Record<string, unknown>) =>
+      ['geography', 'reference', 'states', countryCode, query] as const,
+    referenceCities: (
+      countryCode: string,
+      stateCode: string,
+      query?: Record<string, unknown>,
+    ) => ['geography', 'reference', 'cities', countryCode, stateCode, query] as const,
   },
 
   // Sites

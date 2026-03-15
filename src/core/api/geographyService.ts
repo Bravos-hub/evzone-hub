@@ -57,6 +57,30 @@ export interface DetectedLocation {
     lng?: number;
 }
 
+export interface GeographyReferenceCountry {
+    code2: string;
+    code3: string | null;
+    name: string;
+    officialName: string | null;
+    flagUrl: string | null;
+    currencyCode: string | null;
+    currencyName: string | null;
+    currencySymbol: string | null;
+    languages: string[];
+}
+
+export interface GeographyReferenceState {
+    countryCode: string;
+    code: string;
+    name: string;
+}
+
+export interface GeographyReferenceCity {
+    countryCode: string;
+    stateCode: string;
+    name: string;
+}
+
 export const geographyService = {
     /**
      * Auto-detect location from IP (backend)
@@ -101,5 +125,33 @@ export const geographyService = {
 
     updateZoneStatus: async (id: string, isActive: boolean): Promise<GeographicZone> => {
         return apiClient.patch<GeographicZone>(`/geography/zones/${id}/status`, { isActive });
+    },
+
+    getReferenceCountries: async (query?: { q?: string; refresh?: boolean }): Promise<GeographyReferenceCountry[]> => {
+        return apiClient.get<GeographyReferenceCountry[]>('/geography/reference/countries', {
+            params: {
+                q: query?.q,
+                refresh: query?.refresh,
+            },
+        });
+    },
+
+    getReferenceStates: async (countryCode: string, query?: { refresh?: boolean }): Promise<GeographyReferenceState[]> => {
+        return apiClient.get<GeographyReferenceState[]>(`/geography/reference/countries/${countryCode}/states`, {
+            params: { refresh: query?.refresh },
+        });
+    },
+
+    getReferenceCities: async (
+        countryCode: string,
+        stateCode: string,
+        query?: { refresh?: boolean }
+    ): Promise<GeographyReferenceCity[]> => {
+        return apiClient.get<GeographyReferenceCity[]>(
+            `/geography/reference/countries/${countryCode}/states/${stateCode}/cities`,
+            {
+                params: { refresh: query?.refresh },
+            },
+        );
     },
 };

@@ -4,6 +4,7 @@ import { useAuthStore } from '@/core/auth/authStore'
 import { useMe, useGenerate2fa, useVerify2fa, useDisable2fa } from '@/modules/auth/hooks/useAuth'
 import { useUpdateMe, useChangePassword, useUploadAvatar } from '@/modules/auth/hooks/useUsers'
 import { useApiKeys, useRotateApiKey, useRevokeApiKey } from '@/modules/integrations/useIntegrationKeys'
+import { useReferenceCountries } from '@/modules/geography/hooks/useGeography'
 import { getErrorMessage } from '@/core/api/errors'
 import type { ApiKey } from '@/modules/integrations/integrationsService'
 import { TextSkeleton } from '@/ui/components/SkeletonCards'
@@ -39,6 +40,16 @@ const defaultNotifications: NotificationPrefs = {
   weeklyDigest: false,
   marketingEmails: false,
 }
+
+const fallbackCountryOptions = [
+  'Uganda',
+  'Kenya',
+  'Rwanda',
+  'Tanzania',
+  'China',
+  'United States',
+  'United Kingdom',
+]
 
 const formatDate = (value?: string) => {
   if (!value) return '--'
@@ -83,6 +94,7 @@ export function Settings() {
 
   const [tab, setTab] = useState<SettingsTab>('profile')
   const [ack, setAck] = useState('')
+  const { data: referenceCountries = [] } = useReferenceCountries()
 
   const resolvedUser = me || user
 
@@ -108,6 +120,11 @@ export function Settings() {
     if (Array.isArray(apiKeysData)) return apiKeysData
     return (apiKeysData as any)?.data || []
   }, [apiKeysData])
+
+  const countryOptions = useMemo(() => {
+    if (referenceCountries.length === 0) return fallbackCountryOptions
+    return referenceCountries.map((country) => country.name)
+  }, [referenceCountries])
 
   const toast = (m: string) => { setAck(m); setTimeout(() => setAck(''), 2000) }
 
@@ -391,7 +408,7 @@ export function Settings() {
                   disabled={meLoading}
                 >
                   <option value="">Select country</option>
-                  {['Uganda', 'Kenya', 'Rwanda', 'Tanzania', 'China', 'United States', 'United Kingdom'].map(c => <option key={c}>{c}</option>)}
+                  {countryOptions.map(c => <option key={c}>{c}</option>)}
                 </select>
               </label>
               <label className="grid gap-1">
