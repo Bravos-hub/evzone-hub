@@ -204,14 +204,14 @@ export const authService = {
   /**
    * 2FA Methods
    */
-  async generate2fa(): Promise<{ qrCodeUrl: string; secret: string }> {
-    return apiClient.post('/auth/2fa/generate')
+  async generate2fa(currentPassword: string): Promise<{ qrCodeUrl: string; secret: string }> {
+    return apiClient.post('/auth/2fa/generate', { currentPassword })
   },
   async verify2fa(token: string): Promise<{ success: boolean; message: string }> {
     return apiClient.post('/auth/2fa/verify', { token })
   },
-  async disable2fa(token: string): Promise<{ success: boolean; message: string }> {
-    return apiClient.post('/auth/2fa/disable', { token })
+  async disable2fa(payload: { token: string; currentPassword: string }): Promise<{ success: boolean; message: string }> {
+    return apiClient.post('/auth/2fa/disable', payload)
   },
 }
 

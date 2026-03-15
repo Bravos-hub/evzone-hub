@@ -115,7 +115,7 @@ export function useResetPassword() {
 
 export function useGenerate2fa() {
   return useMutation({
-    mutationFn: () => authService.generate2fa(),
+    mutationFn: (currentPassword: string) => authService.generate2fa(currentPassword),
   })
 }
 
@@ -132,7 +132,8 @@ export function useVerify2fa() {
 export function useDisable2fa() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (token: string) => authService.disable2fa(token),
+    mutationFn: (payload: { token: string; currentPassword: string }) =>
+      authService.disable2fa(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.auth.me })
     }

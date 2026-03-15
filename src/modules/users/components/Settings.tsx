@@ -229,6 +229,8 @@ export function Settings() {
     newPassword: '',
     confirmPassword: '',
   })
+  const [twoFactorPassword, setTwoFactorPassword] = useState('')
+  const [disable2faToken, setDisable2faToken] = useState('')
   const [qrCodeData, setQrCodeData] = useState<{ url: string; secret: string } | null>(null)
   const [otpToken, setOtpToken] = useState('')
 
@@ -383,25 +385,48 @@ export function Settings() {
   }
 
   const handleToggle2fa = (enable: boolean) => {
+    const twoFactorEnabled = Boolean((resolvedUser as any)?.twoFactorEnabled)
+
+    if (!enable && !twoFactorEnabled && qrCodeData) {
+      setQrCodeData(null)
+      setOtpToken('')
+      return
+    }
+
+    if (!twoFactorPassword) {
+      toast('Enter your current password to manage 2FA.')
+      return
+    }
+
     if (enable) {
-      generate2fa.mutate(undefined, {
+      generate2fa.mutate(twoFactorPassword, {
         onSuccess: (data: any) => {
           setQrCodeData({ url: data.qrCodeUrl, secret: data.secret })
+          setDisable2faToken('')
         },
         onError: (error) => toast(getErrorMessage(error)),
       })
       return
     }
 
-    const token = prompt('Enter your 2FA token to disable:')
-    if (!token) return
-    disable2fa.mutate(token, {
+    if (!disable2faToken || disable2faToken.length < 6) {
+      toast('Enter a valid 6-digit authenticator code to disable 2FA.')
+      return
+    }
+
+    disable2fa.mutate(
+      { token: disable2faToken, currentPassword: twoFactorPassword },
+      {
       onSuccess: () => {
         toast('2FA disabled successfully.')
+        setDisable2faToken('')
+        setQrCodeData(null)
+        setOtpToken('')
         refetch()
       },
       onError: (error) => toast(getErrorMessage(error)),
-    })
+      },
+    )
   }
 
   const handleVerify2fa = () => {
@@ -410,6 +435,7 @@ export function Settings() {
         toast('2FA enabled successfully.')
         setQrCodeData(null)
         setOtpToken('')
+        setDisable2faToken('')
         refetch()
       },
       onError: (error) => toast(getErrorMessage(error)),
@@ -680,6 +706,56 @@ export function Settings() {
                   </div>
                 </div>
               </label>
+
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <label className="grid gap-1">
+                  <span className="text-sm font-medium">Current Password (required for 2FA changes)</span>
+                  <input
+                    type="password"
+                    value={twoFactorPassword}
+                    onChange={(e) => setTwoFactorPassword(e.target.value)}
+                    className="input"
+                    placeholder="Enter current password"
+                    autoComplete="current-password"
+                  />
+                </label>
+
+                {(resolvedUser as any)?.twoFactorEnabled && (
+                  <label className="grid gap-1">
+                    <span className="text-sm font-medium">Authenticator Code (for disable)</span>
+                    <input
+                      type="text"
+                      value={disable2faToken}
+                      onChange={(e) =>
+                        setDisable2faToken(
+                          e.target.value.replace(/\D/g, '').slice(0, 6),
+                        )
+                      }
+                      className="input"
+                      inputMode="numeric"
+                      placeholder="Enter 6-digit code"
+                    />
+                  </label>
+                )}
+              </div>
+
+              <p className="mt-3 text-xs text-subtle">
+                Make sure you keep access to your authenticator device before enabling 2FA.
+                Recovery codes are not yet available in this portal, so contact support immediately if you lose access.
+              </p>
+
+              {(resolvedUser as any)?.twoFactorEnabled && (
+                <div className="mt-3">
+                  <button
+                    type="button"
+                    onClick={() => handleToggle2fa(false)}
+                    disabled={disable2fa.isPending}
+                    className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-100 disabled:opacity-50"
+                  >
+                    {disable2fa.isPending ? 'Disabling...' : 'Disable 2FA'}
+                  </button>
+                </div>
+              )}
 
               {qrCodeData && !(resolvedUser as any)?.twoFactorEnabled && (
                 <div className="mt-4 rounded-lg border border-border bg-muted/20 p-4">
