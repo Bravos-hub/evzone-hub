@@ -11,7 +11,11 @@ import { canAccessStation } from '@/core/auth/rbac'
 import { StationStatusPill } from '@/ui/components/StationStatusPill'
 import { TextSkeleton } from '@/ui/components/SkeletonCards'
 import { getErrorMessage } from '@/core/api/errors'
-import { chargePointService } from '@/modules/charge-points/services/chargePointService'
+import {
+    chargePointService,
+    type ChargePointCommandLifecycle,
+    type ChargePointCommandStatus,
+} from '@/modules/charge-points/services/chargePointService'
 import { formatDistanceToNow } from 'date-fns'
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -20,8 +24,11 @@ import { formatDistanceToNow } from 'date-fns'
 ───────────────────────────────────────────────────────────────────────────── */
 
 export function ChargePointDetail() {
+    const HEARTBEAT_STALE_MINUTES = 5
     const { id } = useParams<{ id: string }>()
-    const { data: cp, isLoading, error } = useChargePoint(id!)
+    const { data: cp, isLoading, error } = useChargePoint(id!, {
+        refetchInterval: 15000,
+    })
     const updateCP = useUpdateChargePoint()
     const { user } = useAuthStore()
     const perms = getPermissionsForFeature(user?.role, 'chargePoints')
@@ -59,32 +66,57 @@ export function ChargePointDetail() {
     })
     const [commandBusy, setCommandBusy] = useState<'remoteStart' | 'softReset' | 'reboot' | 'unlock' | null>(null)
     const [commandFeedback, setCommandFeedback] = useState<{ tone: 'ok' | 'error'; message: string } | null>(null)
+    const [commandLifecycle, setCommandLifecycle] = useState<ChargePointCommandLifecycle | null>(null)
+
+    const commandPhase = (status: ChargePointCommandStatus): 'Queued' | 'Sent' | 'Final' => {
+        if (status === 'Queued') return 'Queued'
+        if (status === 'Sent' || status === 'Dispatched') return 'Sent'
+        return 'Final'
+    }
 
     const runCommand = async (
         command: 'remoteStart' | 'softReset' | 'reboot' | 'unlock',
         label: string,
-        execute: () => Promise<{ commandId: string; status: string; error?: string }>
+        execute: () => Promise<{ commandId: string; status: string; requestedAt?: string; error?: string }>
     ) => {
         try {
             setCommandFeedback(null)
             setCommandBusy(command)
-            const response = await execute()
-            const latest = await chargePointService.getCommandStatus(response.commandId).catch(() => null)
-            const finalStatus = latest?.status || response.status
-            const finalError = latest?.error || response.error
-            const failedStates = new Set(['Failed', 'Rejected', 'Timeout', 'NOT_FOUND'])
+            setCommandLifecycle(null)
 
-            if (failedStates.has(finalStatus)) {
+            const response = await execute()
+            const initialLifecycle: ChargePointCommandLifecycle = {
+                id: response.commandId,
+                status: response.status,
+                requestedAt: response.requestedAt,
+                error: response.error,
+            }
+            setCommandLifecycle(initialLifecycle)
+            setCommandFeedback({
+                tone: 'ok',
+                message: `${label} queued (${commandPhase(response.status)})`,
+            })
+
+            const latest = await chargePointService.waitForCommandTerminal(response.commandId, {
+                intervalMs: 2000,
+                timeoutMs: 45000,
+                onUpdate: (next) => {
+                    setCommandLifecycle(next)
+                },
+            })
+
+            const failedStates = new Set(['Failed', 'Rejected', 'Timeout', 'Duplicate', 'NOT_FOUND'])
+            if (failedStates.has(latest.status)) {
                 setCommandFeedback({
                     tone: 'error',
-                    message: `${label} failed (${finalStatus})${finalError ? `: ${finalError}` : ''}`,
+                    message: `${label} failed (${latest.status})${latest.error ? `: ${latest.error}` : ''}`,
                 })
                 return
             }
 
             setCommandFeedback({
                 tone: 'ok',
-                message: `${label} queued (${finalStatus})`,
+                message: `${label} completed (${latest.status})`,
             })
         } catch (err) {
             setCommandFeedback({
@@ -209,6 +241,25 @@ export function ChargePointDetail() {
             ? cp.model.trim()
             : 'Charge Point'
     const chargeTitle = `${chargeName} - ${displayOcppId}`
+    const heartbeatDate = cp.lastHeartbeat ? new Date(cp.lastHeartbeat) : null
+    const heartbeatAgeMs =
+        heartbeatDate && Number.isFinite(heartbeatDate.getTime())
+            ? Date.now() - heartbeatDate.getTime()
+            : null
+    const isHeartbeatStale =
+        heartbeatAgeMs !== null &&
+        heartbeatAgeMs > HEARTBEAT_STALE_MINUTES * 60 * 1000
+    const ocppVersionLabel =
+        cp.ocppVersion === '1.6J' ? '1.6' : (cp.ocppVersion || 'Unknown')
+
+    const commandTimeline = commandLifecycle
+        ? {
+            queuedAt: commandLifecycle.requestedAt || null,
+            sentAt: commandLifecycle.sentAt || null,
+            finalAt: commandLifecycle.completedAt || null,
+            phase: commandPhase(commandLifecycle.status),
+        }
+        : null
 
     return (
         <DashboardLayout pageTitle={chargeTitle}>
@@ -386,6 +437,16 @@ export function ChargePointDetail() {
                                         {commandFeedback.message}
                                     </div>
                                 )}
+                                {commandTimeline && (
+                                    <div className="rounded-md border border-border bg-muted/10 px-3 py-2 text-xs text-subtle space-y-1">
+                                        <div className="font-semibold text-text">
+                                            Lifecycle: {commandTimeline.phase} ({commandLifecycle?.status})
+                                        </div>
+                                        <div>Queued: {commandTimeline.queuedAt ? new Date(commandTimeline.queuedAt).toLocaleTimeString() : '-'}</div>
+                                        <div>Sent: {commandTimeline.sentAt ? new Date(commandTimeline.sentAt).toLocaleTimeString() : '-'}</div>
+                                        <div>Final: {commandTimeline.finalAt ? new Date(commandTimeline.finalAt).toLocaleTimeString() : '-'}</div>
+                                    </div>
+                                )}
                                 <button
                                     className={`btn secondary w-full flex items-center justify-between ${commandBusy ? 'opacity-60 cursor-not-allowed' : ''}`}
                                     onClick={handleRemoteStart}
@@ -427,15 +488,25 @@ export function ChargePointDetail() {
                         <div className="space-y-4">
                             <div className="flex items-center justify-between">
                                 <span className="text-sm">OCPP Connection</span>
-                                <span className={`text-sm font-bold ${cp.status === 'Online' ? 'text-ok' : 'text-danger'}`}>
-                                    {cp.status === 'Online' ? 'Connected' : 'Disconnected'}
+                                <span className={`text-sm font-bold ${cp.status === 'Online' && !isHeartbeatStale ? 'text-ok' : cp.status === 'Online' ? 'text-amber-600' : 'text-danger'}`}>
+                                    {cp.status === 'Online'
+                                        ? isHeartbeatStale
+                                            ? 'Connected (stale)'
+                                            : 'Connected'
+                                        : 'Disconnected'}
                                 </span>
                             </div>
                             <div className="flex items-center justify-between">
                                 <span className="text-sm">Heartbeat</span>
                                 <span className="text-sm text-subtle">
-                                    {cp.lastHeartbeat ? `${formatDistanceToNow(new Date(cp.lastHeartbeat))} ago` : 'Never'}
+                                    {heartbeatDate && Number.isFinite(heartbeatDate.getTime())
+                                        ? `${formatDistanceToNow(heartbeatDate)} ago`
+                                        : 'Never'}
                                 </span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <span className="text-sm">OCPP Version</span>
+                                <span className="text-sm text-subtle">{ocppVersionLabel}</span>
                             </div>
                             <div className="flex items-center justify-between">
                                 <span className="text-sm">Error Code</span>

@@ -15,11 +15,17 @@ export function useChargePoints(filters?: { stationId?: string; status?: string 
   })
 }
 
-export function useChargePoint(id: string) {
+export function useChargePoint(
+  id: string,
+  options?: {
+    refetchInterval?: number
+  },
+) {
   return useQuery({
     queryKey: ['chargePoints', 'detail', id],
     queryFn: () => chargePointService.getById(id),
     enabled: !!id,
+    refetchInterval: options?.refetchInterval,
   })
 }
 

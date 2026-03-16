@@ -152,7 +152,8 @@ export interface ChargePoint {
   maxCapacityKw?: number
   parkingBays?: string[] // Bay IDs
   ocppStatus?: 'Available' | 'Preparing' | 'Charging' | 'SuspendedEVSE' | 'SuspendedEV' | 'Finishing' | 'Reserved' | 'Unavailable' | 'Faulted'
-  lastHeartbeat?: Date
+  lastHeartbeat?: string | Date
+  ocppVersion?: '1.6' | '2.0.1' | '2.1' | '1.6J'
   type?: string
   power?: number
   createdAt?: string

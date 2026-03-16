@@ -15,14 +15,17 @@ const mapStatus = (status?: string): 'Online' | 'Warning' | 'Offline' => {
   const v = String(status || '').toLowerCase()
   if (v.includes('offline') || v.includes('down')) return 'Offline'
   if (v.includes('degraded') || v.includes('maintenance')) return 'Warning'
+  if (v.includes('faulted') || v.includes('error')) return 'Warning'
   return 'Online'
 }
 
-const inferOcppVersion = (cp: ChargePoint): string => {
-  const v = String(cp.ocppStatus || '').toLowerCase()
-  if (v.includes('2.0')) return '2.0.1'
-  if (v.includes('1.6')) return '1.6J'
-  return '1.6J'
+const normalizeOcppVersion = (version?: string): '1.6J' | '2.0.1' | '2.1' | 'Unknown' => {
+  const v = String(version || '').trim().toLowerCase()
+  if (!v) return 'Unknown'
+  if (v === '1.6' || v === '1.6j') return '1.6J'
+  if (v === '2.0.1') return '2.0.1'
+  if (v === '2.1') return '2.1'
+  return 'Unknown'
 }
 
 const formatHeartbeat = (value?: string) => {
@@ -30,6 +33,15 @@ const formatHeartbeat = (value?: string) => {
   const date = new Date(value)
   if (!Number.isFinite(date.getTime())) return '-'
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+}
+
+const HEARTBEAT_STALE_MS = 5 * 60 * 1000
+
+const isHeartbeatStale = (value?: string): boolean => {
+  if (!value) return false
+  const date = new Date(value)
+  if (!Number.isFinite(date.getTime())) return false
+  return Date.now() - date.getTime() > HEARTBEAT_STALE_MS
 }
 
 const normalizeChargePoints = (data: unknown): ChargePoint[] => {
@@ -45,7 +57,8 @@ const normalizeStations = (data: unknown): Station[] => {
 const csmsUrlFor = (ver: string, chargeBoxId?: string) => {
   const base = API_CONFIG.baseURL.replace(/^http/, 'ws')
   const trimmed = base.replace(/\/api\/v\d+\/?$/, '')
-  const versionPath = ver === '1.6J' ? '1.6' : ver === '2.1' ? '2.1' : '2.0.1'
+  const versionPath =
+    ver === '1.6J' ? '1.6' : ver === '2.1' ? '2.1' : ver === '2.0.1' ? '2.0.1' : '1.6'
   return chargeBoxId ? `${trimmed}/ocpp/${versionPath}/${chargeBoxId}` : `${trimmed}/ocpp/${versionPath}`
 }
 
@@ -76,17 +89,21 @@ export function Protocols() {
 
       const maxKw = connectors.reduce((max, c) => Math.max(max, c.kw || 0), 0)
       const activeSessions = connectors.filter((c) => String(c.status).toLowerCase() === 'occupied').length
+      const protocol = normalizeOcppVersion(cp.ocppVersion)
+      const stale = isHeartbeatStale(cp.lastHeartbeat)
+      const mappedStatus = mapStatus(cp.status)
 
       return {
         id: cp.id,
         site: stationMap.get(cp.stationId)?.name || cp.stationId || 'Unknown',
         make: cp.manufacturer || 'Unknown',
         model: cp.model || 'Unknown',
-        ver: inferOcppVersion(cp),
+        ver: protocol,
         vendor: cp.manufacturer || 'Unknown',
         fw: cp.firmwareVersion || '-',
-        status: mapStatus(cp.status),
-        hb: formatHeartbeat(cp.lastHeartbeat),
+        status: mappedStatus === 'Online' && stale ? 'Warning' : mappedStatus,
+        hb: stale ? `Stale (${formatHeartbeat(cp.lastHeartbeat)})` : formatHeartbeat(cp.lastHeartbeat),
+        stale,
         chargeBoxId: cp.ocppId || cp.id,
         connectors,
         maxKw,
@@ -160,7 +177,7 @@ export function Protocols() {
         <div className="card grid md:grid-cols-5 gap-2">
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search charger/site/make/model" className="input md:col-span-2" />
           <select value={ver} onChange={(e) => setVer(e.target.value)} className="select">
-            {['All', '1.6J', '2.0.1'].map((v) => (
+            {['All', '1.6J', '2.0.1', '2.1', 'Unknown'].map((v) => (
               <option key={v}>{v}</option>
             ))}
           </select>
@@ -220,7 +237,7 @@ export function Protocols() {
                               : 'bg-rose-100 text-rose-700'
                           }`}
                         >
-                          {r.status}
+                          {r.status === 'Warning' && r.stale ? 'Online (stale)' : r.status}
                         </span>
                       </td>
                       <td>{r.hb}</td>

@@ -30,6 +30,48 @@ export type ChargePointCommandResponse = {
   stationId?: string
 }
 
+export type ChargePointCommandStatus =
+  | 'Queued'
+  | 'Sent'
+  | 'Dispatched'
+  | 'Accepted'
+  | 'Rejected'
+  | 'Failed'
+  | 'Timeout'
+  | 'Duplicate'
+  | 'NOT_FOUND'
+  | string
+
+export type ChargePointCommandLifecycle = {
+  id: string
+  commandType?: string
+  stationId?: string | null
+  chargePointId?: string | null
+  connectorId?: string | null
+  status: ChargePointCommandStatus
+  requestedAt?: string | null
+  sentAt?: string | null
+  completedAt?: string | null
+  error?: string | null
+}
+
+export type WaitForCommandOptions = {
+  intervalMs?: number
+  timeoutMs?: number
+  onUpdate?: (status: ChargePointCommandLifecycle) => void
+}
+
+const TERMINAL_COMMAND_STATUSES = new Set<ChargePointCommandStatus>([
+  'Accepted',
+  'Rejected',
+  'Failed',
+  'Timeout',
+  'Duplicate',
+  'NOT_FOUND',
+])
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
 export type ChargePointRemoteStartRequest = {
   connectorId?: number
   evseId?: number
@@ -122,8 +164,45 @@ export const chargePointService = {
     return apiClient.post<ChargePointCommandResponse>(`/charge-points/${id}/commands/unlock`, data)
   },
 
-  async getCommandStatus(commandId: string): Promise<{ id: string; status: string; error?: string | null }> {
-    return apiClient.get<{ id: string; status: string; error?: string | null }>(`/commands/${commandId}`)
+  async getCommandStatus(commandId: string): Promise<ChargePointCommandLifecycle> {
+    return apiClient.get<ChargePointCommandLifecycle>(`/commands/${commandId}`)
+  },
+
+  async listCommands(query: {
+    chargePointId: string
+    stationId?: string
+    limit?: number
+  }): Promise<ChargePointCommandLifecycle[]> {
+    const params = new URLSearchParams()
+    params.set('chargePointId', query.chargePointId)
+    if (query.stationId) params.set('stationId', query.stationId)
+    if (typeof query.limit === 'number') params.set('limit', String(query.limit))
+    return apiClient.get<ChargePointCommandLifecycle[]>(`/commands?${params.toString()}`)
+  },
+
+  async waitForCommandTerminal(
+    commandId: string,
+    options: WaitForCommandOptions = {}
+  ): Promise<ChargePointCommandLifecycle> {
+    const intervalMs = Math.max(options.intervalMs ?? 2000, 500)
+    const timeoutMs = Math.max(options.timeoutMs ?? 45000, intervalMs)
+    const startedAt = Date.now()
+
+    let latest = await this.getCommandStatus(commandId)
+    options.onUpdate?.(latest)
+    while (!TERMINAL_COMMAND_STATUSES.has(latest.status)) {
+      if (Date.now() - startedAt >= timeoutMs) {
+        return {
+          ...latest,
+          status: 'Timeout',
+          error: latest.error || 'Timed out while waiting for command completion',
+        }
+      }
+      await sleep(intervalMs)
+      latest = await this.getCommandStatus(commandId)
+      options.onUpdate?.(latest)
+    }
+    return latest
   },
 
   async getSecurity(id: string): Promise<ChargePointSecurityState> {

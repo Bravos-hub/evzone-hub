@@ -684,6 +684,7 @@ export interface ChargePoint {
   parkingBays?: string[]
   ocppStatus?: string
   lastHeartbeat?: string
+  ocppVersion?: '1.6' | '2.0.1' | '2.1' | '1.6J'
   ocppId?: string
   // New Fields
   type?: string
