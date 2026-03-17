@@ -11,6 +11,7 @@ import 'd3-transition'
 import { select } from 'd3-selection'
 import { feature } from 'topojson-client'
 import countries110m from 'world-atlas/countries-110m.json'
+import { resolveStationUiStatus } from '@/modules/stations/utils/operationalStatus'
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Station Map — Owner/Operator station map view with interactive world map
@@ -45,17 +46,12 @@ const parseCountry = (address?: string) => {
   return parts.length > 1 ? parts[parts.length - 1] : 'Unknown'
 }
 
-const mapStatus = (status?: string): StationStatus => {
-  switch ((status || '').toUpperCase()) {
-    case 'ACTIVE':
-      return 'Active'
-    case 'INACTIVE':
-      return 'Offline'
-    case 'MAINTENANCE':
-      return 'Maintenance'
-    default:
-      return 'Paused'
-  }
+const mapStatus = (station: ApiStation & Record<string, any>): StationStatus => {
+  const uiStatus = resolveStationUiStatus(station)
+  if (uiStatus === 'Online') return 'Active'
+  if (uiStatus === 'Offline') return 'Offline'
+  if (uiStatus === 'Maintenance') return 'Maintenance'
+  return 'Paused'
 }
 
 const mapConnector = (type?: string) => {
@@ -98,7 +94,7 @@ export function StationMap() {
         city: station.city || parseCity(station.address),
         country: station.country || parseCountry(station.address),
         countryCode: String(station.countryCode || station.country_code || station.countryNumeric || ''),
-        status: mapStatus(station.status),
+        status: mapStatus(station),
         kW: Number.isFinite(station.capacity) ? Number(station.capacity) : 0,
         connector: mapConnector(station.type),
         address: station.address || '',

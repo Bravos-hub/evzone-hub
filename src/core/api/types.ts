@@ -255,6 +255,13 @@ export interface Station {
   longitude: number
   type: 'CHARGING' | 'SWAP' | 'BOTH'
   status: 'ACTIVE' | 'INACTIVE' | 'MAINTENANCE'
+  operationalStatus?: 'ONLINE' | 'DEGRADED' | 'OFFLINE' | 'MAINTENANCE'
+  availability?: {
+    total: number
+    available: number
+    busy: number
+    offline: number
+  }
   providerId?: string // Link to SwapProvider
   capacity?: number
   parkingBays?: number

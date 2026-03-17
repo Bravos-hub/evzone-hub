@@ -60,6 +60,8 @@ const AVAILABLE_STATUS_FILTER = [
     'Online', true,
     'AVAILABLE', true,
     'Available', true,
+    'DEGRADED', true,
+    'Degraded', true,
     false,
 ] as any
 
@@ -71,6 +73,10 @@ const FALLBACK_STATUS_ICON_EXPRESSION = [
     'Online', 'marker-available',
     'AVAILABLE', 'marker-available',
     'Available', 'marker-available',
+    'DEGRADED', 'marker-inuse',
+    'Degraded', 'marker-inuse',
+    'MAINTENANCE', 'marker-unavailable',
+    'Maintenance', 'marker-unavailable',
     'INACTIVE', 'marker-unavailable',
     'OFFLINE', 'marker-unavailable',
     'Offline', 'marker-unavailable',
@@ -311,6 +317,10 @@ export function StationMapCanvas({
             onStationClick(props)
         }
     }, [onClusterClick, onStationClick])
+
+    const popupStatus = (popupInfo?.status || '').toUpperCase()
+    const isPopupOnline = popupStatus === 'ACTIVE' || popupStatus === 'ONLINE' || popupStatus === 'AVAILABLE'
+    const isPopupDegraded = popupStatus === 'MAINTENANCE' || popupStatus === 'DEGRADED'
 
     const emitBounds = useCallback(() => {
         if (!onBoundsChanged) return
@@ -579,9 +589,18 @@ export function StationMapCanvas({
                                         {popupInfo.name}
                                     </h3>
                                 </div>
-                                <div className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase flex items-center gap-1.5 ${popupInfo.status === 'ACTIVE' ? 'bg-ok/10 text-ok' : 'bg-danger/10 text-danger'
+                                <div className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase flex items-center gap-1.5 ${isPopupOnline
+                                    ? 'bg-ok/10 text-ok'
+                                    : isPopupDegraded
+                                        ? 'bg-warn/10 text-warn'
+                                        : 'bg-danger/10 text-danger'
                                     }`}>
-                                    <span className={`w-1.5 h-1.5 rounded-full ${popupInfo.status === 'ACTIVE' ? 'bg-ok animate-pulse' : 'bg-danger'}`} />
+                                    <span className={`w-1.5 h-1.5 rounded-full ${isPopupOnline
+                                        ? 'bg-ok animate-pulse'
+                                        : isPopupDegraded
+                                            ? 'bg-warn'
+                                            : 'bg-danger'
+                                        }`} />
                                     {popupInfo.status}
                                 </div>
                             </div>

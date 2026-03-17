@@ -27,7 +27,14 @@ export function StationListPanel({
                     No stations found matching filters
                 </div>
             ) : (
-                stations.map(s => (
+                stations.map(s => {
+                        const normalizedStatus = (s.status || '').toUpperCase()
+                        const statusBadgeClass = normalizedStatus === 'ACTIVE'
+                            ? 'bg-ok/20 text-ok'
+                            : normalizedStatus === 'MAINTENANCE' || normalizedStatus === 'DEGRADED'
+                                ? 'bg-warn/20 text-warn'
+                                : 'bg-danger/20 text-danger'
+                        return (
                     <div
                         key={s.id}
                         onClick={() => onSelect(s.id)}
@@ -41,8 +48,7 @@ export function StationListPanel({
                                 }`}>
                                 {s.name}
                             </span>
-                            <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded ${s.status === 'ACTIVE' ? 'bg-ok/20 text-ok' : 'bg-danger/20 text-danger'
-                                }`}>
+                            <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded ${statusBadgeClass}`}>
                                 {s.status}
                             </span>
                         </div>
@@ -58,7 +64,8 @@ export function StationListPanel({
                             </span>
                         </div>
                     </div>
-                ))
+                        )
+                    })
             )}
         </div>
     )

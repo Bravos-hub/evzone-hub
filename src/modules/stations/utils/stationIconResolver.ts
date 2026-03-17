@@ -69,7 +69,12 @@ function hasSwapSignal(signal?: SwapIconSignal): boolean {
 
 function isServiceableStationStatus(status?: string): boolean {
   const normalized = (status ?? '').trim().toUpperCase()
-  return normalized === 'ACTIVE' || normalized === 'ONLINE' || normalized === 'AVAILABLE'
+  return (
+    normalized === 'ACTIVE' ||
+    normalized === 'ONLINE' ||
+    normalized === 'AVAILABLE' ||
+    normalized === 'DEGRADED'
+  )
 }
 
 function toDecision(markerIcon: StationMarkerIconKey): StationIconDecision {
@@ -116,4 +121,3 @@ export function resolveStationIcon(input: StationIconInput): StationIconDecision
   if (hasChargeSignal(input.charge)) return resolveChargeStationIcon(input.status, input.charge)
   return resolveSwapStationIcon(input.status, input.swap)
 }
-

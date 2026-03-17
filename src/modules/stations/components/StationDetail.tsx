@@ -12,6 +12,7 @@ import { ROLE_GROUPS, isInGroup } from '@/constants/roles'
 import { useMemo } from 'react'
 import { useAuthStore } from '@/core/auth/authStore'
 import { TextSkeleton } from '@/ui/components/SkeletonCards'
+import { resolveStationUiStatus } from '@/modules/stations/utils/operationalStatus'
 
 export function StationDetail() {
   const { id } = useParams<{ id: string }>()
@@ -95,6 +96,7 @@ export function StationDetail() {
   }
 
   const sessions = Array.isArray(sessionsData) ? sessionsData : (sessionsData as any)?.recent || []
+  const stationDisplayStatus = resolveStationUiStatus(station)
 
   return (
     <DashboardLayout pageTitle="Station Details">
@@ -107,7 +109,7 @@ export function StationDetail() {
             <h1 className="text-3xl font-bold">{station.name}</h1>
             <p className="text-muted">{station.address}</p>
           </div>
-          <StationStatusPill status={station.status === 'ACTIVE' ? 'Online' : station.status === 'INACTIVE' ? 'Offline' : 'Maintenance'} />
+          <StationStatusPill status={stationDisplayStatus} />
         </div>
       </div>
 
@@ -116,7 +118,7 @@ export function StationDetail() {
         <div className="card">
           <div className="text-xs text-muted mb-1">Status</div>
           <div className="text-xl font-bold">
-            <StationStatusPill status={station.status === 'ACTIVE' ? 'Online' : station.status === 'INACTIVE' ? 'Offline' : 'Maintenance'} />
+            <StationStatusPill status={stationDisplayStatus} />
           </div>
         </div>
         <div className="card">

@@ -1,6 +1,7 @@
 import type { FeatureCollection } from 'geojson'
 import type { StationMapData } from '../components/StationMapCanvas'
 import type { Station as ApiStation } from '@/core/api/types'
+import { resolveStationMapLifecycleStatus } from './operationalStatus'
 
 /**
  * Maps API station data to the structure expected by the map components.
@@ -10,7 +11,7 @@ export function mapApiStationToMapData(s: ApiStation): StationMapData {
         id: s.id,
         name: s.name,
         address: s.address,
-        status: s.status,
+        status: resolveStationMapLifecycleStatus(s),
         type: s.type,
         lat: s.latitude,
         lng: s.longitude,

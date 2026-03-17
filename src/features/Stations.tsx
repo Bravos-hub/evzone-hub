@@ -20,6 +20,11 @@ import Skeleton from 'react-loading-skeleton'
 import { TableSkeleton } from '@/ui/components/SkeletonCards'
 import { StationMapCanvas, type StationMapData, type StationMapLayout } from '@/modules/stations/components/StationMapCanvas'
 import { normalizeStationType, resolveStationIcon, type StationIconDecision } from '@/modules/stations/utils/stationIconResolver'
+import {
+  resolveStationIconStatusInput,
+  resolveStationMapLifecycleStatus,
+  resolveStationUiStatus,
+} from '@/modules/stations/utils/operationalStatus'
 import { API_CONFIG } from '@/core/api/config'
 import { PATHS } from '@/app/router/paths'
 import {
@@ -82,20 +87,6 @@ function normalizeRegion(value?: string): Region {
   return REGION_VALUES.has(normalized as Region) ? (normalized as Region) : 'UNKNOWN'
 }
 
-function normalizeStationStatus(value?: string): StationStatus {
-  const normalized = (value ?? '').trim().toUpperCase()
-  if (normalized === 'ACTIVE' || normalized === 'ONLINE' || normalized === 'AVAILABLE') return 'Online'
-  if (normalized === 'INACTIVE' || normalized === 'OFFLINE' || normalized === 'UNAVAILABLE' || normalized === 'FAULTED') return 'Offline'
-  return 'Degraded'
-}
-
-function normalizeMapStationStatus(value?: string): 'ACTIVE' | 'INACTIVE' | 'MAINTENANCE' {
-  const normalized = (value ?? '').trim().toUpperCase()
-  if (normalized === 'ACTIVE' || normalized === 'ONLINE' || normalized === 'AVAILABLE') return 'ACTIVE'
-  if (normalized === 'INACTIVE' || normalized === 'OFFLINE' || normalized === 'UNAVAILABLE' || normalized === 'FAULTED') return 'INACTIVE'
-  return 'MAINTENANCE'
-}
-
 function toCount(value: unknown): number | undefined {
   const parsed = Number(value)
   if (!Number.isFinite(parsed) || parsed < 0) return undefined
@@ -152,7 +143,7 @@ function mapApiStationToStation(apiStation: any): Station {
     country: apiStation.country || apiStation.countryCode || '',
     org: apiStation.orgId || 'N/A',
     type: stationType === 'BOTH' ? 'Both' : stationType === 'SWAP' ? 'Swap' : 'Charge',
-    status: normalizeStationStatus(apiStation.status),
+    status: resolveStationUiStatus(apiStation),
     healthScore: Number(apiStation.healthScore ?? apiStation.health ?? 0),
     utilization: Number(apiStation.utilization ?? 0),
     connectors: chargeSignal?.totalChargePoints ?? 0,
@@ -241,7 +232,7 @@ export function Stations() {
         apiStation.id,
         resolveStationIcon({
           type: (apiStation as any)?.type,
-          status: (apiStation as any)?.status,
+          status: resolveStationIconStatusInput(apiStation as any),
           charge: chargeSignal,
           swap: swapSignal,
         }),
@@ -290,7 +281,7 @@ export function Stations() {
         id: r.id,
         name: r.name,
         address: r.address,
-        status: normalizeMapStationStatus(api?.status),
+        status: resolveStationMapLifecycleStatus(api || {}),
         type: normalizeStationType(api?.type),
         markerIcon: stationIconsById.get(r.id)?.markerIcon,
         lat: Number.isFinite(lat) ? lat : NaN,
@@ -587,4 +578,3 @@ export function Stations() {
     </DashboardLayout>
   )
 }
-
