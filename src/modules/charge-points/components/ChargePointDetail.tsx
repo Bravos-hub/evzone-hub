@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { useChargePoint, useUpdateChargePoint } from '@/modules/charge-points/hooks/useChargePoints'
@@ -58,6 +58,9 @@ export function ChargePointDetail() {
     })
     const [commandBusy, setCommandBusy] = useState<'remoteStart' | 'softReset' | 'reboot' | 'unlock' | null>(null)
     const [commandFeedback, setCommandFeedback] = useState<{ tone: 'ok' | 'error'; message: string } | null>(null)
+    const [roamingPublished, setRoamingPublished] = useState(false)
+    const [roamingLoading, setRoamingLoading] = useState(false)
+    const [roamingFeedback, setRoamingFeedback] = useState<string | null>(null)
 
     const runCommand = async (
         command: 'remoteStart' | 'softReset' | 'reboot' | 'unlock',
@@ -127,6 +130,43 @@ export function ChargePointDetail() {
                 evseId: connectorId,
             })
         )
+    }
+
+    useEffect(() => {
+        if (!id) return
+        let cancelled = false
+        const load = async () => {
+            try {
+                setRoamingLoading(true)
+                const state = await chargePointService.getRoamingPublication(id)
+                if (cancelled) return
+                setRoamingPublished(Boolean(state.published))
+            } catch {
+                if (!cancelled) {
+                    setRoamingFeedback('Unable to load roaming publication state')
+                }
+            } finally {
+                if (!cancelled) setRoamingLoading(false)
+            }
+        }
+        void load()
+        return () => {
+            cancelled = true
+        }
+    }, [id])
+
+    const handleToggleRoamingPublication = async () => {
+        if (!id) return
+        try {
+            setRoamingLoading(true)
+            const next = await chargePointService.setRoamingPublication(id, !roamingPublished)
+            setRoamingPublished(Boolean(next.published))
+            setRoamingFeedback(next.published ? 'Roaming publication enabled' : 'Roaming publication disabled')
+        } catch (error) {
+            setRoamingFeedback(getErrorMessage(error))
+        } finally {
+            setRoamingLoading(false)
+        }
     }
 
     const handleEdit = () => {
@@ -299,9 +339,18 @@ export function ChargePointDetail() {
                             <div className="space-y-1">
                                 <label className="text-xs text-muted uppercase font-bold">Roaming Status</label>
                                 <div className="flex items-center gap-2">
-                                    <span className="pill pending">Unpublished</span>
-                                    <button className="text-xs text-accent hover:underline" onClick={() => alert('Roaming publication logic would go here')}>Enable Roaming</button>
+                                    <span className={`pill ${roamingPublished ? 'approved' : 'pending'}`}>
+                                        {roamingPublished ? 'Published' : 'Unpublished'}
+                                    </span>
+                                    <button
+                                        className="text-xs text-accent hover:underline disabled:opacity-60 disabled:cursor-not-allowed"
+                                        onClick={() => void handleToggleRoamingPublication()}
+                                        disabled={roamingLoading}
+                                    >
+                                        {roamingLoading ? 'Saving...' : roamingPublished ? 'Disable Roaming' : 'Enable Roaming'}
+                                    </button>
                                 </div>
+                                {roamingFeedback && <div className="text-[11px] text-subtle">{roamingFeedback}</div>}
                             </div>
                         </div>
                     </div>

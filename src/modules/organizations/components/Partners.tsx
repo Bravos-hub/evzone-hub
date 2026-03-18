@@ -10,30 +10,16 @@ import { hasPermission } from '@/constants/permissions'
 
 
 /* import { Partners } from ... no, in same file */
-import { usePartners } from '../hooks/usePartners'
+import {
+  useCreatePartner,
+  usePartners,
+  useSuspendPartner,
+  useSyncPartner,
+  useUpdatePartner,
+} from '../hooks/usePartners'
 import type { Partner } from '../services/partnersService'
 
-/* ... removed local Partner interface and MOCK_PARTNERS ... */
-/* Re-defining types if they differ or just use service types. Protocol types usually match. */
-/* The component defined Partner interface matches service interface roughly. */
-/* I will use the service interface. */
-
 type PartnerStatus = 'Connected' | 'Pending' | 'Error'
-type PartnerRole = 'CPO' | 'EMSP'
-type OCPIModule = 'Locations' | 'Sessions' | 'CDRs' | 'Tariffs'
-
-/*
-interface Partner {
-  id: string
-  name: string
-  role: PartnerRole
-  status: PartnerStatus
-  modules: OCPIModule[]
-  version: string
-  endpoint?: string
-  lastSync?: string
-}
-*/
 
 export function Partners() {
   const { user } = useAuthStore()
@@ -41,7 +27,11 @@ export function Partners() {
   const canView = hasPermission(role, 'protocols', 'view')
   const canManage = hasPermission(role, 'protocols', 'manage')
 
-  const { data: partnersData, isLoading } = usePartners()
+  const { data: partnersData } = usePartners()
+  const createPartner = useCreatePartner()
+  const updatePartner = useUpdatePartner()
+  const suspendPartner = useSuspendPartner()
+  const syncPartner = useSyncPartner()
   const partners = useMemo(() => partnersData || [], [partnersData])
 
   const [q, setQ] = useState('')
@@ -52,6 +42,45 @@ export function Partners() {
   const [ack, setAck] = useState('')
 
   const toast = (m: string) => { setAck(m); setTimeout(() => setAck(''), 2000) }
+
+  const handleCreatePartner = async () => {
+    const name = window.prompt('Partner name')
+    if (!name) return
+    const partyId = (window.prompt('Party ID (3 chars)') || '').toUpperCase()
+    const countryCode = (window.prompt('Country code (2 chars)') || '').toUpperCase()
+    const role = (window.prompt('Role (CPO/EMSP)') || 'CPO').toUpperCase()
+    if (!partyId || !countryCode) {
+      toast('Missing party or country code')
+      return
+    }
+    await createPartner.mutateAsync({
+      name,
+      partyId,
+      countryCode,
+      role,
+    })
+    toast(`Partner ${name} created`)
+  }
+
+  const handleRenamePartner = async (partner: Partner) => {
+    const nextName = window.prompt('New partner name', partner.name)
+    if (!nextName || nextName === partner.name) return
+    await updatePartner.mutateAsync({
+      id: partner.id,
+      payload: { name: nextName },
+    })
+    toast(`Updated ${nextName}`)
+  }
+
+  const handleSuspendPartner = async (partner: Partner) => {
+    await suspendPartner.mutateAsync(partner.id)
+    toast(`${partner.name} suspended`)
+  }
+
+  const handleSyncPartner = async (partner: Partner) => {
+    await syncPartner.mutateAsync(partner.id)
+    toast(`Sync triggered for ${partner.name}`)
+  }
 
   const filtered = useMemo(() =>
     partners
@@ -74,7 +103,7 @@ export function Partners() {
         <h2 className="text-lg font-semibold">Roaming Partners</h2>
         {canManage && (
           <div className="flex gap-2">
-            <button onClick={() => toast('Add partner (demo)')} className="px-4 py-2 rounded-lg bg-accent text-white font-medium hover:bg-accent-hover">
+            <button onClick={() => void handleCreatePartner()} className="px-4 py-2 rounded-lg bg-accent text-white font-medium hover:bg-accent-hover">
               Add Partner
             </button>
             <a href="/settings" className="px-4 py-2 rounded-lg border border-border hover:bg-muted">Settings</a>
@@ -131,10 +160,10 @@ export function Partners() {
                 View
               </button>
               {canManage && (
-                <button onClick={() => toast(`Edit ${p.name} (demo)`)} className="text-subtle text-sm hover:text-accent">Edit</button>
-              )}
+                  <button onClick={() => void handleRenamePartner(p)} className="text-subtle text-sm hover:text-accent">Edit</button>
+                )}
+              </div>
             </div>
-          </div>
         ))}
       </section>
 
@@ -193,11 +222,11 @@ export function Partners() {
 
               {canManage && (
                 <div className="border-t border-border pt-4 flex gap-2">
-                  <button onClick={() => toast('Sync triggered (demo)')} className="flex-1 px-4 py-2 rounded-lg bg-accent text-white font-medium hover:bg-accent-hover">
+                  <button onClick={() => void handleSyncPartner(selectedPartner)} className="flex-1 px-4 py-2 rounded-lg bg-accent text-white font-medium hover:bg-accent-hover">
                     Sync Now
                   </button>
-                  <button onClick={() => toast('Test connection (demo)')} className="flex-1 px-4 py-2 rounded-lg border border-border hover:bg-muted">
-                    Test Connection
+                  <button onClick={() => void handleSuspendPartner(selectedPartner)} className="flex-1 px-4 py-2 rounded-lg border border-border hover:bg-muted">
+                    Suspend
                   </button>
                 </div>
               )}

@@ -84,6 +84,15 @@ export type ChargePointUnlockRequest = {
   evseId?: number
 }
 
+export type ChargePointRoamingPublication = {
+  chargePointId: string
+  ocppId?: string
+  stationId?: string
+  published: boolean
+  lastUpdatedAt?: string | null
+  updatedAt?: string | null
+}
+
 export const chargePointService = {
   /**
    * Get all charge points
@@ -228,5 +237,18 @@ export const chargePointService = {
     data: { enabled: boolean; ttlMinutes?: number; allowedIps?: string[]; allowedCidrs?: string[] }
   ): Promise<ChargePointSecurityState> {
     return apiClient.patch<ChargePointSecurityState>(`/charge-points/${id}/security/bootstrap`, data)
+  },
+
+  async getRoamingPublication(id: string): Promise<ChargePointRoamingPublication> {
+    return apiClient.get<ChargePointRoamingPublication>(
+      `/ocpi/actions/charge-points/${id}/roaming-publication`
+    )
+  },
+
+  async setRoamingPublication(id: string, published: boolean): Promise<ChargePointRoamingPublication> {
+    return apiClient.put<ChargePointRoamingPublication>(
+      `/ocpi/actions/charge-points/${id}/roaming-publication`,
+      { published }
+    )
   },
 }

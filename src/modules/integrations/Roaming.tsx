@@ -1,8 +1,12 @@
 import { useState, useMemo } from 'react'
 import { useAuthStore } from '@/core/auth/authStore'
 import { hasPermission } from '@/constants/permissions'
-import { useRoamingSessions, useRoamingCdrs } from './useRoaming'
-import type { RoamingSession, RoamingCDR } from './roamingService'
+import {
+  useRoamingCdrDetail,
+  useRoamingCdrs,
+  useRoamingSessionDetail,
+  useRoamingSessions,
+} from './useRoaming'
 import { TextSkeleton } from '@/ui/components/SkeletonCards'
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -10,31 +14,41 @@ import { TextSkeleton } from '@/ui/components/SkeletonCards'
    RBAC: Platform admins only
 ───────────────────────────────────────────────────────────────────────────── */
 
-type RoamingRole = 'CPO' | 'MSP'
-type SessionStatus = 'Completed' | 'Charging' | 'Failed' | 'Refunded'
-type CDRStatus = 'Finalized' | 'Sent' | 'Disputed' | 'Voided' | 'Pending'
-
 export function Roaming() {
   const { user } = useAuthStore()
   const role = user?.role ?? 'EVZONE_OPERATOR'
   const canView = hasPermission(role, 'protocols', 'view')
   const canManage = hasPermission(role, 'protocols', 'manage')
 
-  const { data: sessionsData, isLoading: isLoadingSessions } = useRoamingSessions()
-  const { data: cdrsData, isLoading: isLoadingCdrs } = useRoamingCdrs()
-
-  const sessions = useMemo(() => sessionsData || [], [sessionsData])
-  const cdrsRaw = useMemo(() => cdrsData || [], [cdrsData])
-
   const [tab, setTab] = useState<'sessions' | 'cdrs'>('sessions')
   const [q, setQ] = useState('')
   const [roleFilter, setRoleFilter] = useState('All')
   const [partner, setPartner] = useState('All')
   const [status, setStatus] = useState('All')
+  const offset = 0
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null)
+  const [selectedCdrId, setSelectedCdrId] = useState<string | null>(null)
   const [fx, setFx] = useState(true)
   const [ack, setAck] = useState('')
 
   const toast = (m: string) => { setAck(m); setTimeout(() => setAck(''), 2000) }
+
+  const queryFilters = useMemo(() => ({
+    q: q || undefined,
+    role: roleFilter === 'All' ? undefined : roleFilter,
+    partner: partner === 'All' ? undefined : partner,
+    status: status === 'All' ? undefined : status,
+    limit: 100,
+    offset,
+  }), [q, roleFilter, partner, status, offset])
+
+  const { data: sessionsData, isLoading: isLoadingSessions } = useRoamingSessions(queryFilters)
+  const { data: cdrsData, isLoading: isLoadingCdrs } = useRoamingCdrs(queryFilters)
+  const { data: selectedSessionDetail } = useRoamingSessionDetail(selectedSessionId || undefined)
+  const { data: selectedCdrDetail } = useRoamingCdrDetail(selectedCdrId || undefined)
+
+  const sessions = useMemo(() => sessionsData?.items || [], [sessionsData])
+  const cdrsRaw = useMemo(() => cdrsData?.items || [], [cdrsData])
 
   const filteredSessions = useMemo(() =>
     sessions
@@ -51,6 +65,11 @@ export function Roaming() {
       .filter(r => partner === 'All' || r.partner === partner)
       .filter(r => status === 'All' || r.status === status)
     , [cdrsRaw, q, roleFilter, partner, status])
+
+  const partnerOptions = useMemo(() => {
+    const items = [...sessions.map((s) => s.partner), ...cdrsRaw.map((c) => c.partner)]
+    return ['All', ...Array.from(new Set(items.filter(Boolean)))]
+  }, [sessions, cdrsRaw])
 
   const amtStr = (cur: string, amt: number) => {
     if (!fx) return `${cur} ${amt.toFixed(2)}`
@@ -122,7 +141,7 @@ export function Roaming() {
           {['All', 'CPO', 'MSP'].map(o => <option key={o}>{o}</option>)}
         </select>
         <select value={partner} onChange={e => setPartner(e.target.value)} className="select">
-          {['All', 'VoltHub', 'GreenRoam'].map(o => <option key={o}>{o}</option>)}
+          {partnerOptions.map(o => <option key={o}>{o}</option>)}
         </select>
         <select value={status} onChange={e => setStatus(e.target.value)} className="select">
           {tab === 'sessions'
@@ -164,7 +183,7 @@ export function Roaming() {
             </thead>
             <tbody className="divide-y divide-border">
               {filteredSessions.map(r => (
-                <tr key={r.id} className="hover:bg-muted/50">
+                <tr key={r.id} className="hover:bg-muted/50 cursor-pointer" onClick={() => setSelectedSessionId(r.id)}>
                   <td className="px-4 py-3 font-medium truncate max-w-[80px]" title={r.id}>{r.id}</td>
                   <td className="px-4 py-3 text-xs">{r.role}</td>
                   <td className="px-4 py-3 truncate max-w-[96px]" title={r.partner}>{r.partner}</td>
@@ -212,7 +231,7 @@ export function Roaming() {
             </thead>
             <tbody className="divide-y divide-border">
               {filteredCdrs.map(r => (
-                <tr key={r.cdr} className="hover:bg-muted/50">
+                <tr key={r.cdr} className="hover:bg-muted/50 cursor-pointer" onClick={() => setSelectedCdrId(r.cdr)}>
                   <td className="px-4 py-3 font-medium truncate max-w-[80px]" title={r.cdr}>{r.cdr}</td>
                   <td className="px-4 py-3 text-subtle text-xs truncate max-w-[80px]" title={r.session}>{r.session}</td>
                   <td className="px-4 py-3 text-xs">{r.role}</td>
@@ -239,6 +258,26 @@ export function Roaming() {
             </tbody>
           </table>
           {filteredCdrs.length === 0 && <div className="p-8 text-center text-subtle">No CDRs match your filters.</div>}
+        </section>
+      )}
+
+      {(selectedSessionDetail || selectedCdrDetail) && (
+        <section className="rounded-xl border border-border bg-surface p-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold">Drill-down Details</h3>
+            <button
+              onClick={() => {
+                setSelectedSessionId(null)
+                setSelectedCdrId(null)
+              }}
+              className="px-3 py-1 rounded border border-border hover:bg-muted text-xs"
+            >
+              Close
+            </button>
+          </div>
+          <pre className="mt-3 text-xs bg-muted/30 rounded-lg p-3 overflow-auto max-h-64">
+            {JSON.stringify(selectedSessionDetail || selectedCdrDetail, null, 2)}
+          </pre>
         </section>
       )}
     </div>
