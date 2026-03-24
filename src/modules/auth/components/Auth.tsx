@@ -108,9 +108,9 @@ export function Login() {
       <div className="pointer-events-none absolute bottom-[-140px] left-[-80px] h-80 w-80 rounded-full bg-accent/10 blur-3xl" aria-hidden="true" />
 
       <div className="login-shell relative mx-auto flex min-h-screen w-full max-w-5xl items-start px-4 py-8 sm:py-10 lg:items-center lg:py-16">
-        <div className="grid w-full gap-8 lg:gap-10 lg:grid-cols-[1.05fr_0.95fr]">
-          <section className="order-2 space-y-8 animate-in fade-in slide-in-from-left-4 duration-700 lg:order-1">
-            <div className="inline-flex items-center gap-2 rounded-full border border-[var(--evz-card-border)] bg-[var(--evz-card)] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--evz-accent)] shadow-sm">
+        <div className="grid w-full gap-6 sm:gap-8 lg:gap-10 lg:grid-cols-[1.05fr_0.95fr]">
+          <section className="order-1 space-y-5 sm:space-y-8 animate-in fade-in slide-in-from-left-4 duration-700">
+            <div className="hidden sm:inline-flex items-center gap-2 rounded-full border border-[var(--evz-card-border)] bg-[var(--evz-card)] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--evz-accent)] shadow-sm">
               <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-accent/10 text-accent">
                 <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z" /></svg>
               </span>
@@ -126,7 +126,7 @@ export function Login() {
               </p>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-3">
+            <div className="hidden sm:grid gap-4 sm:grid-cols-3">
               {[
                 { label: 'Stations covered', value: '240+' },
                 { label: 'Response time', value: '24/7' },
@@ -139,12 +139,12 @@ export function Login() {
               ))}
             </div>
 
-            <div className="rounded-2xl border border-border bg-panel p-5 text-sm text-[var(--evz-muted)]">
+            <div className="hidden sm:block rounded-2xl border border-border bg-panel p-5 text-sm text-[var(--evz-muted)]">
               Keep your stations synced with real-time alerts, swap analytics, and technician dispatch updates.
             </div>
           </section>
 
-          <section className="order-1 relative animate-in fade-in slide-in-from-right-4 duration-700 lg:order-2">
+          <section className="order-2 relative animate-in fade-in slide-in-from-right-4 duration-700">
             <div className="rounded-[28px] border border-[var(--evz-card-border)] bg-[var(--evz-card)] p-5 sm:p-6 shadow-card backdrop-blur">
               <div className="mb-6 text-center">
                 <h2 className="text-2xl font-semibold">Sign in</h2>
