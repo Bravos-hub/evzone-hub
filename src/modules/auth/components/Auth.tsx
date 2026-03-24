@@ -15,7 +15,7 @@ export function Login() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { login } = useAuthStore()
-  const [email, setEmail] = useState('')
+  const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
   const [twoFactorToken, setTwoFactorToken] = useState('')
   const [requiresTwoFactor, setRequiresTwoFactor] = useState(false)
@@ -28,7 +28,7 @@ export function Login() {
 
   useEffect(() => {
     if (emailFromQuery) {
-      setEmail(emailFromQuery)
+      setIdentifier(emailFromQuery)
     }
   }, [emailFromQuery])
 
@@ -38,6 +38,15 @@ export function Login() {
     setLoading(true)
 
     try {
+      const normalizedIdentifier = identifier.trim()
+      if (!normalizedIdentifier) {
+        setError('Email or phone is required')
+        setLoading(false)
+        return
+      }
+
+      const isEmailIdentifier = normalizedIdentifier.includes('@')
+
       if (requiresTwoFactor && !twoFactorToken.trim()) {
         setError('Authenticator code is required')
         setLoading(false)
@@ -45,7 +54,8 @@ export function Login() {
       }
 
       const response = await login({
-        email,
+        email: isEmailIdentifier ? normalizedIdentifier : undefined,
+        phone: isEmailIdentifier ? undefined : normalizedIdentifier,
         password,
         inviteToken,
         twoFactorToken: requiresTwoFactor ? twoFactorToken : undefined,
@@ -155,13 +165,14 @@ export function Login() {
                 {error && <div className="rounded-lg border border-danger/30 bg-danger/10 text-danger px-4 py-2 text-sm">{error}</div>}
 
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-[0.2em] text-text-secondary">Email</label>
+                  <label className="text-xs font-semibold uppercase tracking-[0.2em] text-text-secondary">Email or Phone</label>
                   <input
-                    type="email"
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
+                    type="text"
+                    value={identifier}
+                    onChange={e => setIdentifier(e.target.value)}
                     className="input mt-2 rounded-2xl"
-                    placeholder="you@example.com"
+                    placeholder="you@example.com or +256700000000"
+                    autoComplete="username"
                     required
                   />
                 </div>
