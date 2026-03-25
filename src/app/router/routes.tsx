@@ -1,5 +1,6 @@
+import type { ReactNode } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
-import { RequireAuth, RequireRole } from './guards'
+import { RequireAuth, RequirePermission, RequireRole } from './guards'
 import { ForgotPasswordPage } from '@/pages/auth/ForgotPasswordPage'
 import { ResetPasswordPage } from '@/pages/auth/ResetPasswordPage'
 import { UnauthorizedPage } from '@/pages/errors/UnauthorizedPage'
@@ -10,7 +11,10 @@ import { InvoiceDetailPage } from '@/pages/billing/InvoiceDetailPage'
 import { PATHS } from './paths'
 
 import { GenericDashboard } from '@/ui/dashboard'
+import { capabilityAllowsCharge } from '@/core/auth/rbac'
 import { useAuthStore } from '@/core/auth/authStore'
+import type { UserProfile } from '@/core/auth/types'
+import type { PermissionFeature } from '@/constants/permissions'
 
 // Unified Feature Pages (role-agnostic, RBAC handled internally)
 import {
@@ -149,9 +153,10 @@ import { SiteDetail } from '@/modules/sites/components/SiteDetail'
 /**
  * Application Routes - Unified flat structure
  *
- * All routes use RequireAuth (must be logged in).
- * Role-based access control is handled INSIDE each feature component.
- * The sidebar dynamically shows/hides menu items based on role.
+ * Authentication is enforced with RequireAuth.
+ * Top-level feature access is enforced with RequirePermission where the
+ * permission mapping is already defined.
+ * Sidebar visibility is a narrower audience layer on top of permissions.
  */
 export function IncidentsRouter() {
   const { user } = useAuthStore()
@@ -164,6 +169,26 @@ export function ReportsRouter() {
   if (user?.role === 'STATION_OWNER') return <AdvancedReporting />
   return <Reports />
 }
+
+type PermissionRouteOptions = {
+  permission?: string
+  when?: (user: UserProfile) => boolean
+}
+
+const withPermission = (
+  feature: PermissionFeature,
+  element: ReactNode,
+  options: PermissionRouteOptions = {},
+) => (
+  <RequireAuth>
+    <RequirePermission feature={feature} permission={options.permission} when={options.when}>
+      {element}
+    </RequirePermission>
+  </RequireAuth>
+)
+
+const chargeCapableOwnerTools = (user: UserProfile) =>
+  !['STATION_OWNER', 'STATION_OPERATOR'].includes(user.role) || capabilityAllowsCharge(user.ownerCapability)
 
 export function AppRoutes() {
   return (
@@ -195,19 +220,19 @@ export function AppRoutes() {
       {/* ═══════════════════════════════════════════════════════════════════════
           DASHBOARD - Single route, content determined by user's role
           ═══════════════════════════════════════════════════════════════════════ */}
-      <Route path={PATHS.DASHBOARD} element={<RequireAuth><GenericDashboard /></RequireAuth>} />
+      <Route path={PATHS.DASHBOARD} element={withPermission('dashboard', <GenericDashboard />)} />
 
       {/* ═══════════════════════════════════════════════════════════════════════
           CORE FEATURES - Available to multiple roles (RBAC inside component)
           ═══════════════════════════════════════════════════════════════════════ */}
-      <Route path={PATHS.STATIONS.ROOT} element={<RequireAuth><Stations /></RequireAuth>} />
-      <Route path="/stations/:id" element={<RequireAuth><StationDetail /></RequireAuth>} />
-      <Route path={PATHS.STATIONS.CHARGE_POINTS} element={<RequireAuth><Stations /></RequireAuth>} />
-      <Route path="/stations/charge-points/:id" element={<RequireAuth><ChargePointDetail /></RequireAuth>} />
-      <Route path={PATHS.STATIONS.SWAP_STATIONS} element={<RequireAuth><Stations /></RequireAuth>} />
-      <Route path={PATHS.STATIONS.SMART_CHARGING} element={<RequireAuth><Stations /></RequireAuth>} />
-      <Route path={PATHS.STATIONS.BOOKINGS} element={<RequireAuth><Stations /></RequireAuth>} />
-      <Route path={PATHS.STATIONS.ASSIGN_OPERATOR(':id')} element={<RequireAuth><StationOperatorAssignment /></RequireAuth>} />
+      <Route path={PATHS.STATIONS.ROOT} element={withPermission('stations', <Stations />)} />
+      <Route path="/stations/:id" element={withPermission('stations', <StationDetail />)} />
+      <Route path={PATHS.STATIONS.CHARGE_POINTS} element={withPermission('charge-points', <Stations />, { when: chargeCapableOwnerTools })} />
+      <Route path="/stations/charge-points/:id" element={withPermission('charge-points', <ChargePointDetail />, { when: chargeCapableOwnerTools })} />
+      <Route path={PATHS.STATIONS.SWAP_STATIONS} element={withPermission('swapStations', <Stations />)} />
+      <Route path={PATHS.STATIONS.SMART_CHARGING} element={withPermission('smartCharging', <Stations />, { when: chargeCapableOwnerTools })} />
+      <Route path={PATHS.STATIONS.BOOKINGS} element={withPermission('bookings', <Stations />)} />
+      <Route path={PATHS.STATIONS.ASSIGN_OPERATOR(':id')} element={withPermission('stations', <StationOperatorAssignment />)} />
 
       {/* Redirect old routes to stations sub-routes */}
       <Route path="/charge-points" element={<Navigate to={PATHS.STATIONS.CHARGE_POINTS} replace />} />
@@ -215,42 +240,42 @@ export function AppRoutes() {
       <Route path="/smart-charging" element={<Navigate to={PATHS.STATIONS.SMART_CHARGING} replace />} />
       <Route path="/bookings" element={<Navigate to={PATHS.STATIONS.BOOKINGS} replace />} />
 
-      <Route path={PATHS.SESSIONS} element={<RequireAuth><Sessions /></RequireAuth>} />
-      <Route path="/sessions/:id" element={<RequireAuth><SessionDetailPage /></RequireAuth>} />
-      <Route path={PATHS.INCIDENTS} element={<RequireAuth><IncidentsRouter /></RequireAuth>} />
-      <Route path={PATHS.DISPATCHES} element={<RequireAuth><Dispatches /></RequireAuth>} />
-      <Route path={PATHS.BILLING} element={<RequireAuth><Billing /></RequireAuth>} />
-      <Route path="/billing/invoices/:id" element={<RequireAuth><InvoiceDetailPage /></RequireAuth>} />
-      <Route path={PATHS.REPORTS} element={<RequireAuth><ReportsRouter /></RequireAuth>} />
-      <Route path={PATHS.TEAM} element={<RequireAuth><Team /></RequireAuth>} />
-      <Route path={PATHS.NOTIFICATIONS} element={<RequireAuth><Notifications /></RequireAuth>} />
+      <Route path={PATHS.SESSIONS} element={withPermission('sessions', <Sessions />)} />
+      <Route path="/sessions/:id" element={withPermission('sessions', <SessionDetailPage />)} />
+      <Route path={PATHS.INCIDENTS} element={withPermission('incidents', <IncidentsRouter />)} />
+      <Route path={PATHS.DISPATCHES} element={withPermission('dispatches', <Dispatches />)} />
+      <Route path={PATHS.BILLING} element={withPermission('billing', <Billing />)} />
+      <Route path="/billing/invoices/:id" element={withPermission('billing', <InvoiceDetailPage />)} />
+      <Route path={PATHS.REPORTS} element={withPermission('reports', <ReportsRouter />)} />
+      <Route path={PATHS.TEAM} element={withPermission('team', <Team />)} />
+      <Route path={PATHS.NOTIFICATIONS} element={withPermission('notifications', <Notifications />)} />
 
       {/* ═══════════════════════════════════════════════════════════════════════
           ADMIN FEATURES - RBAC checked inside each component
           ═══════════════════════════════════════════════════════════════════════ */}
-      <Route path={PATHS.ADMIN.USERS} element={<RequireAuth><Users /></RequireAuth>} />
-      <Route path={PATHS.ADMIN.USER_DETAIL(':userId')} element={<RequireAuth><UserDetail /></RequireAuth>} />
-      <Route path={PATHS.ADMIN.APPROVALS} element={<RequireAuth><PendingApplications /></RequireAuth>} />
-      <Route path={PATHS.ADMIN.AUDIT_LOGS} element={<RequireAuth><AuditLogs /></RequireAuth>} />
-      <Route path={PATHS.ADMIN.SYSTEM_HEALTH} element={<RequireAuth><SystemHealth /></RequireAuth>} />
-      <Route path={PATHS.ADMIN.GLOBAL_CONFIG} element={<RequireAuth><GlobalConfig /></RequireAuth>} />
-      <Route path={PATHS.ADMIN.INTEGRATIONS} element={<RequireAuth><Integrations /></RequireAuth>} />
-      <Route path={PATHS.ADMIN.KYC} element={<RequireAuth><KycCompliance /></RequireAuth>} />
-      <Route path={PATHS.ADMIN.DISPUTES} element={<RequireAuth><Disputes /></RequireAuth>} />
-      <Route path={PATHS.ADMIN.BROADCASTS} element={<RequireAuth><Broadcasts /></RequireAuth>} />
-      <Route path={PATHS.ADMIN.PROTOCOLS} element={<RequireAuth><Protocols /></RequireAuth>} />
-      <Route path={PATHS.ADMIN.SETTLEMENT} element={<RequireAuth><Settlement /></RequireAuth>} />
-      <Route path={PATHS.ADMIN.PLANS} element={<RequireAuth><Plans /></RequireAuth>} />
-      <Route path={PATHS.ADMIN.FEATURE_FLAGS} element={<RequireAuth><FeatureFlags /></RequireAuth>} />
-      <Route path={PATHS.ADMIN.WEBHOOKS_LOG} element={<RequireAuth><WebhooksLog /></RequireAuth>} />
-      <Route path={PATHS.ADMIN.WEBHOOKS} element={<RequireAuth><Webhooks /></RequireAuth>} />
-      <Route path={PATHS.ADMIN.SUPPORT} element={<RequireAuth><SupportDesk /></RequireAuth>} />
-      <Route path={PATHS.ADMIN.PRIVACY} element={<RequireAuth><PrivacyRequests /></RequireAuth>} />
-      <Route path={PATHS.ADMIN.CRM} element={<RequireAuth><CRM /></RequireAuth>} />
-      <Route path={PATHS.ADMIN.STATUS} element={<RequireAuth><StatusPage /></RequireAuth>} />
-      <Route path={PATHS.ADMIN.ROLES} element={<RequireAuth><RolesMatrix /></RequireAuth>} />
-      <Route path={PATHS.ADMIN.ORGS} element={<RequireAuth><Organizations /></RequireAuth>} />
-      <Route path={PATHS.ADMIN.GEOGRAPHY} element={<RequireAuth><Geography /></RequireAuth>} />
+      <Route path={PATHS.ADMIN.USERS} element={withPermission('users', <Users />)} />
+      <Route path={PATHS.ADMIN.USER_DETAIL(':userId')} element={withPermission('users', <UserDetail />)} />
+      <Route path={PATHS.ADMIN.APPROVALS} element={withPermission('approvals', <PendingApplications />)} />
+      <Route path={PATHS.ADMIN.AUDIT_LOGS} element={withPermission('auditLogs', <AuditLogs />)} />
+      <Route path={PATHS.ADMIN.SYSTEM_HEALTH} element={withPermission('systemHealth', <SystemHealth />)} />
+      <Route path={PATHS.ADMIN.GLOBAL_CONFIG} element={withPermission('globalConfig', <GlobalConfig />)} />
+      <Route path={PATHS.ADMIN.INTEGRATIONS} element={withPermission('integrations', <Integrations />)} />
+      <Route path={PATHS.ADMIN.KYC} element={withPermission('kycCompliance', <KycCompliance />)} />
+      <Route path={PATHS.ADMIN.DISPUTES} element={withPermission('disputes', <Disputes />)} />
+      <Route path={PATHS.ADMIN.BROADCASTS} element={withPermission('broadcasts', <Broadcasts />)} />
+      <Route path={PATHS.ADMIN.PROTOCOLS} element={withPermission('protocols', <Protocols />)} />
+      <Route path={PATHS.ADMIN.SETTLEMENT} element={withPermission('settlement', <Settlement />)} />
+      <Route path={PATHS.ADMIN.PLANS} element={withPermission('plans', <Plans />)} />
+      <Route path={PATHS.ADMIN.FEATURE_FLAGS} element={withPermission('featureFlags', <FeatureFlags />)} />
+      <Route path={PATHS.ADMIN.WEBHOOKS_LOG} element={withPermission('webhooksLog', <WebhooksLog />)} />
+      <Route path={PATHS.ADMIN.WEBHOOKS} element={withPermission('webhooks', <Webhooks />)} />
+      <Route path={PATHS.ADMIN.SUPPORT} element={withPermission('supportDesk', <SupportDesk />)} />
+      <Route path={PATHS.ADMIN.PRIVACY} element={withPermission('privacyRequests', <PrivacyRequests />)} />
+      <Route path={PATHS.ADMIN.CRM} element={withPermission('crm', <CRM />)} />
+      <Route path={PATHS.ADMIN.STATUS} element={withPermission('statusPage', <StatusPage />)} />
+      <Route path={PATHS.ADMIN.ROLES} element={withPermission('rolesMatrix', <RolesMatrix />)} />
+      <Route path={PATHS.ADMIN.ORGS} element={withPermission('organizations', <Organizations />)} />
+      <Route path={PATHS.ADMIN.GEOGRAPHY} element={withPermission('geography', <Geography />)} />
       <Route path={PATHS.ADMIN.HOME} element={<Navigate to={PATHS.DASHBOARD} replace />} />
 
       <Route path={PATHS.MARKETPLACE} element={<RequireAuth><Marketplace /></RequireAuth>} />
@@ -269,51 +294,51 @@ export function AppRoutes() {
       {/* ═══════════════════════════════════════════════════════════════════════
           OWNER FEATURES - RBAC checked inside each component
           ═══════════════════════════════════════════════════════════════════════ */}
-      <Route path={PATHS.OWNER.TARIFFS} element={<RequireAuth><Tariffs /></RequireAuth>} />
-      <Route path={PATHS.OWNER.PROVIDERS} element={<RequireAuth><SwapProviders /></RequireAuth>} />
-      <Route path={PATHS.PROVIDER.DASHBOARD} element={<RequireAuth><ProviderPortal /></RequireAuth>} />
-      <Route path={PATHS.OWNER.EARNINGS} element={<RequireAuth><Earnings /></RequireAuth>} />
-      <Route path={PATHS.OWNER.BOOKING_LEDGER} element={<RequireAuth><BookingLedger /></RequireAuth>} />
+      <Route path={PATHS.OWNER.TARIFFS} element={withPermission('tariffs', <Tariffs />, { when: chargeCapableOwnerTools })} />
+      <Route path={PATHS.OWNER.PROVIDERS} element={withPermission('swapProviders', <SwapProviders />)} />
+      <Route path={PATHS.PROVIDER.DASHBOARD} element={withPermission('providerPortal', <ProviderPortal />)} />
+      <Route path={PATHS.OWNER.EARNINGS} element={withPermission('earnings', <Earnings />)} />
+      <Route path={PATHS.OWNER.BOOKING_LEDGER} element={withPermission('bookings', <BookingLedger />)} />
       <Route path={PATHS.OWNER.PRICING_RECIPES} element={<RequireAuth><PricingRecipes /></RequireAuth>} />
       <Route path={PATHS.OWNER.LOAD_POLICY} element={<RequireAuth><LoadPolicy /></RequireAuth>} />
 
       {/* Station Owner (Tenant) Dashboard */}
-      <Route path={PATHS.TENANT.DASHBOARD} element={<RequireAuth><Sites /></RequireAuth>} />
+      <Route path={PATHS.TENANT.DASHBOARD} element={withPermission('sites', <Sites />)} />
 
       {/* ═══════════════════════════════════════════════════════════════════════
           SITE OWNER FEATURES
           ═══════════════════════════════════════════════════════════════════════ */}
-      <Route path={PATHS.SITE_OWNER.SITES} element={<RequireAuth><Sites /></RequireAuth>} />
-      <Route path={PATHS.SITE_OWNER.SITE_DETAIL(':id')} element={<RequireAuth><SiteDetail /></RequireAuth>} />
+      <Route path={PATHS.SITE_OWNER.SITES} element={withPermission('sites', <Sites />)} />
+      <Route path={PATHS.SITE_OWNER.SITE_DETAIL(':id')} element={withPermission('sites', <SiteDetail />)} />
 
       {/* ═══════════════════════════════════════════════════════════════════════
           TECHNICIAN FEATURES
           ═══════════════════════════════════════════════════════════════════════ */}
-      <Route path={PATHS.TECH.JOBS} element={<RequireAuth><Jobs /></RequireAuth>} />
-      <Route path={PATHS.TECH.TECH_JOBS} element={<RequireAuth><TechnicianJobs /></RequireAuth>} />
-      <Route path={PATHS.TECH.AVAILABILITY} element={<RequireAuth><TechnicianAvailability /></RequireAuth>} />
+      <Route path={PATHS.TECH.JOBS} element={withPermission('jobs', <Jobs />)} />
+      <Route path={PATHS.TECH.TECH_JOBS} element={withPermission('technicianJobs', <TechnicianJobs />)} />
+      <Route path={PATHS.TECH.AVAILABILITY} element={withPermission('technicianAvailability', <TechnicianAvailability />)} />
 
       {/* ═══════════════════════════════════════════════════════════════════════
           NEW PORTED FEATURES
           ═══════════════════════════════════════════════════════════════════════ */}
       {/* Admin Advanced */}
-      <Route path="/content" element={<RequireAuth><Content /></RequireAuth>} />
-      <Route path="/openadr" element={<RequireAuth><OpenADR /></RequireAuth>} />
-      <Route path="/roaming" element={<RequireAuth><Roaming /></RequireAuth>} />
-      <Route path="/regulatory" element={<RequireAuth><Regulatory /></RequireAuth>} />
-      <Route path="/utility" element={<RequireAuth><Utility /></RequireAuth>} />
+      <Route path="/content" element={withPermission('content', <Content />)} />
+      <Route path="/openadr" element={withPermission('openadr', <OpenADR />)} />
+      <Route path="/roaming" element={withPermission('roaming', <Roaming />)} />
+      <Route path="/regulatory" element={withPermission('regulatory', <Regulatory />)} />
+      <Route path="/utility" element={withPermission('utility', <Utility />)} />
       <Route path={PATHS.OWNER.OPS} element={<Navigate to={PATHS.SESSIONS} replace />} />
 
       {/* Settings & Wallet */}
-      <Route path={PATHS.SETTING} element={<RequireAuth><Settings /></RequireAuth>} />
-      <Route path={PATHS.WALLET} element={<RequireAuth><Wallet /></RequireAuth>} />
+      <Route path={PATHS.SETTING} element={withPermission('settings', <Settings />)} />
+      <Route path={PATHS.WALLET} element={withPermission('wallet', <Wallet />)} />
 
       {/* Owner Tools */}
-      <Route path={PATHS.OWNER.TECH_REQUESTS} element={<RequireAuth><TechRequests /></RequireAuth>} />
-      <Route path={PATHS.OWNER.ADD_STATION_ENTRY} element={<RequireAuth><AddStationEntry /></RequireAuth>} />
-      <Route path={PATHS.OWNER.ADD_CHARGE_STATION} element={<RequireAuth><AddStation /></RequireAuth>} />
-      <Route path={PATHS.OWNER.ADD_CHARGER} element={<RequireAuth><AddCharger /></RequireAuth>} />
-      <Route path={PATHS.OWNER.ADD_SWAP_STATION} element={<RequireAuth><AddSwapStation /></RequireAuth>} />
+      <Route path={PATHS.OWNER.TECH_REQUESTS} element={withPermission('techRequests', <TechRequests />)} />
+      <Route path={PATHS.OWNER.ADD_STATION_ENTRY} element={withPermission('stations', <AddStationEntry />)} />
+      <Route path={PATHS.OWNER.ADD_CHARGE_STATION} element={withPermission('stations', <AddStation />, { when: chargeCapableOwnerTools })} />
+      <Route path={PATHS.OWNER.ADD_CHARGER} element={withPermission('addCharger', <AddCharger />, { when: chargeCapableOwnerTools })} />
+      <Route path={PATHS.OWNER.ADD_SWAP_STATION} element={withPermission('swapStations', <AddSwapStation />)} />
       <Route path="/add-station/swap" element={<Navigate to={PATHS.OWNER.ADD_SWAP_STATION} replace />} />
       <Route
         path={PATHS.OWNER.EXPANSION_TRACKER}
@@ -348,11 +373,11 @@ export function AppRoutes() {
       <Route path={PATHS.OPERATOR.CUSTOM_ROLES} element={<RequireAuth><OperatorRoleManagement /></RequireAuth>} />
 
       {/* Site Owner Tools */}
-      <Route path={PATHS.SITE_OWNER.MY_SITES} element={<RequireAuth><Sites /></RequireAuth>} />
+      <Route path={PATHS.SITE_OWNER.MY_SITES} element={withPermission('sites', <Sites />)} />
       <Route path={PATHS.SITE_OWNER.DASHBOARD} element={<Navigate to={PATHS.DASHBOARD} replace />} />
-      <Route path={PATHS.SITE_OWNER.PARKING} element={<RequireAuth><Parking /></RequireAuth>} />
-      <Route path={PATHS.SITE_OWNER.TENANTS} element={<RequireAuth><Tenants /></RequireAuth>} />
-      <Route path={PATHS.SITE_OWNER.TENANT_DETAIL(':id')} element={<RequireAuth><TenantDetail /></RequireAuth>} />
+      <Route path={PATHS.SITE_OWNER.PARKING} element={withPermission('parking', <Parking />)} />
+      <Route path={PATHS.SITE_OWNER.TENANTS} element={withPermission('tenants', <Tenants />)} />
+      <Route path={PATHS.SITE_OWNER.TENANT_DETAIL(':id')} element={withPermission('tenants', <TenantDetail />)} />
       <Route path={PATHS.SITE_OWNER.WITHDRAWALS} element={<RequireAuth><SiteOwnerWithdrawals /></RequireAuth>} />
       <Route path={PATHS.SITE_OWNER.APPLY_FOR_SITE} element={<RequireAuth><SiteApplicationForm /></RequireAuth>} />
       <Route path={PATHS.SITE_OWNER.ADD_SITE} element={<RequireAuth><AddSite /></RequireAuth>} />

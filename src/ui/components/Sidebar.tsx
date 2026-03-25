@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { matchPath, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import clsx from 'clsx'
 import { useAuthStore } from '@/core/auth/authStore'
-import { getMenuItemsForRole, type MenuItem } from '@/constants/menuItems'
+import { getMenuItemsForUser, type MenuItem } from '@/constants/menuItems'
 import { ROLE_LABELS } from '@/constants/roles'
 import { PATHS } from '@/app/router/paths'
 
@@ -133,7 +133,7 @@ export function Sidebar({ items: overrideItems, onClose }: SidebarProps) {
   const navRef = useRef<HTMLElement | null>(null)
 
   // Use override items if provided, otherwise filter by role
-  const menuItems = overrideItems ?? getMenuItemsForRole(user?.role)
+  const menuItems = overrideItems ?? getMenuItemsForUser(user ?? undefined)
   const displayName = toTitleCaseName(user?.name)
   const profileInitials = initialsFromName(displayName)
   const [openParents, setOpenParents] = useState<Record<string, boolean>>({})

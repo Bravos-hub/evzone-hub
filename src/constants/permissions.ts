@@ -327,6 +327,11 @@ export const PERMISSIONS: Record<string, FeaturePermissions> = {
     viewAvailable: ['TECHNICIAN_PUBLIC'],
   },
 
+  technicianAvailability: {
+    access: ROLE_GROUPS.TECHNICIANS,
+    edit: ROLE_GROUPS.TECHNICIANS,
+  },
+
   // ═══════════════════════════════════════════════════════════════════════
   // NEW PORTED FEATURES
   // ═══════════════════════════════════════════════════════════════════════
@@ -380,14 +385,18 @@ export const PERMISSIONS: Record<string, FeaturePermissions> = {
     suspend: ROLE_GROUPS.PLATFORM_OPS,
   },
 
+  providerPortal: {
+    access: ROLE_GROUPS.PROVIDER_ROLES,
+  },
+
   settings: {
     access: 'ALL',
     edit: 'ALL',
   },
 
   wallet: {
-    access: [...ROLE_GROUPS.ALL_AUTHENTICATED],
-    view: [...ROLE_GROUPS.ALL_AUTHENTICATED],
+    access: ['STATION_OPERATOR', 'SITE_OWNER', 'TECHNICIAN_ORG', 'TECHNICIAN_PUBLIC', 'STATION_OWNER'],
+    view: ['STATION_OPERATOR', 'SITE_OWNER', 'TECHNICIAN_ORG', 'TECHNICIAN_PUBLIC', 'STATION_OWNER'],
     withdraw: ['STATION_OWNER', 'STATION_OPERATOR', 'SITE_OWNER', 'TECHNICIAN_ORG', 'TECHNICIAN_PUBLIC'],
   },
 
@@ -436,6 +445,8 @@ export const PERMISSIONS: Record<string, FeaturePermissions> = {
     delete: ROLE_GROUPS.PLATFORM_ADMINS,
   },
 }
+
+export type PermissionFeature = keyof typeof PERMISSIONS
 
 /** Check if a role has a specific permission for a feature */
 export function hasPermission(

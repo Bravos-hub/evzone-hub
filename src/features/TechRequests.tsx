@@ -100,8 +100,8 @@ export function TechRequests() {
   const { user } = useAuthStore()
   const role = user?.role ?? 'STATION_OWNER'
   
-  const canView = hasPermission(role, 'maintenance', 'view')
-  const canCreate = hasPermission(role, 'maintenance', 'create')
+  const canView = hasPermission(role, 'techRequests', 'access')
+  const canCreate = hasPermission(role, 'techRequests', 'create')
 
   const { data: dispatchesData, isLoading, error } = useDispatches()
   const { data: stationsData } = useStations()

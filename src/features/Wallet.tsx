@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { DashboardLayout } from '@/app/layouts/DashboardLayout'
 import { useAuthStore } from '@/core/auth/authStore'
-import { ROLE_GROUPS } from '@/constants/roles'
+import { hasPermission } from '@/constants/permissions'
 import { useWalletBalance, useWalletTransactions, useTopUp } from '@/modules/finance/wallet/useWallet'
 import { useStations } from '@/modules/stations/hooks/useStations'
 import { getErrorMessage } from '@/core/api/errors'
@@ -46,8 +46,7 @@ export function Wallet() {
   const { user } = useAuthStore()
   const role = user?.role ?? 'STATION_OWNER'
 
-  // Anyone authenticated can view wallet
-  const canView = ROLE_GROUPS.ALL_AUTHENTICATED.includes(role as any)
+  const canView = hasPermission(role, 'wallet', 'access')
 
   const { data: balanceData, isLoading: balanceLoading, error: balanceError } = useWalletBalance()
   const { data: transactionsData, isLoading: transactionsLoading, error: transactionsError } = useWalletTransactions()
