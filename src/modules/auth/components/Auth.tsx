@@ -58,12 +58,11 @@ export function Login() {
         phone: isEmailIdentifier ? undefined : normalizedIdentifier,
         password,
         inviteToken,
-        twoFactorToken: requiresTwoFactor ? twoFactorToken : undefined,
+        twoFactorToken: requiresTwoFactor ? twoFactorToken : undefined
       })
       setRequiresTwoFactor(false)
       setTwoFactorToken('')
-      const mustChangePassword =
-        response.user.mustChangePassword ?? response.mustChangePassword
+      const mustChangePassword = response.user.mustChangePassword ?? response.mustChangePassword
       const memberships = response.user.memberships || response.memberships || []
       const activeMemberships = memberships.filter((membership) => membership.status === 'ACTIVE')
 
@@ -122,25 +121,23 @@ export function Login() {
           <section className="order-1 space-y-5 sm:space-y-8 animate-in fade-in slide-in-from-left-4 duration-700">
             <div className="hidden sm:inline-flex items-center gap-2 rounded-full border border-[var(--evz-card-border)] bg-[var(--evz-card)] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--evz-accent)] shadow-sm">
               <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-accent/10 text-accent">
-                <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z" /></svg>
+                <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor">
+                  <path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z" />
+                </svg>
               </span>
               Secure sign-in
             </div>
 
             <div className="space-y-4">
-              <h1 className="login-title text-3xl font-semibold text-[var(--evz-ink)] sm:text-4xl lg:text-5xl">
-                Welcome back to EVzone
-              </h1>
-              <p className="max-w-xl text-sm text-[var(--evz-muted)] sm:text-base">
-                Monitor live stations, review battery health, and keep your operations aligned with a single unified dashboard.
-              </p>
+              <h1 className="login-title text-3xl font-semibold text-[var(--evz-ink)] sm:text-4xl lg:text-5xl">Welcome back to EVzone</h1>
+              <p className="max-w-xl text-sm text-[var(--evz-muted)] sm:text-base">Monitor live stations, review battery health, and keep your operations aligned with a single unified dashboard.</p>
             </div>
 
             <div className="hidden sm:grid gap-4 sm:grid-cols-3">
               {[
                 { label: 'Stations covered', value: '240+' },
                 { label: 'Response time', value: '24/7' },
-                { label: 'Operational uptime', value: '99.9%' },
+                { label: 'Operational uptime', value: '99.9%' }
               ].map((stat) => (
                 <div key={stat.label} className="rounded-2xl border border-border bg-panel p-4 shadow-sm">
                   <div className="text-[10px] font-semibold uppercase tracking-[0.25em] text-text-secondary">{stat.label}</div>
@@ -169,7 +166,7 @@ export function Login() {
                   <input
                     type="text"
                     value={identifier}
-                    onChange={e => setIdentifier(e.target.value)}
+                    onChange={(e) => setIdentifier(e.target.value)}
                     className="input mt-2 rounded-2xl"
                     placeholder="you@example.com or +256700000000"
                     autoComplete="username"
@@ -179,25 +176,16 @@ export function Login() {
 
                 <div>
                   <label className="text-xs font-semibold uppercase tracking-[0.2em] text-text-secondary">Password</label>
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    className="input mt-2 rounded-2xl"
-                    placeholder="password"
-                    required
-                  />
+                  <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="input mt-2 rounded-2xl" placeholder="password" required />
                 </div>
 
                 {requiresTwoFactor && (
                   <div>
-                    <label className="text-xs font-semibold uppercase tracking-[0.2em] text-text-secondary">
-                      Authenticator Code
-                    </label>
+                    <label className="text-xs font-semibold uppercase tracking-[0.2em] text-text-secondary">Authenticator Code</label>
                     <input
                       type="text"
                       value={twoFactorToken}
-                      onChange={e => setTwoFactorToken(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                      onChange={(e) => setTwoFactorToken(e.target.value.replace(/\D/g, '').slice(0, 6))}
                       className="input mt-2 rounded-2xl"
                       placeholder="6-digit code"
                       inputMode="numeric"
@@ -212,7 +200,9 @@ export function Login() {
                     <input type="checkbox" className="rounded border-border" />
                     <span>Remember me</span>
                   </label>
-                  <Link to={PATHS.AUTH.FORGOT_PASSWORD} className="text-accent hover:underline">Forgot password?</Link>
+                  <Link to={PATHS.AUTH.FORGOT_PASSWORD} className="text-accent hover:underline">
+                    Forgot password?
+                  </Link>
                 </div>
 
                 <button
@@ -220,18 +210,15 @@ export function Login() {
                   disabled={loading}
                   className="w-full rounded-2xl bg-accent px-4 py-3 text-sm font-semibold text-white shadow-accent transition hover:bg-accent-hover disabled:opacity-50"
                 >
-                  {loading
-                    ? requiresTwoFactor
-                      ? 'Verifying code...'
-                      : 'Signing in...'
-                    : requiresTwoFactor
-                      ? 'Verify & Sign in'
-                      : 'Sign in'}
+                  {loading ? (requiresTwoFactor ? 'Verifying code...' : 'Signing in...') : requiresTwoFactor ? 'Verify & Sign in' : 'Sign in'}
                 </button>
               </form>
 
               <p className="mt-5 text-center text-sm text-[var(--evz-muted)]">
-                Don't have an account? <Link to={PATHS.AUTH.REGISTER} className="text-accent hover:underline">Get started</Link>
+                Don't have an account?{' '}
+                <Link to={PATHS.AUTH.REGISTER} className="text-accent hover:underline">
+                  Get started
+                </Link>
               </p>
             </div>
           </section>
@@ -294,7 +281,7 @@ export function Register() {
     region: 'Central Region',
     payoutProvider: 'MTN',
     walletNumber: '',
-    terms: false,
+    terms: false
   })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -307,7 +294,7 @@ export function Register() {
     }
   }, [location.state])
 
-  const update = (k: keyof typeof form, v: string | boolean) => setForm(f => ({ ...f, [k]: v }))
+  const update = (k: keyof typeof form, v: string | boolean) => setForm((f) => ({ ...f, [k]: v }))
 
   const handleRegister = async () => {
     if (form.password !== form.confirmPassword) {
@@ -327,11 +314,11 @@ export function Register() {
         region: form.region,
         subscribedPackage: plan,
         accountType: accountType,
-        companyName: accountType === 'COMPANY' ? form.companyName : (form.companyName || form.name),
-        ownerCapability: (role === 'STATION_OWNER' || role === 'STATION_OPERATOR') ? capability : undefined,
+        companyName: accountType === 'COMPANY' ? form.companyName : form.companyName || form.name,
+        ownerCapability: role === 'STATION_OWNER' || role === 'STATION_OPERATOR' ? capability : undefined
       })
 
-      const resData = (response as any).user || response;
+      const resData = (response as any).user || response
       if (resData.organizationId) {
         setOrgId(resData.organizationId)
       }
@@ -362,12 +349,15 @@ export function Register() {
 
       if (role === 'SITE_OWNER' || plan === 'Starter') {
         // Save registration state before navigating to verification
-        const needsCapability = (role === 'STATION_OWNER' || role === 'STATION_OPERATOR');
-        localStorage.setItem('registrationState', JSON.stringify({
-          email: form.email,
-          role: role,
-          capability: needsCapability ? capability : undefined,
-        }))
+        const needsCapability = role === 'STATION_OWNER' || role === 'STATION_OPERATOR'
+        localStorage.setItem(
+          'registrationState',
+          JSON.stringify({
+            email: form.email,
+            role: role,
+            capability: needsCapability ? capability : undefined
+          })
+        )
         localStorage.setItem('registrationNextStep', '2')
         navigate(`${PATHS.AUTH.VERIFY_EMAIL}?token=pending`)
       } else {
@@ -414,11 +404,13 @@ export function Register() {
       <div className="register-shell relative mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 py-8">
         {/* Progress Stepper */}
         <div className="mb-12 flex items-center justify-center gap-4">
-          {[1, 2, 3].map(s => (
+          {[1, 2, 3].map((s) => (
             <div key={s} className="flex items-center gap-2">
-              <div className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition-all ${step === s ? 'bg-accent text-white ring-4 ring-accent/20' :
-                step > s ? 'bg-emerald-500 text-white' : 'bg-panel-2 text-text-secondary border border-border'
-                }`}>
+              <div
+                className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition-all ${
+                  step === s ? 'bg-accent text-white ring-4 ring-accent/20' : step > s ? 'bg-emerald-500 text-white' : 'bg-panel-2 text-text-secondary border border-border'
+                }`}
+              >
                 {step > s ? '✓' : s}
               </div>
               <div className={`h-1 w-12 rounded-full hidden sm:block ${step > s ? 'bg-emerald-500' : 'bg-panel-2'}`} />
@@ -434,7 +426,9 @@ export function Register() {
 
             {step === 1 && (
               <div className="space-y-4 animate-in fade-in slide-in-from-left-4">
-                <h1 className="step-title text-4xl font-semibold lg:text-5xl">Launch your <span className="text-accent underline decoration-accent/30">EV Business</span> today.</h1>
+                <h1 className="step-title text-4xl font-semibold lg:text-5xl">
+                  Launch your <span className="text-accent underline decoration-accent/30">EV Business</span> today.
+                </h1>
                 <p className="text-text-secondary">Join Africa's leading charging network. Set up in minutes, scale to thousands of stations.</p>
                 <div className="grid gap-4 sm:grid-cols-2 mt-8">
                   <div className="p-4 rounded-2xl bg-panel border border-border shadow-sm">
@@ -451,7 +445,9 @@ export function Register() {
 
             {step === 2 && (
               <div className="space-y-4 animate-in fade-in slide-in-from-left-4">
-                <h1 className="step-title text-4xl font-semibold lg:text-5xl">Verify your <span className="text-emerald-500 underline decoration-emerald-500/30">Business</span>.</h1>
+                <h1 className="step-title text-4xl font-semibold lg:text-5xl">
+                  Verify your <span className="text-emerald-500 underline decoration-emerald-500/30">Business</span>.
+                </h1>
                 <p className="text-text-secondary">Provide your KYC details to enable smart payouts and billing compliance.</p>
                 <div className="bg-emerald-500/5 border border-emerald-500/20 p-5 rounded-2xl text-sm text-emerald-700">
                   <strong>Did you know?</strong> Verified organizations on EVzone get priority OCPI roaming visibility.
@@ -461,17 +457,19 @@ export function Register() {
 
             {step === 3 && (
               <div className="space-y-4 animate-in fade-in slide-in-from-left-4">
-                <h1 className="step-title text-4xl font-semibold lg:text-5xl">Finalize & <span className="text-amber-500 underline decoration-amber-500/30">Activate</span>.</h1>
+                <h1 className="step-title text-4xl font-semibold lg:text-5xl">
+                  Finalize & <span className="text-amber-500 underline decoration-amber-500/30">Activate</span>.
+                </h1>
                 <p className="text-text-secondary">Complete your first subscription payment to unlock the full dashboard.</p>
                 <div className="p-6 rounded-2xl bg-panel border border-border">
                   <div className="text-xs font-bold uppercase tracking-[0.2em] text-text-secondary mb-4">Your Selected Plan</div>
                   <div className="flex justify-between items-end mb-2">
                     <div className="text-2xl font-bold">{plan}</div>
-                    <div className="text-accent font-bold">{PLANS.find(p => p.id === plan)?.price}/mo</div>
+                    <div className="text-accent font-bold">{PLANS.find((p) => p.id === plan)?.price}/mo</div>
                   </div>
                   <div className="h-px bg-border my-4" />
                   <div className="space-y-2">
-                    {PLANS.find(p => p.id === plan)?.features.map(f => (
+                    {PLANS.find((p) => p.id === plan)?.features.map((f) => (
                       <div key={f} className="flex items-center gap-2 text-sm text-text-secondary">
                         <span className="text-accent">●</span> {f}
                       </div>
@@ -492,24 +490,28 @@ export function Register() {
                   <div className="grid gap-4 sm:grid-cols-2">
                     <label className="space-y-2">
                       <span className="text-xs font-bold uppercase tracking-widest text-text-secondary">Full Name</span>
-                      <input value={form.name} onChange={e => update('name', e.target.value)} className="input rounded-2xl" placeholder="John Doe" />
+                      <input value={form.name} onChange={(e) => update('name', e.target.value)} className="input rounded-2xl" placeholder="John Doe" />
                     </label>
                     <label className="space-y-2">
                       <span className="text-xs font-bold uppercase tracking-widest text-text-secondary">Work Email</span>
-                      <input type="email" value={form.email} onChange={e => update('email', e.target.value)} className="input rounded-2xl" placeholder="john@evco.com" />
+                      <input type="email" value={form.email} onChange={(e) => update('email', e.target.value)} className="input rounded-2xl" placeholder="john@evco.com" />
                     </label>
                   </div>
 
                   <div className="grid gap-4 sm:grid-cols-2">
                     <label className="space-y-2">
                       <span className="text-xs font-bold uppercase tracking-widest text-text-secondary">Phone</span>
-                      <input value={form.phone} onChange={e => update('phone', e.target.value)} className="input rounded-2xl" placeholder="+256..." />
+                      <input value={form.phone} onChange={(e) => update('phone', e.target.value)} className="input rounded-2xl" placeholder="+256..." />
                     </label>
                     <label className="space-y-2">
                       <span className="text-xs font-bold uppercase tracking-widest text-text-secondary">Account Type</span>
                       <div className="flex rounded-xl bg-panel-2 p-1 border border-border">
-                        {(['COMPANY', 'INDIVIDUAL'] as const).map(t => (
-                          <button key={t} onClick={() => setAccountType(t)} className={`flex-1 rounded-lg py-2 text-[10px] font-bold uppercase tracking-widest transition ${accountType === t ? 'bg-accent text-white shadow-sm' : 'text-text-secondary'}`}>
+                        {(['COMPANY', 'INDIVIDUAL'] as const).map((t) => (
+                          <button
+                            key={t}
+                            onClick={() => setAccountType(t)}
+                            className={`flex-1 rounded-lg py-2 text-[10px] font-bold uppercase tracking-widest transition ${accountType === t ? 'bg-accent text-white shadow-sm' : 'text-text-secondary'}`}
+                          >
                             {t}
                           </button>
                         ))}
@@ -521,12 +523,25 @@ export function Register() {
                     <span className="text-xs font-bold uppercase tracking-widest text-text-secondary">Select Your Role</span>
                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                       {[
-                        { label: 'Station Owner', value: 'STATION_OWNER' as const },
-                        { label: 'Operator', value: 'STATION_OPERATOR' as const },
-                        { label: 'Technician', value: 'TECHNICIAN_ORG' as const },
-                        { label: 'Site Owner', value: 'SITE_OWNER' as const },
-                      ].map(r => (
-                        <button key={r.value} onClick={() => setRole(r.value)} className={`rounded-xl border p-3 text-[10px] font-bold uppercase tracking-widest transition ${role === r.value ? 'border-accent bg-accent/5 text-accent ring-1 ring-accent' : 'border-border text-text-secondary hover:border-accent/30'}`}>
+                        {
+                          label: 'Station Owner',
+                          value: 'STATION_OWNER' as const
+                        },
+                        {
+                          label: 'Operator',
+                          value: 'STATION_OPERATOR' as const
+                        },
+                        {
+                          label: 'Technician',
+                          value: 'TECHNICIAN_ORG' as const
+                        },
+                        { label: 'Site Owner', value: 'SITE_OWNER' as const }
+                      ].map((r) => (
+                        <button
+                          key={r.value}
+                          onClick={() => setRole(r.value)}
+                          className={`rounded-xl border p-3 text-[10px] font-bold uppercase tracking-widest transition ${role === r.value ? 'border-accent bg-accent/5 text-accent ring-1 ring-accent' : 'border-border text-text-secondary hover:border-accent/30'}`}
+                        >
                           {r.label}
                         </button>
                       ))}
@@ -540,7 +555,7 @@ export function Register() {
                         {[
                           { label: 'Charge Stations', value: 'CHARGE' },
                           { label: 'Swap Stations', value: 'SWAP' },
-                          { label: 'Hybrid (Both)', value: 'BOTH' },
+                          { label: 'Hybrid (Both)', value: 'BOTH' }
                         ].map((c) => (
                           <button
                             key={c.value}
@@ -557,8 +572,12 @@ export function Register() {
                   <div className="space-y-4">
                     <span className="text-xs font-bold uppercase tracking-widest text-text-secondary">Choose a Subscription Plan</span>
                     <div className="grid gap-3 sm:grid-cols-2">
-                      {PLANS.map(p => (
-                        <button key={p.id} onClick={() => setPlan(p.id)} className={`relative overflow-hidden rounded-2xl border p-4 text-left transition ${plan === p.id ? 'border-accent bg-accent/5 ring-1 ring-accent' : 'border-border hover:border-accent/40'}`}>
+                      {PLANS.map((p) => (
+                        <button
+                          key={p.id}
+                          onClick={() => setPlan(p.id)}
+                          className={`relative overflow-hidden rounded-2xl border p-4 text-left transition ${plan === p.id ? 'border-accent bg-accent/5 ring-1 ring-accent' : 'border-border hover:border-accent/40'}`}
+                        >
                           {p.popular && <div className="absolute top-0 right-0 bg-accent text-[8px] font-bold text-white px-2 py-1 rounded-bl-lg uppercase tracking-widest">Popular</div>}
                           <div className="font-bold text-sm">{p.name}</div>
                           <div className="text-xs text-text-secondary mt-1">{p.price}</div>
@@ -570,19 +589,15 @@ export function Register() {
                   <div className="grid gap-4 sm:grid-cols-2">
                     <label className="space-y-2">
                       <span className="text-xs font-bold uppercase tracking-widest text-text-secondary">Password</span>
-                      <input type="password" value={form.password} onChange={e => update('password', e.target.value)} className="input rounded-2xl" />
+                      <input type="password" value={form.password} onChange={(e) => update('password', e.target.value)} className="input rounded-2xl" />
                     </label>
                     <label className="space-y-2">
                       <span className="text-xs font-bold uppercase tracking-widest text-text-secondary">Confirm</span>
-                      <input type="password" value={form.confirmPassword} onChange={e => update('confirmPassword', e.target.value)} className="input rounded-2xl" />
+                      <input type="password" value={form.confirmPassword} onChange={(e) => update('confirmPassword', e.target.value)} className="input rounded-2xl" />
                     </label>
                   </div>
 
-                  <button
-                    onClick={handleRegister}
-                    disabled={loading}
-                    className="w-full rounded-2x bg-accent py-4 font-bold text-white shadow-lg transition hover:bg-accent-hover disabled:opacity-50"
-                  >
+                  <button onClick={handleRegister} disabled={loading} className="w-full rounded-2x bg-accent py-4 font-bold text-white shadow-lg transition hover:bg-accent-hover disabled:opacity-50">
                     {loading ? 'Processing...' : 'Next: Business details'}
                   </button>
                 </div>
@@ -605,16 +620,16 @@ export function Register() {
                           }
                         }}
                       />
-                      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" /></svg>
+                      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" />
+                      </svg>
                       <span className="text-[10px] mt-1 font-bold">LOGO</span>
                     </label>
                     <div className="flex-1 space-y-2">
-                      <label className="text-xs font-bold uppercase tracking-widest text-text-secondary">
-                        {accountType === 'COMPANY' ? 'Company Name' : 'Business Name (Optional)'}
-                      </label>
+                      <label className="text-xs font-bold uppercase tracking-widest text-text-secondary">{accountType === 'COMPANY' ? 'Company Name' : 'Business Name (Optional)'}</label>
                       <input
                         value={form.companyName}
-                        onChange={e => update('companyName', e.target.value)}
+                        onChange={(e) => update('companyName', e.target.value)}
                         className="input rounded-xl"
                         placeholder={accountType === 'COMPANY' ? 'Volt Charging Ltd' : form.name}
                       />
@@ -624,11 +639,11 @@ export function Register() {
                   <div className="grid gap-4 sm:grid-cols-2">
                     <label className="space-y-2">
                       <span className="text-xs font-bold uppercase tracking-widest text-text-secondary">Country</span>
-                      <input value={form.country} onChange={e => update('country', e.target.value)} className="input rounded-xl bg-panel-2" />
+                      <input value={form.country} onChange={(e) => update('country', e.target.value)} className="input rounded-xl bg-panel-2" />
                     </label>
                     <label className="space-y-2">
                       <span className="text-xs font-bold uppercase tracking-widest text-text-secondary">Region/City</span>
-                      <input value={form.region} onChange={e => update('region', e.target.value)} className="input rounded-xl" />
+                      <input value={form.region} onChange={(e) => update('region', e.target.value)} className="input rounded-xl" />
                     </label>
                   </div>
 
@@ -636,15 +651,19 @@ export function Register() {
                     <span className="text-xs font-bold uppercase tracking-widest text-text-secondary">Payout Settings (Receive Revenue)</span>
                     <div className="grid gap-4 border border-border p-4 rounded-2xl bg-panel-2">
                       <div className="flex gap-2">
-                        {['MTN', 'Airtel', 'Bank'].map(p => (
-                          <button key={p} onClick={() => update('payoutProvider', p)} className={`flex-1 rounded-lg py-2 text-[10px] font-bold transition ${form.payoutProvider === p ? 'bg-white shadow-sm ring-1 ring-border text-accent' : 'text-text-secondary'}`}>
+                        {['MTN', 'Airtel', 'Bank'].map((p) => (
+                          <button
+                            key={p}
+                            onClick={() => update('payoutProvider', p)}
+                            className={`flex-1 rounded-lg py-2 text-[10px] font-bold transition ${form.payoutProvider === p ? 'bg-white shadow-sm ring-1 ring-border text-accent' : 'text-text-secondary'}`}
+                          >
                             {p}
                           </button>
                         ))}
                       </div>
                       <label className="space-y-2">
                         <span className="text-[10px] font-bold uppercase text-text-secondary">Mobile Money / Bank Account Number</span>
-                        <input value={form.walletNumber} onChange={e => update('walletNumber', e.target.value)} className="input rounded-xl bg-white" placeholder="+256..." />
+                        <input value={form.walletNumber} onChange={(e) => update('walletNumber', e.target.value)} className="input rounded-xl bg-white" placeholder="+256..." />
                       </label>
                     </div>
                   </div>
@@ -684,7 +703,9 @@ export function Register() {
                   </div>
 
                   <div className="flex gap-4">
-                    <button onClick={() => setStep(1)} className="flex-1 rounded-xl border border-border py-4 font-bold text-text-secondary hover:bg-panel-2 transition">Back</button>
+                    <button onClick={() => setStep(1)} className="flex-1 rounded-xl border border-border py-4 font-bold text-text-secondary hover:bg-panel-2 transition">
+                      Back
+                    </button>
                     <button onClick={handleCompleteOnboarding} className="flex-[2] rounded-xl bg-accent py-4 font-bold text-white shadow-lg shadow-accent/20 hover:bg-accent-hover transition">
                       {role === 'SITE_OWNER' ? 'Complete Setup' : 'Next: Activation'}
                     </button>
@@ -697,8 +718,11 @@ export function Register() {
                 <div className="space-y-6">
                   <div className="p-6 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-center">
                     <div className="text-emerald-600 font-bold mb-1">Invoice Generated</div>
-                    <div className="text-xs text-emerald-800/70">Ref: INV-{Math.random().toString(36).substring(7).toUpperCase()}</div>
-                    <div className="mt-4 text-3xl font-bold">{PLANS.find(p => p.id === plan)?.price}</div>
+                    <div className="text-xs text-emerald-800/70">
+                      Ref: INV-
+                      {Math.random().toString(36).substring(7).toUpperCase()}
+                    </div>
+                    <div className="mt-4 text-3xl font-bold">{PLANS.find((p) => p.id === plan)?.price}</div>
                     <div className="text-xs font-bold text-text-secondary uppercase mt-1 tracking-widest">Initial Subscription</div>
                   </div>
 
@@ -706,7 +730,10 @@ export function Register() {
                     <span className="text-xs font-bold uppercase tracking-widest text-text-secondary">Select Payment Method</span>
                     <div className="space-y-2">
                       {['Mobile Money (Recommended)', 'Visa / MasterCard', 'Wallet Balance'].map((m, i) => (
-                        <div key={m} className={`flex items-center justify-between p-4 rounded-xl border cursor-pointer transition ${i === 0 ? 'border-accent bg-accent/5 ring-1 ring-accent' : 'border-border hover:bg-panel-2'}`}>
+                        <div
+                          key={m}
+                          className={`flex items-center justify-between p-4 rounded-xl border cursor-pointer transition ${i === 0 ? 'border-accent bg-accent/5 ring-1 ring-accent' : 'border-border hover:bg-panel-2'}`}
+                        >
                           <div className="flex items-center gap-3">
                             <div className={`h-4 w-4 rounded-full border-4 ${i === 0 ? 'border-accent' : 'border-border'}`} />
                             <span className="text-sm font-bold">{m}</span>
@@ -722,7 +749,9 @@ export function Register() {
                   </div>
 
                   <div className="flex gap-4">
-                    <button onClick={() => setStep(2)} className="flex-1 rounded-xl border border-border py-4 font-bold text-text-secondary hover:bg-panel-2 transition">Back</button>
+                    <button onClick={() => setStep(2)} className="flex-1 rounded-xl border border-border py-4 font-bold text-text-secondary hover:bg-panel-2 transition">
+                      Back
+                    </button>
                     <button onClick={handleActivate} className="flex-[2] rounded-xl bg-accent py-4 font-bold text-white shadow-lg shadow-accent/20 hover:bg-accent-hover transition">
                       Confirm & Activate
                     </button>
@@ -745,7 +774,7 @@ export function ForgotPassword() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-    await new Promise(r => setTimeout(r, 500))
+    await new Promise((r) => setTimeout(r, 500))
     setSent(true)
     setLoading(false)
   }
@@ -755,13 +784,17 @@ export function ForgotPassword() {
       <div className="min-h-screen bg-bg flex items-center justify-center p-4">
         <div className="w-full max-w-md text-center">
           <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-accent/10 text-accent mb-4">
-            <svg className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+            <svg className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
           </div>
           <h2 className="text-xl font-semibold mb-2">Check your email</h2>
           <p className="text-subtle mb-6">
             We've sent a password reset link to <strong>{email}</strong>
           </p>
-          <Link to={PATHS.AUTH.LOGIN} className="text-accent hover:underline">Back to sign in</Link>
+          <Link to={PATHS.AUTH.LOGIN} className="text-accent hover:underline">
+            Back to sign in
+          </Link>
         </div>
       </div>
     )
@@ -778,26 +811,18 @@ export function ForgotPassword() {
         <form onSubmit={handleSubmit} className="rounded-xl bg-surface border border-border p-6 space-y-4">
           <label className="grid gap-1">
             <span className="text-sm font-medium">Email</span>
-            <input
-              type="email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              className="input"
-              required
-            />
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="input" required />
           </label>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full px-4 py-2 rounded-lg bg-accent text-white font-medium hover:bg-accent-hover disabled:opacity-50"
-          >
+          <button type="submit" disabled={loading} className="w-full px-4 py-2 rounded-lg bg-accent text-white font-medium hover:bg-accent-hover disabled:opacity-50">
             {loading ? 'Sending...' : 'Send reset link'}
           </button>
         </form>
 
         <p className="text-center text-sm text-subtle mt-4">
-          <Link to={PATHS.AUTH.LOGIN} className="text-accent hover:underline">Back to sign in</Link>
+          <Link to={PATHS.AUTH.LOGIN} className="text-accent hover:underline">
+            Back to sign in
+          </Link>
         </p>
       </div>
     </div>
@@ -825,16 +850,17 @@ export function VerifyEmail() {
       setIsVerifying(false)
     }
   })
+  const { mutate: verifyEmail, isSuccess: isVerificationSuccessful } = verifyMutation
 
   useEffect(() => {
     if (token) {
-      verifyMutation.mutate({ token })
+      verifyEmail({ token })
     }
-  }, [token])
+  }, [token, verifyEmail])
 
   // Process redirection after success
   useEffect(() => {
-    if (verifyMutation.isSuccess) {
+    if (isVerificationSuccessful) {
       const registrationState = localStorage.getItem('registrationState')
       const nextStep = localStorage.getItem('registrationNextStep')
 
@@ -853,7 +879,7 @@ export function VerifyEmail() {
         setTimeout(() => navigate(PATHS.AUTH.LOGIN), 2000)
       }
     }
-  }, [verifyMutation.isSuccess, navigate])
+  }, [isVerificationSuccessful, navigate])
 
   const handleResendEmail = async () => {
     if (!email.trim()) {
@@ -912,30 +938,20 @@ export function VerifyEmail() {
     <div className="min-h-screen bg-bg flex items-center justify-center p-4">
       <div className="w-full max-w-md text-center">
         <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-accent/10 text-accent mb-4">
-          <svg className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+          <svg className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+          </svg>
         </div>
         <h2 className="text-xl font-semibold mb-2">Verify your email</h2>
 
-        {error && (
-          <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 text-red-500 rounded-lg text-sm">
-            {error}
-          </div>
-        )}
+        {error && <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 text-red-500 rounded-lg text-sm">{error}</div>}
 
-        <p className="text-subtle mb-6">
-          We've sent a verification email to your inbox. Click the link in the email to verify your account.
-        </p>
+        <p className="text-subtle mb-6">We've sent a verification email to your inbox. Click the link in the email to verify your account.</p>
 
         <div className="space-y-3">
           <div>
             <label className="text-sm text-text-secondary mb-2 block">Or enter your email to resend:</label>
-            <input
-              type="email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              placeholder="your@email.com"
-              className="input w-full"
-            />
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="your@email.com" className="input w-full" />
           </div>
           <button
             onClick={handleResendEmail}

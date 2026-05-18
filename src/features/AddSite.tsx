@@ -72,26 +72,28 @@ export function AddSite({ onSuccess, onCancel, isOnboarding = false, isFirstSite
         tags: [],
         ownerId: '',
         postalCode: '',
-        country: '',
+        country: ''
     })
 
     const [tagInput, setTagInput] = useState('')
     const [error, setError] = useState('')
     const [ack, setAck] = useState('')
-    const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number; percent: number } | null>(null)
+    const [uploadProgress, setUploadProgress] = useState<{
+        current: number
+        total: number
+        percent: number
+    } | null>(null)
     const [isUploading, setIsUploading] = useState(false)
 
     // Sync purpose with user role once it loads
     useEffect(() => {
         if (!user) return
-        if (isSiteOwner) setForm(prev => ({ ...prev, purpose: 'Commercial' }))
-        else if (isStationOwner) setForm(prev => ({ ...prev, purpose: 'Personal' }))
+        if (isSiteOwner) setForm((prev) => ({ ...prev, purpose: 'Commercial' }))
+        else if (isStationOwner) setForm((prev) => ({ ...prev, purpose: 'Personal' }))
     }, [user, isSiteOwner, isStationOwner])
 
     // Filter potential owners for the select (Admins, Site Owners, Station Owners)
-    const potentialOwners = allUsers?.filter(u =>
-        u.role === 'SITE_OWNER' || u.role === 'STATION_OWNER'
-    ) || []
+    const potentialOwners = allUsers?.filter((u) => u.role === 'SITE_OWNER' || u.role === 'STATION_OWNER') || []
 
     const update = <K extends keyof SiteForm>(key: K, value: SiteForm[K]) => {
         setForm((prev) => ({ ...prev, [key]: value }))
@@ -123,18 +125,18 @@ export function AddSite({ onSuccess, onCancel, isOnboarding = false, isFirstSite
                 setForm((prev) => ({
                     ...prev,
                     latitude: lat.toFixed(6),
-                    longitude: lng.toFixed(6),
+                    longitude: lng.toFixed(6)
                 }))
 
                 try {
                     // Magic: Reverse Geocode
                     const magic = await geographyService.reverseGeocode(lat, lng)
                     if (magic) {
-                        setForm(prev => ({
+                        setForm((prev) => ({
                             ...prev,
                             city: magic.city || prev.city,
                             postalCode: magic.postalCode || prev.postalCode,
-                            country: magic.countryName || prev.country,
+                            country: magic.countryName || prev.country
                             // If address is empty, maybe set a default or leave it for user
                         }))
                         setAck(`Detected: ${magic.city}, ${magic.countryName}`)
@@ -158,7 +160,7 @@ export function AddSite({ onSuccess, onCancel, isOnboarding = false, isFirstSite
             try {
                 const loc = await geographyService.detectLocation()
                 if (loc) {
-                    setForm(prev => ({
+                    setForm((prev) => ({
                         ...prev,
                         city: loc.city || prev.city,
                         postalCode: loc.postalCode || prev.postalCode,
@@ -170,7 +172,7 @@ export function AddSite({ onSuccess, onCancel, isOnboarding = false, isFirstSite
             }
         }
         detectIp()
-    }, [])
+    }, [form.city])
 
     const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!e.target.files || e.target.files.length === 0) return
@@ -228,7 +230,7 @@ export function AddSite({ onSuccess, onCancel, isOnboarding = false, isFirstSite
         setForm((prev) => ({
             ...prev,
             photoFiles: prev.photoFiles.filter((_, i) => i !== index),
-            photoUrls: prev.photoUrls.filter((_, i) => i !== index),
+            photoUrls: prev.photoUrls.filter((_, i) => i !== index)
         }))
     }
 
@@ -261,11 +263,7 @@ export function AddSite({ onSuccess, onCancel, isOnboarding = false, isFirstSite
         if (onSuccess) onSuccess(finalForm)
     }
 
-    const wrapperClassName = isOnboarding
-        ? ''
-        : fullBleed
-            ? 'bg-surface min-h-full w-full p-6 sm:p-8 lg:p-10'
-            : 'bg-surface rounded-2xl border border-border p-8 shadow-lg'
+    const wrapperClassName = isOnboarding ? '' : fullBleed ? 'bg-surface min-h-full w-full p-6 sm:p-8 lg:p-10' : 'bg-surface rounded-2xl border border-border p-8 shadow-lg'
 
     const formContent = (
         <>
@@ -274,14 +272,18 @@ export function AddSite({ onSuccess, onCancel, isOnboarding = false, isFirstSite
                     <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-accent text-white shadow-sm">
                         <Bolt className="w-6 h-6" />
                     </span>
-                    <h2 className="text-2xl font-bold tracking-tight">{(isOnboarding || isFirstSite) ? 'Add Your First Site' : 'Add New Site'}</h2>
+                    <h2 className="text-2xl font-bold tracking-tight">{isOnboarding || isFirstSite ? 'Add Your First Site' : 'Add New Site'}</h2>
                 </div>
                 <p className="text-subtle">Enter the location and capacity details for your electric vehicle charging site.</p>
             </div>
 
             <form className="space-y-6" onSubmit={submit} noValidate>
                 {(error || ack) && (
-                    <div role="alert" aria-live="polite" className={`text-sm font-medium p-3 rounded-lg flex items-center gap-2 ${error ? 'bg-rose-50 text-rose-600 border border-rose-100' : 'bg-emerald-50 text-emerald-600 border border-emerald-100'}`}>
+                    <div
+                        role="alert"
+                        aria-live="polite"
+                        className={`text-sm font-medium p-3 rounded-lg flex items-center gap-2 ${error ? 'bg-rose-50 text-rose-600 border border-rose-100' : 'bg-emerald-50 text-emerald-600 border border-emerald-100'}`}
+                    >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             {error ? (
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -301,12 +303,7 @@ export function AddSite({ onSuccess, onCancel, isOnboarding = false, isFirstSite
                     <label className="flex flex-col gap-2">
                         <span className="text-sm font-semibold">Postal / Zip Code</span>
                         <div className="relative">
-                            <input
-                                value={form.postalCode}
-                                onChange={(e) => update('postalCode', e.target.value)}
-                                className="input bg-background pr-8"
-                                placeholder="e.g. 10001"
-                            />
+                            <input value={form.postalCode} onChange={(e) => update('postalCode', e.target.value)} className="input bg-background pr-8" placeholder="e.g. 10001" />
                         </div>
                     </label>
                     <label className="flex flex-col gap-2">
@@ -372,14 +369,9 @@ export function AddSite({ onSuccess, onCancel, isOnboarding = false, isFirstSite
                     {isAdmin && (
                         <label className="flex flex-col gap-2 sm:col-span-2">
                             <span className="text-sm font-semibold text-accent">Assign Site Owner (Admin Only)</span>
-                            <select
-                                value={form.ownerId}
-                                onChange={(e) => update('ownerId', e.target.value)}
-                                className="select border-accent/20 bg-accent/5"
-                                required
-                            >
+                            <select value={form.ownerId} onChange={(e) => update('ownerId', e.target.value)} className="select border-accent/20 bg-accent/5" required>
                                 <option value="">Select an owner...</option>
-                                {potentialOwners.map(u => (
+                                {potentialOwners.map((u) => (
                                     <option key={u.id} value={u.id}>
                                         {u.name || u.email} ({u.role})
                                     </option>
@@ -393,7 +385,10 @@ export function AddSite({ onSuccess, onCancel, isOnboarding = false, isFirstSite
                     <div className="sm:col-span-2 flex items-center justify-between">
                         <h3 className="text-sm font-semibold">Location Coordinates</h3>
                         <button type="button" onClick={handleGeolocation} className="text-xs btn secondary flex items-center gap-1">
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
                             Use my current location
                         </button>
                     </div>
@@ -410,17 +405,16 @@ export function AddSite({ onSuccess, onCancel, isOnboarding = false, isFirstSite
                 <div className="space-y-3">
                     <h3 className="text-sm font-semibold">Site Photos</h3>
                     <div className="border-2 border-dashed border-border rounded-xl p-6 text-center hover:bg-muted/20 transition-colors">
-                        <input
-                            type="file"
-                            multiple
-                            accept="image/jpeg,image/png,image/webp"
-                            onChange={handlePhotoUpload}
-                            className="hidden"
-                            id="photo-upload"
-                            disabled={isUploading}
-                        />
+                        <input type="file" multiple accept="image/jpeg,image/png,image/webp" onChange={handlePhotoUpload} className="hidden" id="photo-upload" disabled={isUploading} />
                         <label htmlFor="photo-upload" className={`cursor-pointer flex flex-col items-center gap-2 ${isUploading ? 'opacity-50' : ''}`}>
-                            <svg className="w-8 h-8 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                            <svg className="w-8 h-8 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth="2"
+                                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                />
+                            </svg>
                             <span className="text-sm font-medium text-accent">{isUploading ? 'Uploading...' : 'Click to upload photos'}</span>
                             <span className="text-xs text-muted">JPEG, PNG, or WebP (max 10MB each)</span>
                         </label>
@@ -430,17 +424,15 @@ export function AddSite({ onSuccess, onCancel, isOnboarding = false, isFirstSite
                         <div className="grid grid-cols-4 gap-2">
                             {form.photoUrls.map((url, i) => (
                                 <div key={i} className="relative group aspect-square bg-muted rounded-lg overflow-hidden border border-border">
-                                    <img
-                                        src={url.replace('/upload/', '/upload/w_200,h_200,c_fill,f_auto,q_auto/')}
-                                        alt={`Photo ${i + 1}`}
-                                        className="w-full h-full object-cover"
-                                    />
+                                    <img src={url.replace('/upload/', '/upload/w_200,h_200,c_fill,f_auto,q_auto/')} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" />
                                     <button
                                         type="button"
                                         onClick={() => removePhoto(i)}
                                         className="absolute top-1 right-1 bg-black/70 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
                                     >
-                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
                                     </button>
                                 </div>
                             ))}
@@ -454,10 +446,9 @@ export function AddSite({ onSuccess, onCancel, isOnboarding = false, isFirstSite
                         {AMENITIES.map((a) => (
                             <label
                                 key={a}
-                                className={`cursor-pointer transition-all text-xs font-bold px-4 py-2 rounded-xl border-2 flex items-center gap-2 ${form.amenities.has(a)
-                                    ? 'bg-accent/10 border-accent text-accent shadow-sm'
-                                    : 'bg-muted/30 border-border text-subtle hover:border-subtle/30'
-                                    }`}
+                                className={`cursor-pointer transition-all text-xs font-bold px-4 py-2 rounded-xl border-2 flex items-center gap-2 ${
+                                    form.amenities.has(a) ? 'bg-accent/10 border-accent text-accent shadow-sm' : 'bg-muted/30 border-border text-subtle hover:border-subtle/30'
+                                }`}
                             >
                                 <input type="checkbox" className="sr-only" checked={form.amenities.has(a)} onChange={() => toggleAmenity(a)} />
                                 {a}
